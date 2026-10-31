@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}선택 TC{% endblock %}
+{% block content %}
+  <h1>선택 TC</h1>
+  <p>TC 없이도 케이스를 둘 수 있습니다.</p>
+  <p>새 TC 버전은 안내입니다.</p>
+  <p id="tc-status" role="status"></p>
+  <form method="get" action="/ui/projects/{{ project_id }}/tcs">
+    <label>검색 <input name="q" value="{{ q }}"></label>
+    <label>대상 케이스 <select name="case_id"><option value="">케이스 선택</option>{% for case in cases %}<option value="{{ case.case_id }}"{% if selected_case and selected_case.case_id == case.case_id %} selected{% endif %}>{{ case.name }}</option>{% endfor %}</select></label>
+    <input type="submit" value="찾기">
+  </form>
+  {% if items %}
+  <ul id="tc-list">
+    {% for item in items %}
+    <li data-tc="{{ item.tc_id }}" data-revision="{{ item.revision }}" data-version="{{ item.version_id }}">
+      {{ item.name }} 개정 {{ item.revision }}
+      <span>원문 {{ item.raw_text }}</span>
+      <span>단계 {{ item.instruction }}</span><span>기대 {{ item.expected }}</span>
+      {% if item.archived_at %}보관됨{% endif %}
+      <button type="button" data-action="clone">복제</button>
+      <button type="button" data-action="archive"{% if item.archived_at %} disabled title="이미 보관된 TC입니다."{% endif %}>보관</button>
+      <button type="button" data-action="link"{% if not selected_case %} disabled title="대상 케이스를 선택하세요."{% endif %}>참조 연결</button>
+      <button type="button" data-action="preview"{% if not snapshot or not snapshot.expected_head %} disabled title="저장된 초안이 있는 케이스를 선택하세요."{% endif %}>가져오기 차이 보기</button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p>선택 TC가 없습니다.</p>{% endif %}
+  <button type="button" id="tc-unlink" data-action="unlink"{% if not selected_case %} disabled title="대상 케이스를 선택하세요."{% endif %}>참조 해제</button>
+  {% include "components/tc_import.html" %}
+  <script id="tc-data" type="application/json">{{ {'project_id':project_id,'selected_case':selected_case,'snapshot':snapshot,'items':items} | tojson }}</script>
+  <script src="/static/tcs.js"></script>
+{% endblock %}

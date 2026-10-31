@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}단계{% endblock %}
+{% block content %}
+  <h1>단계</h1>
+  <p>제안은 차이를 확인한 뒤에만 수락합니다.</p>
+  <p id="proposal-diff">{% if proposal_text %}제안 차이 {{ proposal_text }}{% endif %}</p>
+  <form id="step-edit" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/steps">
+    <input id="step-head" type="hidden" value="{{ head }}">
+    <ul id="step-list">
+      {% for step in steps %}
+      <li data-step="{{ step.id }}">{{ step.instruction }}
+        <input type="submit" value="복제" data-action="duplicate" data-step="{{ step.id }}">
+        <input type="submit" value="삭제" data-action="remove" data-step="{{ step.id }}">
+        <input type="submit" value="위로" data-action="move" data-direction="up" data-step="{{ step.id }}">
+        <input type="submit" value="아래로" data-action="move" data-direction="down" data-step="{{ step.id }}">
+        <input type="submit" value="변수화" data-action="bind_variable" data-step="{{ step.id }}">
+      </li>
+      {% endfor %}
+    </ul>
+    <label>단계 <input name="instruction" value=""></label>
+    <label>검증 <input name="expected" value=""></label>
+    <label>변수 이름 <input name="variable" value="amount"></label>
+    <input type="submit" value="추가" data-action="add">
+  </form>
+  <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 정의</a></p>
+  {% include "components/tc_import.html" %}
+  <script src="/static/step_editor.js"></script>
+{% endblock %}

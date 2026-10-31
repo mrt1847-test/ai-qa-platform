@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}실행 설정{% endblock %}
+{% block content %}
+  <h1>실행 설정</h1>
+  <p>전역 기본 timeout 600, 행동 50, 모델 호출 80.</p>
+  <p>전역 healing 기본 OFF. 케이스 값은 전역 기본과 따로 저장된다.</p>
+  <p>실행은 여기서 시작하지 않습니다.</p>
+  <p id="settings-status"></p>
+  <form id="settings-form" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/settings">
+    <input id="settings-head" type="hidden" value="{{ head }}">
+    <label>Web URL <input name="web_url" value="{{ web_url }}"></label>
+    <label>Android package <input name="android_package" value="{{ android_package }}"></label>
+    <label>환경 <input name="environment_revision_id" value="{{ environment_revision_id }}"></label>
+    <label>데이터 <input name="data_revision_id" value="{{ data_revision_id }}"></label>
+    <label>비밀 참조 <input name="ref_id" value=""></label>
+    <label>참조 개정 <input name="ref_revision" value=""></label>
+    <label>설치 <input name="install_policy" value="{{ install_policy }}"></label>
+    <label>reset <input name="reset_policy" value="{{ reset_policy }}"></label>
+    <label>cleanup <input name="cleanup_policy" value="{{ cleanup_policy }}"></label>
+    <label>timeout <input name="timeout_seconds" value="{{ snapshot.settings.limits.timeout_seconds }}"></label>
+    <label>검증 방식 <input name="verifier_method" value="{{ verifier_method }}"></label>
+    <label>binding <input name="verifier_binding_id" value="{{ verifier_binding_id }}"></label>
+    <label>healing 허용 <input name="healing_allowed" value="{{ healing_allowed }}"></label>
+    <label>healing 범위 <input name="healing_scope" value="{{ healing_scope }}"></label>
+    <label>episode 상한 <input name="healing_max_episodes" value="{{ snapshot.settings.healing_policy.max_episodes_per_item }}"></label>
+    <label>호출 상한 <input name="healing_max_calls" value="{{ snapshot.settings.healing_policy.max_model_calls_per_item }}"></label>
+    <label>초 상한 <input name="healing_max_seconds" value="{{ snapshot.settings.healing_policy.max_seconds }}"></label>
+    <input type="submit" value="설정 저장">
+  </form>
+  <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">버전 탭</a></p>
+  <script>
+    (function () {
+      var snapshot = {{ snapshot | tojson }};
+      var form = document.getElementById("settings-form");
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var allowed = form.healing_allowed.value === "true";
+        var body = {
+          expected_head: document.getElementById("settings-head").value || null,
+          target_kind: snapshot.settings.target_kind,
+          web_url: form.web_url.value,
+          android_package: form.android_package.value,
+          environment_revision_id: form.environment_revision_id.value,
+          data_revision_id: form.data_revision_id.value,
+          install_policy: form.install_policy.value,
+          reset_policy: form.reset_policy.value,
+          cleanup_policy: form.cleanup_policy.value,
+          timeout_seconds: Number(form.timeout_seconds.value),
+          verifier_method: form.verifier_method.value,
+          verifier_binding_id: form.verifier_binding_id.value,
+          healing_allowed: allowed,
+
+          healing_scope: form.healing_scope.value,
+          healing_max_episodes: Number(form.healing_max_episodes.value),
+          healing_max_calls: Number(form.healing_max_calls.value),
+          healing_max_seconds: Number(form.healing_max_seconds.value)
+        };
+        if (form.ref_id.value) {
+          body.secret_refs = {login: {project_id: "{{ project_id }}", ref_id: form.ref_id.value, revision: Number(form.ref_revision.value || "1")}};
+        }
+        aiqaRequest(form.getAttribute("action"), {
+          method: "POST",
+          headers: {"content-type": "application/json", "Idempotency-Key": window.crypto.randomUUID()},
+          body: JSON.stringify(body)
+        }).then(function (response) {
+          if (response.status === 201 || response.status === 200) {
+            window.location.reload();
+          } else {
+            document.getElementById("settings-status").textContent = "입력은 그대로입니다.";
+          }
+        });
+      });
+    })();
+  </script>
+{% endblock %}

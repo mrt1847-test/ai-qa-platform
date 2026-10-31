@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  background-color: #f4f1ea;
+  color: #1c1915;
+  font-family: "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+.shell {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background-color: #fffdf8;
+}
+
+.mark {
+  height: 24px;
+  background-color: #0f6e56;
+}
+
+h1 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.liveness {
+  font-weight: 700;
+}
+
+.connection-error {
+  color: #8a1f11;
+  font-weight: 700;
+}
+
+.unconfigured {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.skip {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #0f6e56;
+  outline-offset: 2px;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #fffdf8;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    max-width: 60rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .shell {
+    max-width: 80rem;
+  }
+}

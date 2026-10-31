@@ -1,0 +1,14 @@
+<form id="definition-form" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">
+  <input id="expected-head" type="hidden" value="{{ draft.version_id or '' }}">
+  <label>자연어 <textarea name="raw_text">{{ snapshot.definition.raw_text }}</textarea></label>
+  <label>목적 <input name="objective" value="{{ snapshot.definition.objective }}"></label>
+  <label>사전조건 <textarea name="preconditions">{{ snapshot.definition.preconditions | tojson }}</textarea></label>
+  <label>변수 <textarea name="variables">{{ snapshot.definition.variables | tojson }}</textarea></label>
+  <label>비밀 참조 <textarea name="secret_refs">{{ snapshot.definition.secret_refs | tojson }}</textarea></label>
+  <label>단계와 검증 <textarea name="steps">{{ snapshot.definition.steps | tojson }}</textarea></label>
+  <label>최종 기대 <textarea name="final_expected">{{ snapshot.definition.final_expected | tojson }}</textarea></label>
+  <label>필수 경로 및 금지 경로 <textarea name="path_policy">{{ snapshot.definition.path_policy | tojson }}</textarea></label>
+  <input type="submit" value="초안 저장">
+</form>
+<script id="definition-snapshot" type="application/json">{{ snapshot | tojson }}</script>
+<script src="/static/definition_editor.js"></script>

@@ -1,12 +1,12 @@
-# AI QA 플랫폼 Implementation Plan v0.7
+# AI QA 플랫폼 Implementation Plan v0.8
 
 개정일: **2026-10-31**. [v0.3 계획](docs/history/v0.3/IMPLEMENTATION_PLAN.md)과 [v0.4 계획](docs/history/v0.4/IMPLEMENTATION_PLAN.md)은 보관했다.
 
-**Current/실행 우선순위는 [NEXT_ACTION.md](NEXT_ACTION.md), 전체 진행률은 [WORK_PROGRESS.md](WORK_PROGRESS.md)가 담당한다.** 이 문서의 T0–T14는 상세 설계/인터페이스 추적 단위이며, 실제 진행은32개 상위 W 아래158개 상세 작업으로 기록한다. [영역별 실행 작업서](docs/execution/README.md)의 카드 한 개와 직접 선행을 사용한다. 모의 프런트의 완료와 제품 구현 완료는 구분한다.
+**Current/실행 우선순위는 [NEXT_ACTION.md](NEXT_ACTION.md), 전체 진행률은 [WORK_PROGRESS.md](WORK_PROGRESS.md)가 담당한다.** 이 문서의 T0–T14는 상세 설계/인터페이스 추적 단위이며, 실제 진행은33개 상위 W 아래163개 상세 작업으로 기록한다. [영역별 실행 작업서](docs/execution/README.md)의 카드 한 개와 직접 선행을 사용한다. 모의 프런트의 완료와 제품 구현 완료는 구분한다.
 
 > **For agentic workers:** 이전 대화/특정 모델 skill을 가정하지 않는다. docs/execution의 지정 leaf 카드·공통 계약 절·직접 선행 인계를 읽고 한 카드씩 구현한다. 사용 가능한 실행 도구/skill은 해당 환경 지침을 따른다.
 >
-> **준비 문서다. 모든 제품 구현·설치·시험·모델 호출·배포 단계는 미착수이며 이 문서가 실행 승인은 아니다.**
+> **이번 개정은 문서 변경이다. 기존 W01-01 완료/W01-02 차단은 보존하고 새 구현/설치/모델 호출/배포는 실행하지 않는다. 현재 상태는 TASK_INDEX와 실제 인계를 따른다.**
 
 **Goal:** 웹 UI에서 검증 정의/실행 설정/녹화 기록을 한 자동화 케이스로 관리하고, 각 녹화 동작의 화면/로그를 승인 없이 먼저 저장한 뒤 녹화 완료 후 사람이 검토·승인하여 단일/선택/묶음 수행과 리포트로 연결한다.
 
@@ -49,10 +49,13 @@
 
 ## 1. 단계·의존관계
 
+**최초 구현은 [W00-01–04](docs/execution/00-bootstrap.md)**다. 아래 표는 기능 영역 요약이며 core 전체를 P0 환경 성공 뒤로 묶는 실행 큐가 아니다. 실제 직접 선행/환경/검증 등급은 각 카드·C14, 우선순위는 NEXT_ACTION을 따른다.
+
+
 | 단계 | 작업 | 선행 | 완료 기준 |
 |---|---|---|---|
-| P0 기술 검증 | T0–T1 | 향후 구현 요청·합성 대상/모델 정책 | 두 플랫폼 제어·action capture boundary·Windows/좌표/IME·정리 근거 |
-| P1 자산과 UI | T2–T3 | P0 | project·통합 case/data·선택 TC 카탈로그·exact revision·권한·검색/편집 UI |
+| P0 기술 검증 | T0–T1 | 해당 source/환경/모델 준비, 기존 근거 재사용 | 두 플랫폼 제어·action capture boundary·Windows/좌표/IME·정리 근거 |
+| P1 자산과 UI | T2–T3 | W00와 필요한 core 계약, VM 성공 불필요 | project·통합 case/data·선택 TC 카탈로그·exact revision·권한·검색/편집 UI |
 | P2 실행/증거 | T4 | T2 | action별 마스킹 PNG/로그·spool/usage/예산·정형 이벤트 |
 | P3 녹화·저장 | T5 | T1–T4 | UI 녹화→중간 기록→완료/중단 저장→AUT draft, 승인 불필요 |
 | P4 완료 후 검토 | T6 | T5 | saved case/evidence review·trial·approve/reject·정의/동작 누락 차단 |
@@ -282,16 +285,23 @@ docs/validation/                      # 실제 측정/시나리오 근거
 
 ## 3. 현재 상태
 
-설계 문서와 v0.5 보관본이 있고, 후속 요청으로 [모의 프런트](prototype/README.md) 및 [그 확인 기록](prototype/VALIDATION.md)을 작성했다. 실제 제품의 DB/API/worker/기기·모델 연동/배포는 미착수다. 샘플의 화면/모의 상태 관리가 제품 구현 완료를 뜻하지 않는다. 구현 진행률·현재/다음 작업·완료 근거는 [WORK_PROGRESS](WORK_PROGRESS.md)에서 관리한다. 총32개 W 단위이며 새 W29/Web replay·W30/Android replay·W31/healing·W32/비용을 선행 관계에 맞춰 배치한다.
+설계 문서와 v0.5 보관본이 있고, 후속 요청으로 [모의 프런트](prototype/README.md) 및 [그 확인 기록](prototype/VALIDATION.md)을 작성했다. 실제 제품의 DB/API/worker/기기·모델 연동/배포는 미착수다. 샘플의 화면/모의 상태 관리가 제품 구현 완료를 뜻하지 않는다. 구현 진행률·현재/다음 작업·완료 근거는 [WORK_PROGRESS](WORK_PROGRESS.md)에서 관리한다. 총33개 W 단위이며 새 W29/Web replay·W30/Android replay·W31/healing·W32/비용을 선행 관계에 맞춰 배치한다.
 
 v0.6의 T0–T14(T11 후속)가 상세 계획이며 필수 주 TC·TC version FK/변경차단은 제거했다. 이전 버전의 분리/동기화 규칙은 보관본 기록이며 구현하지 않는다. 화면/상태/API 요약은 UI_SPEC, 데이터 제약·원자성/재녹화·누적 facts/보관은 DATA_DESIGN, 운영/QA는 DESIGN, upstream 사실은 RESEARCH를 기준으로 삼는다.
 
 ## v0.7 실행 분해·검토 결과
 
-T0–T14는 기능/설계 추적 단위이며 한 모델에게 통째로 맡길 작업 단위가 아니다. [WORK_PROGRESS](WORK_PROGRESS.md)는32개 W를, [실행 작업서](docs/execution/README.md)는158개 leaf/14개 영역을 관리한다. UI94개 조작·P0 32개/P1 3개·UI21/DATA22/실행10 시나리오를 직접 담당에 연결했다.
+T0–T14는 기능/설계 추적 단위이며 한 모델에게 통째로 맡길 작업 단위가 아니다. [WORK_PROGRESS](WORK_PROGRESS.md)는33개 W를, [실행 작업서](docs/execution/README.md)는163개 leaf/15개 영역을 관리한다. UI94개 조작·P0 32개/P1 3개·UI21/DATA22/실행10 시나리오를 직접 담당에 연결했다.
 
 [공통 계약](docs/execution/CONTRACTS.md)의 C00–C12가 파일/DTO/API/오류/소속·불변성·재컴파일·제안/메모/기기 관찰 소유·백업/복원과 모델 인계의 보완이다. contracts/는 common/cases/recordings/jobs/resources/actions/evidence/models/checks/replay/reviews/healing/reports/benchmarks 모듈로 나누며 각 카드가 정확한 경로를 지정한다.
 
 기존 큰 작업을 단순 분할한 것에 더해 W10-11(case 설정 편집), W06-08(preview observation 소속), W06-09(영속 diff/수락)를 추가하고 notes/backup purpose·live app 관찰 session·ACK spool·불명 action retry·cursor·restore를 보완했다. [검토 기록](docs/execution/REVIEW.md)에 근거/담당/실제 gate를 남겼다.
 
-실제 순서는 leaf DAG다. W16-05→W29/W30→W16-07 compile 통합, W17 미승인 trial→W19 승인→W31 healing→W20 정식 확장이다. 제품 구현 진행률은0/32 W·0/158상세이며 문서 검사로 실제 동작을 보장하지 않는다. 기존 v0.6은 [보관본](docs/history/v0.6/IMPLEMENTATION_PLAN.md)에 남겼다.
+실제 순서는 leaf DAG다. W16-05→W29/W30→W16-07 compile 통합, W17 미승인 trial→W19 승인→W31 healing→W20 정식 확장이다. 제품 구현 진행률은0/33 W·1/163상세이며 문서 검사로 실제 동작을 보장하지 않는다. 기존 v0.6은 [보관본](docs/history/v0.6/IMPLEMENTATION_PLAN.md)에 남겼다.
+
+## v0.8 뼈대와 차단 경로
+
+W00-01(package/lock/pytest)→W00-02(app/settings/health)→W00-03(template/static)→W00-04(real HTTP 시작/종료)부터 진행한다. 기존 src/tests/probe/완료 인계를 재사용한다.
+W04는 이 app factory에 저장/인증을, W10은 기본 layout에 업무 UI를, W12는 같은 실행 경로에 일상 launcher를 확장한다.
+core 계약 구현과 live 수용을 분리하고, 외부 차단 시 독립 준비 작업으로 Current를 바꾼다. W31-07은 기존 치유 조건의 실제 수용을 보존한다. 자세한48개 직접 선행 교정/부모 gate는 [SCHEDULING](docs/execution/SCHEDULING.md)·C13/C14다.
+현재33 W/163 leaf/15영역·완료1/차단1이며 새 코드/설치/VM/모델 실행은 이번 변경에서 하지 않는다.

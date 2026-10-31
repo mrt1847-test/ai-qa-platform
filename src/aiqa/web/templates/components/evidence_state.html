@@ -1,0 +1,7 @@
+<section id="evidence-state" data-custody="{{ custody }}">
+  <p data-state="missing"{% if custody != "missing" %} hidden{% endif %}>파일이 없습니다.</p>
+  <p data-state="expired"{% if custody != "expired" %} hidden{% endif %}>보관 기한이 지났습니다.</p>
+  <p data-state="corruption"{% if custody != "corruption" %} hidden{% endif %}>파일 내용이 보관 hash와 다릅니다.</p>
+  <p data-state="stored"{% if custody != "stored" %} hidden{% endif %}>보관된 파일입니다.</p>
+  <p data-state="spooling"{% if custody != "spooling" %} hidden{% endif %}>임시 파일이 남아 있습니다.</p>
+</section>

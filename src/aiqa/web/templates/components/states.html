@@ -1,0 +1,8 @@
+<section class="states" aria-live="polite">
+  <p class="state" data-state="loading"{% if state != "loading" %} hidden{% endif %}>불러오는 중입니다.</p>
+  <p class="state" data-state="empty"{% if state != "empty" %} hidden{% endif %}>표시할 항목이 없습니다.</p>
+  <p class="state" data-state="invalid"{% if state != "invalid" %} hidden{% endif %}>입력을 다시 확인해 주세요.</p>
+  <p class="state" data-state="forbidden"{% if state != "forbidden" %} hidden{% endif %}>이 화면을 볼 권한이 없습니다.</p>
+  <p class="state" data-state="conflict"{% if state != "conflict" %} hidden{% endif %}>서버의 최신 상태와 다릅니다.</p>
+  <p class="state" data-state="stale"{% if state != "stale" %} hidden{% endif %}>마지막 수신 이후 연결을 확인하지 못했습니다.</p>
+</section>

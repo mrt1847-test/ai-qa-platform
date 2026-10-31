@@ -1,0 +1,654 @@
+{
+  "sha": "35dbcf389ce2d9a77eb22f539c79a1274ea53559",
+  "license_spdx": "MIT AND Apache-2.0",
+  "license_sha256": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b",
+  "notice_sha256": "6bec044762aab7901caca006f9ce021483fdb5f96a216f89fe60d5d5f81a5bd5",
+  "executes_generated_code": false,
+  "patch_status": "none",
+  "excluded": [
+    {
+      "path_prefix": "release/",
+      "reason": "Imported desktop OSWorld runtime is outside the Web authoring boundary."
+    },
+    {
+      "path_prefix": "extensions/skill-factory/src/cuawright/webwright/skill_factory/examples/",
+      "reason": "Sample final_script and skill outputs are not the generator."
+    },
+    {
+      "path_prefix": "assets/",
+      "reason": "Demo mp4 and png files are not execution boundaries and are omitted from the text snapshot."
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE",
+      "line": 1,
+      "symbol": "LICENSE",
+      "anchor": "MIT License",
+      "kind": "source_file",
+      "hook": "hook.web.source.license"
+    },
+    {
+      "path": "NOTICE",
+      "line": 1,
+      "symbol": "NOTICE",
+      "anchor": "CUAWright includes the Webwright browser runtime",
+      "kind": "source_file",
+      "hook": "hook.web.source.notice"
+    },
+    {
+      "path": "pyproject.toml",
+      "line": 10,
+      "symbol": "project.license",
+      "anchor": "license = \"MIT AND Apache-2.0\"",
+      "kind": "source_file",
+      "hook": "hook.web.source.license"
+    },
+    {
+      "path": "licenses/OSWorld-runtime-APACHE-2.0.txt",
+      "line": 1,
+      "symbol": "OSWorld-runtime",
+      "anchor": "Apache License",
+      "kind": "source_file",
+      "hook": "hook.web.source.license"
+    },
+    {
+      "path": "src/cuawright/webwright/config/base.yaml",
+      "line": 54,
+      "symbol": "environment_class",
+      "anchor": "environment_class: local_workspace",
+      "kind": "source_file",
+      "hook": "hook.web.source.workspace_config"
+    },
+    {
+      "path": "src/cuawright/webwright/config/base.yaml",
+      "line": 58,
+      "symbol": "shell",
+      "anchor": "shell: /bin/bash",
+      "kind": "source_file",
+      "hook": "hook.web.source.shell"
+    },
+    {
+      "path": "src/cuawright/webwright/config/base.yaml",
+      "line": 65,
+      "symbol": "browser_mode",
+      "anchor": "browser_mode: local",
+      "kind": "source_file",
+      "hook": "hook.web.source.browser_mode"
+    },
+    {
+      "path": "src/cuawright/webwright/run/cli.py",
+      "line": 32,
+      "symbol": "run_one",
+      "anchor": "def run_one(",
+      "kind": "source_file",
+      "hook": "hook.web.source.run_one"
+    },
+    {
+      "path": "src/cuawright/webwright/run/cli.py",
+      "line": 83,
+      "symbol": "trajectory_output",
+      "anchor": "\"output_path\": str(resolved_output_dir / \"trajectory.json\")",
+      "kind": "source_file",
+      "hook": "hook.web.writer.trajectory"
+    }
+  ],
+  "code_outputs": [
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 424,
+      "symbol": "_persist_step_code",
+      "anchor": "step_path.write_text(python_code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.step_script"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 427,
+      "symbol": "_persist_step_code",
+      "anchor": "with script_path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.script_py"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 442,
+      "symbol": "_run_python_code",
+      "anchor": "exec(wrapped, globals_dict, locals_dict)",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.page_exec"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 175,
+      "symbol": "_persist_step_command",
+      "anchor": "step_path.write_text(command.rstrip() + \"\\n\", encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell_step"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 178,
+      "symbol": "_persist_step_command",
+      "anchor": "with history_path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell_history"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 232,
+      "symbol": "execute",
+      "anchor": "result = subprocess.run(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 732,
+      "symbol": "_run_step_code",
+      "anchor": "exec(wrapped, {\"__builtins__\": __builtins__}, namespace)",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.page_exec"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 823,
+      "symbol": "_cmd_step",
+      "anchor": "code_path.write_text(code.rstrip() + \"\\n\", encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.step_script"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/library.py",
+      "line": 55,
+      "symbol": "Library.add",
+      "anchor": "(d / \"skill.py\").write_text(skill.code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.skill_py"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/update.py",
+      "line": 103,
+      "symbol": "_replay",
+      "anchor": "(tdp / \"skill.py\").write_text(code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.skill_py"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/update.py",
+      "line": 110,
+      "symbol": "_replay",
+      "anchor": "proc = subprocess.run([sys.executable, \"skill.py\", \"taskspec.json\"], cwd=td,",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.run_skill"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py",
+      "line": 40,
+      "symbol": "run_skill",
+      "anchor": "(tdp / \"taskspec.json\").write_text(json.dumps(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.taskspec"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py",
+      "line": 44,
+      "symbol": "run_skill",
+      "anchor": "proc = subprocess.run(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.run_skill"
+    }
+  ],
+  "writers": [
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 424,
+      "symbol": "_persist_step_code",
+      "anchor": "step_path.write_text(python_code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.step_script"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 427,
+      "symbol": "_persist_step_code",
+      "anchor": "with script_path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.script_py"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 175,
+      "symbol": "_persist_step_command",
+      "anchor": "step_path.write_text(command.rstrip() + \"\\n\", encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell_step"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 178,
+      "symbol": "_persist_step_command",
+      "anchor": "with history_path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell_history"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 823,
+      "symbol": "_cmd_step",
+      "anchor": "code_path.write_text(code.rstrip() + \"\\n\", encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.step_script"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/library.py",
+      "line": 55,
+      "symbol": "Library.add",
+      "anchor": "(d / \"skill.py\").write_text(skill.code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.skill_py"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/update.py",
+      "line": 103,
+      "symbol": "_replay",
+      "anchor": "(tdp / \"skill.py\").write_text(code, encoding=\"utf-8\")",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.skill_py"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py",
+      "line": 40,
+      "symbol": "run_skill",
+      "anchor": "(tdp / \"taskspec.json\").write_text(json.dumps(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.taskspec"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 247,
+      "symbol": "prepare",
+      "anchor": "(self.config.output_dir / \"task.json\").write_text(",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.task_metadata"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 487,
+      "symbol": "_capture_observation",
+      "anchor": "await page.screenshot(path=str(screenshot_path), full_page=False)",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.screenshot"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 189,
+      "symbol": "_write_step_log",
+      "anchor": "log_path.write_text(output, encoding=\"utf-8\")",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.step_log"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 204,
+      "symbol": "prepare",
+      "anchor": "self._task_metadata_path().write_text(json.dumps(kwargs, indent=2), encoding=\"utf-8\")",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.task_metadata"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 145,
+      "symbol": "_write_debug_step_artifact",
+      "anchor": "(steps_dir / f\"step_{step_index:04d}.json\").write_text(json.dumps(payload, indent=2))",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.debug_step"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 148,
+      "symbol": "_write_debug_step_artifact",
+      "anchor": "with summary_path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.debug_markdown"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 519,
+      "symbol": "save",
+      "anchor": "path.write_text(json.dumps(data, indent=2))",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.trajectory"
+    },
+    {
+      "path": "src/cuawright/webwright/utils/logging.py",
+      "line": 19,
+      "symbol": "append_runtime_log",
+      "anchor": "with path.open(\"a\", encoding=\"utf-8\") as handle:",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.runtime_log"
+    },
+    {
+      "path": "src/cuawright/webwright/config/__init__.py",
+      "line": 103,
+      "symbol": "snapshot_config_specs",
+      "anchor": "saved_copy.write_text(",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.config_snapshot"
+    },
+    {
+      "path": "src/cuawright/webwright/config/__init__.py",
+      "line": 116,
+      "symbol": "snapshot_config_specs",
+      "anchor": "(snapshot_dir / \"config_spec_manifest.json\").write_text(",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.config_snapshot"
+    },
+    {
+      "path": "src/cuawright/webwright/config/__init__.py",
+      "line": 121,
+      "symbol": "snapshot_config_specs",
+      "anchor": "(snapshot_dir / \"merged_config.yaml\").write_text(",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.config_snapshot"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 343,
+      "symbol": "_atomic_write_private_json",
+      "anchor": "json.dump(payload, handle, indent=2, ensure_ascii=False, sort_keys=True)",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.session_state"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 913,
+      "symbol": "_cmd_step",
+      "anchor": "await page.screenshot(",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.screenshot"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/self_reflection.py",
+      "line": 642,
+      "symbol": "main",
+      "anchor": "Path(args.output).write_text(serialized, encoding=\"utf-8\")",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.reflection_result"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/persistent_local_browser.py",
+      "line": 163,
+      "symbol": "_cmd_create",
+      "anchor": "out_path.write_text(json.dumps(session, indent=2) + \"\\n\", encoding=\"utf-8\")",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.session_state"
+    },
+    {
+      "path": "src/cuawright/webwright/run/doctor.py",
+      "line": 60,
+      "symbol": "check_screenshot",
+      "anchor": "page.screenshot(path=str(screenshot_path))",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.doctor_screenshot"
+    }
+  ],
+  "action_calls": [
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 289,
+      "symbol": "_ensure_local_cdp_browser",
+      "anchor": "self._local_cdp_process = subprocess.Popen(",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.cdp_process"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 316,
+      "symbol": "_prepare_async",
+      "anchor": "self._playwright = await async_playwright().start()",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.launch"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 330,
+      "symbol": "_prepare_async",
+      "anchor": "self._browser = await chromium.connect_over_cdp(self.config.local_cdp_url)",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.cdp"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 344,
+      "symbol": "_prepare_async",
+      "anchor": "self._context = await chromium.launch_persistent_context(",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.launch"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 355,
+      "symbol": "_prepare_async",
+      "anchor": "self._browser = await chromium.launch(**launch_kwargs)",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.launch"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 368,
+      "symbol": "_prepare_async",
+      "anchor": "await self._page.goto(self.config.start_url, wait_until=\"domcontentloaded\")",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.navigate"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 442,
+      "symbol": "_run_python_code",
+      "anchor": "exec(wrapped, globals_dict, locals_dict)",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.page_exec"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_browser.py",
+      "line": 487,
+      "symbol": "_capture_observation",
+      "anchor": "await page.screenshot(path=str(screenshot_path), full_page=False)",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.screenshot"
+    },
+    {
+      "path": "src/cuawright/webwright/environments/local_workspace.py",
+      "line": 232,
+      "symbol": "execute",
+      "anchor": "result = subprocess.run(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.shell"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 223,
+      "symbol": "open_browser_session",
+      "anchor": "return await playwright.chromium.connect_over_cdp(connect_url)",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.cdp"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 732,
+      "symbol": "_run_step_code",
+      "anchor": "exec(wrapped, {\"__builtins__\": __builtins__}, namespace)",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.page_exec"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/browser_session.py",
+      "line": 913,
+      "symbol": "_cmd_step",
+      "anchor": "await page.screenshot(",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.screenshot"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/persistent_local_browser.py",
+      "line": 144,
+      "symbol": "_cmd_create",
+      "anchor": "proc = subprocess.Popen(chromium_args, **popen_kwargs)  # noqa: S603",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.cdp_process"
+    },
+    {
+      "path": "src/cuawright/webwright/run/doctor.py",
+      "line": 54,
+      "symbol": "check_screenshot",
+      "anchor": "browser = p.chromium.launch(headless=True)",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.launch"
+    },
+    {
+      "path": "src/cuawright/webwright/run/doctor.py",
+      "line": 60,
+      "symbol": "check_screenshot",
+      "anchor": "page.screenshot(path=str(screenshot_path))",
+      "kind": "direct_playwright",
+      "hook": "hook.web.playwright.screenshot"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 478,
+      "symbol": "execute_actions",
+      "anchor": "outputs = [self.env.execute(action) for action in extra.get(\"actions\", [])]",
+      "kind": "code_output",
+      "hook": "hook.web.action.dispatch"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/update.py",
+      "line": 110,
+      "symbol": "_replay",
+      "anchor": "proc = subprocess.run([sys.executable, \"skill.py\", \"taskspec.json\"], cwd=td,",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.run_skill"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py",
+      "line": 44,
+      "symbol": "run_skill",
+      "anchor": "proc = subprocess.run(",
+      "kind": "code_output",
+      "hook": "hook.web.code_output.run_skill"
+    },
+    {
+      "path": "src/cuawright/webwright/models/base.py",
+      "line": 688,
+      "symbol": "query",
+      "anchor": "def query(self, messages: list[dict[str, Any]], **kwargs) -> dict[str, Any]:",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.query"
+    },
+    {
+      "path": "src/cuawright/webwright/models/openai_model.py",
+      "line": 172,
+      "symbol": "_usage_metrics_from_response_payload",
+      "anchor": "def _usage_metrics_from_response_payload(payload: dict[str, Any]) -> dict[str, int]:",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.usage"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/image_qa.py",
+      "line": 71,
+      "symbol": "run_image_qa",
+      "anchor": "def run_image_qa(",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.image_qa"
+    },
+    {
+      "path": "src/cuawright/webwright/tools/self_reflection.py",
+      "line": 403,
+      "symbol": "run_self_reflection_async",
+      "anchor": "async def run_self_reflection_async(",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.self_reflection"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/llm.py",
+      "line": 83,
+      "symbol": "llm_json",
+      "anchor": "def llm_json(system: str, user: str, **kw: Any) -> dict:",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.skill_factory"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/retrieve.py",
+      "line": 47,
+      "symbol": "_retrieve_llm",
+      "anchor": "out = llm_json(sys, user)",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.skill_factory"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/decide.py",
+      "line": 39,
+      "symbol": "_decide_llm",
+      "anchor": "out = llm_json(sys, user)",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.skill_factory"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/fill.py",
+      "line": 55,
+      "symbol": "fill_params",
+      "anchor": "out = llm_json(_SYS, user)",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.skill_factory"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/learn.py",
+      "line": 72,
+      "symbol": "canonicalize_answers",
+      "anchor": "out = llm_json(_CANON_SYS, f\"## Template\\n{template}\\n\\n## Answers\\n{listing}\")",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.skill_factory"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/tools/skill_use.py",
+      "line": 58,
+      "symbol": "recommend",
+      "anchor": "def recommend(task: str, library_root: str) -> dict:",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.recommend"
+    },
+    {
+      "path": "extensions/skill-factory/src/cuawright/webwright/skill_factory/route.py",
+      "line": 127,
+      "symbol": "route",
+      "anchor": "def route(task: str, library: str, *, recommend_fn=None, run_skill_fn=run_skill,",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.route"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 439,
+      "symbol": "query",
+      "anchor": "def query(self) -> dict[str, Any]:",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.query"
+    },
+    {
+      "path": "src/cuawright/webwright/agents/default.py",
+      "line": 448,
+      "symbol": "query",
+      "anchor": "message = self.model.query(self.messages)",
+      "kind": "llm_helper",
+      "hook": "hook.web.llm.query"
+    },
+    {
+      "path": "src/cuawright/webwright/utils/browser_evidence.py",
+      "line": 97,
+      "symbol": "task_screenshot_paths",
+      "anchor": "def task_screenshot_paths(workspace_dir: str | Path) -> list[Path]:",
+      "kind": "png_debug",
+      "hook": "hook.web.writer.screenshot_index"
+    }
+  ]
+}

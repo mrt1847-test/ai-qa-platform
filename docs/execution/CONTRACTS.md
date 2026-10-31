@@ -1,12 +1,12 @@
-# 실행 공통 계약 · 제품 설계 v0.6 / 작업계획 v0.7
+# 실행 공통 계약 · 제품 설계 v0.6 / 작업계획 v0.8
 
-기준일: 2026-10-31. **향후 구현할 계약**이다. DTO/API/DB/VM/시험이 구현됐다는 뜻이 아니다.
+규범 기준일: 2026-10-31. **구현·검증할 계약**이며 이 문서만으로 DTO/API/DB/VM/시험 전체가 완료됐다는 뜻은 아니다. 실제 완료 범위는 WORK_PROGRESS와 인계를 따른다. 2026-11-01 보완: [계약 수정 결과](../validation/reviews/2026-11-01-remediation-result.md).
 [읽는 순서](README.md) · [인계 양식](HANDOFF.md) · [검토·보완 기록](REVIEW.md).
 작업자는 담당 카드에 지정된 절과 선행 작업의 인계 기록을 읽는다. 이전 채팅은 필수 입력이 아니다.
 
 ## C00 · 실행 범위와 공통 완료 규칙
 
-- 이번 개정은 문서 작업이다. 제품 구현·설치·모델/기기 실행·배포는 미실행이며, 구현 요청 뒤 한 상세 작업 ID씩 진행한다.
+- 최초 설계 개정은 문서 작업이었다. 구현 요청 뒤 상세 작업 ID와 실제 인계로 진행한다. 현재 core 구현과 검토 보완의 증거는 WORK_PROGRESS를 따르며, 설치·모델/기기 실행·배포까지 완료됐다고 추정하지 않는다.
 - 파일 경로는 저장소 root 기준이다. 제품 Python은 `src/aiqa/`, 시험은 `tests/`, 런타임 데이터는 비동기화 `%LOCALAPPDATA%/AIQA/`에 둔다.
 - 큰 `contracts.py` 대신 `src/aiqa/contracts/{common,cases,recordings,jobs,resources,actions,evidence,models,checks,replay,reviews,healing,reports,benchmarks}.py`로 나눈다. `__init__.py`는 필요 시 재노출만 한다. root 계획의 과거 contracts.py 표기를 이 책임 경계로 구체화한다.
 - API만 SQLite에 접근한다. worker/VM은 인증 HTTP·정제 spool을 쓰고 DB 파일을 열지 않는다. API 단일 프로세스 writer, 긴 모델/파일 작업 중 DB transaction을 잡지 않는다.
@@ -43,6 +43,7 @@ browser session/actor/project scope + mutation CSRF/Origin과 worker token/purpo
 - 장기 작업은202 `{job_id, recording_id?, execution_id?, status_href}`, 동기 신규 저장201, 수정/동일 receipt 재전송200을 사용한다. 최초 응답은 원래 receipt와 함께 보존한다.
 - schema/field422, revision·key/body·hash 충돌409, 권한403, 타 소속/존재 은닉404, 미인증401, 저장 공간 부족507, upload 크기413, 증거 파일 만료410이다. 응답에 stacktrace/secret을 넣지 않는다.
 - mutation은 `Idempotency-Key`, version/pointer 수정은 `If-Match` 또는 명시 expected ID를 요구한다. (actor,project,operation,key)와 body hash를 7일 보관한다. 같은 body는 같은 receipt, 다른 body409, 7일 뒤는 새 요청이므로 client는 UUID를 재사용하지 않는다. manifest/approval의 업무 unique 제약은 7일 후에도 유지한다.
+- 구현의 browser CRUD receipt는 business write와 같은 transaction에서 확정하며 재전송은 원 body/HTTP200을 반환한다. 민감 입력의 비교에는 원문 SHA가 아닌 OS 사용자 보호 key 기반 HMAC을 쓴다. 재접속해도 local owner actor는 유지하고 CSRF GET은 기존 cookie-bound token을 읽기만 한다. 최초 프로젝트 1개의 동일 Origin 로컬 setup 이후 프로젝트 생성에도 session/CSRF가 필요하다. 팀/원격 인증 완료라는 뜻은 아니다.
 - cursor 기본25/최대100, filter/sort allowlist와 안정적인 ID tie-break를 사용한다. 목록 cursor·project commit seq·attempt local_seq는 다른 타입이다.
 - UI 공통 상태는 loading(기존 값/마지막 갱신 유지·중복 제출 비활성), empty(다음 조작 안내), 422(입력 보존/필드 오류), 403, 409(서버 diff/재확인), stale(마지막 수신/연결 상태), missing/expired/corrupt, 미저장(저장/버리기/이동 취소)다.
 - URL에는 filter/sort/page/선택 ID만, sessionStorage에는 비밀 없는 scroll/열 설정만 저장한다. secret/편집 buffer/실제 모델 key를 browser 저장소에 두지 않는다. 탭 재접속은 GET으로 복원하고 mutation을 다시 보내지 않는다.
@@ -140,6 +141,8 @@ resource_probe는 읽기 전용 관찰, app_install/reset은 명시 허용 설�
 
 ## C05 · 행동·관찰·증거·dispatch
 
+2026-11-01 runtime 보완: PreparedAction의 attempt identity는 Observation ID와 다르다. 같은 attempt/action의 dispatch_started 이후에는 재호출·프로세스 재시작으로 전송을 반복하지 않는다. 실제 dispatch 전과 journal flush 후에 제어/lease 여유를 검사하며, phase 객체를 다시 만들어 예산을 초기화하지 않는다.
+
 ```text
 ActionProposal = {step_id, action_id, type, intent, target_binding?, coordinates?,
  input: LiteralInput|SecretRef?, approved_path_ref}
@@ -154,13 +157,16 @@ DispatchState = planned|lookup_failed|dispatch_started|acknowledged|observed|unk
 
 - tap/type/swipe/back와 Web click/fill/scroll/select 등 P0에서 확인한 subset만 지원한다. compound step도 실제 행동마다 전후 PNG/log/시각/명령/결과/오류를 남긴다.
 - capture→메모리 관찰 filter→보관용 정제 이미지/DOM/log→spool이다. secret/hidden reasoning 원문은 debug에도 저장/전송 금지다. filter/전 캡처 실패는 command0, 후 실패는 incomplete/unknown이다.
+- 현재 filter는 실제 PNG의 CRC/geometry/압축 데이터를 검사하고, 신뢰할 픽셀 정제를 보장할 수 없는 민감 캡처는 거부한다. 문자열을 PNG bytes에서 치환해 정제했다고 주장하지 않는다. Native authoring에서 픽셀 정제 coverage를 연결하기 전 `secrets=()`로 이 차단을 우회하지 않는다.
 - `PolicyGate.authorize(proposal, context) -> ActionDecision`, `prepare_action(proposal, observation) -> PreparedAction`, `dispatch_action(prepared, control) -> DispatchReceipt`, `observe_action(receipt, control) -> ActionObservation`을 사용한다.
 - **native API보다 먼저 dispatch_started를 durable local journal에 flush**한다. 실패하면 command0, 이후 navigation/ADB timeout을 lookup_failed로 되돌리지 않는다.
 - Web driver만 raw Playwright/CDP를 소유하고 script는 package에 속한 typed IPC만 쓴다. VM만 마련하고 동일 권한 script를 안전하다고 간주하지 않는다. 권한/egress/credential/host mount 분리를 실제 검증한다.
 - Android는 host 지정 serial의 argument list, raw shell 없음이다. geometry/rotation/content bounds가 불명이거나 바뀌면 중지/BLOCKED, 비율 추정 tap은 없다. secret ref는 허용 input 때만 해석하고 IME는 finally 복구·실패 quarantine이다.
 - 원래 미전송 capture와 나중 재관찰은 별개다. 후자는 after_delayed이며 즉시 후 PNG 누락을 채우지 않는다.
 - artifact는 staging→같은 볼륨 tmp flush/hash→rename→DB ready/ref/ACK다. ready 파일이 없거나 바뀌면 missing/corrupt다.
+- runtime `ArtifactUpload`는 `project_id, owner_kind(REC|ITEM), owner_id, attempt_id?, action_id?, check_id?, role, filename, media_type, declared_hash, declared_length, body`다. before/after는 해당 attempt의 action, check는 check ref가 필수다. 그 외 recording source/log는 REC ref로 보존한다. 다른 management owner는 후속 소유 작업에서 typed 관계를 구현하기 전에는 거부한다. MIME와 소속을 확인하기 전에 dedup/ACK하지 않는다. Worker HTTP upload도 같은 key/body의 원 receipt와 다른 body409를 보존하며 lease 판단에는 서버 시각을 쓴다.
 - spool 7일 자동 정리는 **ACK된 것만**이다. 미ACK는 기한으로 버리지 않고 공간 부족 시 새 행동 중지/부분 보존/복구 안내다. server receipt/hash 확인 없이 삭제하지 않는다.
+- ACK 파일을 지워도 prefix/seq/hash metadata는 유지한다. 새 recovery manifest의 파일은 기존 경로를 덮어쓰지 않고 별도 object 경로를 쓰며 prior manifest를 연결한다. 복구 파일 stage/flush와 DB writer transaction을 분리하고, metadata/job receipt만 원자 확정한다. delayed는 여전히 즉시 후 증거가 아니다.
 
 ## C06 · 모델 역할·Check·usage·예산
 
@@ -336,3 +342,70 @@ W04-03은 worker/enrollment 기본 schema, W06-10은 전역 물리 자원 key/pr
 FK 대상 schema는 소비 service보다 먼저 만든다. W05-02=case/folder/tag 기본, W05-04=TC, W05-05=env/data/model binding, W06-02=suite/entry+RUN/ITEM/job/attempt/lease, W06-04=artifact/protection+app_builds/backup_receipts/manual_retention_requests, W06-06=장기 facts+analysis_records다. 실제 동작 서비스는 후속 담당에 남긴다. W06-07은 모든 FK 대상 존재 및 nullable FK를 가진 실제 insert를 검사해 미래 테이블 누락을 잡는다.
 
 서로 FK를 참조하는 schema 카드(W06)는 전체 부모 구현 전에도 test-only 부모 key fixture를 갖춘 독립 SQLite에서 해당 CHECK/UNIQUE/불변 제약을 검사할 수 있다. 이 fixture는 제품 migration/부모 구현을 대체하지 않으며 foreign_keys를 꺼서 통과시키지 않는다. 실제 DB 통합 PASS는 모든 해당 정의가 있는 canonical migration head의 upgrade/FK/integrity/insert 검사(W06-07)다. W06-08/09 추가 후 같은 전체 검사를 재수행하고, W07은 마지막 W06-09 통과에 의존한다. 따라서 schema 카드의 단위 PASS와 제품 DB 통합 PASS를 인계에서 구분한다.
+
+## C13 · 먼저 만드는 최소 실행 기반
+
+W00-01→W00-02→W00-03→W00-04가 첫 구현 경로다. 기존 W01-01 완료와 W01-02 차단은 보존한다.
+초기 기반은 VM/USB/모델 키 없이 구현·검증하며 실제 DB/domain/worker/agent 기능은 후속 작업이다.
+
+- W00-01: Python3.11 기준 src-layout·distribution `aiqa`·editable install·최소 runtime(FastAPI/Uvicorn/Jinja2)/dev(pytest/httpx)·전이 버전 constraints `requirements.lock`·pytest를 구성한다. 현재 src/tests/conftest·완료 probe를 읽고 필요한 차이만 수정한다.
+- install 재현 명령: `python -m pip install -e ".[dev]" -c requirements.lock`, `python -m pip check`. lock 생성 도구/명령·실제 Python/OS/버전을 W00-01 인계에 남긴다. 현재 문서 작성에서 실행하지 않는다.
+- 과거 source 조사용 코드가 일부 존재한다. package import가 pytest의 sys.path 보정에만 의존하지 않게 하고, 저장소 밖 cwd의 editable import와 기존 W01-01 선택 회귀를 확인한다.
+- 최소 기반 lock에 Mobile-Agent/CUAWright/model SDK·VM/ADB를 넣지 않는다. W03-02가 나중에 실제 호환 검증 후 필요한 의존성만 확장한다. key/비밀번호를 pyproject/lock/.gitignore 예시에 쓰지 않는다.
+- product runtime 경로는 비동기화 LOCALAPPDATA/AIQA다. 초기 import/health/page는 DB나 외부 client를 만들거나 실제 기기를 관찰하지 않는다.
+
+```text
+AppSettings = {host: "127.0.0.1", port: int(default8000), runtime_root: Path}
+load_settings(env: Mapping[str,str] | None = None) -> AppSettings
+create_app(settings: AppSettings | None = None) -> FastAPI
+GET /api/v1/health -> 200 {"status":"ok","component":"api"}
+GET / -> Jinja2 기본 실행 안내 HTML
+GET /static/app.css -> CSS
+```
+
+- 환경 이름은 AIQA_HOST/AIQA_PORT/AIQA_RUNTIME_ROOT다. 개인 MVP bind는127.0.0.1로 제한하고 잘못된 host/port를 명시 거부한다.
+- health는 API process liveness만 뜻한다. DB/worker/VM/모델/device/QA의 준비·PASS가 아니다.
+- C01 인증 도입 전 공개 범위는 비밀/업무 데이터 없는 GET health/기본 페이지/static뿐이다. 업무 mutation과 project/REC/RUN API를 fake 성공으로 제공하지 않는다.
+- 기본 페이지는 새 제품 server의 template/static 연결을 확인하는 화면이다. prototype의 localStorage/가짜 device/승인/통계를 옮기지 않는다. HTMX 동작과 실제 메뉴는 W10부터 확장한다.
+- template/static은 package-data로 포함해 cwd 밖에서도 동작해야 한다. 기존 app factory/layout을 W04/W10이 확장하며 두 번째 앱/샘플 서버를 새 사실 원천으로 만들지 않는다.
+- 기본 CLI: `python -m uvicorn aiqa.api.app:create_app --factory --host 127.0.0.1 --port 8000`. W12가 이 실행 경로에 일상 launcher·worker/process 수명 관리를 붙인다.
+- W00-04는 테스트가 소유한 subprocess와 loopback HTTP로 시작/health/page/static/종료/port 해제를 검증한다. 다른 process를 종료하지 않고 실제 browser 확인을 남긴다.
+- baseline은 bootstrap 검사들과 기존 W01-01을 선택 실행한다. W01-02의 알려진 차단 시험을 삭제/성공 조작/자동 skip해서 전체 suite green으로 표시하지 않는다.
+- 뼈대 작업이 모두 끝나도 네이티브 engine 검증을 완료로 올리지 않는다. W00 인계는 local app 실행 근거만 남긴다.
+
+## C14 · 차단된 가지와 독립 구현의 진행
+
+Current/우선순위는 NEXT_ACTION, 직접 선행·환경 요구·검증 등급은 TASK_INDEX가 소유한다.
+과거 A→B 전체 직렬 gate 대신 **실제 interface/fact를 소비하는 선행**으로 좁힌다.
+VM/key/device 부족은 그 환경을 쓰는 가지와 최종 수용만 막는다.
+
+### 선택·전환
+
+1. 현재 작업의 code/검증 결과를 기록한다. 환경·권한·quota 등 외부 조건 때문에 진행 못 하면 blocked와 원인/재개 조건/근거를 남긴다.
+2. blocked를 complete로 바꾸거나 의존 작업을 임의로 열지 않는다. 후보는 미완료·blocked 아님·직접 선행 전부 complete+실제 인계 존재인 작업이다.
+3. `environment_requirements`에 알려진 unavailable 조건이 있으면 준비 후보에서 제외한다. unknown은 가벼운 사전 확인으로만 판별하고 같은 알려진 부재 검사를 반복하지 않는다.
+4. Next 중 준비된 작업을 먼저 고른다. 없으면 TASK_INDEX를 로컬 코드로 필터해 bootstrap→core→환경 준비된 integration 순으로 후보 요약만 조회한다. JSON 전체/과거 audit를 context에 출력하지 않는다.
+5. 선택한 ID/이유를 Current에 올리고 차단 항목은 외부 대기 절에 남긴다. 이전 Current가 차단되어 있어도 독립 후보로 넘어간다.
+6. 독립 후보도 없으면 조건/준비 결과를 보고한다. 실패한 task의 진짜 선행을 삭제하거나 fake PASS를 만들어 진행하지 않는다.
+7. 알려진 환경 변경/사용자 제공/새 evidence가 생겼을 때 해당 blocked 가지를 재평가한다. 환경 설정을 몰래 변경·구매·권한 확대해 해소하지 않는다.
+
+### 검증 등급과 완료 의미
+
+- `bootstrap`: 최소 Python/app/page/process의 실제 실행. VM/key/device가 필요 없다.
+- `core_contract`: 실제 API/SQLite/파일/브라우저/host process로 계약·상태·불변성/오류를 검사한다. 외부 관찰/모델 응답은 tests 전용 fixture/transport/provider를 써서 경계 조건을 재현할 수 있다.
+- `source_audit`: pinned source/위치/hash/라이선스 근거. 실제 엔진 실행과 구별한다.
+- `live_integration / tool_integration / integration_gate`: 해당 VM/USB/provider/도구의 실제 evidence가 필수다. 없는 환경은 blocked이며 contract fixture가 대체하지 않는다.
+- `final_gate`: 모든 관련 실제 검증과 UI/DB/QA/비용·격리가 충족된 최종 수용이다.
+
+core 완료를 위해 fixture를 product runtime·일반 프로젝트 DB에 넣지 않는다. tests 전용 DB/파일/관찰임을 인계에 명시한다.
+생산 경로에서 adapter/호환 모델/필수 근거가 없으면 명시 unavailable/BLOCKED/unknown을 반환한다.
+초기 core UI의 진짜 기능은 조회/편집/원자 접수·차단 사유/이벤트/분석 등의 계약이며, native 미구현을 성공 callback/no-op/가짜 화면으로 채우지 않는다.
+
+카드의 `live_acceptance_tasks`는 core 계약 이후 실제 엔진으로 수용할 담당이다. 해당 실제 조건은 이관해 유지하며 삭제하지 않는다.
+W13의 실제 capture는 W16-04/W29-03/W30-03, W17–19의 실제 source/trial/승인은 W17-04/W19-04,
+치유는 W31-07, 실제 mixed 수행/리포트는 W22-04, 장애/품질/비용은 W27/W28/W32에서 요구한다.
+W31-06은 관리 UI/기록 계약, W31-07은 실제 치유 gate다. 일반 actor0·필수 FAIL 유지·불명 재dispatch금지·원본 불변은 모든 등급에서 그대로 적용한다.
+
+상위 W 완료는 소속 leaf 전부 + `parent_gate_tasks` + 원래 상위 통합 조건을 만족해야 한다.
+따라서 core leaf가 진척되어도 live gate가 남은 parent와 MVP는 미완료다.
+known_environment는 **문서상의 환경 관찰 메모**이지 실행 worker capability 증명/설정이 아니다. 실제 실행 전 preflight/claim 재검증을 그대로 수행한다.

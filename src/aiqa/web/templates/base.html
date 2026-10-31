@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI QA{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/api.js"></script>
+</head>
+<body{% if shell %} data-dirty="{{ 'true' if dirty else 'false' }}"{% endif %}>
+  {% if shell %}
+  <a class="skip" href="#content">본문으로</a>
+  <header class="top">
+    <p class="pc">이 PC: {{ "연결됨" if connected else "연결 확인 필요" }}</p>
+    <nav aria-label="프로젝트">
+      <a href="{{ list_href }}" aria-current="page">현재 프로젝트</a>
+    </nav>
+    <form method="get" action="/ui/shell">
+      <input type="search" name="filter" data-query="filter" value="{{ query.filter }}">
+      <input type="hidden" name="sort" data-query="sort" value="{{ query.sort }}">
+      <input type="hidden" name="page" data-query="page" value="{{ query.cursor }}">
+      <input type="hidden" name="selected" data-query="selected" value="{{ query.selected_id }}">
+      <input type="submit" value="검색">
+    </form>
+    <nav aria-label="메뉴">
+      <a href="{{ list_href }}"{% if section == "list" %} aria-current="page"{% endif %}>목록</a>
+      <a href="{{ detail_href }}">상세</a>
+    </nav>
+    <nav aria-label="경로">
+      {% for label, href in crumbs %}
+        {% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}<span>{{ label }}</span>{% endif %}
+      {% endfor %}
+    </nav>
+  </header>
+  {% include "components/states.html" %}
+  <div id="unsaved-dialog" hidden>
+    <p>저장하지 않은 변경이 있습니다.</p>
+    <a href="{{ list_href }}">이동</a>
+  </div>
+  {% endif %}
+  <main id="content" class="shell">
+    {% block content %}{% endblock %}
+  </main>
+  {% if shell %}
+  <script src="/static/navigation.js"></script>
+  {% endif %}
+</body>
+</html>

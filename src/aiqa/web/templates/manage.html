@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+  <h1>{{ heading }}</h1>
+  <ul class="entries">
+    {% for item_id, label, href in items %}
+    <li><a href="{{ href }}">{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+  <div data-columns="label"></div>
+{% endblock %}

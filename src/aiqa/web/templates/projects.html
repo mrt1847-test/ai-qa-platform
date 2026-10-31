@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+  <h1>{{ heading }}</h1>
+  <form method="get" action="/ui/projects">
+    {% if archived %}<input type="hidden" name="archived" value="true">{% endif %}
+    <input type="search" name="q" value="{{ q }}" aria-label="프로젝트 검색">
+    <input type="submit" value="검색">
+  </form>
+  <p>
+    <a href="/ui/projects">활성</a>
+    <a href="/ui/projects?archived=true">보관</a>
+  </p>
+  <form id="create-project" method="post" action="/api/v1/projects">
+    <input name="name" aria-label="이름" required>
+    <input name="key" aria-label="key" required>
+    <input name="description" aria-label="설명">
+    <input name="target" aria-label="대상" required>
+    <input type="submit" value="만들기">
+  </form>
+  <p id="create-error" role="alert"></p>
+  <ul class="entries">
+    {% for item in items %}
+    <li>
+      <a href="/ui/projects/{{ item.project_id }}/overview">{{ item.name }}</a>
+      <a href="/ui/projects/{{ item.project_id }}/environment">환경 준비</a>
+      <span>{{ item.key }}</span>
+      <span>케이스 {{ item.case_count }}</span>
+      <span>검토 {{ item.review_count }}</span>
+      <span>수행 {{ item.run_count }}</span>
+      {% if item.archived_at %}
+      <form class="restore-project" method="post" action="/api/v1/projects/{{ item.project_id }}/restore">
+        <input type="submit" value="복구">
+      </form>
+      {% else %}
+      <form class="archive-project" method="post" action="/api/v1/projects/{{ item.project_id }}/archive">
+        <input type="submit" value="보관">
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <script>
+    (function () {
+      var actor = {
+        actor_id: "11111111-1111-4111-8111-111111111111",
+        project_scope: null,
+        is_local_owner: true
+      };
+      function key() {
+        return String(Date.now()) + "-" + String(Math.random());
+      }
+      function send(form, path, fields) {
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          var error = document.getElementById("create-error");
+          aiqaRequest(path, {
+            method: "POST",
+            headers: {"content-type": "application/json", "Idempotency-Key": window.crypto.randomUUID()},
+            body: JSON.stringify(fields(form))
+          }).then(function (response) {
+            return response.json().then(function (body) {
+              return {status: response.status, body: body};
+            });
+          }).then(function (result) {
+            if (result.status === 201 && result.body.project_id) {
+              window.aiqaOpenProject(result.body.project_id,"/ui/projects/" + result.body.project_id + "/environment");
+              return;
+            }
+            if (result.status === 200) {
+              window.location.reload();
+              return;
+            }
+            error.textContent = result.status === 409
+              ? "요청이 거절되었습니다."
+              : "입력을 다시 확인해 주세요.";
+          });
+        });
+      }
+      var create = document.getElementById("create-project");
+      if (create) {
+        send(create, "/api/v1/projects", function (form) {
+          return {
+            name: form.name.value,
+            key: form.key.value,
+            description: form.description.value,
+            target: form.target.value,
+            actor: actor
+          };
+        });
+      }
+      document.querySelectorAll("form.archive-project, form.restore-project").forEach(function (form) {
+        send(form, form.getAttribute("action"), function () {
+          return {actor: actor};
+        });
+      });
+    })();
+  </script>
+{% endblock %}

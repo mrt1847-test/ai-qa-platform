@@ -1,0 +1,32 @@
+{
+  "name": "cuawright",
+  "version": "0.2.0",
+  "description": "CUAWright browser automation skill. The Python package also includes OSWorld desktop support through cuawright-desktop.",
+  "author": {
+    "name": "Microsoft Research",
+    "url": "https://github.com/microsoft/Webwright"
+  },
+  "homepage": "https://github.com/microsoft/Webwright",
+  "repository": "https://github.com/microsoft/Webwright",
+  "license": "MIT",
+  "keywords": [
+    "browser",
+    "playwright",
+    "web-agent",
+    "automation",
+    "rpa"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CUAWright",
+    "shortDescription": "Browser automation with CUAWright",
+    "longDescription": "Drives a local Playwright workspace via one bash command at a time, saving screenshots and an action log into final_runs/run_<id>/, and visually self-verifies the result.",
+    "developerName": "Microsoft Research",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/microsoft/Webwright"
+  }
+}

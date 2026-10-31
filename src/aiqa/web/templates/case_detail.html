@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}검증 정의{% endblock %}
+{% block content %}
+  <h1>검증 정의</h1>
+  <nav aria-label="케이스 탭">
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=definition">검증</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=steps">단계</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=code">code</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">설정</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=history">실행이력</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=review">검토</a>
+    <a href="/ui/projects/{{ project_id }}/tcs?case_id={{ case_id }}">선택 TC</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=versions&amp;version={{ board.latest_draft_version_id }}">버전</a>
+  </nav>
+  <p>최신 초안 {{ board.draft_text }}</p>
+  <p>승인본 {{ board.approved_text }}</p>
+  {% include "components/package_view.html" %}
+  {% if tab == "history" %}
+    {% if board.history %}
+      <ul>
+        {% for item in board.history %}
+        <li>{{ item.case_run_id }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>실행 이력이 없습니다.</p>
+    {% endif %}
+  {% elif tab == "versions" %}
+    <ul>
+      {% for item in board.versions %}
+      <li><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=versions&amp;version={{ item.id }}">{{ item.raw_text }}</a></li>
+      {% endfor %}
+    </ul>
+    <p id="selected-version">선택 버전 {{ board.selected_text }}</p>
+  {% elif tab == "code" %}
+    <p>code는 읽기 전용입니다.</p>
+  {% elif tab == "settings" %}
+    <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/settings">실행 설정</a></p>
+  {% elif tab == "review" %}
+    <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review">검토 보기</a></p>
+    {% if board.revoked_approval_id %}
+      <p>철회 {{ board.revoked_approval_id }}</p>
+    {% else %}
+      <p>철회된 승인은 없습니다.</p>
+    {% endif %}
+  {% elif tab == "steps" %}
+    <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/steps">단계 보기</a></p>
+  {% else %}
+    <p id="readiness"></p>
+    <p id="server-diff"></p>
+    {% include "case_definition.html" %}
+  {% endif %}
+  <p><a href="{{ list_href_full }}">목록으로</a></p>
+{% endblock %}

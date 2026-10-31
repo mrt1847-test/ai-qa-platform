@@ -1,6 +1,6 @@
 # Web·Android AI QA 플랫폼 설계
 
-문서 버전: **0.6** · 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 검토용, 구현 승인 전**
+문서 버전: **0.6** · 규범 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 규범, 일부 core 구현**. 실제 진행은 [WORK_PROGRESS](WORK_PROGRESS.md), 2026-11-01 구현 대조·보완은 [수정 결과](docs/validation/reviews/2026-11-01-remediation-result.md)를 따른다. 모든 설계 기능이 구현·실환경 수용됐다는 뜻은 아니다.
 
 읽는 순서: [기술 조사](RESEARCH.md) → 이 문서 → [화면 명세·와이어프레임](UI_SPEC.md) → [데이터·승인·재녹화 상세](DATA_DESIGN.md) → [단계별 구현 계획](IMPLEMENTATION_PLAN.md).
 
@@ -566,7 +566,7 @@ v0.6은 replay/선택 AI 검증/bounded healing과 DB/수명 상세 규범을 �
 
 ## 16. v0.7 구현 작업서 세분화·계약 보완
 
-제품 방향은 v0.6을 유지하고, 실행 지시는 [32 W/158개 상세 작업·14개 영역](docs/execution/README.md)으로 구체화했다. [공통 계약 C00–C12](docs/execution/CONTRACTS.md)는 이 절의 구현 보완이며 [검토32건](docs/execution/REVIEW.md)과 함께 읽는다. 제품 구현/기기/모델/DB 시험을 수행한 것은 아니다.
+제품 방향은 v0.6을 유지하고, 실행 지시는 [33 W/163개 상세 작업·15개 영역](docs/execution/README.md)으로 구체화했다. [공통 계약 C00–C12](docs/execution/CONTRACTS.md)는 이 절의 구현 보완이며 [검토32건](docs/execution/REVIEW.md)과 함께 읽는다. 제품 구현/기기/모델/DB 시험을 수행한 것은 아니다.
 
 - 부모 W는 진행/통합 검수, 한 모델 요청은 leaf1개다. W16-05 source 저장→W29/W30 package→W16-07 finish 통합의 선행을 따른다. 앞 화면 shell만 완료됐다고 후속 기능을 완료 처리하지 않는다.
 - 케이스별 설정/check method/binding/healing capability 편집은 W10-11이다. 의미 편집은 새 draft/package=null·새 전체 REC이고 같은 source 재컴파일만 package_rebuild다.
@@ -581,3 +581,13 @@ v0.6은 replay/선택 AI 검증/bounded healing과 DB/수명 상세 규범을 �
 UI94개 조작은 [UI 추적](docs/execution/UI_COVERAGE.md), P0 32개/P1 3개·UI21/DATA22/실행10 검증은 [요구 추적](docs/execution/COVERAGE.md)에 담당을 연결했다. 담당 배정은 실제 검증 통과를 뜻하지 않는다.
 
 백업은 local_owner 전용 **이 PC 전체 저장소** 대상이며 project URL은 요청 이력 namespace다. API 저장 계층이 DB snapshot/project별 commit cursor map을 만들고 worker는 범위가 고정된 HTTP bytes만 복사한다. 일반 project 권한/일반 artifact 조회로 전체 DB를 노출하지 않는다. 복원도 모든 project의 진행 작업을 정리한 뒤 API 유지보수 모드에서 명시 활성화한다. CONTRACTS C10–C12/W26-04·05를 따른다.
+
+## 17. v0.8 최소 실행 기반·독립 구현과 실제 수용
+
+먼저 [W00-01–04](docs/execution/00-bootstrap.md)로 Python package/최소 lock/시험·단일 FastAPI factory·비밀 없는 GET liveness·Jinja2 기본 페이지/static·실제 HTTP 시작/종료 기반을 만든다. 현재 probe/src/tests가 있으므로 재사용하고 기존 W01-01 완료/W01-02 VM 차단을 보존한다.
+
+VM·key·USB 미준비는 해당 native 가지/최종 gate를 막지만 DB/queue/관리 UI/원자 저장/집계 같은 독립 core 구현을 전체 차단하지 않는다. [C13/C14](docs/execution/CONTRACTS.md)와 [선행 수정](docs/execution/SCHEDULING.md)은 이 구현 보완의 규범이다.
+core는 실제 backend/DB/파일/브라우저에서 명시 test-only 외부 입력으로 검사할 수 있으며 생산 경로에는 fake adapter/관측/PASS를 넣지 않는다. 없는 capability는 명시 unavailable/BLOCKED/unknown이다.
+실제 capture/replay/trial/승인/치유·정확성/비용 수용은 해당 live task에서 그대로 요구한다. W31-06은 UI 계약, W31-07은 실제 치유 수용이다. parent_gate_tasks/원래 상위 조건과 전체 MVP gate를 지우지 않는다.
+
+초기 GET /api/v1/health는 API liveness일 뿐 engine 준비/QA PASS가 아니다. 인증 전 업무 데이터/mutation을 열지 않는다. 실제 기능은 같은 factory/layout을 W04/W10/W12에서 확장한다.

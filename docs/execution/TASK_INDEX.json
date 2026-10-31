@@ -1,12 +1,207 @@
 {
-  "schema_version": "execution-plan-v0.7",
+  "schema_version": "execution-plan-v0.8",
   "date": "2026-10-31",
   "product_spec": "v0.6+execution-clarifications",
-  "status": "not_started",
-  "parent_count": 32,
-  "task_count": 158,
+  "status": "in_progress",
+  "parent_count": 33,
+  "task_count": 163,
   "ui_obligation_count": 94,
   "tasks": [
+    {
+      "area": -1,
+      "id": "W00-01",
+      "title": "패키지·최소 의존성·lock·pytest 실행 기반",
+      "deps": [],
+      "files": [
+        "pyproject.toml",
+        "requirements.lock",
+        ".gitignore",
+        "src/aiqa/__init__.py",
+        "tests/conftest.py",
+        "tests/unit/test_bootstrap.py"
+      ],
+      "contract": "distribution aiqa; import aiqa; python -m pytest tests/unit/test_bootstrap.py::test_w00_01",
+      "behavior": "기존 src/aiqa·tests·공개 원본과 완료 근거를 읽고 재사용한다. Python 3.11 기준 src-layout editable 설치와 pytest 탐색을 구성한다. runtime은 FastAPI/Uvicorn/Jinja2, dev는 pytest/httpx에 필요한 최소 의존성만 고정하고 재현 가능한 requirements.lock(전체 전이 버전 constraints)을 만든다. SDK/VM/ADB/DB 서비스는 여기서 설치하지 않는다. tests/conftest.py의 기존 sys.path 보정은 editable import가 된 뒤 필요한 차이만 정리한다. lock 작성 도구/명령·Python/OS·재현 명령을 인계에 남긴다.",
+      "given": "격리된 개발 환경에 python -m pip install -e \".[dev]\" -c requirements.lock 후 pip check·pytest --collect-only를 확인한다. 저장소 밖 cwd에서 importlib.metadata.version('aiqa')와 import aiqa를 확인하고 기존 W01-01 시험도 선택 실행한다. W01-02는 차단 시험이므로 전체 suite green으로 위장하지 않는다.",
+      "expected": {
+        "installed_import_outside_repo": true,
+        "dependency_check_ok": true,
+        "pytest_collects": true,
+        "existing_w01_01_passes": true,
+        "global_environment_required": false
+      },
+      "covers": [
+        "R10",
+        "R21"
+      ],
+      "status": "complete",
+      "test_file": "tests/unit/test_bootstrap.py",
+      "test_name": "test_w00_01",
+      "test_command": "python -m pytest tests/unit/test_bootstrap.py::test_w00_01 tests/integration/test_w01.py::test_w01_01 -q",
+      "evidence_path": "docs/validation/tasks/W00-01.md",
+      "read_contracts": [
+        "C00",
+        "C01",
+        "C13",
+        "C14"
+      ],
+      "doc_file": "00-bootstrap.md",
+      "work_kind": "bootstrap",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "bootstrap",
+      "live_acceptance_tasks": []
+    },
+    {
+      "area": -1,
+      "id": "W00-02",
+      "title": "FastAPI 앱 factory·설정·liveness API",
+      "deps": [
+        "W00-01"
+      ],
+      "files": [
+        "src/aiqa/api/__init__.py",
+        "src/aiqa/api/app.py",
+        "src/aiqa/config.py",
+        "tests/integration/test_bootstrap_http.py"
+      ],
+      "contract": "load_settings(env: Mapping[str,str] | None = None) -> AppSettings; create_app(settings: AppSettings | None = None) -> FastAPI; GET /api/v1/health -> {status:'ok',component:'api'}",
+      "behavior": "공통 create_app factory 한 개와 AIQA_HOST(127.0.0.1 고정)/AIQA_PORT(기본8000)/runtime root 설정을 만든다. runtime root 기본은 LOCALAPPDATA/AIQA이며 import나 health 조회로 DB·기기·모델 client를 만들지 않는다. health는 API liveness만 뜻하고 엔진 준비/QA PASS가 아니다. 업무 mutation/가짜 project API는 만들지 않는다. W04는 이 factory에 실제 저장/인증을 확장하고 두 번째 앱을 만들지 않는다.",
+      "given": "키/VM/ADB/DB 없이 factory 생성→실제 ASGI 요청 health200·올바른 body를 확인한다. 비루프백 host/잘못된 port 거부, 프로젝트 API 미구현404, 반복 factory 생성의 global 상태 누출과 외부 client 초기화0을 확인한다.",
+      "expected": {
+        "health_status": 200,
+        "body": {
+          "status": "ok",
+          "component": "api"
+        },
+        "business_endpoint_status": 404,
+        "external_clients_created": 0,
+        "non_loopback_rejected": true
+      },
+      "covers": [
+        "R10",
+        "R14",
+        "R26"
+      ],
+      "status": "complete",
+      "test_file": "tests/integration/test_bootstrap_http.py",
+      "test_name": "test_w00_02",
+      "test_command": "python -m pytest tests/integration/test_bootstrap_http.py::test_w00_02 -q",
+      "evidence_path": "docs/validation/tasks/W00-02.md",
+      "read_contracts": [
+        "C00",
+        "C01",
+        "C13",
+        "C14"
+      ],
+      "doc_file": "00-bootstrap.md",
+      "work_kind": "bootstrap",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "bootstrap",
+      "live_acceptance_tasks": []
+    },
+    {
+      "area": -1,
+      "id": "W00-03",
+      "title": "Jinja2 기본 페이지·layout·static 연결",
+      "deps": [
+        "W00-02"
+      ],
+      "files": [
+        "src/aiqa/web/__init__.py",
+        "src/aiqa/web/routes.py",
+        "src/aiqa/web/templates/base.html",
+        "src/aiqa/web/templates/bootstrap.html",
+        "src/aiqa/web/static/app.css",
+        "src/aiqa/api/app.py",
+        "pyproject.toml",
+        "tests/acceptance/test_bootstrap_page.py"
+      ],
+      "contract": "GET / -> HTML bootstrap page; /static/app.css -> CSS; render_bootstrap(request: Request) -> Response",
+      "behavior": "제품 서버가 Jinja2 기본 페이지와 CSS를 실제 제공하게 하고 package-data에 template/static을 포함한다. 화면은 AI QA 기본 실행 환경 안내와 실제 API liveness만 표시한다. 기기·모델·프로젝트·녹화·승인은 미구성으로 설명하고 가짜 성공/대시보드 숫자/작동하는 척하는 버튼을 넣지 않는다. prototype/localStorage 코드를 붙이지 않는다. W10이 이 layout을 확장한다.",
+      "given": "저장소 root와 다른 cwd에서 /의 HTML/title과 /static/app.css의 status/content-type을 확인한다. API 오류가 있으면 연결 오류를 표시하며 녹화/PASS/승인 fake 값은 없어야 한다. 기본 페이지를 실제 browser로 열어 CSS 적용을 확인한다.",
+      "expected": {
+        "page_status": 200,
+        "css_status": 200,
+        "templates_work_outside_repo": true,
+        "fake_business_results": 0,
+        "browser_page_verified": true
+      },
+      "covers": [
+        "R21",
+        "R26",
+        "R27"
+      ],
+      "status": "complete",
+      "test_file": "tests/acceptance/test_bootstrap_page.py",
+      "test_name": "test_w00_03",
+      "test_command": "python -m pytest tests/acceptance/test_bootstrap_page.py::test_w00_03 -q",
+      "evidence_path": "docs/validation/tasks/W00-03.md",
+      "read_contracts": [
+        "C00",
+        "C01",
+        "C13",
+        "C14"
+      ],
+      "doc_file": "00-bootstrap.md",
+      "work_kind": "bootstrap",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "bootstrap",
+      "live_acceptance_tasks": []
+    },
+    {
+      "area": -1,
+      "id": "W00-04",
+      "title": "서버 시작·종료 smoke와 첫 실행 안내",
+      "deps": [
+        "W00-03"
+      ],
+      "files": [
+        "tests/acceptance/test_bootstrap_startup.py",
+        "README.md",
+        "docs/validation/bootstrap.md"
+      ],
+      "contract": "python -m uvicorn aiqa.api.app:create_app --factory --host 127.0.0.1 --port 8000; BootstrapSmokeReport",
+      "behavior": "격리 개발 환경에서 한 명령으로 서버 시작→실제 HTTP health/page/static 확인→종료/port 해제를 검증한다. 테스트는 빈 port를 명시해 관리하고 타 process를 이름으로 종료하지 않는다. README에 환경 준비·lock 설치·실행/중지·기본 검사·차단 live 시험 분리를 기록한다. 일상 launcher/process 관리 기능은 W12이며 여기서 중복 구현하지 않는다. DB/worker/에이전트/설치·배포 기능으로 확장하지 않는다.",
+      "given": "저장소 밖 cwd에서 subprocess 서버를 시작해 loopback HTTP로 관찰하고 명시 종료 뒤 해당 port/process 해제를 확인한다. 새 bootstrap 검사들과 기존 W01-01을 선택 실행한다. 모델 키/VM/USB 없는 환경에서 실제 browser 진입을 확인하고 W01-02 차단 상태는 유지한다.",
+      "expected": {
+        "real_http_health": true,
+        "real_page_and_css": true,
+        "owned_process_stopped": true,
+        "port_released": true,
+        "vm_or_api_key_required": false,
+        "existing_block_preserved": true
+      },
+      "covers": [
+        "R10",
+        "R16",
+        "R21",
+        "R26"
+      ],
+      "status": "complete",
+      "test_file": "tests/acceptance/test_bootstrap_startup.py",
+      "test_name": "test_w00_04",
+      "test_command": "python -m pytest tests/unit/test_bootstrap.py tests/integration/test_bootstrap_http.py tests/acceptance/test_bootstrap_page.py tests/acceptance/test_bootstrap_startup.py tests/integration/test_w01.py::test_w01_01 -q",
+      "evidence_path": "docs/validation/tasks/W00-04.md",
+      "read_contracts": [
+        "C00",
+        "C01",
+        "C13",
+        "C14"
+      ],
+      "doc_file": "00-bootstrap.md",
+      "work_kind": "bootstrap",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "bootstrap",
+      "live_acceptance_tasks": []
+    },
     {
       "area": 0,
       "id": "W01-01",
@@ -30,7 +225,7 @@
         "R14",
         "R17"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w01.py",
       "test_name": "test_w01_01",
       "test_command": "python -m pytest tests/integration/test_w01.py::test_w01_01 -q",
@@ -41,14 +236,21 @@
         "C05",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "source_audit",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "source_audit",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
       "id": "W01-02",
       "title": "같은 PC VM 과 신뢰 driver 통신 탐색",
       "deps": [
-        "W01-01"
+        "W01-01",
+        "W00-04"
       ],
       "files": [
         "src/aiqa/worker/isolated_web.py",
@@ -71,7 +273,7 @@
         "R25",
         "R34"
       ],
-      "status": "not_started",
+      "status": "blocked",
       "test_file": "tests/integration/test_w01.py",
       "test_name": "test_w01_02",
       "test_command": "python -m pytest tests/integration/test_w01.py::test_w01_02 -q",
@@ -82,7 +284,14 @@
         "C05",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -123,7 +332,15 @@
         "C05",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -161,7 +378,14 @@
         "C05",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -197,7 +421,14 @@
         "C01",
         "C05"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -237,7 +468,14 @@
         "C01",
         "C05"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -274,7 +512,14 @@
         "C01",
         "C05"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -315,7 +560,15 @@
         "C01",
         "C05"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -352,14 +605,22 @@
         "C06",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
       "id": "W03-02",
       "title": "출처·패치·dependency lock 결정",
       "deps": [
-        "W03-01"
+        "W03-01",
+        "W00-01"
       ],
       "files": [
         "pyproject.toml",
@@ -368,7 +629,7 @@
         "docs/decisions/0001-upstream-runtime.md"
       ],
       "contract": "resolve_engine_refs(reports: list[ProbeReport]) -> EngineAdoptionDecision",
-      "behavior": "두 원본 SHA/LICENSE/NOTICE·원본 포함 방식·patch 순서·compiler/driver/broker 경계·실행 가능한 Python/dependency/model lock 을 명시한다. 현 조사만으로 최신 HEAD/Windows 호환을 주장하지 않는다.",
+      "behavior": "두 원본 SHA/LICENSE/NOTICE·원본 포함 방식·patch 순서·compiler/driver/broker 경계·실행 가능한 Python/dependency/model lock 을 명시한다. 현 조사만으로 최신 HEAD/Windows 호환을 주장하지 않는다. W00-01에서 만든 최소 product lock/환경을 읽고 필요한 upstream 의존성만 검증해 확장한다. 기본 구성을 다시 만들지 않는다.",
       "given": "깨끗한 임시 작업 경로와 한글/공백 경로에서 채택 lock·patch 적용/출처 해시를 대조한다.",
       "expected": {
         "source_hashes_verified": true,
@@ -391,7 +652,13 @@
         "C06",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "adoption_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "adoption_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 0,
@@ -428,14 +695,23 @@
         "C06",
         "C07"
       ],
-      "doc_file": "01-foundation-probes.md"
+      "doc_file": "01-foundation-probes.md",
+      "work_kind": "integration_gate",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "integration_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 1,
       "id": "W04-01",
       "title": "비동기화 DB·migration·단일 writer 기반",
       "deps": [
-        "W03-03"
+        "W00-04"
       ],
       "files": [
         "src/aiqa/store/database.py",
@@ -443,7 +719,7 @@
         "src/aiqa/api/app.py"
       ],
       "contract": "open_store(config: StorageConfig) -> Store; migrate_store(store: Store) -> SchemaRevision",
-      "behavior": "%LOCALAPPDATA%/AIQA/에 DB/artifacts/spool 을 분리하고 API 만 SQLite writer 가 된다. 연결마다 foreign_keys=ON·WAL·짧은 transaction 을 적용한다. 설치 설정과 비동기화 경로 검사를 포함한다.",
+      "behavior": "%LOCALAPPDATA%/AIQA/에 DB/artifacts/spool 을 분리하고 API 만 SQLite writer 가 된다. 연결마다 foreign_keys=ON·WAL·짧은 transaction 을 적용한다. 설치 설정과 비동기화 경로 검사를 포함한다. W00-02의 create_app/AppSettings를 확장하며 VM/agent 설치 없이 API 단일 writer 저장 기반을 구현한다.",
       "given": "임시 LOCALAPPDATA 로 migration→project row 저장→API 재시작→조회하고 worker 의 DB 직접 접근 경로가 없는지 검사한다.",
       "expected": {
         "foreign_keys": 1,
@@ -455,7 +731,7 @@
         "R10",
         "R12"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w04.py",
       "test_name": "test_w04_01",
       "test_command": "python -m pytest tests/integration/test_w04.py::test_w04_01 -q",
@@ -463,9 +739,20 @@
       "read_contracts": [
         "C00",
         "C01",
-        "C02"
+        "C02",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -493,7 +780,7 @@
         "R12",
         "R14"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w04.py",
       "test_name": "test_w04_02",
       "test_command": "python -m pytest tests/integration/test_w04.py::test_w04_02 -q",
@@ -501,9 +788,20 @@
       "read_contracts": [
         "C00",
         "C01",
-        "C02"
+        "C02",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -530,7 +828,7 @@
         "R14",
         "R21"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w04.py",
       "test_name": "test_w04_03",
       "test_command": "python -m pytest tests/integration/test_w04.py::test_w04_03 -q",
@@ -538,9 +836,20 @@
       "read_contracts": [
         "C00",
         "C01",
-        "C02"
+        "C02",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -568,7 +877,7 @@
         "R13",
         "R14"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w04.py",
       "test_name": "test_w04_04",
       "test_command": "python -m pytest tests/integration/test_w04.py::test_w04_04 -q",
@@ -576,9 +885,20 @@
       "read_contracts": [
         "C00",
         "C01",
-        "C02"
+        "C02",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -605,7 +925,7 @@
         "R08",
         "R28"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_01",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_01 -q",
@@ -614,9 +934,20 @@
         "C00",
         "C01",
         "C02",
-        "C03"
+        "C03",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -645,7 +976,7 @@
         "R08",
         "R28"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_02",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_02 -q",
@@ -654,9 +985,20 @@
         "C00",
         "C01",
         "C02",
-        "C03"
+        "C03",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -685,7 +1027,7 @@
         "R30",
         "R34"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_03",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_03 -q",
@@ -694,9 +1036,20 @@
         "C00",
         "C01",
         "C02",
-        "C03"
+        "C03",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -725,7 +1078,7 @@
         "R24",
         "R28"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_04",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_04 -q",
@@ -735,9 +1088,20 @@
         "C01",
         "C02",
         "C03",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -768,7 +1132,7 @@
         "R22",
         "R32"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_05",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_05 -q",
@@ -778,9 +1142,20 @@
         "C01",
         "C02",
         "C03",
-        "C06"
+        "C06",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -809,7 +1184,7 @@
         "R24",
         "R28"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w05.py",
       "test_name": "test_w05_06",
       "test_command": "python -m pytest tests/integration/test_w05.py::test_w05_06 -q",
@@ -818,9 +1193,20 @@
         "C00",
         "C01",
         "C02",
-        "C03"
+        "C03",
+        "C14"
       ],
-      "doc_file": "02a-assets-and-scope.md"
+      "doc_file": "02a-assets-and-scope.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -848,7 +1234,7 @@
         "R12",
         "R30"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_01",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_01 -q",
@@ -859,9 +1245,20 @@
         "C02",
         "C03",
         "C07",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -890,7 +1287,7 @@
         "R12",
         "R25"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_10",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_10 -q",
@@ -899,9 +1296,20 @@
         "C00",
         "C01",
         "C04",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -929,7 +1337,7 @@
         "R12",
         "R22"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_02",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_02 -q",
@@ -938,9 +1346,20 @@
         "C00",
         "C01",
         "C04",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -970,7 +1389,7 @@
         "R13",
         "R29"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_03",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_03 -q",
@@ -980,9 +1399,20 @@
         "C01",
         "C05",
         "C06",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1011,7 +1441,7 @@
         "R24",
         "R30"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_04",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_04 -q",
@@ -1021,9 +1451,20 @@
         "C01",
         "C03",
         "C08",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1051,7 +1492,7 @@
         "R33",
         "R34"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_05",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_05 -q",
@@ -1060,9 +1501,20 @@
         "C00",
         "C01",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1090,7 +1542,7 @@
         "R32",
         "R35"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_06",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_06 -q",
@@ -1099,9 +1551,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1132,7 +1595,7 @@
         "R15",
         "R32"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_07",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_07 -q",
@@ -1145,9 +1608,20 @@
         "C04",
         "C07",
         "C08",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "02b-job-evidence-schema.md"
+      "doc_file": "02b-job-evidence-schema.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1175,7 +1649,7 @@
         "R14",
         "R25"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_08",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_08 tests/integration/test_w06.py::test_w06_07 -q",
@@ -1188,8 +1662,19 @@
         "C03",
         "C04",
         "C11",
-        "C12"
-      ]
+        "C12",
+        "C14"
+      ],
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 1,
@@ -1221,7 +1706,7 @@
         "R24",
         "R28"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w06.py",
       "test_name": "test_w06_09",
       "test_command": "python -m pytest tests/integration/test_w06.py::test_w06_09 tests/integration/test_w06.py::test_w06_07 -q",
@@ -1234,8 +1719,19 @@
         "C03",
         "C04",
         "C11",
-        "C12"
-      ]
+        "C12",
+        "C14"
+      ],
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1251,7 +1747,7 @@
       ],
       "contract": "report_inventory(worker: WorkerScope, input: InventoryReport) -> InventoryReceipt; resource_key(worker_id: UUID, native_id: str) -> str",
       "behavior": "Web VM/Chromium 과 Android serial·state·OS/build·capture geometry·권한·IME·마지막 관찰을 보고한다. project 별 resource 별칭이어도 동일 host/serial lease 는 하나다. raw CDP/ADB credential 은 UI 에 전달하지 않는다.",
-      "given": "project A/B 가 같은 worker/serial 을 별칭으로 등록하고 inventory 의 unauthorized/offline/busy 를 조회한다.",
+      "given": "프로젝트 A/B의 같은 serial alias·offline/unauthorized/busy inventory 보고를 test-only 입력으로 API에 보내고 실제 DB identity/권한을 검사한다. native 관찰은 W07-02/03의 gate다.",
       "expected": {
         "physical_resource_count": 1,
         "alias_double_booking": false,
@@ -1262,7 +1758,7 @@
         "R14",
         "R25"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w07.py",
       "test_name": "test_w07_01",
       "test_command": "python -m pytest tests/integration/test_w07.py::test_w07_01 -q",
@@ -1271,16 +1767,29 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W07-02",
+        "W07-03",
+        "W07-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W07-02, W07-03, W07-04에서 별도로 요구한다."
     },
     {
       "area": 2,
       "id": "W07-02",
       "title": "Web VM·context·script/driver session 수명",
       "deps": [
-        "W07-01"
+        "W07-01",
+        "W01-02"
       ],
       "files": [
         "src/aiqa/environments/base.py",
@@ -1312,14 +1821,22 @@
         "C04",
         "C05"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 2,
       "id": "W07-03",
       "title": "호스트 USB session·앱 준비·IME snapshot",
       "deps": [
-        "W07-02"
+        "W07-01",
+        "W02-04"
       ],
       "files": [
         "src/aiqa/environments/usb_android.py",
@@ -1350,14 +1867,23 @@
         "C04",
         "C05"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 2,
       "id": "W07-04",
       "title": "release·quarantine·recover 증명",
       "deps": [
-        "W07-03"
+        "W07-02",
+        "W07-03",
+        "W09-03"
       ],
       "files": [
         "src/aiqa/worker/resources.py",
@@ -1389,14 +1915,23 @@
         "C04",
         "C05"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 2,
       "id": "W08-01",
       "title": "purpose 별 payload 와 영구 접수 receipt",
       "deps": [
-        "W07-04"
+        "W06-09",
+        "W00-04"
       ],
       "files": [
         "src/aiqa/store/queue.py",
@@ -1416,7 +1951,7 @@
         "R10",
         "R12"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w08.py",
       "test_name": "test_w08_01",
       "test_command": "python -m pytest tests/integration/test_w08.py::test_w08_01 -q",
@@ -1425,9 +1960,20 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1456,7 +2002,7 @@
         "R22",
         "R25"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w08.py",
       "test_name": "test_w08_02",
       "test_command": "python -m pytest tests/integration/test_w08.py::test_w08_02 -q",
@@ -1465,9 +2011,20 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1494,7 +2051,7 @@
         "R10",
         "R12"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w08.py",
       "test_name": "test_w08_03",
       "test_command": "python -m pytest tests/integration/test_w08.py::test_w08_03 -q",
@@ -1503,9 +2060,20 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1533,7 +2101,7 @@
         "R12",
         "R15"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w08.py",
       "test_name": "test_w08_04",
       "test_command": "python -m pytest tests/integration/test_w08.py::test_w08_04 -q",
@@ -1542,9 +2110,20 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1572,7 +2151,7 @@
         "R15",
         "R26"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w08.py",
       "test_name": "test_w08_05",
       "test_command": "python -m pytest tests/integration/test_w08.py::test_w08_05 -q",
@@ -1581,9 +2160,20 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1609,7 +2199,7 @@
         "R11",
         "R12"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w09.py",
       "test_name": "test_w09_01",
       "test_command": "python -m pytest tests/integration/test_w09.py::test_w09_01 -q",
@@ -1619,9 +2209,20 @@
         "C01",
         "C04",
         "C05",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1648,7 +2249,7 @@
         "R12",
         "R13"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w09.py",
       "test_name": "test_w09_02",
       "test_command": "python -m pytest tests/integration/test_w09.py::test_w09_02 -q",
@@ -1658,9 +2259,20 @@
         "C01",
         "C04",
         "C05",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1676,7 +2288,7 @@
       ],
       "contract": "stop_runner(attempt_id: UUID, grace_seconds: int = 5) -> StopReport; cleanup_attempt(attempt_id: UUID, deadline_seconds: int = 30) -> CleanupReport",
       "behavior": "취소 5 초 유예 후 Windows child tree/VM script/context 를 정리한다. 호스트 API 나 다른 사용자 프로세스를 이름만 보고 종료하지 않는다. proof 없으면 quarantine, finally 경로는 engine 예외에도 실행한다.",
-      "given": "hung child·VM 응답 없음·IME 복구 실패·cleanup 중 재호출을 주입한다.",
+      "given": "호스트의 테스트용 child process를 실제 생성/종료하고 관련 없는 process 보존을 검사한다. VM/IME 실패는 테스트용 provider로 오류 경로만 검사하며 실제 환경 정리는 W07-04/W27-02에서 확인한다.",
       "expected": {
         "cancel_grace": 5,
         "cleanup_limit": 30,
@@ -1688,7 +2300,7 @@
         "R15",
         "R25"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w09.py",
       "test_name": "test_w09_03",
       "test_command": "python -m pytest tests/integration/test_w09.py::test_w09_03 -q",
@@ -1698,9 +2310,20 @@
         "C01",
         "C04",
         "C05",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 2,
@@ -1740,16 +2363,29 @@
         "C01",
         "C04",
         "C05",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "03-worker-and-sessions.md"
+      "doc_file": "03-worker-and-sessions.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
       "id": "W10-01",
       "title": "공통 UI shell·탐색·상태 컴포넌트",
       "deps": [
-        "W09-04"
+        "W06-09",
+        "W04-03",
+        "W00-03"
       ],
       "files": [
         "src/aiqa/web/templates/base.html",
@@ -1758,7 +2394,7 @@
         "src/aiqa/web/static/app.css"
       ],
       "contract": "render_page(context: PageContext) -> HtmlResponse; UiQueryState(filter, sort, cursor, selected_id, scroll)",
-      "behavior": "project switch/breadcrumb/이 PC 연결·검색 진입·활성 메뉴를 구현한다. URL query 로 filter/sort/page/selected 를, sessionStorage 에는 비밀 없는 scroll/열설정만 보존한다. loading/empty/403/409/422/stale·미저장 이동 대화상자·focus·1024/1440px 를 공통화한다.",
+      "behavior": "project switch/breadcrumb/이 PC 연결·검색 진입·활성 메뉴를 구현한다. URL query 로 filter/sort/page/selected 를, sessionStorage 에는 비밀 없는 scroll/열설정만 보존한다. loading/empty/403/409/422/stale·미저장 이동 대화상자·focus·1024/1440px 를 공통화한다. W00-03의 base template/static을 재사용해 업무 UI shell로 확장한다.",
       "given": "목록→상세→뒤로/새로고침·422·403·409·통신 끊김·키보드만·1024px 를 실제 browser 에서 확인한다.",
       "expected": {
         "restored_query": true,
@@ -1774,7 +2410,7 @@
         "UI-COMMON.02",
         "UI-COMMON.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_01",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_01 -q",
@@ -1784,9 +2420,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -1816,7 +2463,7 @@
         "UI-01.01",
         "UI-01.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_02",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_02 -q",
@@ -1826,9 +2473,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -1856,7 +2514,7 @@
         "R28",
         "UI-02.01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_03",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_03 -q",
@@ -1866,9 +2524,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -1898,7 +2567,7 @@
         "UI-03.01",
         "UI-03.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_04",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_04 -q",
@@ -1908,9 +2577,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -1939,7 +2619,7 @@
         "R27",
         "UI-03.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_05",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_05 -q",
@@ -1949,9 +2629,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -1980,7 +2671,7 @@
         "R28",
         "UI-04.01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_06",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_06 -q",
@@ -1990,9 +2681,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2022,7 +2724,7 @@
         "R28",
         "UI-04.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_07",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_07 -q",
@@ -2033,9 +2735,20 @@
         "C02",
         "C03",
         "C11",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2066,7 +2779,7 @@
         "UI-04.03",
         "UI-04.04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_08",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_08 -q",
@@ -2076,9 +2789,20 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2110,7 +2834,7 @@
         "R34",
         "UI-04.10"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_11",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_11 -q",
@@ -2122,9 +2846,20 @@
         "C03",
         "C11",
         "C06",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2156,7 +2891,7 @@
         "UI-15.01",
         "UI-15.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_09",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_09 -q",
@@ -2167,9 +2902,20 @@
         "C02",
         "C03",
         "C11",
-        "C06"
+        "C06",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2199,7 +2945,7 @@
         "UI-16.01",
         "UI-16.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w10.py",
       "test_name": "test_w10_10",
       "test_command": "python -m pytest tests/acceptance/test_w10.py::test_w10_10 -q",
@@ -2209,16 +2955,29 @@
         "C01",
         "C02",
         "C03",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04a-case-management-ui.md"
+      "doc_file": "04a-case-management-ui.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
       "id": "W11-01",
       "title": "연결 자원 목록·현재 화면·기기에서 녹화",
       "deps": [
-        "W10-10"
+        "W10-10",
+        "W07-01",
+        "W14-03"
       ],
       "files": [
         "src/aiqa/web/templates/environments.html",
@@ -2227,7 +2986,7 @@
       ],
       "contract": "GET /api/v1/projects/{p}/resources; GET /api/v1/resources/{r}/preview -> ResourcePreviewView",
       "behavior": "UI-14 Web/Android·ready/busy/offline/unauthorized/quarantine·OS/geometry/build/마지막수신·점유 RUN 링크를 표시한다. 현재 화면은 정제된 최근관찰 artifact/시각이며 기기선택 즉시 live 제어가 아니다. busy 면 소유 세션의 권한내 preview 만, 새 capture 는 인증된 resource_probe job 이다. 이 기기로 녹화는 UI05 step1 을 선택해 연다.",
-      "given": "WebVM 부재·Android 연결/끊김·busy·preview 없음/만료·선택바뀜·권한없는 점유화면을 검사한다.",
+      "given": "API/DB에 격리된 inventory/정제 PNG fixture를 넣어 Web/Android·busy·미관찰/만료·권한 거부를 실제 browser에서 확인한다. production adapter 부재는 unavailable로 표시한다.",
       "expected": {
         "management_tab_is_test_browser": false,
         "stale_timestamp_visible": true,
@@ -2255,9 +3014,20 @@
         "C03",
         "C04",
         "C11",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2296,9 +3066,20 @@
         "C02",
         "C03",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2337,16 +3118,28 @@
         "C02",
         "C03",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
       "id": "W11-04",
       "title": "설치 앱 선택과 metadata inspect",
       "deps": [
-        "W11-03"
+        "W11-03",
+        "W07-03"
       ],
       "files": [
         "src/aiqa/environments/app_builds.py",
@@ -2381,14 +3174,22 @@
         "C04",
         "C11"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 3,
       "id": "W11-05",
       "title": "APK 제한 업로드·metadata·등록 UI",
       "deps": [
-        "W11-04"
+        "W11-03",
+        "W14-03"
       ],
       "files": [
         "src/aiqa/api/app_builds.py",
@@ -2423,14 +3224,23 @@
         "C04",
         "C11"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "tool_integration",
+      "environment_requirements": [
+        "local_python",
+        "apk_metadata_tools"
+      ],
+      "verification_scope": "tool_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 3,
       "id": "W11-06",
       "title": "명시 설치·reset 영향과 사후 관찰",
       "deps": [
-        "W11-05"
+        "W11-04",
+        "W11-05",
+        "W07-03"
       ],
       "files": [
         "src/aiqa/environments/app_builds.py",
@@ -2465,14 +3275,23 @@
         "C04",
         "C11"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 3,
       "id": "W11-07",
       "title": "환경 진단·quarantine·복구 UI",
       "deps": [
-        "W11-06"
+        "W11-01",
+        "W09-03",
+        "W08-05"
       ],
       "files": [
         "src/aiqa/api/resources.py",
@@ -2481,7 +3300,7 @@
       ],
       "contract": "POST /api/v1/resources/{r}/probes; POST /api/v1/resources/{r}/recoveries -> JobReceipt",
       "behavior": "VM/driver/IPC/broker·script 의 key/egress 차단·USB 권한/IME/capture·lease/cleanup 근거를 보여준다. 진단과 복구는 관리 job, ready 는 proof 뒤만. cloud/manualcontrol/pause 버튼은 없다.",
-      "given": "VM 부재·driver 우회가능·USB unauthorized·IME 실패·stale recovery 와 실제 조치링크를 확인한다.",
+      "given": "테스트용 provider의 진단/복구 결과로 실제 job/상태/UI 경로를 확인하고, production에서는 미설정 provider가 명시 차단되는지 검사한다. VM/USB 실제 복구 proof는 W07-04에서 요구한다.",
       "expected": {
         "vm_missing_web_ready": false,
         "recovery_requires_proof": true,
@@ -2506,16 +3325,28 @@
         "C02",
         "C03",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
       "id": "W11-08",
       "title": "활동 이력·worker 범위·공간 설정 조회",
       "deps": [
-        "W11-07"
+        "W11-07",
+        "W10-09"
       ],
       "files": [
         "src/aiqa/web/templates/settings.html",
@@ -2548,16 +3379,28 @@
         "C02",
         "C03",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 3,
       "id": "W12-01",
       "title": "로컬 launcher·중복시작·상태 UI",
       "deps": [
-        "W11-08"
+        "W11-08",
+        "W00-04"
       ],
       "files": [
         "src/aiqa/launcher.py",
@@ -2565,7 +3408,7 @@
         "src/aiqa/web/templates/connection.html"
       ],
       "contract": "start_local_services(config: LauncherConfig) -> LocalServiceStatus; GET /api/v1/local-status",
-      "behavior": "한 번 시작으로 API/worker 관리화면을 열고 독립 process 를 유지한다. port 충돌/이미실행/worker 없음/VM 미준비를 구별한다. 시작명령과 패키징은 이 작업산출에 포함하되 배포발행은 포함하지 않는다.",
+      "behavior": "한 번 시작으로 API/worker 관리화면을 열고 독립 process 를 유지한다. port 충돌/이미실행/worker 없음/VM 미준비를 구별한다. 시작명령과 패키징은 이 작업산출에 포함하되 배포발행은 포함하지 않는다. W00-04의 검증된 API 시작 명령을 소비해 일상 launcher 수명 관리로 확장한다.",
       "given": "같은설정 두번 시작·다른 process port 사용·worker 실패·관리탭 종료를 확인한다.",
       "expected": {
         "api_instances": 1,
@@ -2588,9 +3431,19 @@
         "C00",
         "C01",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W27-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W27-02에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2629,9 +3482,19 @@
         "C00",
         "C01",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W27-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W27-02에서 별도로 요구한다."
     },
     {
       "area": 3,
@@ -2648,7 +3511,7 @@
       ],
       "contract": "stop_local_services(input: ServiceStopRequest) -> LocalServiceStatus; reconcile_after_resume() -> ReconciliationReport",
       "behavior": "진행작업이 있으면 종료/취소/정리영향을 보여주고 영구 flag 를 남긴다. PC 중단 동안 지속실행/즉시감지를 보장하지 않는다. 복귀 뒤 lost/불명·quarantine·새실행 안내로 연결하며 checkpoint 자동재개 0 이다.",
-      "given": "REC/RUN 진행중 절전/강제종료→복귀와 정상안전종료를 구분한다.",
+      "given": "테스트 서버/runner를 실제 시작·재시작하고 resume/lost 이벤트를 제어해 reconciliation을 검사한다. 사용자 PC를 강제 종료/절전하지 않으며 실제 환경 장애 수용은 W27-02에 남긴다.",
       "expected": {
         "automatic_resume": 0,
         "unknown_marked_success": false,
@@ -2670,16 +3533,27 @@
         "C00",
         "C01",
         "C04",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "04b-environments-and-launcher.md"
+      "doc_file": "04b-environments-and-launcher.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W27-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W27-02에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W13-01",
       "title": "행동 제안 schema·대상·도구 정책 gate",
       "deps": [
-        "W12-03"
+        "W06-09",
+        "W04-03"
       ],
       "files": [
         "src/aiqa/recording/action_executor.py",
@@ -2699,7 +3573,7 @@
         "R14",
         "R29"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w13.py",
       "test_name": "test_w13_01",
       "test_command": "python -m pytest tests/integration/test_w13.py::test_w13_01 -q",
@@ -2708,9 +3582,21 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-04",
+        "W29-03",
+        "W30-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W16-04, W29-03, W30-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2726,8 +3612,8 @@
         "src/aiqa/adapters/mobile_agent_android.py"
       ],
       "contract": "prepare_action(proposal: ActionProposal, observation: Observation) -> PreparedAction",
-      "behavior": "원본 PNG/DOM/stdout/messages 는 메모리에서 필터 후 보관본만 spool 로 보낸다. compound step 을 각 actual action 으로 분해하고 각각 전캡처를 얻는다. 필터/전캡처 실패는 command 금지, 원본 reasoning debug 저장도금지다.",
-      "given": "3 행동 step 과 secret 화면/DOM/예외 stdout·redactor failure·FLAG_SECURE 를 재현한다.",
+      "behavior": "원본 PNG/DOM/stdout/messages 는 메모리에서 필터 후 보관본만 spool 로 보낸다. compound step 을 각 actual action 으로 분해하고 각각 전캡처를 얻는다. 필터/전캡처 실패는 command 금지, 원본 reasoning debug 저장도금지다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
+      "given": "명시된 PNG/DOM/로그 fixture와 3개 ActionProposal을 메모리 필터·보관 경로에 넣어 전 캡처 실패/정제 실패의 command0을 확인한다. 실제 upstream capture hook은 W16-04/W29-03/W30-03에서 입증한다.",
       "expected": {
         "actions": 3,
         "before_artifacts": 3,
@@ -2739,7 +3625,7 @@
         "R14",
         "R29"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w13.py",
       "test_name": "test_w13_02",
       "test_command": "python -m pytest tests/integration/test_w13.py::test_w13_02 -q",
@@ -2748,9 +3634,21 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-04",
+        "W29-03",
+        "W30-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W16-04, W29-03, W30-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2765,8 +3663,8 @@
         "src/aiqa/replay/action_executor.py"
       ],
       "contract": "dispatch_action(prepared: PreparedAction, control: RunControl) -> DispatchReceipt",
-      "behavior": "planned→lookup_failed 또는 dispatch_started 를 로컬 durable journal 에 flush 한 뒤 native API 를 한 번 호출한다. 이후 acknowledged/observed/unknown 을 append 하며 ACK 미수신을 lookup_failed 로 되돌리지 않는다. journal writefail 이면 dispatch0 이다.",
-      "given": "journal flushfail·Playwright click navigation timeout·ADB timeout·ACK 유실을 주입해 명령전송 횟수를 계수한다.",
+      "behavior": "planned→lookup_failed 또는 dispatch_started 를 로컬 durable journal 에 flush 한 뒤 native API 를 한 번 호출한다. 이후 acknowledged/observed/unknown 을 append 하며 ACK 미수신을 lookup_failed 로 되돌리지 않는다. journal writefail 이면 dispatch0 이다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
+      "given": "실제 durable journal과 테스트용 command executor로 flush 실패·native-call 직후 timeout/ACK 누락을 주입해 순서/횟수를 검사한다. VM/ADB API 경계의 실제 검증은 지정 live task에 남긴다.",
       "expected": {
         "journal_failure_dispatches": 0,
         "post_dispatch_retries": 0,
@@ -2778,7 +3676,7 @@
         "R17",
         "R33"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w13.py",
       "test_name": "test_w13_03",
       "test_command": "python -m pytest tests/integration/test_w13.py::test_w13_03 -q",
@@ -2787,9 +3685,21 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-04",
+        "W29-03",
+        "W30-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W16-04, W29-03, W30-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2804,8 +3714,8 @@
         "src/aiqa/validation/observations.py"
       ],
       "contract": "observe_action(receipt: DispatchReceipt, control: RunControl) -> ActionObservation",
-      "behavior": "즉시 후 PNG·capture 시각/geometry·실제명령결과·error/check refs 를 동일 action 에 연결한다. 후캡처 누락/정제실패/rotation 은 incomplete/unknown 이며 재탭 0 이다. read-only 재관찰은 delayed 로 구별한다.",
-      "given": "3 행동 정상·후 PNG 실패·회전·나중 재관찰을 수집해 action/evidence mapping 을 대조한다.",
+      "behavior": "즉시 후 PNG·capture 시각/geometry·실제명령결과·error/check refs 를 동일 action 에 연결한다. 후캡처 누락/정제실패/rotation 은 incomplete/unknown 이며 재탭 0 이다. read-only 재관찰은 delayed 로 구별한다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
+      "given": "테스트용 observer 결과를 실제 evidence 저장에 연결해 3행동 전후6개·후 누락·delayed·rotation 오류를 검사한다. 테스트 capture를 실제 기기 근거로 기록하지 않는다.",
       "expected": {
         "normal_before_after_png": 6,
         "missing_after_redispatches": 0,
@@ -2817,7 +3727,7 @@
         "R12",
         "R29"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w13.py",
       "test_name": "test_w13_04",
       "test_command": "python -m pytest tests/integration/test_w13.py::test_w13_04 -q",
@@ -2826,16 +3736,28 @@
         "C00",
         "C01",
         "C04",
-        "C05"
+        "C05",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-04",
+        "W29-03",
+        "W30-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W16-04, W29-03, W30-03에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W14-01",
       "title": "정제 spool·seq·hash·ACK journal",
       "deps": [
-        "W13-04"
+        "W06-09"
       ],
       "files": [
         "src/aiqa/worker/spool.py",
@@ -2857,7 +3779,7 @@
         "R14",
         "R15"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w14.py",
       "test_name": "test_w14_01",
       "test_command": "python -m pytest tests/integration/test_w14.py::test_w14_01 -q",
@@ -2867,9 +3789,20 @@
         "C01",
         "C03",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2898,7 +3831,7 @@
         "R14",
         "R29"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w14.py",
       "test_name": "test_w14_02",
       "test_command": "python -m pytest tests/integration/test_w14.py::test_w14_02 -q",
@@ -2908,9 +3841,20 @@
         "C01",
         "C03",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2937,7 +3881,7 @@
         "R14",
         "R15"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w14.py",
       "test_name": "test_w14_03",
       "test_command": "python -m pytest tests/integration/test_w14.py::test_w14_03 -q",
@@ -2947,9 +3891,20 @@
         "C01",
         "C03",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -2977,7 +3932,7 @@
         "R15",
         "R30"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w14.py",
       "test_name": "test_w14_04",
       "test_command": "python -m pytest tests/integration/test_w14.py::test_w14_04 -q",
@@ -2987,16 +3942,29 @@
         "C01",
         "C03",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W15-01",
       "title": "공통 model broker·role/check/episode 권한",
       "deps": [
-        "W14-04"
+        "W06-09",
+        "W04-04",
+        "W08-01"
       ],
       "files": [
         "src/aiqa/models/client.py",
@@ -3027,9 +3995,20 @@
         "C00",
         "C01",
         "C04",
-        "C06"
+        "C06",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W15-04",
+        "W32-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W15-04, W32-02에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -3065,9 +4044,20 @@
         "C00",
         "C01",
         "C04",
-        "C06"
+        "C06",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W15-04",
+        "W32-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W15-04, W32-02에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -3104,16 +4094,28 @@
         "C00",
         "C01",
         "C04",
-        "C06"
+        "C06",
+        "C14"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W15-04",
+        "W32-02"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W15-04, W32-02에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W15-04",
       "title": "모델 연결 검사·비용·무키 replay 안내 UI",
       "deps": [
-        "W15-03"
+        "W15-03",
+        "W03-01"
       ],
       "files": [
         "src/aiqa/api/model_bindings.py",
@@ -3146,14 +4148,23 @@
         "C04",
         "C06"
       ],
-      "doc_file": "05a-action-evidence-and-models.md"
+      "doc_file": "05a-action-evidence-and-models.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 4,
       "id": "W16-01",
       "title": "디바이스 먼저 녹화 마법사·입력 초안",
       "deps": [
-        "W15-04"
+        "W10-11",
+        "W11-03",
+        "W08-01"
       ],
       "files": [
         "src/aiqa/web/templates/recording_setup.html",
@@ -3189,16 +4200,28 @@
         "C03",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W16-02",
       "title": "자연어 구조화 관리 job·diff 수락",
       "deps": [
-        "W16-01"
+        "W16-01",
+        "W15-04"
       ],
       "files": [
         "src/aiqa/recording/structure.py",
@@ -3236,14 +4259,23 @@
         "C07",
         "C12"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 4,
       "id": "W16-03",
       "title": "시작 preflight·REC/job 원자 접수",
       "deps": [
-        "W16-02"
+        "W16-01",
+        "W15-03",
+        "W08-05"
       ],
       "files": [
         "src/aiqa/recording/service.py",
@@ -3252,7 +4284,7 @@
       ],
       "contract": "POST /api/v1/projects/{p}/recordings(input: RecordingStartInput) -> RecordingReceipt",
       "behavior": "input_case_version_id/hash·resource 로정의/target/권한/secret·authoringbinding/예산을검사하고 REC/job/receipt 를원자생성한다. busy 는점유링크/queue 선택이며 preflight 가예약은아니다. 같은 key/body 같은 REC·정의변경은새요청이다.",
-      "given": "이중클릭·동일 key 다른 body·hash 불일치·TC=null·busy 와 claim 전기기변경을 확인한다.",
+      "given": "격리된 API/DB의 test-only resource/binding/definition fixture로 중복 key/hash/TC null·busy·차단을 검사한다. production에 모델/자원이 없으면 preflight 이유를 반환하고 가짜 REC 성공을 만들지 않는다.",
       "expected": {
         "same_key_rec_count": 1,
         "different_body_status": 409,
@@ -3277,16 +4309,34 @@
         "C03",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
       "id": "W16-04",
       "title": "authoring loop·실시간 action timeline·메모",
       "deps": [
-        "W16-03"
+        "W16-03",
+        "W01-03",
+        "W02-04",
+        "W07-02",
+        "W07-03",
+        "W13-04",
+        "W15-04",
+        "W14-03"
       ],
       "files": [
         "src/aiqa/recording/authoring.py",
@@ -3328,14 +4378,25 @@
         "C07",
         "C12"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 4,
       "id": "W16-05",
       "title": "완료·중단·오류 seal 과 fallback 초안",
       "deps": [
-        "W16-04"
+        "W16-03",
+        "W14-03",
+        "W13-04"
       ],
       "files": [
         "src/aiqa/recording/service.py",
@@ -3345,7 +4406,7 @@
       ],
       "contract": "finish_recording(input: RecordingFinishInput) -> ManifestReceipt; stop_recording(recording_id: UUID) -> RecordingView; materialize_recording(manifest_id: UUID, compiled: CompiledPackage | None) -> MaterializationReceipt",
       "behavior": "완료/중단은새행동중지→flush/final_seq/필수 artifact 최대 30 초대기→cleanup→sealedsource/receipt 다. compiler 미준비/실패때 package=null/사유있는새 draft 를저장한다. 정상/실패/중단모두보존하고 engine done 을 QA/승인으로삼지않는다. W16-07 에서 ready compiler 경로를통합한다.",
-      "given": "completed/interrupted/error·전송누락·compiler 부재·finish 중복/다른 body·늦은 finish 를확인한다.",
+      "given": "테스트용 인증 worker의 manifest/event/artifact를 실제 API/DB에 넣어 completed/interrupted/error·중복/다른 body·compiler 부재·원자 저장을 검사한다. 실제 authoring→finish 증거는 W16-04/07에서 요구한다.",
       "expected": {
         "unapproved_saved": true,
         "failed_saved": true,
@@ -3370,9 +4431,20 @@
         "C03",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -3416,9 +4488,20 @@
         "C03",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 4,
@@ -3427,7 +4510,8 @@
       "deps": [
         "W16-06",
         "W29-06",
-        "W30-04"
+        "W30-04",
+        "W16-04"
       ],
       "files": [
         "src/aiqa/recording/service.py",
@@ -3464,7 +4548,15 @@
         "C05",
         "C07"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 4,
@@ -3508,16 +4600,28 @@
         "C04",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "05b-recording-workflow.md"
+      "doc_file": "05b-recording-workflow.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
       "id": "W29-01",
       "title": "package body·hash·source mapping 검증",
       "deps": [
-        "W16-05"
+        "W16-05",
+        "W06-09"
       ],
       "files": [
         "src/aiqa/replay/packages.py",
@@ -3546,16 +4650,28 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
       "id": "W29-02",
       "title": "raw Web code 에서 제한 IPC compiler",
       "deps": [
-        "W29-01"
+        "W29-01",
+        "W01-01"
       ],
       "files": [
         "src/aiqa/replay/compiler.py",
@@ -3585,16 +4701,30 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
       "id": "W29-03",
       "title": "trusted driver IPC·lease·capture dispatch",
       "deps": [
-        "W29-02"
+        "W29-02",
+        "W07-02",
+        "W01-02",
+        "W13-04"
       ],
       "files": [
         "src/aiqa/replay/driver.py",
@@ -3630,14 +4760,22 @@
         "C05",
         "C07"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 5,
       "id": "W29-04",
       "title": "artifact ready 후 package/version 원자 확정",
       "deps": [
-        "W29-03"
+        "W29-02",
+        "W14-03"
       ],
       "files": [
         "src/aiqa/replay/packages.py",
@@ -3668,9 +4806,20 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
@@ -3711,14 +4860,21 @@
         "C05",
         "C07"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 5,
       "id": "W29-06",
       "title": "code·plan·lock·mapping·재컴파일 조회 UI",
       "deps": [
-        "W29-05",
+        "W29-04",
         "W10-08"
       ],
       "files": [
@@ -3752,9 +4908,20 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
@@ -3762,7 +4929,8 @@
       "title": "Android trace→immutable action plan",
       "deps": [
         "W29-04",
-        "W16-05"
+        "W16-05",
+        "W06-09"
       ],
       "files": [
         "src/aiqa/replay/android_plan.py",
@@ -3799,9 +4967,20 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
@@ -3839,16 +5018,29 @@
         "C01",
         "C04",
         "C05",
-        "C07"
+        "C07",
+        "C14"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 5,
       "id": "W30-03",
       "title": "Android direct runner·행동별 현재 증거",
       "deps": [
-        "W30-02"
+        "W30-02",
+        "W07-03",
+        "W13-04"
       ],
       "files": [
         "src/aiqa/replay/android_runner.py",
@@ -3882,7 +5074,14 @@
         "C05",
         "C07"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 5,
@@ -3925,15 +5124,25 @@
         "C05",
         "C07"
       ],
-      "doc_file": "06-replay-packages.md"
+      "doc_file": "06-replay-packages.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 6,
       "id": "W17-01",
       "title": "미승인 trial preview·공통 RUN/ITEM 접수",
       "deps": [
-        "W16-07",
-        "W16-08"
+        "W29-04",
+        "W08-05",
+        "W15-03",
+        "W16-03"
       ],
       "files": [
         "src/aiqa/domain/executions.py",
@@ -3942,7 +5151,7 @@
       ],
       "contract": "preview_execution(actor: Actor, input: ExecutionPreviewInput) -> ExecutionPreview; enqueue_execution(actor: Actor, input: ExecutionCreateInput) -> ExecutionReceipt",
       "behavior": "UI04/07 시범 버튼에서 UI09 공통 4 단계로 이동한다. 미승인 ready package trial 을 허용하고 healing OFF 를 서버가 강제한다. exact version/package/data/env·required checks·key/예산을 점검하고 RUN/ITEM/job 을 원자 생성한다.",
-      "given": "미승인 ready·package0·healing ON trial·결정적키없음·AI 검증키없음·중복시작을 요청한다.",
+      "given": "테스트 DB의 exact package/check/binding fixture로 trial/OFF/키 없음/중복 접수 정책을 검사한다. production의 없는 runtime/키를 준비됨으로 표시하지 않는다.",
       "expected": {
         "unapproved_ready_trial": true,
         "no_package_trial": false,
@@ -3970,16 +5179,28 @@
         "C03",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
       "id": "W17-02",
       "title": "결정적 Web·Android check 와 필수 경로",
       "deps": [
-        "W17-01"
+        "W17-01",
+        "W13-01"
       ],
       "files": [
         "src/aiqa/validation/web.py",
@@ -3989,7 +5210,7 @@
       ],
       "contract": "Validator.evaluate(check: CheckSpec, observation: Observation) -> CheckResult",
       "behavior": "관찰가능 locator/state/text/value·Android hierarchy 로 expected 를 현재값과 대조한다. required path 는 실제 action mapping/journal 로 확인하고 API 우회로 목표만달성한 흐름은 위반이다. action 성공/engine done 은 PASS 가 아니다.",
-      "given": "기대값일치/불일치·필수버튼경로누락·조회불가·timeout 과조작성공만있는 흐름을 평가한다.",
+      "given": "명시된 DOM/UI hierarchy/action journal fixture를 입력해 deterministic equal/violated/unknown·필수 경로를 평가한다. 실제 현재 화면과의 binding은 W17-04에서 검증한다.",
       "expected": {
         "equal": "satisfied",
         "mismatch": "violated",
@@ -4012,16 +5233,28 @@
         "C03",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
       "id": "W17-03",
       "title": "명시 AI verifier·unknown 보완·실패 latch",
       "deps": [
-        "W17-02"
+        "W17-02",
+        "W15-03"
       ],
       "files": [
         "src/aiqa/validation/visual.py",
@@ -4030,7 +5263,7 @@
       ],
       "contract": "evaluate_check_policy(check: CheckSpec, observation: Observation, control: RunControl) -> CheckResult",
       "behavior": "deterministic/ai_visual/deterministic_then_ai_unknown 만 허용한다. unknown 보완은 사전허용 check 만, violated 에는 호출해 PASS 로 바꾸지 않는다. parsefail/가림/증거누락/예산부족은 unknown 이며 짧은 관찰/이유/근거를 보존한다.",
-      "given": "deterministic satisfied/violated/unknown·AI timeout·잘못된 JSON·가림·필수위반뒤다음 PASS 를 검증한다.",
+      "given": "테스트용 ModelTransport의 응답/timeout/parse 실패로 선언 check의 호출/unknown/FAIL latch를 검사한다. 실제 provider 호환/호출은 W15-04 및 live gate를 따른다.",
       "expected": {
         "violated_supplement_calls": 0,
         "undeclared_ai_calls": 0,
@@ -4053,16 +5286,30 @@
         "C03",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
       "id": "W17-04",
       "title": "ITEM seal·trial 현재근거·QA 표시",
       "deps": [
-        "W17-03"
+        "W17-03",
+        "W16-07",
+        "W29-05",
+        "W30-03"
       ],
       "files": [
         "src/aiqa/domain/verdicts.py",
@@ -4099,14 +5346,24 @@
         "C07",
         "C09"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 6,
       "id": "W18-01",
       "title": "exact 검토 snapshot·evidence membership",
       "deps": [
-        "W17-04"
+        "W17-03",
+        "W29-04",
+        "W14-03"
       ],
       "files": [
         "src/aiqa/recording/review_manifest.py",
@@ -4115,7 +5372,7 @@
       ],
       "contract": "POST /api/v1/case-versions/{v}/review-requests -> ReviewSnapshot",
       "behavior": "completed/stored source·ready package·sameexact OFF actor0 PASS trial·required evidence ready 를 확인한다. source/trial 의 owner/attempt/action/hash 를 불변 entries 로 고정하고 review30 일보호를 원자 등록한다.",
-      "given": "같은 case 다른 ITEM PNG·같은 A001 다른 attempt·다른 source/hash·storing 중·치유 PASStrial 을 넣는다.",
+      "given": "격리된 DB/정제 파일의 source/trial fact fixture로 exact membership·보호·중복/타 ITEM 거부를 실제 transaction에서 검사한다. 이것은 실제 trial PASS의 근거가 아니다.",
       "expected": {
         "foreign_item_evidence_rejected": true,
         "same_action_id_mixing_rejected": true,
@@ -4140,9 +5397,20 @@
         "C03",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4184,9 +5452,20 @@
         "C03",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4226,9 +5505,20 @@
         "C03",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4270,9 +5560,20 @@
         "C03",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4312,9 +5613,20 @@
         "C03",
         "C05",
         "C07",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W17-04",
+        "W19-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W17-04, W19-04에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4355,9 +5667,20 @@
         "C03",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4373,7 +5696,7 @@
       ],
       "contract": "POST /api/v1/case-versions/{v}/approvals; POST /api/v1/case-versions/{v}/rejections -> DecisionReceipt",
       "behavior": "버튼문구는 이 버전 승인 및 기본 실행본으로 사용. 반려사유/actor/time·candidatehash 를저장하고기록/기존 default 유지다. 409 때새 current/diff 와입력보존, 자동반복승인없음. 실패/중단/반려재녹화후보의 default 유지를 UI 에서검증한다.",
-      "given": "v2 승인→후보실패/중단/반려→새후보승인·동시 409·사유누락 422 를실행한다.",
+      "given": "test DB와 실제 browser에서 v2/후보 실패/반려/동시409·기본본 유지 UI를 검사한다. 실제 재녹화→새 승인 여정은 W19-04에서 검증한다.",
       "expected": {
         "failed_candidate_changes_default": false,
         "rejected_record_deleted": false,
@@ -4398,9 +5721,20 @@
         "C03",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 6,
@@ -4442,16 +5776,30 @@
         "C03",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 6,
       "id": "W19-04",
       "title": "과거 승인·새 기본본·suite/RUN 불변 통합",
       "deps": [
-        "W19-03"
+        "W19-03",
+        "W16-08",
+        "W16-04",
+        "W17-04"
       ],
       "files": [
         "tests/integration/test_approval_lifecycle.py",
@@ -4486,14 +5834,25 @@
         "C09",
         "C10"
       ],
-      "doc_file": "07-trial-and-review.md"
+      "doc_file": "07-trial-and-review.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 7,
       "id": "W31-01",
       "title": "실행별 healing 정책·ON/OFF snapshot",
       "deps": [
-        "W19-04"
+        "W19-01",
+        "W15-03",
+        "W13-03"
       ],
       "files": [
         "src/aiqa/healing/policy.py",
@@ -4501,7 +5860,7 @@
         "src/aiqa/contracts/healing.py"
       ],
       "contract": "resolve_healing_policy(version: CaseVersion, request: HealingRequest, global_limits: Limits) -> ResolvedHealingPolicy",
-      "behavior": "기본 OFF·approved capability/scope/binding/예산을검증하고더좁은 global 한도와교집합을 snapshot 한다. trial 은 OFF·진행중토글불가·권한/모델/상한확대는새 version/승인이다.",
+      "behavior": "기본 OFF·approved capability/scope/binding/예산을검증하고더좁은 global 한도와교집합을 snapshot 한다. trial 은 OFF·진행중토글불가·권한/모델/상한확대는새 version/승인이다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
       "given": "allowedfalse 에서 ON·scope 확대·healerkey 없음·trialON·접수후 global/버전변경을요청한다.",
       "expected": {
         "default_enabled": false,
@@ -4526,9 +5885,19 @@
         "C05",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4543,7 +5912,7 @@
         "src/aiqa/store/healing.py"
       ],
       "contract": "reserve_healing_episode(input: HealingTrigger, control: RunControl) -> HealingEpisodeReceipt",
-      "behavior": "target_not_found/ambiguous/layoutshift 의 read-only lookup 이며 dispatch_started 이력없을때만허용한다. ITEM episode1·모델합계 2 회(전송 retry 포함)·30 초/잔여 job·lease·예산중더엄격한한도를원자예약한다.",
+      "behavior": "target_not_found/ambiguous/layoutshift 의 read-only lookup 이며 dispatch_started 이력없을때만허용한다. ITEM episode1·모델합계 2 회(전송 retry 포함)·30 초/잔여 job·lease·예산중더엄격한한도를원자예약한다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
       "given": "동시 trigger·중복 key·OFF·dispatch 후 timeout·rotation·제품위반·lease 부족을검사한다.",
       "expected": {
         "episodes_per_item_max": 1,
@@ -4569,9 +5938,19 @@
         "C05",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4586,7 +5965,7 @@
         "src/aiqa/models/broker.py"
       ],
       "contract": "HealingService.propose(input: HealingContext) -> HealingProposal; validate_healing_proposal(proposal: HealingProposal, observation: Observation) -> HealingDecision",
-      "behavior": "모델은 target 후보만 typed 반환하고신뢰코드가승인 role/name+container 또는 resource-id/text/context·unique/visible/enabled·동일 action/input/path 를증명한다. 좌표후보는검증된현재 elementbounds 안에서만. visual-only/canvas/newsemanticguess 는 MVP 거부다.",
+      "behavior": "모델은 target 후보만 typed 반환하고신뢰코드가승인 role/name+container 또는 resource-id/text/context·unique/visible/enabled·동일 action/input/path 를증명한다. 좌표후보는검증된현재 elementbounds 안에서만. visual-only/canvas/newsemanticguess 는 MVP 거부다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
       "given": "같은대상 locator 변경·동명이중 target·다른버튼·입력값변경·팝업닫기·canvas·범위밖좌표를제안한다.",
       "expected": {
         "same_target_proven": true,
@@ -4612,9 +5991,19 @@
         "C05",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4629,7 +6018,7 @@
         "src/aiqa/domain/verdicts.py"
       ],
       "contract": "apply_runtime_override(input: AcceptedHealingProposal, control: RunControl) -> ActionObservation",
-      "behavior": "accepted target 만해당 ITEM 에 appendoverride 하고원래동작을공통 journal/capture 경로로 1 회 dispatch 한다. 원래 lookup 오류/제안/결정/거부/usage 를보존하고실제 check 를새로수행한다. 필수위반은 FAIL·laterterminal 변경 0 이다.",
+      "behavior": "accepted target 만해당 ITEM 에 appendoverride 하고원래동작을공통 journal/capture 경로로 1 회 dispatch 한다. 원래 lookup 오류/제안/결정/거부/usage 를보존하고실제 check 를새로수행한다. 필수위반은 FAIL·laterterminal 변경 0 이다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
       "given": "치유성공+모든 checkPASS·후속 expected 불일치·정제실패·dispatchtimeout·한도소진을검증한다.",
       "expected": {
         "original_action_dispatches": 1,
@@ -4656,16 +6045,27 @@
         "C05",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
     },
     {
       "area": 7,
       "id": "W31-05",
       "title": "불변 repair proposal·전체 재녹화 채택",
       "deps": [
-        "W31-04"
+        "W31-04",
+        "W16-08"
       ],
       "files": [
         "src/aiqa/healing/proposals.py",
@@ -4674,7 +6074,7 @@
         "src/aiqa/web/templates/components/repair_proposal.html"
       ],
       "contract": "POST /api/v1/healing-episodes/{e}/repair-proposals -> RepairProposalView; GET /api/v1/repair-proposals/{p}; POST /api/v1/cases/{c}/rerecordings(repair_proposal_id)",
-      "behavior": "episode/원래 package/acceptedtarget·diff/근거 hash 로불변제안을멱등저장한다. 사용자 diff 확인/사유후새 input/전체 REC 로채택하고 adoptionevent 를 append 한다. 바로 codepatch/승인·부분 merge·기본본수정은없다.",
+      "behavior": "episode/원래 package/acceptedtarget·diff/근거 hash 로불변제안을멱등저장한다. 사용자 diff 확인/사유후새 input/전체 REC 로채택하고 adoptionevent 를 append 한다. 바로 codepatch/승인·부분 merge·기본본수정은없다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
       "given": "같은 episode 제안중복·다른 case 제안채택·새 REC 실패·원래 script/default/suite/exporthash 를검사한다.",
       "expected": {
         "duplicate_proposal_same": true,
@@ -4702,9 +6102,19 @@
         "C06",
         "C07",
         "C09",
-        "C08"
+        "C08",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4721,8 +6131,8 @@
         "src/aiqa/api/healing.py"
       ],
       "contract": "GET /api/v1/case-runs/{i}/healing-episodes -> HealingTimeline",
-      "behavior": "UI04/07 승인 scope·UI09OFF/ON/최대 1episode2 호출 30 초·UI10 phase/counters·UI11 원래 오류→제안→정책/동일 target→override→dispatch→QA 를표시한다. 치유 PASS 는 badge·진행중 toggle 없음·terminal 실패치유는새수행링크다.",
-      "given": "기본 OFF·ON 정상 0 호출·치유성공/거부/실패·제품 FAIL·terminal 후화면을검사한다.",
+      "behavior": "UI04/07 승인 scope·UI09OFF/ON/최대 1episode2 호출 30 초·UI10 phase/counters·UI11 원래 오류→제안→정책/동일 target→override→dispatch→QA 를표시한다. 치유 PASS 는 badge·진행중 toggle 없음·terminal 실패치유는새수행링크다. 실제 native/모델 연동 수용은 별도 live gate에 남기고 이 카드의 contract fixture 검증과 구분한다.",
+      "given": "실제 API/브라우저에 격리된 episode/check/usage fixture를 넣어 OFF·ON 정상0호출·복구/거부/FAIL·terminal 표시를 검사한다. 실제 치유 정확성/dispatch/한도는 W31-07에서 검증한다.",
       "expected": {
         "default_toggle_off": true,
         "running_toggle_enabled": false,
@@ -4751,16 +6161,88 @@
         "C05",
         "C06",
         "C07",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08a-self-healing.md"
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W31-07"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W31-07에서 별도로 요구한다."
+    },
+    {
+      "area": 7,
+      "id": "W31-07",
+      "title": "양 플랫폼 실제 셀프힐링·QA 불변 통합 gate",
+      "deps": [
+        "W31-06",
+        "W19-04",
+        "W29-05",
+        "W30-03",
+        "W15-04"
+      ],
+      "files": [
+        "tests/integration/test_healing_live.py",
+        "docs/validation/healing-live.md"
+      ],
+      "contract": "validate_live_healing(input: LiveHealingFixture) -> HealingGateReport",
+      "behavior": "W31-01–06의 계약/관리 UI 구현과 별도로 실제 Web/Android target 변경을 허용된 모델 binding으로 치유한다. 실제 lookup/dispatch 전후 evidence·원래 오류·동일 target 증명·episode1/전송retry포함2호출/30초·제품 FAIL/불명 재dispatch0·원본 code/default 불변을 검증한다. core fixture PASS는 이 live gate를 대체하지 않는다.",
+      "given": "각 플랫폼의 승인된 합성 case에서 정상/OFF·허용 target 변경/ON·expected 위반·navigation/ADB 결과 불명·예산/lease 소진을 실제 실행하고 사람 oracle과 비교한다. VM/USB/key가 없으면 blocked로 남기고 core 작업을 되돌리지 않는다.",
+      "expected": {
+        "platforms": 2,
+        "false_passes": 0,
+        "unknown_action_redispatches": 0,
+        "healer_calls_per_episode_max": 2,
+        "source_hash_changed": false
+      },
+      "covers": [
+        "R06",
+        "R16",
+        "R17",
+        "R33",
+        "R34"
+      ],
+      "status": "not_started",
+      "test_file": "tests/integration/test_healing_live.py",
+      "test_name": "test_w31_07",
+      "test_command": "python -m pytest tests/integration/test_healing_live.py::test_w31_07 -q",
+      "evidence_path": "docs/validation/tasks/W31-07.md",
+      "read_contracts": [
+        "C00",
+        "C01",
+        "C04",
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C09",
+        "C14"
+      ],
+      "doc_file": "08a-self-healing.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 7,
       "id": "W20-01",
       "title": "정식 preview·exact 승인·명시 제외",
       "deps": [
-        "W31-06"
+        "W17-01",
+        "W19-01",
+        "W31-01",
+        "W29-04"
       ],
       "files": [
         "src/aiqa/domain/executions.py",
@@ -4792,9 +6274,19 @@
         "C01",
         "C03",
         "C08",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4833,9 +6325,19 @@
         "C01",
         "C03",
         "C08",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4874,9 +6376,19 @@
         "C01",
         "C03",
         "C08",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4918,9 +6430,19 @@
         "C01",
         "C03",
         "C08",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4956,9 +6478,19 @@
         "C00",
         "C01",
         "C02",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -4995,9 +6527,19 @@
         "C00",
         "C01",
         "C02",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5035,9 +6577,19 @@
         "C00",
         "C01",
         "C02",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5077,9 +6629,19 @@
         "C00",
         "C01",
         "C02",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5118,9 +6680,19 @@
         "C00",
         "C01",
         "C02",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5158,9 +6730,19 @@
         "C00",
         "C01",
         "C04",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5199,9 +6781,19 @@
         "C00",
         "C01",
         "C04",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
@@ -5242,16 +6834,29 @@
         "C00",
         "C01",
         "C04",
-        "C09"
+        "C09",
+        "C14"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W22-04"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W22-04에서 별도로 요구한다."
     },
     {
       "area": 7,
       "id": "W22-04",
       "title": "수행 편집·원본·취소·재시작 통합 동선",
       "deps": [
-        "W22-03"
+        "W22-03",
+        "W17-04",
+        "W19-04",
+        "W31-07"
       ],
       "files": [
         "tests/acceptance/test_execution_lifecycle.py",
@@ -5285,7 +6890,16 @@
         "C04",
         "C09"
       ],
-      "doc_file": "08b-execution-and-suites.md"
+      "doc_file": "08b-execution-and-suites.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 8,
@@ -5323,9 +6937,20 @@
         "C03",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5334,7 +6959,7 @@
       "deps": [
         "W23-01",
         "W18-02",
-        "W22-04"
+        "W20-04"
       ],
       "files": [
         "src/aiqa/api/case_runs.py",
@@ -5369,9 +6994,20 @@
         "C03",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5412,9 +7048,20 @@
         "C03",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5460,9 +7107,20 @@
         "C03",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5505,9 +7163,20 @@
         "C03",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5544,9 +7213,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5583,9 +7263,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5625,9 +7316,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5668,9 +7370,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5709,9 +7422,20 @@
         "C00",
         "C01",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5750,9 +7474,20 @@
         "C01",
         "C03",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5790,9 +7525,20 @@
         "C01",
         "C03",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 8,
@@ -5832,9 +7578,20 @@
         "C01",
         "C03",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "09-results-and-analytics.md"
+      "doc_file": "09-results-and-analytics.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
@@ -5875,9 +7632,20 @@
         "C04",
         "C08",
         "C10",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
@@ -5918,9 +7686,20 @@
         "C04",
         "C08",
         "C10",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
@@ -5963,9 +7742,20 @@
         "C04",
         "C08",
         "C10",
-        "C11"
+        "C11",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
@@ -6009,9 +7799,20 @@
         "C08",
         "C10",
         "C11",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
@@ -6057,16 +7858,28 @@
         "C08",
         "C10",
         "C11",
-        "C12"
+        "C12",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
       "id": "W27-01",
       "title": "중복·늦은 event·finish·복구 경합 matrix",
       "deps": [
-        "W26-05"
+        "W26-05",
+        "W22-04"
       ],
       "files": [
         "tests/integration/test_fault_delivery.py",
@@ -6103,7 +7916,16 @@
         "C09",
         "C10"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6149,7 +7971,16 @@
         "C09",
         "C10"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6194,14 +8025,25 @@
         "C09",
         "C10"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
       "id": "W27-04",
       "title": "metadata 부하·query plan·문서 추적 재대조",
       "deps": [
-        "W27-03"
+        "W26-05",
+        "W24-05",
+        "W06-09"
       ],
       "files": [
         "tools/validation/benchmark_metadata.py",
@@ -6210,7 +8052,7 @@
       ],
       "contract": "benchmark_metadata(input: MetadataWorkload) -> MetadataBenchmarkReport",
       "behavior": "합성 ITEM10000/action100000 의실제 DB/queryplan·최근 30 일추세 p95≤1000ms·event200 개 pagep95≤500ms 제안목표를측정한다. 파일 IO/기기지연은별도, DATA22/실행 10 시나리오의근거 task/결함상태를대조한다.",
-      "given": "같은 indexedDB 에서조건/반복수/장비와측정치·누락근거를기록한다.",
+      "given": "합성 전용 DB에서 ITEM10000/action100000과 query plan/p95를 실제 측정한다. 규범 시나리오별 담당/미실행/차단을 추적하되 native 부정 시험의 PASS를 요구하거나 만들어내지 않는다.",
       "expected": {
         "items": 10000,
         "actions": 100000,
@@ -6238,16 +8080,28 @@
         "C07",
         "C08",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
       "id": "W32-01",
       "title": "role 비용·계측 누락·표본 산식 검증",
       "deps": [
-        "W27-04"
+        "W24-05",
+        "W15-03"
       ],
       "files": [
         "src/aiqa/domain/costs.py",
@@ -6256,7 +8110,7 @@
       ],
       "contract": "summarize_workload_cost(input: WorkloadFacts) -> WorkloadCostSummary",
       "behavior": "authoring/verification/healing/maintenance·모든 retry/check/episode·tariff/통화/partial·lateledger/asof·미사용 0/누락 null 을검증한다. 서로다른통화를임의합산하지않고기기점유시간은달러로꾸미지않는다.",
-      "given": "2role 측정+1role 미보고·healer 전송 retry·가격변경·복수통화·lateasoffixture 를집계한다.",
+      "given": "명시된 fixture tariff/call/ledger로 role·retry·null/미사용·통화·as_of 산식을 검사한다. fixture 가격을 실제 단가/월 비용으로 표시하지 않는다.",
       "expected": {
         "unreported_usage": null,
         "unused_role_cost": "0",
@@ -6277,16 +8131,31 @@
         "C01",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
       "id": "W32-02",
       "title": "대표 30–50 TC·3 구성·실제 품질/비용 측정",
       "deps": [
-        "W32-01"
+        "W32-01",
+        "W22-04",
+        "W31-07",
+        "W27-03",
+        "W27-04"
       ],
       "files": [
         "tools/validation/benchmark_replay.py",
@@ -6322,7 +8191,16 @@
         "C09",
         "C10"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "live_integration",
+      "environment_requirements": [
+        "local_python",
+        "local_linux_vm",
+        "usb_android",
+        "model_binding"
+      ],
+      "verification_scope": "live_integration",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6363,16 +8241,33 @@
         "C01",
         "C06",
         "C09",
-        "C10"
+        "C10",
+        "C14"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W28-02",
+        "W28-03"
+      ],
+      "scope_note": "완료 범위는 이 카드의 실제 API/DB/파일/브라우저 계약 구현이다. 장치·모델 관찰 입력은 tests/의 명시된 fixture로 검사할 수 있지만 생산 경로에 fake adapter/관측/PASS를 넣지 않는다. 해당 실제 환경 통과는 W28-02, W28-03에서 별도로 요구한다."
     },
     {
       "area": 9,
       "id": "W28-01",
       "title": "전체 추적표·부분 구현·차단·후속 경계 audit",
       "deps": [
-        "W32-03"
+        "W32-03",
+        "W03-03",
+        "W07-04",
+        "W12-03",
+        "W16-07",
+        "W27-03",
+        "W31-07"
       ],
       "files": [
         "docs/validation/coverage-audit.md",
@@ -6411,7 +8306,13 @@
         "C10",
         "C11"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "final_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "final_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6461,7 +8362,13 @@
         "C10",
         "C11"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "final_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "final_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6513,7 +8420,13 @@
         "C10",
         "C11"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "final_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "final_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6564,7 +8477,13 @@
         "C10",
         "C11"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "final_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "final_gate",
+      "live_acceptance_tasks": []
     },
     {
       "area": 9,
@@ -6613,7 +8532,81 @@
         "C10",
         "C11"
       ],
-      "doc_file": "10-retention-and-release-gates.md"
+      "doc_file": "10-retention-and-release-gates.md",
+      "work_kind": "final_gate",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "final_gate",
+      "live_acceptance_tasks": []
     }
-  ]
+  ],
+  "area_count": 15,
+  "complete_count": 1,
+  "blocked_count": 1,
+  "known_environment": {
+    "local_python": {
+      "status": "available",
+      "evidence": "기존 Python3.11 probe/문서 검사 실행; W00에서 최소 의존성 환경 별도 검증"
+    },
+    "windows_host": {
+      "status": "available",
+      "evidence": "docs/validation/tasks/W01-02.md"
+    },
+    "local_linux_vm": {
+      "status": "unavailable",
+      "evidence": "docs/validation/tasks/W01-02.md",
+      "resume": "같은 PC 격리 Linux VM 준비 및 실제 script/driver 거부 근거"
+    },
+    "usb_android": {
+      "status": "unknown",
+      "evidence": null
+    },
+    "model_binding": {
+      "status": "unknown",
+      "evidence": null
+    },
+    "apk_metadata_tools": {
+      "status": "unknown",
+      "evidence": null
+    }
+  },
+  "parent_gate_tasks": {
+    "W00": [],
+    "W07": [
+      "W07-04"
+    ],
+    "W12": [
+      "W27-02"
+    ],
+    "W13": [
+      "W16-04",
+      "W29-03",
+      "W30-03"
+    ],
+    "W18": [
+      "W17-04"
+    ],
+    "W20": [
+      "W22-04"
+    ],
+    "W21": [
+      "W22-04"
+    ],
+    "W23": [
+      "W22-04",
+      "W31-07"
+    ],
+    "W24": [
+      "W22-04"
+    ]
+  },
+  "post_implementation_review": {
+    "date": "2026-11-01",
+    "scope": "R01-R20/V01",
+    "status": "complete",
+    "evidence": "docs/validation/reviews/2026-11-01-remediation-result.md",
+    "verification": "docs/validation/reviews/remediation-summary.json",
+    "new_completions": 0
+  }
 }

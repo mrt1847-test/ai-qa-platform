@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{% if step == "device" %}기기 단계{% elif step == "cases" %}저장 케이스{% elif step == "bundles" %}묶음{% else %}프로젝트 개요{% endif %}{% endblock %}
+{% block content %}
+  {% if step == "device" %}
+  <h1>기기 단계</h1>
+  <p>녹화를 시작하기 전에 기기를 고릅니다. 이 화면은 기기를 열지 않습니다.</p>
+  <p><a href="/ui/projects/{{ overview.project_id }}/overview">프로젝트 개요</a></p>
+  {% elif step == "cases" %}
+  <h1>저장 케이스</h1>
+  <p>초안 {{ overview.draft_cases }} · 승인 {{ overview.approved_cases }}</p>
+  <p><a href="/ui/projects/{{ overview.project_id }}/overview">프로젝트 개요</a></p>
+  {% elif step == "bundles" %}
+  <h1>묶음</h1>
+  <p>대기 실행 {{ overview.queued_runs }}</p>
+  <p><a href="/ui/projects/{{ overview.project_id }}/overview">프로젝트 개요</a></p>
+  {% else %}
+  <h1>프로젝트 개요</h1>
+  <ul class="entries">
+    <li>미완성 녹화 {{ overview.incomplete_recordings }}</li>
+    <li>검토 대기 {{ overview.reviews_waiting }}</li>
+    <li>미분류 실패 {{ overview.unclassified_failures }}</li>
+    <li>진행 실행 {{ overview.running_runs }}</li>
+    <li>대기 실행 {{ overview.queued_runs }}</li>
+    <li>차단 환경 {{ overview.blocked_environments }}</li>
+    <li>초안 {{ overview.draft_cases }}</li>
+    <li>승인 {{ overview.approved_cases }}</li>
+    <li>최근 범위 {{ overview.recent_scope or "없음" }}</li>
+    <li>최근 결과 {{ overview.recent_result or "없음" }}</li>
+  </ul>
+  <p>
+    <a href="{{ overview.new_recording_href }}">새 녹화</a>
+    <a href="{{ overview.saved_cases_href }}">저장 케이스</a>
+    <a href="{{ overview.bundle_href }}">묶음</a>
+  </p>
+  {% endif %}
+{% endblock %}

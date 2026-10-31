@@ -1,6 +1,6 @@
 # AI QA 플랫폼 UI 설계 v0.6
 
-개정일: **2026-10-31 (Asia/Seoul)** · 상태: 검토용 설계, 제품 코드 미구현.
+규범 개정일: **2026-10-31 (Asia/Seoul)** · 상태: UI 설계 규범, 일부 core 구현. 실제 구현/미완료 범위는 [WORK_PROGRESS](WORK_PROGRESS.md)를 따른다. 2026-11-01 [계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)는 실제 앱 라우터·편집 snapshot 보존·mutation 인증·TC 동작을 수정·검증했으며 이후 native/전체 시각·사용성 수용을 대신하지 않는다.
 
 기준: 첨부 UI 문서보다 최신인 사용자 결정 — 검증 내용과 녹화 기록을 자동화 케이스 하나에 보관하고 TC 관리는 선택적으로 둔다. [DESIGN.md](DESIGN.md)는 중심 설계, [RESEARCH.md](RESEARCH.md)는 공개 엔진 근거, [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)는 구현 준비 문서다. [v0.3 UI](docs/history/v0.3/UI_SPEC.md)와 [v0.4 UI](docs/history/v0.4/UI_SPEC.md)는 보관했다. DB 제약·원자 승인·전체 재녹화·장기 분석/보관은 [DATA_DESIGN.md](DATA_DESIGN.md)가 상세 규범이다. 아래 화면/API는 제안 플랫폼 계약이며 현재 엔진에 이미 있는 제품 기능이 아니다.
 
@@ -589,7 +589,7 @@ Idempotency-Key는 header다. preview는 자원 예약이 아니며 enqueue/clai
 
 ## 10. v0.7 구현 지시·UI 누락 점검 보완
 
-[실행 안내](docs/execution/README.md)에서158개 작업을14개 영역으로 나눈다. [UI_COVERAGE](docs/execution/UI_COVERAGE.md)는 기본15화면+선택TC1화면과 공통 상태를94개 조작·상태 묶음으로 연결한다. 각 묶음의 필드/버튼/이동/성공/거부/빈 상태를 담당 leaf가 구현하며 W28에서 실제 UI로 통합 확인한다. 화면/메뉴 존재만으로 합격하지 않는다. 기존7개 와이어프레임과21개 UI 합격 조건은 유지한다.
+[실행 안내](docs/execution/README.md)에서163개 작업을15개 영역으로 나눈다. [UI_COVERAGE](docs/execution/UI_COVERAGE.md)는 기본15화면+선택TC1화면과 공통 상태를94개 조작·상태 묶음으로 연결한다. 각 묶음의 필드/버튼/이동/성공/거부/빈 상태를 담당 leaf가 구현하며 W28에서 실제 UI로 통합 확인한다. 화면/메뉴 존재만으로 합격하지 않는다. 기존7개 와이어프레임과21개 UI 합격 조건은 유지한다.
 
 - UI04의 case별 실행 설정·verifier method/binding·healing allowed/scope/상한은 W10-11이 편집한다. UI15 global/default 변경과 구별하며 의미 변경은 새 draft/package=null·새 전체 REC다.
 - UI04/05 구조화·UI16 TC import diff는 영속 proposal/base/hash로 조회하고 명시 수락만 새 version으로 저장한다. 거부/실패/중복/오래된 base/409의 입력과 사유를 표시한다.
@@ -603,3 +603,9 @@ Idempotency-Key는 header다. preview는 자원 예약이 아니며 enqueue/clai
 앞선 작업에서 UI shell만 있는 탭은 실제 기능의 담당 ID/미준비 이유를 표시한다. 성공 mock으로 대체하지 않는다. [모델 인계](docs/execution/HANDOFF.md)는 해당 카드/공통 계약 절/직접 선행 근거만 전달하도록 하며 이전 대화 기억을 전제로 하지 않는다. 이 개정은 샘플 제품 코드를 수정하지 않았다.
 
 UI15 백업/복원은 **이 PC 전체 저장소**라는 범위·모든 project에 미치는 영향·진행 작업 정리를 표시한다. local_owner만 접수/조회/다운로드/활성화할 수 있고 project별 백업으로 표시하지 않는다.
+
+## 11. v0.8 기본 페이지와 UI 계약·실제 수용
+
+W00-03은 제품 서버의 template/static 연결만 검증하는 기본 페이지다. 기존16화면/94개 UI 의무 묶음/21개 최종 동선을 대체하지 않는다. 이 단계에서 mock dashboard·fake device/승인/통계를 만들지 않는다.
+W10 이후 관리 UI는 실제 API/DB와 tests 전용 외부 관찰로 상태/오류/입력·조회 계약을 구현할 수 있다. VM 없는 생산 환경은 미준비/차단 이유를 표시하며 성공으로 대체하지 않는다. 실제 기기/모델 여정·치유·최종 수용은 COVERAGE의 live 담당(추가 W31-07 포함)에서 요구한다.
+외부 차단은 NEXT_ACTION 대기에 남기고 준비된 독립 core를 선택한다. 자세한 검증 등급/완료 경계는 [C14](docs/execution/CONTRACTS.md)다.

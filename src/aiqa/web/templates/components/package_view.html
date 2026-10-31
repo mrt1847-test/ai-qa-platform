@@ -1,0 +1,10 @@
+<section id="snapshot" data-editable="false">
+  {% if board.replay_package_id %}
+  <p>패키지 준비됨</p>
+  {% else %}
+  <p>패키지가 없습니다.</p>
+  {% endif %}
+  <p>REC가 없습니다.</p>
+  <p>trial이 없습니다.</p>
+  <p>{{ board.selected_text }}</p>
+</section>

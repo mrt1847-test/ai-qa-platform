@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}케이스{% endblock %}
+{% block content %}
+  <h1>{% if step == "detail" %}케이스 상세{% elif step == "run" %}{{ entry_title }}{% elif step == "review" %}{{ entry_title }}{% else %}케이스{% endif %}</h1>
+  {% if step == "run" or step == "review" %}
+  <p>{{ entry_message }}</p>
+  <p><a href="{{ list_href_full }}">목록으로</a></p>
+  {% elif step == "detail" %}
+  {% for item in items %}
+  <p>{{ item.name }}</p>
+  <p>TC {% if item.tc_reference %}{{ item.tc_reference }}{% else %}없음{% endif %}</p>
+  {% endfor %}
+  <p><a href="{{ list_href_full }}">목록으로</a></p>
+  {% for item in items %}
+  <p><a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/definition">검증</a></p>
+  {% endfor %}
+  {% else %}
+  <form id="create-case" method="post" action="/api/v1/projects/{{ project_id }}/cases">
+    <label>새 케이스 이름 <input name="name" required></label>
+    <input type="submit" value="케이스 만들기">
+  </form>
+  <p id="case-create-status" role="status"></p>
+  <script src="/static/case_create.js"></script>
+  <nav aria-label="케이스 범위">
+    <a href="/ui/projects/{{ project_id }}/cases?view=all&amp;sort={{ sort }}">전체</a>
+    <a href="/ui/projects/{{ project_id }}/cases?view=ready&amp;sort={{ sort }}">가능</a>
+    <a href="/ui/projects/{{ project_id }}/cases?view=draft&amp;sort={{ sort }}">초안</a>
+    <a href="/ui/projects/{{ project_id }}/cases?view=review&amp;sort={{ sort }}">검토</a>
+    <a href="/ui/projects/{{ project_id }}/cases?view=incomplete&amp;sort={{ sort }}">미완성</a>
+    <a href="/ui/projects/{{ project_id }}/cases?view=archived&amp;sort={{ sort }}">보관</a>
+  </nav>
+  <form method="get" action="/ui/projects/{{ project_id }}/cases">
+    <input type="search" name="q" data-query="filter" value="{{ q }}" aria-label="케이스 검색">
+    <input type="hidden" name="sort" data-query="sort" value="{{ sort }}">
+    <input type="hidden" name="cursor" data-query="page" value="{{ query.cursor }}">
+    <input type="hidden" name="selected" data-query="selected" value="{{ selected }}">
+    <input type="hidden" name="view" value="{{ view }}">
+    <input type="submit" value="검색">
+  </form>
+  <p data-page-size="{{ page_size }}">페이지 크기 {{ page_size }}</p>
+  <p>
+    <a href="/ui/projects/{{ project_id }}/cases/run?selected={{ selected }}">선택 실행</a>
+    <a href="/ui/projects/{{ project_id }}/bundles?selected={{ selected }}">묶음 추가</a>
+    <a href="/ui/projects/{{ project_id }}/recordings/new">새 녹화</a>
+  </p>
+  <form id="bulk-clone" method="post" action="/ui/projects/{{ project_id }}/cases/bulk">
+    <input type="hidden" name="bulk_action" value="clone">
+    <input type="submit" value="복제">
+  </form>
+  <form id="bulk-archive" method="post" action="/ui/projects/{{ project_id }}/cases/bulk">
+    <input type="hidden" name="bulk_action" value="archive">
+    <input type="submit" value="보관">
+  </form>
+  {% include "components/bulk_confirm.html" %}
+  <table>
+    <thead>
+      <tr>
+        <th>선택</th><th>ID</th><th>이름</th><th>TC</th><th>우선순위</th><th>승인</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr data-name="{{ item.name }}" data-lock="{{ item.lock_version }}">
+        <td><input type="checkbox" name="selected" value="{{ item.case_id }}"{% if selected == item.case_id|string %} checked{% endif %}></td>
+        <td>{{ item.case_id }}</td>
+        <td>
+          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}?{{ list_href_full.split('?', 1)[1] }}">{{ item.name }}</a>
+          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}">상세</a>
+          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">검토</a>
+          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/run">실행</a>
+        </td>
+        <td>{% if item.tc_reference %}{{ item.tc_reference }}{% else %}없음{% endif %}</td>
+        <td>{{ item.priority or "없음" }}</td>
+        <td>{% if item.current_approval_id %}있음{% else %}없음{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if next_cursor %}
+  <p><a href="/ui/projects/{{ project_id }}/cases?q={{ q }}&amp;sort={{ sort }}&amp;view={{ view }}&amp;cursor={{ next_cursor }}&amp;selected={{ selected }}">다음</a></p>
+  {% endif %}
+  <div data-columns="name,priority"></div>
+  {% endif %}
+  <script src="/static/case_list.js"></script>
+  <script src="/static/case_bulk.js"></script>
+{% endblock %}

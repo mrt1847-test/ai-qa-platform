@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}AI QA 기본 실행 환경{% endblock %}
+{% block content %}
+  <div class="mark"></div>
+  <h1>AI QA 기본 실행 환경</h1>
+  <p>이 화면은 로컬 제품 서버가 기본 페이지와 스타일을 제공하는지 보여 줍니다.</p>
+  {% if connection_error %}
+  <p id="liveness" class="connection-error" role="status">API에 연결할 수 없습니다.</p>
+  {% else %}
+  <p id="liveness" class="liveness" role="status">API liveness: status {{ health_status }}, component {{ health_component }}.</p>
+  {% endif %}
+  <p>아래 항목은 아직 구성되지 않았습니다.</p>
+  <ul class="unconfigured">
+    <li>기기: 미구성</li>
+    <li>모델: 미구성</li>
+    <li>프로젝트: 미구성</li>
+    <li>녹화: 미구성</li>
+    <li>승인: 미구성</li>
+  </ul>
+  <script>
+    (function () {
+      var node = document.getElementById("liveness");
+      fetch("/api/v1/health", {headers: {accept: "application/json"}})
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("http");
+          }
+          return response.json();
+        })
+        .then(function (body) {
+          if (!body || body.status !== "ok" || body.component !== "api") {
+            throw new Error("body");
+          }
+          node.textContent = "API liveness: status " + body.status + ", component " + body.component + ".";
+        })
+        .catch(function () {
+          node.className = "connection-error";
+          node.textContent = "API에 연결할 수 없습니다.";
+        });
+    })();
+  </script>
+{% endblock %}

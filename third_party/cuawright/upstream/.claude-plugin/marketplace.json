@@ -1,0 +1,26 @@
+{
+  "name": "cuawright",
+  "owner": {
+    "name": "Microsoft Research",
+    "url": "https://github.com/microsoft/Webwright"
+  },
+  "plugins": [
+    {
+      "name": "cuawright",
+      "source": {
+        "source": "github",
+        "repo": "microsoft/Webwright"
+      },
+      "description": "CUAWright browser automation skill; desktop runtime available through cuawright-desktop.",
+      "version": "0.2.0",
+      "category": "automation",
+      "keywords": [
+        "browser",
+        "playwright",
+        "web-agent",
+        "automation",
+        "rpa"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}기본 설정{% endblock %}
+{% block content %}
+  <h1>기본 설정</h1>
+  <p>전역 기본 timeout 600. 케이스 값과 프로젝트 기본은 따로 저장된다.</p>
+  <p>키는 한 번 입력한 뒤 비웁니다. 모델 연결 검사는 이 화면에 없습니다.</p>
+  <p id="settings-note"></p>
+  <form id="project-settings" method="post" action="/ui/projects/{{ project_id }}/settings">
+    <input id="settings-lock" type="hidden" value="{{ settings.lock_version }}">
+    <label>실패 정책 <input name="failure_policy" value="{{ settings.failure_policy }}"></label>
+    <label>보관 <input name="retention" value="{{ settings.retention }}"></label>
+    <label>timeout <input name="timeout_seconds" value="{{ settings.timeout_seconds }}"></label>
+    <label>healing 범위 <input name="healing_scope" value="{{ settings.healing_scope }}"></label>
+    {% for role in roles %}
+    <fieldset>
+      <legend>{{ role }}</legend>
+      <label>endpoint <input name="endpoint-{{ role }}" value=""></label>
+      <label>model <input name="model-{{ role }}" value=""></label>
+      <label>키 <input name="key-{{ role }}" value=""></label>
+    </fieldset>
+    {% endfor %}
+    <input type="submit" value="설정 저장">
+  </form>
+  <ul>
+    {% for item in settings.bindings %}
+    <li>{{ item.role }} {{ item.model }}</li>
+    {% endfor %}
+  </ul>
+  <script>
+    (function () {
+      var form = document.getElementById("project-settings");
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var roles = ["authoring", "verification", "healing", "maintenance"].map(function (role) {
+          return {
+            role: role,
+            endpoint: form["endpoint-" + role].value,
+            model: form["model-" + role].value,
+            key: form["key-" + role].value
+          };
+        });
+        roles.forEach(function (item) {
+          form["key-" + item.role].value = "";
+        });
+        aiqaRequest(form.getAttribute("action"), {
+          method: "POST",
+          headers: {"content-type": "application/json", "Idempotency-Key": window.crypto.randomUUID()},
+          body: JSON.stringify({
+            expected_lock: Number(document.getElementById("settings-lock").value),
+            failure_policy: form.failure_policy.value,
+            retention: form.retention.value,
+            timeout_seconds: Number(form.timeout_seconds.value),
+            healing_scope: form.healing_scope.value,
+            roles: roles
+          })
+        }).then(function (response) {
+          if (response.status === 201 || response.status === 200) {
+            window.location.reload();
+          } else {
+            document.getElementById("settings-note").textContent = "입력은 그대로입니다.";
+          }
+        });
+      });
+    })();
+  </script>
+{% endblock %}

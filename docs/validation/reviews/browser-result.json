@@ -1,0 +1,199 @@
+{
+  "passed": true,
+  "project": "f7966729-1df6-4865-ab4c-262118508f54",
+  "caseId": "524b1aac-d898-492b-94dd-498099c63d97",
+  "runtime": "C:\\Users\\cease\\AppData\\Local\\Temp\\aiqa-review-browser-fd18d03f-5600-43d4-b5fc-b02cab9d7d03",
+  "mutations": [
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": false
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/ui/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/definition",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/versions",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/ui/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/definition",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/ui/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/steps",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/ui/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/settings",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/tcs",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/tcs/7eaeff46-8c0c-4054-ab7d-d8337b96cab1/clone",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/tcs/7eaeff46-8c0c-4054-ab7d-d8337b96cab1/archive",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/tc-reference",
+      "method": "PUT",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/tc-reference",
+      "method": "DELETE",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/tc-import-proposals",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/proposal-rejections",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/tc-import-proposals",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    },
+    {
+      "url": "http://127.0.0.1:58659/api/v1/projects/f7966729-1df6-4865-ab4c-262118508f54/cases/524b1aac-d898-492b-94dd-498099c63d97/proposal-acceptances",
+      "method": "POST",
+      "keyPresent": true,
+      "csrfPresent": true
+    }
+  ],
+  "consoleErrors": [],
+  "finalSnapshot": {
+    "base_version_id": null,
+    "branch": false,
+    "definition": {
+      "final_expected": [
+        {
+          "expected": "done",
+          "id": "f1",
+          "kind": "text"
+        }
+      ],
+      "objective": "Changed objective only",
+      "path_policy": {
+        "forbidden": [
+          "delete"
+        ],
+        "must_use": [
+          "checkout"
+        ]
+      },
+      "preconditions": [
+        "signed in",
+        "cart"
+      ],
+      "raw_text": "TC raw",
+      "secret_refs": {
+        "login": {
+          "project_id": "f7966729-1df6-4865-ab4c-262118508f54",
+          "ref_id": "51ec1954-2845-4a39-b74c-d015f66e3e11",
+          "revision": 2
+        }
+      },
+      "steps": [
+        {
+          "expected": [
+            {
+              "expected": "Imported check",
+              "id": "tc-check-1",
+              "kind": "text"
+            }
+          ],
+          "id": "tc-step-1",
+          "instruction": "Imported step",
+          "point": null
+        }
+      ],
+      "variables": {
+        "amount": 100
+      }
+    },
+    "expected_head": "0f9d4d6d-b362-4ec2-845a-4f632e46aa43",
+    "parent_version_id": "0f9d4d6d-b362-4ec2-845a-4f632e46aa43",
+    "reason": "draft",
+    "recorded_steps": [
+      {
+        "action_id": "a1",
+        "kind": "tap",
+        "point": [
+          12,
+          34
+        ]
+      }
+    ],
+    "settings": {
+      "android_package": "com.example.review",
+      "cleanup_policy": "none",
+      "data_revision_id": "",
+      "environment_revision_id": "",
+      "execution_mode": "recorded_replay",
+      "healing_policy": {
+        "allowed": false,
+        "default_enabled": false,
+        "max_episodes_per_item": 1,
+        "max_model_calls_per_item": 2,
+        "max_seconds": 30,
+        "scope": ""
+      },
+      "install_policy": "none",
+      "limits": {
+        "timeout_seconds": 123
+      },
+      "reset_policy": "none",
+      "secret_refs": {},
+      "target_kind": "android",
+      "verifier_bindings": [
+        {
+          "allow_unknown_supplement": false,
+          "binding_id": "fixture-binding",
+          "method": "ai_visual"
+        }
+      ],
+      "web_url": "https://synthetic.example"
+    }
+  }
+}

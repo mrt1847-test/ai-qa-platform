@@ -1,10 +1,13 @@
-# UI 조작·상태 누락 점검표 v0.7
+# UI 조작·상태 누락 점검표 v0.8
 
 [UI 원본 규범](../../UI_SPEC.md) · [작업 색인](README.md) · [요구/시나리오](COVERAGE.md).
 **기본15화면 + 선택TC1화면**, 공통6묶음 + 화면88묶음 = **94개 의무 묶음**이다.
 묶음 안에 나열한 버튼/필드/상태를 전부 구현·검증해야 해당 행이 완료다. 화면 이름만 존재한다고 통과하지 않는다.
 
 ## 공통 적용 규칙
+
+core UI는 실제 API/DB/브라우저와 test-only 외부 입력으로 검사할 수 있다. fixture를 production에 넣지 않는다. native 동작/QA 수용은 [COVERAGE](COVERAGE.md)의 live 담당/C14를 추가로 요구하며 직접 UI 담당만 완료했다고 실제 기기/모델이 검증된 것은 아니다.
+
 
 UI-01–16 모두 loading/empty/422/403/409/stale·입력 보존/미저장·키보드/focus·1024/1440·query/selected 복원을 적용한다.
 해당하지 않는 조작은 이유를 기록한다. 빈 화면/연결 오류를 데이터0건으로 위장하지 않는다.
@@ -38,29 +41,29 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 
 | ID | 누락 없이 포함할 조작·상태 | 직접 담당 | 시험 함수 | 실제 상태 |
 |---|---|---|---|---|
-| UI-COMMON.01 | 프로젝트 전환·breadcrumb·메뉴·검색 진입·이 PC 연결 | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | 미구현·미실행 |
-| UI-COMMON.02 | loading/empty/422/403/409/stale·증거 오류·미저장 이동·중복 제출 차단 | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | 미구현·미실행 |
-| UI-COMMON.03 | URL 필터/페이지/선택·scroll/열 복원·키보드/focus·1024/1440px | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | 미구현·미실행 |
+| UI-COMMON.01 | 프로젝트 전환·breadcrumb·메뉴·검색 진입·이 PC 연결 | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | complete |
+| UI-COMMON.02 | loading/empty/422/403/409/stale·증거 오류·미저장 이동·중복 제출 차단 | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | complete |
+| UI-COMMON.03 | URL 필터/페이지/선택·scroll/열 복원·키보드/focus·1024/1440px | [W10-01](04a-case-management-ui.md#w10-01) | `test_w10_01` | complete |
 | UI-COMMON.04 | 로컬 시작·이미 실행·port 충돌·worker/VM 미준비·탭 종료 | [W12-01](04b-environments-and-launcher.md#w12-01) | `test_w12_01` | 미구현·미실행 |
 | UI-COMMON.05 | 2초 polling·마지막 수신·재접속·REC/ITEM/action 복원 | [W12-02](04b-environments-and-launcher.md#w12-02) | `test_w12_02` | 미구현·미실행 |
 | UI-COMMON.06 | 안전 종료·절전/복귀 lost·정리/quarantine·새 실행 안내 | [W12-03](04b-environments-and-launcher.md#w12-03) | `test_w12_03` | 미구현·미실행 |
-| UI-01.01 | 프로젝트 이름/key/설명/대상·생성·중복 오류·검색/활성·보관 필터·열기 | [W10-02](04a-case-management-ui.md#w10-02) | `test_w10_02` | 미구현·미실행 |
-| UI-01.02 | 케이스/검토/수행 counts·진행 작업 보관 차단·보관/복구·이력 | [W10-02](04a-case-management-ui.md#w10-02) | `test_w10_02` | 미구현·미실행 |
-| UI-02.01 | 미완성 REC/검토대기/미분류 실패·최근/대기 RUN·환경 차단·빠른 작업 | [W10-03](04a-case-management-ui.md#w10-03) | `test_w10_03` | 미구현·미실행 |
-| UI-03.01 | 표시 열·폴더/태그/우선순위/담당자·승인/초안/미완성/보관 필터 | [W10-04](04a-case-management-ui.md#w10-04) | `test_w10_04` | 미구현·미실행 |
-| UI-03.02 | ID/이름/검증 검색·sort·page·열 설정·선택·뒤로 복원 | [W10-04](04a-case-management-ui.md#w10-04) | `test_w10_04` | 미구현·미실행 |
-| UI-03.03 | 새 녹화/상세/검토·단일/선택 실행·묶음 추가·복제/보관·항목별 오류 | [W10-05](04a-case-management-ui.md#w10-05) | `test_w10_05` | 미구현·미실행 |
+| UI-01.01 | 프로젝트 이름/key/설명/대상·생성·중복 오류·검색/활성·보관 필터·열기 | [W10-02](04a-case-management-ui.md#w10-02) | `test_w10_02` | complete |
+| UI-01.02 | 케이스/검토/수행 counts·진행 작업 보관 차단·보관/복구·이력 | [W10-02](04a-case-management-ui.md#w10-02) | `test_w10_02` | complete |
+| UI-02.01 | 미완성 REC/검토대기/미분류 실패·최근/대기 RUN·환경 차단·빠른 작업 | [W10-03](04a-case-management-ui.md#w10-03) | `test_w10_03` | complete |
+| UI-03.01 | 표시 열·폴더/태그/우선순위/담당자·승인/초안/미완성/보관 필터 | [W10-04](04a-case-management-ui.md#w10-04) | `test_w10_04` | complete |
+| UI-03.02 | ID/이름/검증 검색·sort·page·열 설정·선택·뒤로 복원 | [W10-04](04a-case-management-ui.md#w10-04) | `test_w10_04` | complete |
+| UI-03.03 | 새 녹화/상세/검토·단일/선택 실행·묶음 추가·복제/보관·항목별 오류 | [W10-05](04a-case-management-ui.md#w10-05) | `test_w10_05` | complete |
 | UI-03.04 | 선택의 data 확장·미승인/불가 항목의 명시 제외·N0/100 상한 | [W21-04](08b-execution-and-suites.md#w21-04) | `test_w21_04` | 미구현·미실행 |
-| UI-04.01 | 자연어/목적/조건/변수/secret ref/기대·필수 경로·draft 저장·409 | [W10-06](04a-case-management-ui.md#w10-06) | `test_w10_06` | 미구현·미실행 |
-| UI-04.02 | 단계/검증 추가·복제·삭제·정렬·변수화·제안 diff 거부/수락 | [W10-07](04a-case-management-ui.md#w10-07) | `test_w10_07` | 미구현·미실행 |
-| UI-04.03 | 검증/단계·code/설정/실행이력/검토·버전 통합 탭·읽기 전용 snapshot | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | 미구현·미실행 |
-| UI-04.04 | 최신 draft와 기본 approved 병기·선택 버전·정의/절차/설정 diff | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | 미구현·미실행 |
+| UI-04.01 | 자연어/목적/조건/변수/secret ref/기대·필수 경로·draft 저장·409 | [W10-06](04a-case-management-ui.md#w10-06) | `test_w10_06` | complete |
+| UI-04.02 | 단계/검증 추가·복제·삭제·정렬·변수화·제안 diff 거부/수락 | [W10-07](04a-case-management-ui.md#w10-07) | `test_w10_07` | complete |
+| UI-04.03 | 검증/단계·code/설정/실행이력/검토·버전 통합 탭·읽기 전용 snapshot | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | complete |
+| UI-04.04 | 최신 draft와 기본 approved 병기·선택 버전·정의/절차/설정 diff | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | complete |
 | UI-04.05 | AI 구조화 job·대기/실패·제안 diff·원문 유지·명시 수락 | [W16-02](05b-recording-workflow.md#w16-02) | `test_w16_02` | 미구현·미실행 |
 | UI-04.06 | 녹화 이력·source/produced receipt·부분 기록 열기 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | 미구현·미실행 |
 | UI-04.07 | 재녹화 base/사유/목표 유지·변경 diff·장치/data/reset·기존 default | [W16-08](05b-recording-workflow.md#w16-08) | `test_w16_08` | 미구현·미실행 |
 | UI-04.08 | 원본/승인 code 또는 plan·runtime/compiler/lock/package hash·mapping | [W29-06](06-replay-packages.md#w29-06) | `test_w29_06` | 미구현·미실행 |
 | UI-04.09 | 승인 healing capability/scope/상한·기본OFF와 run ON/OFF의 구분 | [W31-06](08a-self-healing.md#w31-06) | `test_w31_06` | 미구현·미실행 |
-| UI-04.10 | 케이스별 환경/앱URL/data·reset/cleanup/limits·check method/binding·정책 편집 | [W10-11](04a-case-management-ui.md#w10-11) | `test_w10_11` | 미구현·미실행 |
+| UI-04.10 | 케이스별 환경/앱URL/data·reset/cleanup/limits·check method/binding·정책 편집 | [W10-11](04a-case-management-ui.md#w10-11) | `test_w10_11` | complete |
 | UI-05.01 | Android/Web 기기 선택·권한 있는 최근 화면·시각·busy/없음/만료 | [W11-01](04b-environments-and-launcher.md#w11-01) | `test_w11_01` | 미구현·미실행 |
 | UI-05.02 | 기기→필요 정보→자연어→AI 녹화·뒤로/앞으로·TC 단계 없음 | [W16-01](05b-recording-workflow.md#w16-01) | `test_w16_01` | 미구현·미실행 |
 | UI-05.03 | Web URL/Android 앱·빌드·계정ref/data·초기화/한도·불완전 draft | [W16-01](05b-recording-workflow.md#w16-01) | `test_w16_01` | 미구현·미실행 |
@@ -122,16 +125,16 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 | UI-14.05 | 단일APK 업로드·hash/metadata/서명·도구 미준비/미지원/크기 오류 | [W11-05](04b-environments-and-launcher.md#w11-05) | `test_w11_05` | 미구현·미실행 |
 | UI-14.06 | 명시 설치/초기화/logout 영향·기기/build 확인·진행/실패/사후 관찰 | [W11-06](04b-environments-and-launcher.md#w11-06) | `test_w11_06` | 미구현·미실행 |
 | UI-14.07 | VM/driver/broker/격리·USB/IME 진단·quarantine·proof 복구·unsupported 없음 | [W11-07](04b-environments-and-launcher.md#w11-07) | `test_w11_07` | 미구현·미실행 |
-| UI-15.01 | 프로젝트/분류·기본 한도/실패/보관 설정·충돌 | [W10-09](04a-case-management-ui.md#w10-09) | `test_w10_09` | 미구현·미실행 |
-| UI-15.02 | 역할별 endpoint/model/key ref·일회 입력·원문 미반환·비용 안내 | [W10-09](04a-case-management-ui.md#w10-09) | `test_w10_09` | 미구현·미실행 |
+| UI-15.01 | 프로젝트/분류·기본 한도/실패/보관 설정·충돌 | [W10-09](04a-case-management-ui.md#w10-09) | `test_w10_09` | complete |
+| UI-15.02 | 역할별 endpoint/model/key ref·일회 입력·원문 미반환·비용 안내 | [W10-09](04a-case-management-ui.md#w10-09) | `test_w10_09` | complete |
 | UI-15.03 | 변경 audit·actor/time/reason·필터/cursor·다른 project 차단 | [W11-08](04b-environments-and-launcher.md#w11-08) | `test_w11_08` | 미구현·미실행 |
 | UI-15.04 | worker 범위/enrollment/revoke·연결 상태·공간/보호 요약 | [W11-08](04b-environments-and-launcher.md#w11-08) | `test_w11_08` | 미구현·미실행 |
 | UI-15.05 | 명시 모델 연결 검사 job·호환/actual model/비용·키 없는 replay | [W15-04](05a-action-evidence-and-models.md#w15-04) | `test_w15_04` | 미구현·미실행 |
 | UI-15.06 | DB/파일/보호/삭제예정·한도·retention plan/pin/release·공간 조치 | [W26-03](10-retention-and-release-gates.md#w26-03) | `test_w26_03` | 미구현·미실행 |
 | UI-15.07 | 일관 백업 요청·진행/결과/incomplete·receipt·secret 제외 | [W26-04](10-retention-and-release-gates.md#w26-04) | `test_w26_04` | 미구현·미실행 |
 | UI-15.08 | 별도 경로 복원 검사·명시 활성화·key 재설정·과거 job 재개 금지 | [W26-05](10-retention-and-release-gates.md#w26-05) | `test_w26_05` | 미구현·미실행 |
-| UI-16.01 | 선택 TC 목록/검색/분류·원문/단계/기대·revision·복제/보관 | [W10-10](04a-case-management-ui.md#w10-10) | `test_w10_10` | 미구현·미실행 |
-| UI-16.02 | 참조 연결/해제·새 TC 버전 정보·명시 import diff/수락·case 독립 | [W10-10](04a-case-management-ui.md#w10-10) | `test_w10_10` | 미구현·미실행 |
+| UI-16.01 | 선택 TC 목록/검색/분류·원문/단계/기대·revision·복제/보관 | [W10-10](04a-case-management-ui.md#w10-10) | `test_w10_10` | complete |
+| UI-16.02 | 참조 연결/해제·새 TC 버전 정보·명시 import diff/수락·case 독립 | [W10-10](04a-case-management-ui.md#w10-10) | `test_w10_10` | complete |
 
 ## 종료 대조
 

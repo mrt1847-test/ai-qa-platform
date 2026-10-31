@@ -1,6 +1,6 @@
 # 데이터·승인·재녹화·누적 분석 설계 v0.6
 
-개정일: **2026-10-31 (Asia/Seoul)**. 상태: 검토용 상세 설계. **DB·migration·제품 코드·테스트를 생성/실행한 문서가 아니다.** 모든 API·필드·제약은 제안 플랫폼 계약이다.
+규범 개정일: **2026-10-31 (Asia/Seoul)**. 상태: 상세 설계 규범. **이 문서만으로 모든 DB·migration·제품 기능의 완료를 판단하지 않는다.** 2026-11-01 현재 일부 core가 구현됐으며 실제 범위·검증은 [진행표](WORK_PROGRESS.md)와 [계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)를 따른다.
 
 [DESIGN.md](DESIGN.md)는 전체 아키텍처, [UI_SPEC.md](UI_SPEC.md)는 화면/동선, [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)는 후속 작업이다. 이 문서는 세 문서의 **저장·무결성·승인/재녹화 transaction·분석/보관 계약**을 구체화한다. 물리 저장소를 나누어도 사용자의 기본 관리 단위는 검증 정의·설정·녹화 절차·증거를 함께 가진 케이스 하나다. TC는 계속 선택 사항이다.
 
@@ -144,6 +144,10 @@ actual build/model 등 실행 중 새로 알게 되는 fingerprint는 commit_seq
 최종 facts가 현재 존재해도 `finalized_commit_seq > as_of`이면 당시 집계에서는 진행 항목이다. 접수/확정·usage ledger·필터용 immutable snapshot은 상세90일 정책에서 제외한다. release_label은 접수 snapshot의 표시/필터 축이며 여러 RUN을 임의의 새 결과 하나로 합치지 않는다. 보고서 export는 as_of commit_seq·requested 기간·resolved filter/cohort/criteria version을 저장하고 그 cursor 이전 facts/ledger만 읽는다. 필요한 model_calls 최소 usage facts에는 commit_seq를 남겨 late settlement를 과거 비용에 소급 합산하지 않는다.
 
 ### 3.4 artifact·보관 참조
+
+2026-11-01 구현 대조: 논리 `artifacts`의 현재 물리 저장명은 `artifact_objects`, 미확정 파일 intent는 `artifact_staging`이다. `status/acked`는 최초 ingest disposition이며, missing/corruption/expired 같은 현재 보관 상태는 `custody`로 분리한다. Ready object identity/hash/소속과 typed ref는 변경·삭제하지 않는다. 동일 bytes라도 owner/attempt/action/role/MIME가 다르면 별도 object/ref로 보존하므로 전역 hash 일치만으로 출처를 공유하지 않는다. 과거 소속 미검증 metadata는 보존하되 유효한 증거로 제공하지 않는다.
+
+`0022_review_integrity`는 exact version/package/link/source/receipt deferred claims와 영구 사실 보호, `0023_review_evidence`는 ready ownership/staging/upload receipt, `0024_review_mutations`는 browser receipt·안정 local actor·사용자 보호 HMAC key envelope를 추가한다. 이는 전방 migration이며 사용자 DB를 초기화하거나 기존 provenance를 임의 재작성하는 절차가 아니다. 현재 실제 사용자 DB에 적용한 근거는 없다.
 
 | 저장 단위 | 필드·규칙 |
 |---|---|
@@ -373,3 +377,8 @@ MVP는 indexed facts query로 계산하며 warehouse/매일 summary table은 필
 백업 receipt의 scope는 local_store(PC 전체)이며 project별 commit cursor map을 보존한다. 접수/조회/다운로드/복원은 local_owner 전용이고 project-only 권한은 거부한다. worker는 DB/snapshot을 SQL로 열지 않고 API가 준비한 snapshot/manifest의 opaque bytes만 인증 HTTP로 복사한다. backup 파일은 일반 project artifact 조회로 노출하지 않는다.
 
 FK를 참조하는 service보다 canonical 부모 schema를 먼저 준비한다. W04-03은 worker/enrollment, W05-02는 case/folder/tag, W05-05는 env/data/model binding, W06-10은 physical key/resource alias, W06-02는 suite/entry와 RUN/ITEM/job/attempt/lease, W06-04는 artifact/protection 및 app_builds/backup_receipts/manual_retention_requests, W06-06은 장기 facts/analysis_records를 소유한다. W06 개별 제약 시험의 test-only 부모 fixture는 제품 DB 근거가 아니다. 실제 canonical head의 migration/FK/integrity/nullable insert 검사는 W06-07에서, 새 schema 추가 뒤 W06-08/09에서 다시 수행하며 W07은 W06-09 통과 뒤 시작한다.
+
+## 13. v0.8 DB/core 구현의 선행과 실제 근거
+
+W00 최소 실행 기반 뒤 W04–06의 실제 SQLite/migration/소속/불변 계약을 VM/모델 key 없이 구현한다. tests 전용 DB/관찰 fixture의 core 검증과 실제 기록의 native 통합을 구분한다. fixture를 일반 프로젝트의 녹화/승인/결과로 넣지 않는다.
+core leaf 완료는 실제 source/trial evidence와 같지 않으며 parent_gate_tasks/live gate와 사후 승인 조건은 그대로다. 기존 source/probe/두 인계는 변경하지 않고 W01-01 complete/W01-02 blocked를 유지한다. [C14](docs/execution/CONTRACTS.md)의 scope와 독립 후보 선택 규칙을 따른다.

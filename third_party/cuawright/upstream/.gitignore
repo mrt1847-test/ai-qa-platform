@@ -1,0 +1,17 @@
+**/__pycache__/
+*.pyc
+*.egg-info/
+outputs/
+.tmp/
+.claude/
+.venv/
+venv/
+runs/
+/library/
+
+build/
+dist/
+release/osworld/.scratch/
+release/osworld/dist/
+
+.wheel-env/

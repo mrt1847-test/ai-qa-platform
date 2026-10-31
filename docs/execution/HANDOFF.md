@@ -1,4 +1,4 @@
-# 작은 컨텍스트 모델 인계 · v0.7
+# 작은 컨텍스트 모델 인계 · v0.8
 
 [전체 작업서](README.md) · [공통 계약](CONTRACTS.md) · [상위 진행표](../../WORK_PROGRESS.md).
 이 양식은 특정 모델의 기억·skill·플러그인을 전제로 하지 않는다.
@@ -40,9 +40,9 @@ W06-07/W27/W28 같은 audit 작업은 여러 문서를 **축별로 순차 대조
 3. 지정 계약과 범위만 구현한다. 이미 있는 파일/사용자 변경을 덮어쓰지 않는다.
 4. 지정 검사와 UI/실환경 확인을 수행한다. 필수 실환경 시험이 불가하면
    코드 검사 결과와 차단된 gate를 구분한다. SKIP/mock을 PASS로 적지 않는다.
-5. diff와 UI 조작/상태 대응을 검토한다.
+5. 카드의 verification_scope에 맞게 diff와 UI/DB 계약을 검토한다. core fixture와 실제 native 증거를 구별한다.
 6. 아래 완료 인계를 저장하고 카드/TASK_INDEX/root 진행률을 일치시킨다.
-7. NEXT_ACTION의 Current/Next를 갱신한다. 미완료면 Current와 재개 조건을 유지한다.
+7. NEXT_ACTION의 Current/Next를 갱신한다. 일반 미완료면 재개 지점을 유지하고, 외부 차단이면 대기에 남긴 뒤 준비된 독립 후보로 Current를 전환한다.
 
 모호/충돌:
 - DTO/route/상태를 임의 추측하거나 다음 작업을 미리 만들지 않는다.
@@ -70,6 +70,7 @@ W06-07/W27/W28 같은 audit 작업은 여러 문서를 **축별로 순차 대조
 - DB 변경: {migration ID, constraints, 영향; 없으면 없음}
 - UI: {UI 추적 ID별 조작/상태와 실제 연결; 없으면 없음}
 - 자동 검사: {명령, 실행 시각, exit code, PASS/FAIL/SKIP 수}
+- 검증 등급/fixture 여부: {bootstrap/core_contract/live/final과 테스트 전용 외부 입력}
 - 실제 환경 검사: {VM/USB/browser/model 조건, 장치/버전, 결과, 근거}
 - 보존 불변식: {해당 source/hash/default/FAIL/secret/lease 검사 근거}
 - 실제 검증 projection: {카드 expected와 얻은 실제 값의 비교}
@@ -83,7 +84,7 @@ secret 값·키·원문 화면·hidden reasoning을 인계 문서에 붙이지 �
 
 ## 완료 판정
 
-- 한 leaf의 코드·필수 검사·UI/실환경 근거·인계가 모두 있어야 complete다.
+- 한 leaf는 지정 scope의 코드/필수 검사/인계가 있어야 complete다. core fixture 통과를 live 통과로 기록하지 않는다. live_acceptance_tasks와 parent_gate_tasks는 별도 실제 수용을 요구한다.
 - 다른 leaf가 제공할 기능을 mock으로 잠시 보여줬다면 그 기능의 담당 ID는 미완료다.
 - 부모 W는 상세 작업 전부와 상위 통합 조건이 끝나야 완료다. W16-05만 끝나면 W16 전체는 미완료다.
 - 재개 시 완료 표시를 믿기 전에 receipt의 코드/route/검사 근거가 실제로 있는지 확인한다.
@@ -94,3 +95,5 @@ secret 값·키·원문 화면·hidden reasoning을 인계 문서에 붙이지 �
 카드 체크·TASK_INDEX.status·root 요약·NEXT_ACTION의 Current/Next는 한 변경 묶음으로 수정한다.
 구현 도중 모델 context가 부족하면 새 기능을 더 하지 않고 현재 diff/검증/미완료를 인계한다.
 새 모델은 그 인계와 직접 선행만 읽고 같은 ID를 이어간다. 새 ID를 만들어 진행률을 부풀리지 않는다.
+
+외부 차단은 [C14](CONTRACTS.md#c14--차단된-가지와-독립-구현의-진행)/[SCHEDULING](SCHEDULING.md)을 따른다. VM 부재 때문에 이미 독립인 bootstrap/DB/queue/UI 작업을 계속 대기시키지 않는다.

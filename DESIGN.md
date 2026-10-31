@@ -1,35 +1,39 @@
 # Web·Android AI QA 플랫폼 설계
 
-문서 버전: **0.5** · 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 검토용, 구현 승인 전**
+문서 버전: **0.6** · 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 검토용, 구현 승인 전**
 
 읽는 순서: [기술 조사](RESEARCH.md) → 이 문서 → [화면 명세·와이어프레임](UI_SPEC.md) → [데이터·승인·재녹화 상세](DATA_DESIGN.md) → [단계별 구현 계획](IMPLEMENTATION_PLAN.md).
 
 개정 근거: 사용자가 확정한 **디바이스 선택→필요 정보→자연어 검증→AI 녹화** 동선과 케이스 중심 관리다. 검증 정의와 녹화 기록을 케이스 버전에 함께 두고 별도 TC는 선택 기능으로 둔다. [v0.3 전체 설계](docs/history/v0.3/DESIGN.md)는 보관했다.
 
-**v0.5 핵심:** AUT(자동화 케이스)가 원문/검증 정의·실행 설정·녹화 절차·증거를 함께 소유한다. TC 등록/연결/버전 일치가 녹화·저장·시범·승인·정식 실행의 조건이 아니다. REC의 action별 PNG/로그는 승인 없이 먼저 저장하고, 완료 후 저장본을 사람이 검토·승인한다. 단일/선택/묶음 RUN과 ITEM·job·QA 정책은 유지한다. 제품 구현·설치·모델 호출·배포는 진행하지 않는다.
+**v0.6 핵심:** AUT(자동화 케이스)가 원문/검증 정의·실행 설정·녹화 절차·증거를 함께 소유한다. TC 등록/연결/버전 일치가 녹화·저장·시범·승인·정식 실행의 조건이 아니다. REC의 action별 PNG/로그는 승인 없이 먼저 저장하고, 완료 후 저장본을 사람이 검토·승인한다. 단일/선택/묶음 RUN과 ITEM·job·QA 정책은 유지한다. 제품 구현·설치·모델 호출·배포는 진행하지 않는다.
 
 이번 DB/수명 점검에서 PK/FK·멱등 materialization·승인 원자성·재녹화 교체·장기 facts/통계·보관 규칙의 구체화가 필요했다. [DATA_DESIGN.md](DATA_DESIGN.md)가 해당 규범이다. 현재 설계는 DB 구현/부하/복원 시험을 통과했다는 의미가 아니다. [v0.4 설계](docs/history/v0.4/DESIGN.md)는 변경 없이 보관했다.
 
+v0.6은 **AI 녹화 → 저장된 code/action replay → 필요한 검증 AI → 예외 시 선택 셀프힐링**을 기본으로 변경한다. CUAWright Web 코드 재생·Android 별도 재생·격리·정책/비용/치유 데이터의 상세 규범은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)다. [v0.5 설계](docs/history/v0.5/DESIGN.md)는 변경 없이 보관했다. 현재 프런트 샘플은 이전 모의 동선이며 v0.6 구현 증거가 아니다.
+
 ## 1. 추천안과 전제
 
-**Web·Android 모두 Mobile-Agent v3.5의 해당 실행 경로를 사용하는 A안을 추천한다.** Web은 Python Playwright, Android는 ADB를 제어한다. 플랫폼이 테스트 정의·승인·불변 버전·작업 관리·검증·증거·비용을 맡는다. 엔진 완료 보고는 참고 정보이며 QA PASS를 결정하지 않는다.
+**Web은 CUAWright authoring + 승인 코드 replay, Android는 Mobile-Agent v3.5 authoring + 플랫폼의 recorded action replay를 채택한다.** 녹화 시 AI가 탐색하고 동작/코드·현재 검증 binding·증거를 만든다. 시범/정식 재실행은 `recorded_replay`로 저장된 package를 직접 수행하며 일반 동작 actor 호출은0이다. 플랫폼이 exact 버전·lease·동작 계측·현재 QA·승인·비용을 통제한다.
 
-첫 회귀 모드는 **승인된 단계와 기대 결과를 고정하고, 각 단계에서 AI가 현재 대상을 찾는 방식**으로 제안한다. 공개 runner를 감싸는 것만으로 이 모드가 생기지 않는다. 단계 경계·정책 검사·검증·사용량·취소를 넣는 작은 연동 패치가 필요하다. 한도 내에서 호환성을 확보할 수 있는지는 후속 기술 검증 P0의 gate다. 근거와 B안 비교는 [RESEARCH §6](RESEARCH.md#6-ab-구성-비교와-추천-근거)를 따른다.
+검증은 결정적 oracle을 우선하고 명시한 ai_visual/unknown 보완에만 모델을 사용한다. 셀프힐링은 기본 OFF, 승인된 capability 안에서 실행 접수 시 ON을 선택할 수 있다. 미dispatch된 같은 대상의 locator/좌표 재탐색만 허용하며 expected/path 변경·이미 처리됐을지 모르는 동작 반복은 금지한다. 치유 후 PASS에는 healing_used를 표시하고 기존 필수 위반은 FAIL로 유지한다. [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)의 한도·승인/수정 제안·VM/broker 경계가 필수 gate다.
 
 ### 확정된 목표와 임시 가정
 
 | 구분 | 내용 |
 |---|---|
 | 요청에서 확정 | 실제 웹 관리 UI, 로컬 브라우저와 직접 연결 Android, 자연어 작성, 실행 증거, 사람 검토·승인, 승인 버전 회귀 묶음, 결과 분석, 영구 저장 |
-| 임시 가정 | 개인/소규모 QA 팀, Windows PC 한 대와 USB Android 한 대, Chromium 시작, 외부 모델 API 우선, 단계별 PNG 미리보기 |
+| 임시 가정 | 개인/소규모 QA 팀, Windows PC 한 대와 USB Android 한 대, 같은 PC의 격리 Linux VM 내 Chromium과 호스트 USB Android, 녹화/선택 검증·치유 외부 모델 API 우선, 단계별 PNG 미리보기 |
 | 제안하는 제한 | 초기 동시 실행은 Web 1개 또는 Android 1개로 총 1개. 두 플랫폼 모두 제품 기능으로 완성해야 출시 가능 |
-| 모델 임시 선택 | Android는 API로 접근 가능한 GUI-Owl-1.5 Instruct 계열을 우선 검증. Web은 해당 SoM/도구 형식에 맞는 vision model을 호환성 시험 후 선택. 구체 제공자/모델은 미확정 |
-| 버전 기준 | MobileAgent `81fa28b564ef7a695521500bc15a0e1324b2b394`; 상세는 RESEARCH |
+| 모델 임시 선택 | Android는 API로 접근 가능한 GUI-Owl-1.5 Instruct 계열을 우선 검증. Web authoring은 CUAWright 지원 프로토콜, verifier/healer는 별도 binding의 호환성을 시험 후 선택. 구체 제공자/모델은 미확정 |
+| 버전 기준 | MobileAgent `81fa28b564ef7a695521500bc15a0e1324b2b394`·CUAWright `35dbcf389ce2d9a77eb22f539c79a1274ea53559`; 상세는 RESEARCH |
 | 운영 저장 위치 | 코드 문서는 이 저장소. 실행 DB/증거/비밀값은 동기화되지 않는 `%LOCALAPPDATA%/AIQA/` 아래 별도 위치. 현재 OneDrive 저장소에 runtime DB를 만들지 않음 |
 
 MVP 포함: 검증 정의/설정/녹화 절차/증거를 단일 케이스로 관리·녹화 동작별 PNG/로그를 먼저 저장하고 완료 후 승인·단독/선택 수행·리포트를 포함하며, 웹 UI에서 프로젝트·환경 관리, 기기 선택·진단, 설치된 앱 선택·선택적 APK 빌드 등록/명시 설치, 테스트 검색·분류·복제·편집·보관, 구조화 계획 수정, 시범 실행·증거 검토·승인/반려, 버전을 고정한 회귀 묶음의 순차 실행·취소·새 재실행, 결과 비교·내보내기, 모델/제한/보관 설정. Web·Android 모두 실제 직접 연결 실행으로 제공한다. 일상 운영에 CLI 입력을 요구하지 않는다.
 
-후속: 무모델 생성 코드 재생·Skill Factory, **테스트 대상 사이트 안의** 고급 파일 업로드/다운로드·여러 탭 테스트, 영상/trace/logcat, API·DB oracle, 중앙 서버/여러 워커·기기, 클라우드 공급자, 여러 브라우저, 예약·CI·알림. 관리 UI의 APK 업로드와 결과 다운로드는 MVP이며 대상 사이트의 file IO와 구분한다. iOS·K8s·대규모 디바이스팜·멀티테넌트 SaaS·과금 시스템·모델 학습은 후속 검토이며 모든 앱의 무인 실행은 보장하지 않는다.
+MVP에는 승인 Web code/Android action 재생·선택 검증 AI·bounded healing을 포함한다. 월1회3,000 TC 기준은 비용/지연/저장량 산정 workload이며 입증 처리량/고정 예산이 아니다.
+
+후속: Skill Factory 자동 추천/일반화·범위가 넓은 자가 수정, **테스트 대상 사이트 안의** 고급 파일 업로드/다운로드·여러 탭 테스트, 영상/trace/logcat, API·DB oracle, 중앙 서버/여러 워커·기기, 클라우드 공급자, 여러 브라우저, 예약·CI·알림. 관리 UI의 APK 업로드와 결과 다운로드는 MVP이며 대상 사이트의 file IO와 구분한다. iOS·K8s·대규모 디바이스팜·멀티테넌트 SaaS·과금 시스템·모델 학습은 후속 검토이며 모든 앱의 무인 실행은 보장하지 않는다.
 
 ## 2. 요구사항과 수용 조건
 
@@ -53,7 +57,7 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | R14 | P0 | 정보 보호 | secrets·대상·도구 권한 | 프런트/원문/로그에 secret 미노출, 범위 밖 행동 거부 |
 | R15 | P0 | 운영 복구 | 보관/정리·비교 | 재연결 후 이벤트 복원, 보관 만료 표기, 정리 실패 기록 |
 | R16 | P0 | 유효한 MVP 검증 | 정상+오류+장애 | Web·Android 모두 §13 gate 충족, 한쪽만으로 완료 불가 |
-| R17 | P1 | 저비용 회귀 | CUAWright 코드 재생 | 승인 코드·격리·모델 차단·현재 assertions 확인 후 제공 |
+| R17 | P0 | 저비용 회귀 | CUAWright Web 코드·Android action 재생 | 일반 actor0회·정확한 package/hash·격리·모델 차단·현재 assertions·필요 verifier만 호출 |
 | R18 | P1 | 여러 PC 실행 | 중앙 API+local workers | outbound 연결·등록 폐기·heartbeat·배정·artifact 업로드 검증 |
 | R19 | P1 | 강한 oracle | 선택 API·DB 검사 | 별도 read 권한/허용 endpoint, UI 경로 대체 금지 |
 | R20 | P1 | 깊은 디버깅 | 영상/trace/logcat | 선택 수집·용량 한도·비밀값 정책 마련 |
@@ -69,19 +73,22 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | R30 | P0 | 저장 후 승인 | 녹화 완료→보관→사람 검토 | 승인 없이 중단/미완성도 저장, 녹화 중 승인 없음, 저장된 AUT version만 사후 승인 |
 | R31 | P0 | 수행·리포트 | 단일/선택/suite 공통 RUN | 결과7종+진행=N, 세 비율·미검증·재실행 원본 보존 |
 | R32 | P0 | 실패 분석·데이터 | 별도 분석/이의·versioned data | 분석이 QA 원본을 바꾸지 않고 data row/hash를 snapshot |
+| R33 | P0 | 선택적 셀프힐링 | 기본 OFF·승인 scope·run snapshot | ON/eligible일 때만 episode1/최대2호출/30초, 위반/불명 dispatch 재시도 금지 |
+| R34 | P0 | 승인 가능한 재생 자산 | package/script/plan/lock·action mapping | OFF clean trial·전후 근거·원본 불변·repair proposal은 새 전체 녹화/승인 |
+| R35 | P0 | 비용/안정성 판단 | 월3,000 TC 계측·역할 분리 | authoring/verification/healing/maintenance와 unassisted/치유 PASS를 별도 집계 |
 
 ## 3. 아키텍처 결정
 
 | ADR | 결정 | 이유/대안/재검토 조건 |
 |---|---|---|
-| D01 | A: Mobile-Agent Web+Android | 생성 코드 실행 없이 두 플랫폼의 QA 흐름에 집중. Web 정적 결함을 P0에서 해소 못 하거나 무모델 회귀가 필수가 되면 B 재검토 |
+| D01 | CUAWright Web authoring/replay + Mobile-Agent Android authoring/플랫폼 replay | 반복 동작 actor0, 명시 verifier·bounded healer. upstream만으로 완성되지 않으며 W01–03/W29–32 실제 gate 필요 |
 | D02 | FastAPI + Jinja2 + HTMX + 소량 JS/CSS | Python 숙련도 활용. 작성/검토/타임라인은 HTML 부분 갱신으로 충분. React/TS는 복잡한 동시 편집·클라이언트 상태가 실제 필요해질 때 검토 |
 | D03 | 별도 Python worker + 실행별 runner subprocess | 웹 요청 수명과 실행 분리, 취소·충돌 범위 제한. FastAPI BackgroundTasks를 장기 실행 큐로 쓰지 않음 |
 | D04 | SQLite + SQLAlchemy/Alembic, API만 DB 접근 | 로컬 1 API 프로세스·1 worker에서 추가 broker 최소화. 큐도 transaction으로 저장. 원격 worker는 DB 파일 공유 안 함 |
 | D05 | 로컬 파일 artifact + DB metadata/hash | PNG·로그를 DB BLOB로 크게 만들지 않음. 중앙형은 object store로 이전하되 artifact API 계약 유지 |
 | D06 | UI 2초 HTTP polling, event cursor 조회 | 영상 요구가 없으므로 SSE/WebSocket 없이 시작. 이벤트는 먼저 DB commit. UI 연결과 실행 수명 독립 |
 | D07 | worker는 outbound 2초 polling·10초 heartbeat | 로컬/중앙 동일 프로토콜. Redis/Celery는 도입하지 않음. DB queue 처리량/lock 경합이 문제가 될 때 검토 |
-| D08 | 에이전트 adapter와 환경 adapter 분리 | 에이전트는 관찰/계획/행동, 환경은 로컬 context·USB 확보/준비/해제. capability는 교집합만 노출. 클라우드 구현·플러그인 마켓은 후속 |
+| D08 | authoring/replay/verifier/healer·환경 adapter 분리 | 환경은 같은 PC의 VM Chromium·호스트 USB/session을 관리. 생성 code 격리와 broker/계측은 MVP이며 cloud/일반 추천은 후속 |
 
 중앙형 전환 조건은 여러 PC 또는 공유 팀 운영이다. 이때 관리 DB는 PostgreSQL, TLS·팀 계정·artifact object storage를 도입한다. worker는 동일 claim/lease 프로토콜을 사용한다. SQLite는 로컬 단일 API writer에 한정하며 NAS/OneDrive/원격 파일 공유를 지원하지 않는다. 지속적 DB lock 대기 p95가 100ms를 넘거나 작업/이벤트 적체가 발생하면 먼저 batch/인덱스를 확인하고 PostgreSQL 전환을 검토한다. 이는 제안 운영 기준이며 측정값이 아니다.
 
@@ -91,31 +98,24 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 
 ```mermaid
 flowchart LR
-  subgraph PC[Windows QA PC]
-    UI[브라우저 UI]
-    API[FastAPI 관리 API + HTML 프로세스]
-    DB[(SQLite: 영구 상태와 작업 큐)]
-    FS[(로컬 artifact 저장소)]
-    W[Python 실행 워커 프로세스]
-    R[실행별 runner subprocess]
-    WEB[Playwright Chromium headless]
-    ADB[허용된 ADB 명령]
-    UI -->|조회·작성·2초 polling| API
-    API --> DB
-    API --> FS
-    W -->|claim·heartbeat·event·artifact HTTP| API
-    W --> R
-    EA[로컬 실행 환경 어댑터]
-    R --> EA
-    EA --> WEB
-    EA --> ADB
+  subgraph PC[로컬 Windows QA PC]
+    UI[관리 브라우저] --> API[FastAPI 관리 API]
+    API --> DB[(SQLite + 영구 queue)]
+    API --> FS[(정제 artifact)]
+    W[호스트 worker] -->|claim·heartbeat·event HTTP| API
+    W --> AND[신뢰 Android action runner]
+    AND --> ADB[허용 ADB 명령]
+    W --> VM[격리 로컬 Linux VM]
+    VM --> WEB[CUAWright authoring·승인 code replay·Chromium]
+    G[모델 broker·역할/한도 통제] --> MODEL[모델 API]
+    AND -->|녹화 또는 허용 검증/치유만| G
+    WEB -->|녹화 또는 허용 검증/치유만| G
   end
-  ADB -->|USB| PHONE[Android 실기기]
-  R -->|허용된 모델 요청| MODEL[승인한 모델 API 서버]
-  WEB --> TARGET[테스트 Web 환경]
+  ADB --> PHONE[USB Android]
+  WEB --> TARGET[테스트 Web]
 ```
 
-DB·파일 경로는 API가 관리한다. worker/runner는 run별 spool에 쓰고 artifact API로 업로드한다. 같은 PC여도 저장소를 직접 공유하는 특수 경로를 만들지 않는다. API 재시작 동안 spool을 보존하며 lease를 갱신할 수 없으면 행동을 멈춘다. 관리 UI를 띄운 브라우저와 테스트용 Chromium/process/context는 별개다. 프런트엔드는 인증된 HTTP 명령과 증거 조회만 하고 ADB·셸·테스트 브라우저를 직접 제어하지 않는다.
+DB/파일은 API가 관리하고 worker/VM은 정제 spool→HTTP/ACK를 사용한다. 생성 script에는 모델 key/host credential·raw DB 경로를 주지 않는다. 재생 script의 LLM endpoint는 차단하고 verifier/healer는 신뢰 broker만 호출한다. 관리 UI·테스트 browser·VM/session은 별도 수명이며 합계slot1이다. VM/가상화 미확보 시 Web gate 실패로 기록하며 격리 없는 실행으로 대체하지 않는다.
 
 ### 중앙 관리 배치도 — 후속
 
@@ -148,7 +148,7 @@ flowchart LR
 
 관리 탭을 닫아도 PC·API·worker가 실행 중이면 작업은 계속된다. 재접속 시 REC/RUN ID로 DB 기록을 복원한다. 프로그램 종료는 진행 작업과 중단 영향을 표시하고 실행 중이면 취소·정리를 먼저 요청한다. 강제 종료·PC 종료·절전에서는 실행 지속을 보장하지 않는다. 전원 이벤트와 monotonic/UTC 경과 차이를 감지하면 새 행동을 차단하고 lease/session을 재검증한다. 절전/재부팅 뒤 멈췄던 runner를 그대로 재개하지 않으며, 이전 side effect 확인·정리/quarantine·새 실행 경로를 안내한다. PC가 꺼진 동안 로컬 서버가 즉시 감지할 수 있다는 가정도 하지 않는다. 복귀한 API/worker가 journal과 만료 lease를 조정하며 job은 lost로 기록하며, 유효 violation이 없는 ITEM은 INCONCLUSIVE·REC/관리 job은 verdict=null이다.
 
-Windows native 실행이 1차 선택이다. WSL/컨테이너로 바꿔야 하면 USB 전달·ADB server/client 경계·기기 권한·파일 경로·headed 화면·프로세스 종료를 별도 P0 gate로 검증한다. Windows 호스트에서 ADB가 된다는 사실만으로 WSL/컨테이너에서도 된다고 단정하지 않는다. 로컬 기기 실행과 외부 모델 추론은 서로 다른 배치 선택이다.
+API/호스트 worker/USB ADB는 Windows native, Web 생성/재생 code와 Chromium은 같은 PC의 격리 Linux VM을 기본으로 한다. VM 제어·파일/이벤트 전달·lease/cancel·egress·자원 정리는 P0 gate로 검증한다. Windows 호스트에서 ADB가 된다는 사실만으로 WSL/컨테이너에서도 된다고 단정하지 않는다. 로컬 기기 실행과 외부 모델 추론은 서로 다른 배치 선택이다.
 
 ## 4. 컴포넌트와 데이터 흐름
 
@@ -156,7 +156,7 @@ Windows native 실행이 1차 선택이다. WSL/컨테이너로 바꿔야 하면
 
 worker 책임: 등록/인증, device inventory, claim, 설정·artifact manifest 확인, 자원 준비, runner 시작·취소·정리, spool 재전송, heartbeat, 로컬 watchdog. 모델 키는 worker의 OS secret store에서 참조한다.
 
-runner 책임: 한 attempt만 수행. adapter가 observation→model→action proposal을 받고 정책 gate가 tool 실행을 허용한다. 동작 후 관찰과 validator 결과를 event로 보낸다. 사용량은 공통 model gateway client를 통해 기록한다. upstream loop에서 정책 우회로 직접 실행하는 길은 제거한다.
+runner 책임: 한 attempt만 수행. 녹화 adapter는 observation→model→proposal, 재생 runner는 exact package→기록 동작을 사용한다. 선택 verifier와 bounded healer만 역할별 broker를 호출하고 정책 gate가 실제 동작을 허용한다. 동작 후 관찰과 validator 결과를 event로 보낸다. 사용량은 공통 model gateway client를 통해 기록한다. upstream loop에서 정책 우회로 직접 실행하는 길은 제거한다.
 
 순서:
 
@@ -165,10 +165,10 @@ runner 책임: 한 attempt만 수행. adapter가 observation→model→action pr
 3. worker가 lease·환경 session을 준비하고 agent는 관찰→proposal→정책 gate→행동을 수행한다. 매 실제 action에 전후 PNG·정제 로그·오류/검증을 저장·ACK한다.
 4. 녹화 완료/중단은 새 행동을 멈추고 기록을 flush/seal·정리한다. 실패/미완성 기록도 먼저 보관하고, 입력 검증 정의/설정에 수집 절차·근거를 더한 새 케이스 draft version을 TC 없이 자동 저장한다.
 5. 완료·저장된 AUT를 UI에서 열어 원본 동작/화면/로그를 확인한다. 편집은 새 AUT revision이며 원본 REC는 불변이다.
-6. 현재 AUT manifest로 새 trial RUN/ITEM을 만들고 동작·QA 근거를 다시 수집한다.
+6. 현재 AUT의 replay package/hash로 셀프힐링 OFF·일반 actor0회의 새 trial RUN/ITEM을 만들고 현재 동작·QA 근거를 다시 수집한다. 명시 AI verifier는 허용한다.
 7. 사람이 저장된 source/trial action을 검토하고 exact AUT/evidence digest를 승인 또는 반려한다. 승인 여부는 저장의 선행 조건이 아니다.
 8. 단독/선택/suite의 정식 접수는 exact 승인 케이스 version/data/env·명시 제외를 snapshot하여 RUN과 모든 ITEM/jobs를 원자 생성한다.
-9. worker는 ITEM을 순차 실행하고 검증/증거/정리 후 terminal로 확정한다. 서버는 상태·QA·disposition·display 결과/분모를 집계한다.
+9. worker는 package/해결된 healing ON/OFF를 고정한 ITEM을 순차 재생하고 검증/증거/정리 후 terminal로 확정한다. 예외는 승인 scope·미dispatch 여부를 확인한 뒤에만 치유하고 runtime override/proposal을 원본과 별도로 보존한다. 서버는 상태·QA·disposition·display 결과/분모를 집계한다.
 10. UI는 RUN report·ITEM 실패 분석·동작별 근거를 제공한다. 사용자 재실행은 원본 ref/사유가 있는 새 RUN이며 과거 결과를 덮지 않는다.
 
 ## 5. 테스트 정의·판정·버전
@@ -219,7 +219,7 @@ REC는 input version/hash를 고정하고 완료 시 실제 recorded steps·sour
 
 `subject`는 케이스 manifest의 의미상 대상 binding이다. Web locator·Android 관찰 영역/도구가 실제 값을 읽을 수 있어야 하며 AI 시각 추출값을 결정적 oracle로 표시하지 않는다. 모델 입력은 저장된 case.definition/설정에서 만들고 참조 TC의 최신 원문을 자동 조회/동기화하지 않는다.
 
-전체 화면·REC/action·케이스/수행 JSON과 계약은 [UI_SPEC §7](UI_SPEC.md#7-데이터api워커--v05-규범-계약)을 따른다.
+전체 화면·REC/action·케이스/수행 JSON과 계약은 [UI_SPEC §7](UI_SPEC.md#7-데이터api워커--v06-규범-계약)을 따른다.
 
 ### 5.2 세 종류의 성공과 최종 판정
 
@@ -250,7 +250,7 @@ REC는 input version/hash를 고정하고 완료 시 실제 recorded steps·sour
 
 각 탭/swipe/입력/back 등의 전후 PNG와 정제 로그·오류를 action ID로 보관한다. 녹화 완료 후 source REC의 필수 mapped action과 동일 AUT manifest trial의 실제 action을 검토한다. 검증 정의/근거 누락·미검토·다른 케이스/증거 hash이면 저장은 유지하고 승인만 차단한다. 자세한 capture/flush·누락·단계별 review는 [UI_SPEC §5](UI_SPEC.md#5-동작별-기록저장완료-후-승인-계약)를 따른다.
 
-AUT content는 생성 즉시 append-only다. 승인 record는 AUT hash·source REC digest·현재 trial evidence digest·action review·actor/time/reason에 결합한다. 승인 근거 trial은 해당 플랫폼의 같은 manifest로 completed/PASS이며 모든 필수 evidence가 ready여야 한다. 녹화 성공/PASS trial이 자동 승인이나 다음 실행 PASS를 뜻하지 않는다. 두 플랫폼 검증은 제품 출시 gate이며 한 AUT에 양 플랫폼을 요구하지 않는다.
+AUT content와 replay package/script/plan/lock·mapping은 생성 즉시 append-only다. 승인 근거 trial은 healing OFF·일반 actor0이며, replay ready·현재 검증 PASS를 요구한다. 승인 record는 AUT hash·source REC digest·현재 trial evidence digest·action review·actor/time/reason에 결합한다. 승인 근거 trial은 해당 플랫폼의 같은 manifest로 completed/PASS이며 모든 필수 evidence가 ready여야 한다. 녹화 성공/PASS trial이 자동 승인이나 다음 실행 PASS를 뜻하지 않는다. 두 플랫폼 검증은 제품 출시 gate이며 한 AUT에 양 플랫폼을 요구하지 않는다.
 
 재승인 대상은 케이스 검증 정의·동작/기대·필수 경로·locator 의미·실행 코드·engine/patch/lock·model/provider/revision/프로토콜·prompt·viewport/locale/reset·한도/권한 확대다. 분류 metadata·승인 schema 내 data 값·정상 secret rotation은 snapshot/audit로 남긴다. 계정 권한 변경은 재승인한다. 모델 alias의 실제 교체를 완전히 통제할 수는 없으므로 응답 model ID를 기록한다.
 
@@ -261,6 +261,12 @@ AUT content는 생성 즉시 append-only다. 승인 record는 AUT hash·source R
 재녹화는 **같은 케이스의 새 input draft/REC/produced version**이다. 기준 version·사유·검증 의도 유지/변경 diff를 남기고 기존 승인본과 기본 pointer를 유지한다. MVP는 전체 흐름 재녹화이며 부분 절차 붙이기/중간 재개는 후속이다. 실패·중단·반려·stored인 불완전 후보도 보존하지만 기본 실행본을 교체하지 않는다. completed source·완결 절차/필수 증거·동일 manifest PASS trial·사후 action review가 충족될 때만 ‘승인 및 기본 실행본으로 사용’으로 교체한다.
 
 새 승인이 생겨도 이전 승인을 자동 철회하지 않는다. 기존 suite 구성과 queued/running RUN은 접수한 exact version/approval을 유지한다. suite 갱신은 명시 diff를 확인한 새 suite_version이다. revoke는 별도 append-only 기록이며 새 정식 claim 차단·진행 취소 요청을 남긴다. 현재 승인 철회 시 과거본으로 자동 fallback하지 않는다. [DATA_DESIGN §5–7](DATA_DESIGN.md#5-원자-transaction과-파일-복구)이 충돌·보호·복구 규범이다.
+
+### 5.4 재생·선택 검증·bounded healing
+
+[실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)를 규범으로 한다. 기본 재생의 AI actor는0이며 저장된 code/action을 실행한다. 결정적 검사 우선, 명시 ai_visual/허용 unknown 보완만 verifier를 호출한다. healing OFF와 검증 AI는 독립이다. ON은 승인된 capability·binding·예산 안에서 미dispatch locator/동일 target 재탐색만 허용한다. 초기 한도는 ITEM당 episode1/모델 합계2회/30초이며 job/lease/예산 상한이 우선한다. 위반·입력/클릭 결과 불명·rotation mismatch는 치유 재dispatch 금지다.
+
+치유 성공+필수 검사 모두 만족이면 PASS·healing_used=true, 유효 위반은 FAIL 유지, terminal 결과 변경은 새 RUN만 허용한다. 원본 오류/전후 증거/override·usage를 남기고 repair proposal을 재사용하려면 새 전체 녹화→OFF trial→사후 승인한다. 원본/기본본 자동 수정은 없다.
 
 ## 6. 실행·자원 상태와 복구
 
@@ -330,11 +336,11 @@ worker inventory는 serial, state(offline/unauthorized/ready/busy/quarantined), 
 
 ### Web
 
-MVP는 Chromium·단일 탭·승인 viewport(기본 1280×720)·DPR=1·locale ko-KR·timezone Asia/Seoul을 제안한다. upstream의 고정 user agent/locale/timezone과 공유 storage_state는 환경 설정으로 교체한다. 매 run 새 context, 기본 로그인은 run별 수행. 세션 재사용이 필요하면 계정·프로젝트·환경·만료시간별 암호화 storage snapshot을 승인하고 read-only 원본에서 복사한다. 개인 Chrome profile에 연결하지 않는다.
+MVP는 Chromium·단일 탭·승인 viewport(기본 1280×720)·DPR=1·locale ko-KR·timezone Asia/Seoul을 제안한다. CUAWright authoring/replay의 browser 설정은 승인 environment profile로 고정하고 공유 개인 storage_state를 사용하지 않는다. 매 run 새 context, 기본 로그인은 run별 수행. 세션 재사용이 필요하면 계정·프로젝트·환경·만료시간별 암호화 storage snapshot을 승인하고 read-only 원본에서 복사한다. 개인 Chrome profile에 연결하지 않는다.
 
 필수 UI는 locator/state 대기 기본 10초, navigation 30초, 전체 run 600초다. 테스트가 승인한 값을 쓰며 전역 고정 sleep을 유일한 대기로 삼지 않는다. 화면 전환 후 대상·URL·안정된 관련 상태를 관찰한다. upstream sleep은 보조 polling으로 교체한다. 다운로드/업로드·다중 탭·OS dialog가 필요한 테스트는 capability 미지원으로 실행 전 BLOCKED 처리하고 첫 제품의 일반 입력/버튼/스크롤/표준 select 범위를 문서화한다.
 
-브라우저 popup은 승인한 동일 탭 modal만 우선 지원한다. 새 tab이 열리면 upstream처럼 조용히 닫아 다른 경로로 진행하지 않고 미지원 이벤트를 기록한다. browser/context/process/temp 정리는 worker가 확인한다. 데이터를 변경하는 테스트는 `${run_id}` 식별자와 승인 cleanup으로 충돌을 줄인다. OTP/CAPTCHA/대화형 로그인은 자동 우회하지 않고 HUMAN_REQUIRED로 종료한다. 사용자가 환경을 준비하면 새 trial/run을 시작한다. MVP에는 장시간 pause/resume UI를 넣지 않는다.
+브라우저 popup은 승인한 동일 탭 modal만 우선 지원한다. 새 tab이 열리면 미지원 이벤트를 기록하고 임의로 닫아 다른 경로로 진행하지 않는다. browser/context/process/temp 정리는 worker가 확인한다. 데이터를 변경하는 테스트는 `${run_id}` 식별자와 승인 cleanup으로 충돌을 줄인다. OTP/CAPTCHA/대화형 로그인은 자동 우회하지 않고 HUMAN_REQUIRED로 종료한다. 사용자가 환경을 준비하면 새 trial/run을 시작한다. MVP에는 장시간 pause/resume UI를 넣지 않는다.
 
 ## 8. 제안 플랫폼 계약
 
@@ -362,17 +368,18 @@ Validator.evaluate(check: CheckSpec, observation: Observation) -> CheckResult
 
 upstream의 직접 PNG/messages 파일 쓰기는 그대로 두지 않는다. 캡처→메모리 관찰 필터→보관본 생성 순서로 교체하고 stdout/debug writer에도 같은 정제를 적용한다. 필터를 거치지 않는 출력 경로가 있으면 adapter preflight를 통과시키지 않는다.
 
-| Capability | Mobile-Agent Web adapter MVP | Android adapter MVP | CUAWright 후보 |
-|---|---|---|---|
-| fixed_steps_ai | 패치로 제공 | 패치로 제공 | 별도 래핑 필요 |
-| headless | 지원 경로 확인 | 해당 없음 | local_launch 경로 확인 |
-| structured actions | SoM label→좌표 + 허용 동작 | normalized 좌표 + ADB 동작 | live는 Python 코드, 동등 취급 금지 |
-| current evidence | 전후 PNG + URL/DOM binding | 전후 PNG + package/state | 모드별 trajectory/PNG/ARIA |
-| recording_action_evidence | action별 전후 캡처·로그 hook 별도 개발/검증 | action별 전후 캡처·로그 hook 별도 개발/검증 | 모드/하위 호출별 별도 확인 |
-| deterministic assertions | 플랫폼 Web validator | 관찰 가능한 항목만 플랫폼 validator | 승인 code assertion 가능 |
-| code_replay_no_model | false | false | 조건부 true, P1 gate |
-| multi_tab/file_io/rotation | false/false/해당 없음 | 해당 없음/해당 없음/false | 별도 테스트 전 미확인 |
-| cancellation/usage_stream | 플랫폼 패치 | 플랫폼 패치 | 플랫폼 계측 필요 |
+| Capability | CUAWright Web + 플랫폼 replay | Mobile-Agent Android + 플랫폼 replay |
+|---|---|---|
+| authoring | code 생성·원본 trace/패치/모델 계측 | AI 행동 제안→구조화 plan·전후 capture |
+| recorded_replay | 승인 package 직접 실행, 자동 route/fallback 없음 | 신뢰 runner가 저장 action/target/좌표 실행 |
+| 일반 동작 actor | 0회, 생성 code의 숨은 호출 차단 | 0회, 원본 model loop 반복 금지 |
+| 검증 | 결정적 oracle 우선·명시 AI verifier | 관찰 가능한 결정적 oracle·명시 AI verifier |
+| self_healing | 기본 OFF·typed target override·한도/정책 강제 | 기본 OFF·미dispatch 대상 재탐색만 허용 |
+| action evidence | 매 실제 하위 행동의 전후PNG/로그·mapping | 매 tap/type/swipe/back 전후PNG/로그 |
+| 실행 환경 | 격리 로컬 Linux VM+새 Chromium context | Windows 호스트+USB ADB |
+| multi_tab/file_io/rotation | MVP 미지원·필요 시 gate | MVP 회전 고정·불일치 차단 |
+
+인터페이스는 기존 EngineAdapter의 authoring 용도 외 `ReplayRunner.run`, `ReplayActionExecutor.execute`, `HealingService.propose`로 분리한다. package 생성/검사·healing structured proposal·broker 계약은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md) §7을 따른다.
 
 #### 실행 환경 어댑터 — 에이전트와 별도 책임
 
@@ -384,23 +391,23 @@ EnvironmentAdapter.prepare(session: SessionHandle, setup: SetupPolicy) -> Prepar
 EnvironmentAdapter.release(session: SessionHandle, cleanup: CleanupPolicy) -> CleanupReport
 ```
 
-모두 제안 플랫폼 계약이다. 초기 구현은 LocalChromiumEnvironment와 UsbAndroidEnvironment 두 개뿐이다. worker가 lease를 확보한 뒤 환경을 준비하고, 에이전트 adapter에 process-local 제어 handle을 전달한다. 에이전트는 직접 기기를 재배정하거나 context lifetime을 우회하지 않는다. 기존 `PlaywrightComputer`의 launch/close는 이 경계 아래에서 연결하고 중복 browser 생성을 방지한다. USB 환경은 연결·잠금·package·IME·앱 설치 정책을 준비하며, 실제 AI 행동은 에이전트 adapter가 결정한다.
+모두 제안 플랫폼 계약이다. 초기 구현은 IsolatedLocalChromiumEnvironment(같은 PC VM 내 Chromium)와 UsbAndroidEnvironment다. worker가 lease를 확보한 뒤 환경을 준비하고, 신뢰 driver에만 browser/ADB 제어 handle을 전달하고 생성 script는 제한 IPC/관찰만 사용한다. 에이전트는 직접 기기를 재배정하거나 context lifetime을 우회하지 않는다. 기존 CUAWright의 local_launch/context 생성·종료는 이 경계 아래에서 연결하고 중복 browser 생성을 방지한다. USB 환경은 연결·잠금·package·IME·앱 설치 정책을 준비하며, 녹화의 행동 제안은 authoring adapter, 재생 행동은 recorded plan, 예외 target 후보는 bounded healer가 담당하며 실제 dispatch는 신뢰 executor가 통제한다.
 
-session ID는 attempt별로 발급하고 `allocated/prepared/releasing/released/quarantined` 상태·시각·해제 결과를 attempt의 session snapshot에 저장한다. 로컬 물리 기기는 지속 존재하지만 독점 제어 session은 attempt 수명과 같다. 새 Web context는 매 attempt 생성·종료한다. 모델 호출만 하는 structure/model_check와 metadata 검사 app_inspect 작업은 physical session이 없다. `release`는 중복 호출에 안전하고 증명 못 한 자원은 quarantine한다. UI는 세션 정보를 조회할 뿐 직접 제어 handle을 받지 않는다.
+session ID는 attempt별로 발급하고 `allocated/prepared/releasing/released/quarantined` 상태·시각·해제 결과를 attempt의 session snapshot에 저장한다. 로컬 물리 기기는 지속 존재하지만 독점 제어 session은 attempt 수명과 같다. 새 Web context는 매 attempt 생성·종료한다. 모델 호출만 하는 structure/model_check와 저장 APK metadata 검사 app_inspect 작업은 physical session이 없다. live USB/화면 관찰은 읽기 전용 resource_probe session을 확보한다. `release`는 중복 호출에 안전하고 증명 못 한 자원은 quarantine한다. UI는 세션 정보를 조회할 뿐 직접 제어 handle을 받지 않는다.
 
-공통화 범위는 worker/resource/environment/session ID, capability 이름, lease generation, 작업·event·artifact contract와 lifecycle이다. 좌표/SoM locator·ADB serial·remote CDP·공급자 session token은 구별한다. screenshot 미리보기는 권한 확인된 artifact 조회 채널이고 실제 제어는 worker↔환경 채널이다. 화면을 보인다고 직접 원격 조작을 제공하는 것은 아니다.
+공통화 범위는 worker/resource/environment/session ID, capability 이름, lease generation, 작업·event·artifact contract와 lifecycle이다. 좌표/recorded locator·ADB serial·remote CDP·공급자 session token은 구별한다. screenshot 미리보기는 권한 확인된 artifact 조회 채널이고 실제 제어는 worker↔환경 채널이다. 화면을 보인다고 직접 원격 조작을 제공하는 것은 아니다.
 
 ### 8.2 데이터 모델·관리 API
 
-화면/API 요약은 [UI_SPEC §7](UI_SPEC.md#7-데이터api워커--v05-규범-계약), DB 제약·transaction·재녹화·누적 facts/보관은 [DATA_DESIGN.md](DATA_DESIGN.md)를 따른다. automation_cases/case_versions가 검증 정의/설정/기록을 소유하고 recording_sessions→불변 recording_manifests→멱등 recording_materializations→produced version으로 연결한다. review_requests/action_reviews/approvals는 exact source/trial/evidence에 결합한다. 선택 TC는 nullable 카탈로그이며 필수 FK/실행 gate가 아니다.
+화면/API 요약은 [UI_SPEC §7](UI_SPEC.md#7-데이터api워커--v06-규범-계약), DB 제약·transaction·재녹화·누적 facts/보관은 [DATA_DESIGN.md](DATA_DESIGN.md)를 따른다. automation_cases/case_versions가 검증 정의/설정/기록을 소유하고 recording_sessions→불변 recording_manifests→멱등 recording_materializations→produced version으로 연결한다. review_requests/action_reviews/approvals는 exact source/trial/evidence에 결합한다. 선택 TC는 nullable 카탈로그이며 필수 FK/실행 gate가 아니다.
 
 모든 project/case 소속을 composite FK로 강제하고 UUID PK·UNIQUE·CHECK·불변 trigger·ON DELETE RESTRICT·CAS를 명시한다. case_steps/case_checks는 케이스 내부 정의의 검색/FK용 projection으로 별도 TC 관리가 아니다. 녹화/관리 jobs는 ITEM과 구분하고 단일/선택/suite는 모두 executions/case_runs로 접수한다. 최소 결과 facts/lineage/승인 기록은 장기 유지하며 분석은 원본 QA와 분리한다. 파일은 artifact metadata·typed owner refs·hash로 연결하고 staging/ready/GC 경쟁을 처리한다. SQLite 접근은 API 단일 writer, worker는 HTTP/spool만 사용한다. v0.2 tests/test_versions·runs=job·suite_runs 계약을 그대로 구현하지 않는다.
 
 ### 8.3 작업·워커 이벤트 계약
 
-worker register/enrollment·claim·heartbeat·attempt ack/events/artifact/finish·resource recover의 책임과 lease/fencing을 유지한다. job payload는 purpose=`recording/trial/regression/structure/app_inspect/app_install/resource_probe/model_check/export/evidence_sync` 중 하나이며 해당 schema와 권한만 허용한다. 정식 reverification은 새 execution purpose이며 worker 검증 경로는 regression을 사용한다.
+worker register/enrollment·claim·heartbeat·attempt ack/events/artifact/finish·resource recover의 책임과 lease/fencing을 유지한다. job payload는 purpose=`recording/trial/regression/structure/app_inspect/app_install/resource_probe/model_check/export/evidence_sync/package_rebuild/backup` 중 하나이며 해당 schema와 권한만 허용한다. 정식 reverification은 새 execution purpose이며 worker 검증 경로는 regression을 사용한다.
 
-ExecutionSpec에는 job_id·선택 recording_id/case_run_id·case version·definition/settings/procedure manifest·environment/data/build snapshot·resource/lease generation·role binding·limits를 넣는다. actual secret은 넣지 않는다. 녹화/trial/정식과 app_install/resource_probe는 필요한 physical session을 확보하고 structure/app_inspect/model_check/export/evidence_sync는 worker slot만 쓴다.
+ExecutionSpec에는 job_id·선택 recording_id/case_run_id·case version·definition/settings/procedure manifest·environment/data/build snapshot·resource/lease generation·role binding·limits를 넣는다. actual secret은 넣지 않는다. 녹화/trial/정식과 app_install/resource_probe는 필요한 physical session을 확보하고 structure/app_inspect/model_check/export/evidence_sync/package_rebuild/backup은 worker slot만 쓴다. app_inspect는 저장 APK metadata 검사이며 실제 installed app/화면 관찰은 physical lease가 있는 읽기 전용 resource_probe다. package_rebuild는 관리 job으로 QA=null·physical session 없음·기기/브라우저/모델 제어 권한 없음이다. payload는 동일 project/case의 기존 source manifest·새 compiler/lock ref·요청 멱등 키만 허용하고 source 조회·compile·artifact 작성·새 materialization 권한으로 제한한다. jobs의 recording_id/case_run_id는 모두 null이며 source ref로 연결한다.
 
 동작 로그·PNG는 정제 후 local spool→server ingest/ACK다. events는 attempt/local_seq·hash로 중복 방지하며 ready artifact만 검토에 사용한다. finish는 final_seq와 required artifacts를 30초까지 기다린다. 누락이면 저장된 부분 기록을 유지하고 evidence incomplete·termination_reason을 남긴다. **REC/관리 job의 QA는 null**, trial/정식 ITEM만 FAIL 우선 규칙과 INCONCLUSIVE를 적용한다. 늦은 generation은409/감사 기록이며 terminal 결과를 덮지 않는다.
 
@@ -438,7 +445,7 @@ app_build_id의 파일/hash/metadata는 불변이며 새 APK는 새 build를 만
 
 ## 9. UI 정보 구조·저장 기록 검토
 
-[UI_SPEC.md](UI_SPEC.md)가 v0.5 화면/API 규범이다. 프로젝트/개요, 통합 케이스 목록·상세, 디바이스 먼저 선택하는 REC 시작·진행, 녹화 이력/완료 후 검토, suite, 수행 설정·진행, ITEM 상세·분석, report·비교, 환경/data/build, 설정/활동 이력의 **기본15개 화면·선택 TC1개 화면과 7개 와이어프레임**을 제공한다.
+[UI_SPEC.md](UI_SPEC.md)가 v0.6 화면/API 규범이다. 프로젝트/개요, 통합 케이스 목록·상세, 디바이스 먼저 선택하는 REC 시작·진행, 녹화 이력/완료 후 검토, suite, 수행 설정·진행, ITEM 상세·분석, report·비교, 환경/data/build, 설정/활동 이력의 **기본15개 화면·선택 TC1개 화면과 7개 와이어프레임**을 제공한다.
 
 사용자는 UI만으로 디바이스/브라우저 선택→케이스 정보/자연어 검증 입력→AI 녹화→동작별 PNG/로그 저장→완료/저장본 조회→사람 검토/승인→AUT 단독/선택 또는 suite 실행→RUN 리포트·실패 분석/새 재실행을 할 수 있어야 한다. 녹화 중 승인, 승인을 받아야 저장, 반려 시 기록 삭제, 내부 ID 수동 연결은 요구 흐름이 아니다.
 
@@ -460,7 +467,7 @@ event ingest transaction이 commit된 뒤 UI가 조회한다. screenshot은 cont
 
 ### 비용과 한도
 
-역할: 구조화, Web actor, Android actor, 선택 verifier. 각 binding에 provider·model/revision·endpoint 종류(root chat/Responses)·주소·key ref·이미지 지원·행동 schema·price table ID를 저장한다. 행동 형식과 이미지/좌표 호환성 시험을 통과한 binding만 활성화한다.
+역할: authoring(구조화/Web·Android 녹화), verification, healing, maintenance. 정상 재생은 actor0이다. 호출마다 check/healing episode·purpose를 연결하고 월3,000 TC의 최초녹화/반복검증/예외치유/전체재녹화 비용을 분리한다. 각 binding에 provider·model/revision·endpoint 종류(root chat/Responses)·주소·key ref·이미지 지원·행동 schema·price table ID를 저장한다. 행동 형식과 이미지/좌표 호환성 시험을 통과한 binding만 활성화한다.
 
 모든 호출은 call ID, role/step, request/provider ID, 시도별 시간·응답 code, nullable input/output/cache/image usage, 계측 상태 `measured/estimated/unreported`, tariff version·currency·계산식을 저장한다. 일부 role만 누락이면 run 총계는 `partial`로 표시한다. upstream가 0으로 정규화하더라도 원본 usage 누락을 0 사용량으로 오인하지 않는다. retry·앱 resolver·검증·요약·Skill Factory routing도 각각 호출로 센다.
 
@@ -486,9 +493,9 @@ GC는 DB에서 unprotected ready→delete_pending을 먼저 확정하고 파일 
 
 Web/App 화면·DOM·다운로드는 신뢰하지 않는 관찰 데이터다. 화면 속 “규칙 무시/다른 사이트 이동/키 전송”은 실행 명령으로 승격하지 않는다. prompt 경계에 더해 신뢰 코드가 URL host/scheme/port·redirect·package·action scope를 매번 확인한다. localhost/private IP는 staging 필요에 맞춰 정확한 허용 목록으로 등록하고, 관리 API·메타데이터 endpoint·개인 파일 접근은 금지한다. 브라우저 자체 리소스 로드도 domain allowlist에 맞춰 통제하되 허용된 CDN 목록을 환경에 기록한다.
 
-A안은 구조화된 행동만 실행하고 모델의 임의 shell/코드는 허용하지 않는다. runner는 별도 최소권한 계정·작업 공간·Windows Job Object 아래에서 실행하며 key는 필요한 model client에만 주입한다. process 분리는 충돌 범위·정리를 위한 것이며 완전 보안 sandbox를 뜻하지 않는다. ADB는 그 기기에 강한 권한이 있으므로 QA 전용 기기·계정 사용을 전제한다.
+Android 재생과 healer는 신뢰 코드의 구조화 행동만 실행하고 임의 shell/code를 제안 결과로 바로 실행하지 않는다. runner는 별도 최소권한 계정·작업 공간·Windows Job Object 아래에서 실행하며 key는 필요한 model client에만 주입한다. process 분리는 충돌 범위·정리를 위한 것이며 완전 보안 sandbox를 뜻하지 않는다. ADB는 그 기기에 강한 권한이 있으므로 QA 전용 기기·계정 사용을 전제한다.
 
-CUAWright를 채택한다면 생성 Python/bash를 **관리 서버에서 실행하지 않는다**. 전용 worker의 폐기 가능한 Linux VM(Windows 호스트면 Hyper-V 등 가용성 확인)을 기본 제안하며 host mount·credential·Docker socket 없이 제한 사용자·CPU/RAM/시간 quota·egress proxy allowlist·run별 디스크로 격리한다. 모델 API 호출은 host의 제한 gateway를 거치고 script에는 key를 주지 않는다. 임시 폴더나 `exec`의 globals 제한만으로 격리했다고 표현하지 않는다. native live 경로도 임의 Python이므로 같은 격리 요구를 갖는다. 이 비용이 B안을 보류한 이유다.
+CUAWright Web authoring/replay의 생성 Python/bash를 **관리 서버에서 실행하지 않는다**. 전용 worker의 폐기 가능한 Linux VM(Windows 호스트면 Hyper-V 등 가용성 확인)을 기본 제안하며 host mount·credential·Docker socket 없이 제한 사용자·CPU/RAM/시간 quota·egress proxy allowlist·run별 디스크로 격리한다. 모델 API 호출은 host의 제한 gateway를 거치고 script에는 key를 주지 않는다. 임시 폴더나 `exec`의 globals 제한만으로 격리했다고 표현하지 않는다. native live 경로도 임의 Python이므로 같은 격리 요구를 갖는다. 격리·direct replay·계측은 v0.6 MVP 필수이며 미확보 시 Web 구현 가능 gate를 통과시키지 않는다.
 
 주문·송금·삭제는 승인된 테스트 환경/계정/금액·행동 범위에서만 가능하다. 원문 자연어만으로 권한을 확대하지 않는다. 위험 동작 전에 manifest의 사전 승인 범위를 확인하고 범위 밖이면 BLOCKED다. 회사 화면을 외부 API로 보낼 권한이 확인되지 않았으므로 운영 데이터 전송은 막고 합성 데이터 환경으로 기술 검증한다. 이 선택은 §14의 사용자 결정에 따라 변경될 수 있다.
 
@@ -499,6 +506,8 @@ CUAWright를 채택한다면 생성 Python/bash를 **관리 서버에서 실행�
 비교는 version hash·환경·앱/browser/model fingerprint가 같은 집단을 기본으로 한다. 첫 attempt에서 모든 검사가 만족한 비율과 안전하게 허용된 retry 포함 비율을 따로 보인다. 모델 retry·action retry·전체 attempt retry도 별도 count다. 복구 후 성공에는 recovery 표식을 유지하며 필수 위반 latch가 있는 run은 성공 집계에 넣지 않는다. blocker·inconclusive를 분모에서 몰래 제외하지 않는다. 시간은 queue/prepare/model/action/verify/cleanup으로, 비용은 measured/estimated/partial로 나누어 표시한다.
 
 누적 분석은 ITEM을 관측 단위로 하고 attempt retry는 중복 계산하지 않는다. 사용자 재실행은 새 관측으로 원본 FAIL을 남긴다. parent requested_at의 UTC [from,to)·as_of·criteria_version, 검증 의도 digest와 data/env/build/model 등 비교 조건을 보존한다. 기본 ‘전체 수행 이력’과 선택 ‘조건별 최근 완료 결과’를 구분하고 다른 검증 기대/필수 경로는 별도 series로 표시한다. PNG 만료 후에도 최소 facts로 당시 집계를 재계산할 수 있게 한다. 세부 산식·cohort·계측 null/보정은 [DATA_DESIGN §8](DATA_DESIGN.md#8-누적-분석결과-사실)을 따른다.
+
+추가 지표는 unassisted_pass(동작 오류/retry/recovery/healing 없는 PASS), healed PASS, healer 실패/거부/unknown·호출수/비용이다. AI verifier 사용은 별도로 집계한다. PASS·healing_used는 기존 PASS bucket의 부분집합이며 terminal7개 합계는 바꾸지 않는다. 요청 ON/OFF와 실제 model roles·package/policy hash를 비교 조건으로 표시한다. 치유가 늘어 정상 재생 성공률이 떨어지는 것을 전체 PASS만으로 숨기지 않는다.
 
 ## 13. 후속 기술 검증과 MVP 합격 gate
 
@@ -517,13 +526,13 @@ CUAWright를 채택한다면 생성 Python/bash를 **관리 서버에서 실행�
 
 11. REC의 tap/swipe/type/back 각각 전후 PNG/로그를 승인 없이 저장하고 녹화 완료/중단 뒤 저장본을 조회·검토한다. 녹화 중 승인0·미승인 저장 성공·필수 evidence/action review 누락 승인0을 확인한다. 통합 케이스·TC 없음/null 참조·단독/선택 수행·7결과/진행 분모·CSV/HTML·분석/재실행 원본 보호도 UI_SPEC §9로 검증한다.
 
-두 플랫폼 gate가 모두 충족되기 전 MVP 완료라고 하지 않는다. 코드 생성 replay나 API/DB oracle이 없다는 이유로 MVP 범위를 Android만으로 줄이지 않는다.
+두 플랫폼과 승인 code/action replay·bounded healing gate가 모두 충족되기 전 MVP 완료라고 하지 않는다. 모델 key 제거/endpoint 차단·결정적 검사/OFF 재생에서 호출0·동작 증거, ON 허용/거부·FAIL latch·원본 불변과 월3,000 TC 추정의 표본/비용/저장량을 검증한다. Web 격리/코드 재생이 실패하면 설계를 수정하고 Android만으로 범위를 줄이지 않는다.
 
 ## 14. 가장 큰 위험과 남은 결정
 
 | 위험 | 영향 | 확인/완화 방법 | 결정 시점 |
 |---|---|---|---|
-| 1. upstream 경로 정적 불일치·Windows/좌표 호환 | 두 플랫폼이 실제 동작하지 않을 수 있음 | P0에서 file URI/provider/action schema·좌표·IME 최소 시험, patch/lock 고정. Web gate 실패면 B 재검토 | 구현 착수 후 첫 기술 검증 |
+| 1. upstream 경로 정적 불일치·Windows/좌표 호환 | 두 플랫폼이 실제 동작하지 않을 수 있음 | P0에서 file URI/provider/action schema·좌표·IME 최소 시험, patch/lock 고정. Web CUAWright capture/격리/direct replay gate 실패면 source/배치를 재검토 | 구현 착수 후 첫 기술 검증 |
 | 2. AI가 잘못된 결과를 PASS로 판정 | QA 도구 핵심 가치 훼손 | 결정적 oracle 우선, 필수 경로 latch, 부정 시험+사람 oracle, 근거 부족 unknown | 수직 기능·출시 gate |
 | 3. 회사 화면/secret 외부 전송 | 사용 정책과 배치 선택 변경 | 합성 데이터로 시작, 화면 반출 정책 확인, 마스킹·API/자체 모델 선택 | 실제 업무 화면 사용 전 |
 | 4. 취소·단절 뒤 외부 부작용 중복 | 주문/삭제 중복과 기기 경합 | lease watchdog·quarantine·late result fencing, 불명 거래 자동 재실행 금지, fault injection | 실행 워커 통합 전 |
@@ -537,11 +546,12 @@ CUAWright를 채택한다면 생성 Python/bash를 **관리 서버에서 실행�
 2. **첫 검증에 사용할 Web staging 흐름과 Android 앱/package·전용 계정은 무엇인가?** 임시 선택은 상품 장바구니와 QA 메모 앱. 실제 대상의 인증/초기화/한글 입력 제약에 따라 P0와 oracle binding이 바뀐다.
 3. **첫 출시부터 팀이 여러 PC를 공유해야 하는가?** 임시 선택은 로컬 개인형. 필요하면 PostgreSQL·TLS·팀 권한·중앙 artifact를 MVP로 올리며 실행 엔진 선택은 유지할 수 있다.
 
-## 15. v0.5 자체 검토·구현 추적
+## 15. v0.6 자체 검토·구현 추적
 
 | 요구 | 규범 위치 | 후속 작업 |
 |---|---|---|
-| engine 근거·두 플랫폼·작은 adapter | RESEARCH, §1–4·7–8 | T0/T1/T4 |
+| engine 근거·두 플랫폼·격리/direct replay | RESEARCH, 실행 상세, §1–4·7–8 | T0/T1/T4/T12 |
+| 선택 검증·healing ON/OFF·원본/수정제안·월3,000 TC 계측 | 실행 상세, DATA_DESIGN, UI_SPEC | T13/T14, W29–W32 |
 | 통합 케이스·선택 TC 비종속·정확한 케이스 version | UI_SPEC §2·7, §5 | T2/T3/T5 |
 | action 전후 PNG/로그·저장 | UI_SPEC §5, §8.4 | T4/T5 |
 | 녹화 완료·먼저 저장·사후 승인 | UI_SPEC §1·5, §5.3 | T5/T6 |
@@ -552,6 +562,22 @@ CUAWright를 채택한다면 생성 Python/bash를 **관리 서버에서 실행�
 | 권한/비밀값·증거/보관·비용 | §10–11 | T2/T4/T9 |
 | 양 플랫폼 UI·정상/오류/장애 합격 | UI_SPEC §9, §13 | T10 |
 
-v0.5는 DB/수명 상세 규범을 추가하고 사용자 결정대로 케이스에 검증 정의/설정/기록을 통합하고 TC를 선택 참조로 바꾼다. TC 0개·null 참조에서도 디바이스 선택부터 녹화/저장/승인/정식 실행을 완료해야 한다. TC 편집/보관/연결 해제는 자동 동기화·승인 취소·실행 차단을 유발하지 않으며 명시 내용 가져오기 후 실제 케이스 내용 변경만 새 version/재승인을 요구한다. 동작별 PNG/로그 선저장·완료 후 사후 승인·QA/원본 보호는 유지한다. runtime/설치/제품 구현 없이 문서만 개정한다.
+v0.6은 replay/선택 AI 검증/bounded healing과 DB/수명 상세 규범을 추가하고 사용자 결정대로 케이스에 검증 정의/설정/기록을 통합하고 TC를 선택 참조로 바꾼다. TC 0개·null 참조에서도 디바이스 선택부터 녹화/저장/승인/정식 실행을 완료해야 한다. TC 편집/보관/연결 해제는 자동 동기화·승인 취소·실행 차단을 유발하지 않으며 명시 내용 가져오기 후 실제 케이스 내용 변경만 새 version/재승인을 요구한다. 동작별 PNG/로그 선저장·완료 후 사후 승인·QA/원본 보호는 유지한다. runtime/설치/제품 구현 없이 문서만 개정한다.
 
+## 16. v0.7 구현 작업서 세분화·계약 보완
 
+제품 방향은 v0.6을 유지하고, 실행 지시는 [32 W/158개 상세 작업·14개 영역](docs/execution/README.md)으로 구체화했다. [공통 계약 C00–C12](docs/execution/CONTRACTS.md)는 이 절의 구현 보완이며 [검토32건](docs/execution/REVIEW.md)과 함께 읽는다. 제품 구현/기기/모델/DB 시험을 수행한 것은 아니다.
+
+- 부모 W는 진행/통합 검수, 한 모델 요청은 leaf1개다. W16-05 source 저장→W29/W30 package→W16-07 finish 통합의 선행을 따른다. 앞 화면 shell만 완료됐다고 후속 기능을 완료 처리하지 않는다.
+- 케이스별 설정/check method/binding/healing capability 편집은 W10-11이다. 의미 편집은 새 draft/package=null·새 전체 REC이고 같은 source 재컴파일만 package_rebuild다.
+- 공개 CaseEditInput은 source/package/approval provenance를 지정할 수 없다. 명시 제안 수락은 영속 proposal/hash/base/expected_head를 검증해 새 version을 만든다.
+- 기기 선택 화면은 최근 정제 capture+시각·가용성이다. 읽기 resource_probe도 physical lease를 확보하며 resource_observations/typed artifact owner를 보존한다. live video/수동 제어는 후속이다.
+- API 로컬 session/CSRF/worker auth·7일 멱등 key와 영구 업무 unique 제약·project commit cursor/attempt local_seq를 구별한다. launcher의 일회 browser bootstrap은 60초 nonce를 fragment로 전달하고 로그/저장소에 남기지 않는 구현 선택이다.
+- action retry1은 미dispatch가 증명된 전달 전 실패만, dispatch_started 뒤는 불명 재전송0이다. ACK된 spool만7일 자동 청소하며 미ACK는 보존/용량 압박 시 새 행동 중지다.
+- 구조화는 authoring role, 연결검사는 maintenance role이며 모두 계측한다. backup은 owner null/QA null·기기/모델 제어 없는 관리 purpose다.
+- 복원은 별도 경로 검사·명시 활성화·옛 queued/running 재개0·lease/token/session 폐기·resource quarantine/key 재설정이다. manual pin 해제 API로 approval 보호를 해제하지 않는다.
+- 파일 전체20GB 한도는 project 합산 저장소이며 보호 때문에 초과해도 근거를 몰래 삭제하지 않는다. 파괴적 이력 purge UI는 MVP 밖으로 명시한다.
+
+UI94개 조작은 [UI 추적](docs/execution/UI_COVERAGE.md), P0 32개/P1 3개·UI21/DATA22/실행10 검증은 [요구 추적](docs/execution/COVERAGE.md)에 담당을 연결했다. 담당 배정은 실제 검증 통과를 뜻하지 않는다.
+
+백업은 local_owner 전용 **이 PC 전체 저장소** 대상이며 project URL은 요청 이력 namespace다. API 저장 계층이 DB snapshot/project별 commit cursor map을 만들고 worker는 범위가 고정된 HTTP bytes만 복사한다. 일반 project 권한/일반 artifact 조회로 전체 DB를 노출하지 않는다. 복원도 모든 project의 진행 작업을 정리한 뒤 API 유지보수 모드에서 명시 활성화한다. CONTRACTS C10–C12/W26-04·05를 따른다.

@@ -1,14 +1,16 @@
-# AI QA 플랫폼 UI 설계 v0.5
+# AI QA 플랫폼 UI 설계 v0.6
 
 개정일: **2026-10-31 (Asia/Seoul)** · 상태: 검토용 설계, 제품 코드 미구현.
 
 기준: 첨부 UI 문서보다 최신인 사용자 결정 — 검증 내용과 녹화 기록을 자동화 케이스 하나에 보관하고 TC 관리는 선택적으로 둔다. [DESIGN.md](DESIGN.md)는 중심 설계, [RESEARCH.md](RESEARCH.md)는 공개 엔진 근거, [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)는 구현 준비 문서다. [v0.3 UI](docs/history/v0.3/UI_SPEC.md)와 [v0.4 UI](docs/history/v0.4/UI_SPEC.md)는 보관했다. DB 제약·원자 승인·전체 재녹화·장기 분석/보관은 [DATA_DESIGN.md](DATA_DESIGN.md)가 상세 규범이다. 아래 화면/API는 제안 플랫폼 계약이며 현재 엔진에 이미 있는 제품 기능이 아니다.
 
+v0.6 실행 방향은 **AI 녹화 → 저장된 코드/동작 재생 → 필요 검증 AI → 예외 시 선택 셀프힐링**이다. Web은 CUAWright 코드 authoring/replay, Android는 Mobile-Agent authoring/플랫폼 action replay다. [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)가 package/격리/healing 규범이며 [v0.5 UI](docs/history/v0.5/UI_SPEC.md)는 보관했다. 기존 샘플은 v0.5 모의 화면이며 이번 문서 수정으로 기능이 구현된 것은 아니다.
+
 ## 1. 검토 결론과 저장·승인 순서
 
 **동작 체험용 샘플:** [로컬 프런트 실행·체험 안내](prototype/README.md), [샘플 HTML](prototype/index.html). 화면·기기·모델 결과는 모의 데이터이며 제품/DB 구현과 구분한다. 검증한 동선은 [샘플 확인 기록](prototype/VALIDATION.md)에 남겼다.
 
-**자동화 케이스 하나가 검증 정의·실행 설정·녹화된 단계·동작별 증거를 함께 소유한다.** 사용자는 TC를 먼저 등록하지 않고 디바이스/테스트 브라우저 선택→필요 정보→자연어 검증 내용→AI 녹화→저장본 검토/승인으로 진행한다. 별도 TC 관리는 선택 기능이며 케이스 생성·녹화·저장·시범·승인·정식 실행의 선행 조건이 아니다. 엔진/로컬 실행/QA 원칙은 유지한다.
+**자동화 케이스 하나가 검증 정의·실행 설정·녹화된 단계·동작별 증거를 함께 소유한다.** 사용자는 TC를 먼저 등록하지 않고 디바이스/테스트 브라우저 선택→필요 정보→자연어 검증 내용→AI 녹화→저장본 검토/승인으로 진행한다. 별도 TC 관리는 선택 기능이며 케이스 생성·녹화·저장·시범·승인·정식 실행의 선행 조건이 아니다. 시범/회귀는 recorded_replay가 기본이고 일반 actor 호출0, 검증과 healing은 각각 명시 정책을 따른다.
 
 **사용자가 명확히 정한 흐름:**
 
@@ -22,7 +24,10 @@ flowchart LR
   C --> D[기록 저장 확정·케이스 초안 보관]
   D --> E[사람이 저장된 단계·화면·로그 검토]
   E --> F[해당 케이스 버전 승인 또는 반려]
-  F --> G[승인 버전 정식 실행]
+  F --> G[승인 코드·동작 재생]
+  G --> H[결정적 검증·필요 verifier]
+  G --> X[예외: healing OFF 또는 허용 ON]
+  X --> H
 ```
 
 **녹화 중 승인 버튼·승인 대기 정지는 없다. 승인은 저장의 선행 조건이 아니다.** 정상·실패·중단·미완성 기록도 먼저 보존한다. 저장된 초안은 승인 전에도 조회·편집·복제·시범 실행이 가능하다. 승인은 그 버전을 정식/회귀 실행에 사용하도록 허용하는 절차다.
@@ -31,7 +36,9 @@ flowchart LR
 |---|---|
 | 기본 관리 단위 | 검증 정의와 녹화 절차를 케이스 버전 하나로 관리. REC/RUN/ITEM은 이 케이스의 보관/실행 이력 |
 | 별도 TC 관리 | 선택 참조·명시적 내용 가져오기만 제공. TC 없음/수정/보관이 케이스를 차단하지 않음 |
-| 녹화 의미 | AI 수행의 동작·변수·검증·화면/로그 기록. 영상/무모델 코드 재생과 동일시하지 않음 |
+| 녹화 의미 | AI authoring으로 동작/code/plan·변수·검증·화면/로그를 먼저 저장, 승인 package를 이후 직접 재생 |
+| AI 호출 구분 | 녹화 authoring / 명시 verification / 예외 healing / 유지보수. 기본 동작 replay actor0 |
+| 셀프힐링 | default OFF·승인 capability 안에서 접수 시 ON, runtime snapshot 고정·동일 대상/미dispatch만 허용 |
 | 수동 조작 녹화·pause | 엔진 지원 미확인으로 후속. 작동하는 버튼으로 노출하지 않음 |
 | 동작별 확인 | 탭·스와이프 등 전후 PNG·로그를 저장한 뒤, 완료 후 검토 화면에서 사람이 확인 |
 | 저장과 승인 | 불완전 기록도 저장. 부족한 증거는 승인만 차단 |
@@ -123,7 +130,7 @@ TC를 사용하려면 UI-16에서 별도 관리하고 케이스 metadata에 선�
 
 ```text
 + SHOP / AUT-041 정상 로그인 / v2 / Android ------------------------+
-| [검증 내용] [녹화 단계] [실행 설정] [실행 이력] [검토·버전]     |
+| [검증 내용] [녹화 단계·코드] [실행 설정] [실행 이력] [검토·버전]     |
 +------------------------------------------+------------------------+
 | 자연어 검증 내용 [                    ]  | 앱·대상·담당자·태그    |
 | [AI 구조화 제안] [제안 diff]              | 저장/승인 상태         |
@@ -136,11 +143,13 @@ TC를 사용하려면 UI-16에서 별도 관리하고 케이스 metadata에 선�
 +------------------------------------------------------------------+
 ```
 
-검증 내용 탭은 원문/목적/조건/변수·secret refs/기대 결과·필수 경로를 직접 편집한다. 녹화 단계 탭은 실제 단계와 action별 전후PNG/로그·검증을, 실행 설정은 환경/앱·URL/reset/cleanup·한도를 같은 케이스에서 보여준다. 실행 이력·검토/버전 탭도 같은 AUT에 귀속된다.
+검증 내용 탭은 원문/목적/조건/변수·secret refs/기대 결과·필수 경로를 직접 편집한다. 녹화 단계·코드 탭은 원본/승인 Web script 또는 Android action plan·runtime/lock/package hash·source/action/line mapping과 전후PNG/로그·검증을, 실행 설정은 환경/앱·URL/reset/cleanup·한도를 같은 케이스에서 보여준다. 실행 이력·검토/버전 탭도 같은 AUT에 귀속된다.
 
 AI 구조화는 이 케이스 안의 제안이며 diff 확인 후 적용한다. 원문/기대가 불완전해도 draft 저장은 가능하며 needs_review로 안내한다. 검증/절차/핵심 설정 변경은 새 케이스 version, 이전 근거는 ‘수정 전’ 표시·새 trial/승인이다. TC를 만들거나 선택할 필요는 없다. 선택 참조만 바꿀 때는 감사 metadata만 변경한다.
 
 ‘최신 초안’과 ‘기본 승인 실행본’을 나란히 표시한다. **재녹화**는 기준 case version·사유·검증 의도 유지(기본)/명시 변경 diff·device/앱·URL/data/reset 확인창을 연다. 새 input draft/REC를 같은 AUT 아래 만들며 기존 승인본을 유지한다. AI가 기대 결과를 자동 완화하지 않는다. MVP는 전체 흐름을 다시 녹화하며 부분 action 병합/중간 재개는 후속이다. 실패/중단/반려에서도 기존 기본본이 바뀌지 않음을 안내한다.
+
+실행 설정 탭은 검증별 deterministic/ai_visual/허용 unknown 보완·모델 binding과 healing capability/scope/상한·기본OFF를 같은 버전에 보여준다. 일반 동작 replay actor0를 설명하며 모델 key 없는 결정적 재생도 허용한다. 코드/검증/정책 권한 확대는 새 version/trial/승인이고 기존 package를 직접 편집하지 않는다. package 없음·컴파일/계측/격리 불가·mapping 누락은 저장 유지/승인 차단 사유다.
 
 ### UI-05 녹화 시작·진행 — 와이어프레임 3
 
@@ -160,13 +169,13 @@ AI 구조화는 이 케이스 안의 제안이며 diff 확인 후 적용한다. 
 +------------------------------------------------------------------+
 ```
 
-진입은 UI-02/03의 새 녹화 또는 기기 화면의 이 기기로 녹화다. **1단계 디바이스/테스트 브라우저 선택 → 2단계 앱·URL/빌드·계정/data·초기화/한도 설정 → 3단계 자연어 검증 내용/기대 결과 입력·AI 구조화 확인 → 4단계 AI 녹화**다. Android는 연결 기기를, Web은 해당 PC의 테스트용 Chromium/profile을 선택한다. ‘브라우저 선택’은 관리 UI 탭 선택이 아니다.
+진입은 UI-02/03의 새 녹화 또는 기기 화면의 이 기기로 녹화다. **1단계 디바이스/테스트 브라우저 선택 → 2단계 앱·URL/빌드·계정/data·초기화/한도 설정 → 3단계 자연어 검증 내용/기대 결과 입력·AI 구조화 확인 → 4단계 AI 녹화**다. Android는 연결 기기를, Web은 해당 PC의 테스트용 Chromium/profile을 선택한다. ‘브라우저 선택’은 관리 UI 탭 선택이 아니다. Web은 이 PC의 격리 Linux VM 내 테스트 Chromium이고 VM 준비/driver/broker 상태를 함께 표시한다. 클라우드 가입은 필수가 아니다.
 
 TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가져오기를 보조 기능으로 쓸 수 있지만 건너뛰어도 동일하게 진행한다. 시작 전 케이스 초안 version과 정의/설정 digest를 저장한다. 녹화 시작 요청은 이 input_case_version_id/hash·선택 resource로 preflight 후 REC/job을 만들며 AI는 이 케이스의 내용을 사용한다.
 
 녹화 중 **각 동작 전후 PNG·실행 로그는 승인 없이 계속 저장**한다(§5). 목표 수정/승인/정식 실행 버튼은 없고 메모는 append-only다. 완료는 새 행동 중지→기록 flush/정리→보관 확정이다. 중단/단절/비정상 종료도 수집 기록을 보존한다. 저장을 버릴지 승인자에게 묻거나 반려 시 폐기하는 흐름은 없다.
 
-완료 후 검증 정의·실행 설정·실제 절차·근거가 함께 있는 AUT draft를 자동 저장하고 UI-04의 녹화 단계 탭으로 이동한다. 검토는 완료/보관 후 UI-07에서 한다. TC 참조가 없어도 완전히 동일하다. 서버 ACK 전에는 ‘이 PC 임시 보관·서버 전송 대기’이며 저장 완료/승인 가능으로 표시하지 않는다. 녹화 중 사람이 동작을 승인해야 다음 행동/저장을 하는 구조가 아니다.
+완료 후 raw script/plan·source manifest를 seal하고 package compile/계측 검사·artifact ready를 거쳐 새 version/package를 원자 materialize한다. 컴파일 실패도 package 없음/사유 있는 draft로 저장한다. 나중 컴파일은 package_rebuild receipt·새 version이다. 검증 정의·실행 설정·실제 절차·근거가 함께 있는 AUT draft를 자동 저장하고 UI-04의 녹화 단계 탭으로 이동한다. 검토는 완료/보관 후 UI-07에서 한다. TC 참조가 없어도 완전히 동일하다. 서버 ACK 전에는 ‘이 PC 임시 보관·서버 전송 대기’이며 저장 완료/승인 가능으로 표시하지 않는다. 녹화 중 사람이 동작을 승인해야 다음 행동/저장을 하는 구조가 아니다.
 
 ### UI-06 케이스별 녹화 이력·미완성 기록
 
@@ -197,13 +206,15 @@ TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가�
 
 좌측 step/action, 중앙 편집 또는 전후 캡처, 우측 명령·기대/관찰·검증·오류, 하단 로그를 쓴다. 탭은 단계/입력/설정/시범/저장 기록 검토/이력이다. 좌표·locator·생성 코드는 고급 상세이며 engine capability 없는 편집 기능은 제공하지 않는다.
 
-추가/삭제/복제/정렬·변수화·검증 변경은 새 draft로 저장한다. 증거/검증 부족도 저장하며 needs_review다. REC 원본은 불변이다. 새 trial은 현재 exact manifest의 별도 수행이고 자동 승인하지 않는다.
+추가/삭제/복제/정렬·변수화·검증 변경은 새 draft로 저장한다. 증거/검증 부족도 저장하며 needs_review다. REC 원본은 불변이다. 새 trial은 현재 exact replay package의 별도 수행이고 자동 승인하지 않는다. 승인 근거 trial은 healing OFF·일반 동작 actor0이며 필요한 AI verifier는 허용한다.
 
 **검토는 녹화 완료·서버 보관 확정 이후에만** 한다. action별 전후 PNG/로그·오류/우회/검증을 보고 `reviewed/needs_change/evidence_missing`을 남긴다. 검토 표시는 QA 판정을 수정하지 않는다. 필수 검증 정의/근거/동작 검토 누락, 현재 PASS trial 없음, 다른 hash/오래된 증거는 승인 차단이다. 승인/반려는 actor/time/reason·version/evidence digest에 결합한다. 수정하면 이전 review/approval을 자동 복사하지 않는다. 반려해도 저장된 기록은 유지하고 새 수정본으로 이어진다.
 
 재녹화 후보는 기준 승인본↔후보의 **검증 정의/필수 경로·절차/대상·설정·오류/증거 diff**와 새 trial을 함께 검토한다. completed source·완결 절차/증거·현재 PASS trial·필수 action 검토가 필요하다. 부분 저장본은 조회/편집되지만 승인할 수 없으며 새 전체 녹화를 안내한다.
 
 승인 버튼은 **‘이 버전 승인 및 기본 실행본으로 사용’**이다. exact review/hash·expected_current_approval_id로 요청하고 승인·증거 보호·기본 pointer·audit를 한 transaction에서 확정한다. 충돌409는 새 기본본/diff를 보여주고 재확인한다. 이전 승인은 자동 철회하지 않는다. 기존 suite와 queued/running RUN은 exact 이전 version을 유지하고 묶음 갱신은 UI08에서 새 suite revision으로 명시한다. 별도 철회 시 미시작 차단/진행 취소 영향을 보여주며 current 철회 시 이전본 자동 fallback 없이 실행본 선택 필요로 표시한다.
+
+승인 패널에 package ready/승인 script·plan/runtime/lock hash·동작 mapping·OFF trial actor0/현재 검증 PASS를 추가로 표시한다. 미완성/없는 package나 hidden model helper·raw action 우회 산출물은 승인 불가다. 승인 digest에는 재생 자산과 verifier/healing capability·scope/한도를 포함한다. 치유를 사용한 실행의 PASS는 원본 package 승인용 clean trial을 대체하지 않는다.
 
 ### UI-08 테스트 묶음 목록·편집
 
@@ -216,7 +227,7 @@ TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가�
 ```text
 + SHOP / 새 테스트 수행 -----------------------------------------+
 | 1대상 확인 → 2환경·데이터 → 3사전 점검 → 4최종 확인            |
-| 이름[로그인 회귀] 목적[정식] 릴리스[선택]                       |
+| 이름[로그인 회귀] 목적[정식] 셀프힐링[OFF] 릴리스[선택]                       |
 +------------------------------------+---------------------------+
 | AUT-041v2 / 로그인 검증 / data-A       | Android: 이 PC·기기A       |
 | AUT-052v1 / 로그아웃 검증 / data-B       | 요청앱v12 / 설치앱v12      |
@@ -229,13 +240,19 @@ TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가�
 
 단일/선택/묶음/재실행 공통4단계다. exact 케이스 version/data/env revision·요청/실제 build·모드·한도/reset·failure policy·원본 수행/사유를 확인한다. busy는 점유 링크+대기 등록/돌아가기다. preview는 자원 예약이 아니며 claim 직전 재검사한다.
 
-필수 검증 정의·변수·모델/정책 오류는 차단한다. **purpose=trial은 케이스 승인 검사를 제외해 미승인 초안도 접수한다. 정식 regression/reverification만 선택한 exact case version의 유효 승인을 요구한다.** 일부 제외는 항목/사유 확인 후 snapshot에 남기며 조용히 빼지 않는다. 시작은 Idempotency-Key로 RUN을 1개 만들고 UI-10으로 이동한다. 이후 편집은 snapshot을 바꾸지 않는다. 시범/정식 항목은 같은 RUN에 섞지 않는다.
+필수 검증 정의·변수·모델/정책 오류는 차단한다. **purpose=trial은 케이스 승인 검사를 제외해 미승인 초안도 접수한다. 정식 regression/reverification만 선택한 exact case version의 유효 승인을 요구한다.** 일부 제외는 항목/사유 확인 후 snapshot에 남기며 조용히 빼지 않는다. 시작은 Idempotency-Key로 RUN을 1개 만들고 UI-10으로 이동한다. 이후 편집은 snapshot을 바꾸지 않는다. 시범/정식 항목은 같은 RUN에 섞지 않는다. 시범은 healing OFF로 고정한다.
+
+UI09의 릴리스 표시는 release_label로 접수 snapshot에 저장하고 UI12/13의 누적 필터에 연결한다. RUN당100 ITEM 상한을 유지하므로 월3,000 TC는 최소30개 RUN의 workload이며 단일 RUN 지원을 의미하지 않는다.
+
+UI09에 **기본 실행: 저장 package 재생 / 일반 actor0 / verifier 조건·예상 호출 / 셀프힐링 OFF·ON / 최대 episode1·2호출·30초 / 전체 상한**을 표시한다. ON은 승인 capability·healer binding/예산이 있는 항목만 허용하고 나머지는 차단 사유를 명시한다. 대상/입력/경로/expected 변경이나 불명 결과 재클릭은 범위 밖이다. 실행 접수 때 resolved ON/OFF·scope/package hash를 snapshot하며 진행 중 토글하지 않는다. 필요한 AI 검증의 키가 없으면 preflight 차단/근거 불명이지 검사 생략 PASS가 아니다. 결정적 검사+OFF라면 모델 키 없이 실행 가능하다.
 
 ### UI-10 수행 목록·진행 현황
 
 `/projects/{p}/executions`, `/executions/{e}`. 대기·진행/완료/전체 탭, RUN ID·이름/purpose·출처/요청자/환경·빌드/진행/종료 수·PASS 수/분포/시각·기간. 상태·결과·기간·환경/build·suite/AUT·작업자·trial/정식 필터다.
 
 진행 상세는 좌측 ITEM 목록·중앙 현재 케이스/화면·우측 최신 이벤트/연결·상단 종료 수/전체/경과/자원이다. 완료 수와 PASS 수는 별도다. 상세/취소/리포트/같은 구성 새 실행을 제공하고 취소 요청/정지/정리를 구분한다. ITEM 취소는 완료 결과를 바꾸지 않으며 stop 정책을 적용한다. 수신 시각·stale·재접속 복원이 보인다.
+
+job status는 기존 running을 유지하고 UI phase로 replaying/verifying/healing/finalizing과 현재 actor/verifier/healer 호출수를 표시한다. ON이어도 정상 동작에는 healer 호출이 없고, 예외 시 eligibility/한도·짧은 정책 판단·제안/거부/복구 진행을 보여준다. 이미 terminal인 실패의 치유는 원본을 바꾸는 버튼이 아니라 새 수행/수정 제안으로 연결한다.
 
 ### UI-11 케이스 실행 상세·실패 분석 — 와이어프레임 6
 
@@ -256,6 +273,10 @@ TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가�
 정확한 AUT version/검증 정의 digest/attempt/data/env/build/engine/model을 고정 표시한다. 목표 step 안의 실제 탭·스와이프 등을 펼친다. fit/100%/zoom/pan/전체 보기·전후/이전다음/첫 실패로 이동과 action별 로그/시도를 연결한다. 근거는 실제 대상 캡처의 마스킹 보관본이며 모델 렌더 요약이 아니다.
 
 분석 상태(unclassified/in_progress/resolved)와 분류(product/automation/environment/data/unclassified)는 QA/진행과 별개다. 담당자·메모·외부 issue URL은 append-only다. 정정 의견은 원본 판정 옆에 표시하고 통계를 덮지 않는다. 외부 이슈 자동 생성은 후속이다. 영상은 수집된 경우만 탐색 링크, MVP는 PNG/로그다.
+
+ITEM 상세에 **원래 lookup 오류 → AI target 제안 → 결정적 동일 target/정책 검사 → 임시 override → 실제 원래 동작 → 후속 QA**를 펼친다. original/package/policy hash·dispatch journal·모델 역할별 usage/계측 상태를 보존한다. 클릭/입력 결과 불명·navigation timeout·필수 위반에서는 ‘치유 금지’와 사유를 표시한다.
+
+치유 후 PASS는 **PASS · 셀프힐링 사용** badge로 표시하고 원래 오류를 숨기지 않는다. ‘수정 제안 저장/보기’는 immutable repair proposal이며 원본 code/default/suite를 고치지 않는다. ‘제안을 적용해 전체 재녹화’는 diff/사유·새 input/REC→OFF trial→사후 승인으로 연결한다. 한 step만 덮어쓰기·검증 FAIL을 PASS로 수정하는 조작은 없다.
 
 ### UI-12 리포트 목록·수행 리포트 — 와이어프레임 7
 
@@ -279,11 +300,15 @@ CSV는 목록, HTML은 인쇄용 보고서로 생성 시각/RUN/snapshot/집계 
 
 UI12의 **누적 분석** 탭은 기간(KST입력→UTC [from,to), parent requested_at 기준)·purpose·case/version/verification_digest·data/env/build/model 조건을 제공한다. REC/관리 작업·trial 기본 제외를 표시하고 전체 관측 이력(기본)과 조건별 최근 완료 결과(선택)를 구분한다. 재실행 PASS가 과거 FAIL을 지우지 않으며 attempt retry는 관측 수를 늘리지 않는다. 7결과/진행·분모·미검증·표본수·as_of/criteria_version을 항상 표시한다. 날짜별 추세·첫 시도 통과·복구/반복 실패 check·원인 분류·시간 p50/p95·계측 상태/비용·저장량을 조회한다. 상세/PNG 만료 이후에도 최소 결과 facts를 조회하고 파일 만료 이유를 구분한다. [DATA_DESIGN §8–9](DATA_DESIGN.md#8-누적-분석결과-사실)를 따른다.
 
+리포트에 PASS 전체와 그 안의 **정상 재생 통과(unassisted) / 셀프힐링 후 통과**, 치유 발생/성공/거부/실패·호출/비용을 병기한다. 치유 후 PASS를 별도8번째 terminal 결과로 만들지 않는다. verifier 사용은 동작 assistance와 별도 축이다. 최초녹화/반복검증/예외치유/수정·전체재녹화 비용과 계측 null/미사용0을 구분하고, 월1회3,000 TC의 표본 기반 예상·조건·저장량을 표시한다. 고정 월 예산/실측 성공률을 꾸며내지 않는다.
+
 ### UI-13 수행 비교·케이스 이력
 
 기준/비교 RUN을 선택하고 같은 AUT·data·대상 기준으로 변화/지속 실패/추가·제외를 정렬한다. 케이스 version/env/build/data가 다르면 먼저 조건 차이를 보여준다. 단계/PNG/기대·관찰/시간·비용은 나란히 확인한다. 최초 실패·새 재실행 통과/작은 표본의 변동 이력을 함께 표시하고 다른 조건을 자동 개선/회귀 결함으로 확정하지 않는다.
 
 검증 기대/필수 경로가 바뀐 version은 verification_digest별 다른 series로 표시한다. 같은 검증 의도에서 절차만 바뀐 경우 조건을 확인해 비교한다. 실제 build/device/browser/viewport/OS/engine/model/prompt·data/oracle 차이는 기본 분리하며 합쳐 볼 때 혼합 조건 배너/분포를 보여준다. ‘조건별 최근 완료 결과’는 조회 방식이며 원본 결과나 전체 통계를 수정하지 않는다.
+
+비교 필터에 package/runtime/lock·요청 healing ON/OFF·승인 scope·verifier method/binding을 추가한다. 코드/검증/치유 정책이 다른 집단을 같은 조건 성공률로 합치지 않는다. 순수 재생의 model not_used와 누락 usage unknown을 구분한다.
 
 ### UI-14 실행 환경·기기·앱 빌드·데이터
 
@@ -291,9 +316,13 @@ UI12의 **누적 분석** 탭은 기간(KST입력→UTC [from,to), parent reques
 
 data는 이름/version/schema·행·케이스 연결/유효성·secret refs를 관리하고 행 값은 수행 snapshot에 고정한다. key 원문은 읽기 응답에 없다. 진단/설치는 관리 job이고 QA PASS를 만들지 않는다. 클라우드·직접 조작·pause/resume 미지원 버튼은 제공하지 않는다.
 
+Web 환경에 같은 PC의 격리 VM/Chromium·신뢰 driver/IPC·모델 broker·차단된 script credential/endpoint 상태를 표시한다. VM/driver/계측 불가면 Web package readiness를 차단하며 격리 없는 native 실행으로 조용히 대체하지 않는다. Android USB/ADB는 호스트에 유지한다.
+
 ### UI-15 프로젝트 설정·활동 이력
 
 project·폴더/태그·기본 제한/보관·실패 정책, model/key ref·비용 안내 연결 확인, worker 범위, 공간/삭제 예정, 케이스/선택 TC/묶음/검토/녹화/수행/환경 변경 이력을 제공한다. 개인형은 한 사람이 작성·승인할 수 있으나 actor/time을 남긴다. 팀 role/SSO는 후속 필요에 맞춘다. 진행 작업이 있으면 보관 전 종료/취소·정리를 안내한다.
+
+모델 설정은 authoring/verification/healing/maintenance binding·endpoint 종류/model·OS secret 참조를 구분한다. key는 일회 입력 후 원문 재반환/브라우저 저장을 하지 않는다. 모델 테스트 호출은 별도 관리 job/비용이며 정상 replay의 필수 준비가 아니다. global 예산/권한은 case 승인 범위를 더 제한할 수 있으나 기존 version의 허용 scope를 자동 확대하지 않는다.
 
 ### UI-16 선택 TC 관리 — 기본 녹화 동선과 분리
 
@@ -374,7 +403,7 @@ MVP는 모든 ITEM 필수다. 모두 PASS만 전체 검증 통과, FAIL 포함/�
 
 모델 retry/action 재탐색/전체 attempt retry는 구분한다. 기본 전체 attempt 자동 retry는0이다. 향후 허용해도 reset/side effect 안전성·승인 정책이 필요하다. first/latest attempt 결과를 함께 보존하고 **같은 ITEM의 유효 필수 violation은 latch해 최종 FAIL**을 유지한다. 마지막 PASS만으로 바꾸지 않는다. 사용자 재검증은 새 RUN/ITEM이며 원본 실패→새 수행 통과를 연결한다. 사람 이의 의견도 원본 자동 집계를 바꾸지 않는다.
 
-## 7. 데이터·API·워커 — v0.5 규범 계약
+## 7. 데이터·API·워커 — v0.6 규범 계약
 
 DB의 composite FK/UNIQUE/CHECK·불변 content·manifest별 materialization·atomic pointer/pin·retention 규범은 [DATA_DESIGN.md](DATA_DESIGN.md)다. 아래는 화면 연결을 위한 요약이며 상세 제약을 생략한 표다.
 
@@ -400,8 +429,10 @@ flowchart LR
 | automation_cases | 이름/분류·latest_draft_version_id/current_approval_id(별도 CAS), nullable tc_reference metadata·참조 변경 audit |
 | case_versions | 자연어 원문·목적/조건·structured steps/expected/path·변수/secret ref·target/setup/reset/limits·실제 recorded steps/bindings·source REC·manifest/hash를 **함께 보존** |
 | recording_sessions | project/case·input version/hash·base version/rerecord reason·job 조회·보관/종료/절차 완결 상태 |
-| recording_manifests/recording_materializations | REC별 불변 source revision/hash·original/recovery receipt, manifest별 produced version1개/멱등. output ID는 digest 바깥 receipt |
+| recording_manifests/recording_materializations | REC별 불변 source revision/hash·original/recovery/package_rebuild receipt, manifest별 produced version1개/멱등. output ID는 digest 바깥 receipt |
 | case_steps/case_checks | case version 내부 정의의 stable ID/semantic hash·검색/FK projection. 별도 TC 아님 |
+| replay_packages/package_steps | version당0..1·ready일 때1개, source/raw/승인 script 또는 plan/runtime/lock/mapping hash·비순환 materialization |
+| healing_episodes/events/runtime_overrides/repair_proposals | exact ITEM/attempt/package·원래 오류/dispatch 이력·bounded episode·임시 target override·새 전체 REC 제안, 원본 불변 |
 | review_requests | exact case/source manifest/trial/evidence set/hash·expected current approval의 불변 검토 snapshot |
 | approvals/action_reviews | exact case/source/trial digest·동작 검토·approve/reject/revoke·actor/time/reason. TC FK/상태 검사 없음 |
 | suites/suite_versions | exact case version/hash·data/환경/순서/defaults·failure policy, TC version 필수 참조 없음 |
@@ -419,7 +450,7 @@ case_versions에 tc_id/tc_version_id NOT NULL을 두지 않는다. 케이스에 
 
 ### 7.2 API·조작 추적
 
-prefix는 `/api/v1`. project scope/role·CSRF/worker auth·cursor(기본25/최대100)/필터·정렬 whitelist·If-Match·멱등성/오류 계약은 DESIGN을 따른다. v0.5는 케이스에 검증 내용을 직접 받으며 TC가 필요한 v0.3 payload를 사용하지 않는다. 기존 `/tests`, `/runs`, `/suite-runs` 계약을 동시에 구현하지 않는다.
+prefix는 `/api/v1`. project scope/role·CSRF/worker auth·cursor(기본25/최대100)/필터·정렬 whitelist·If-Match·멱등성/오류 계약은 DESIGN을 따른다. v0.6은 케이스에 검증 내용·replay package·healing policy를 직접 받으며 TC가 필요한 v0.3 payload를 사용하지 않는다. 기존 `/tests`, `/runs`, `/suite-runs` 계약을 동시에 구현하지 않는다.
 
 | 화면/조작 | 제안 API | 저장·worker 책임 |
 |---|---|---|
@@ -433,6 +464,9 @@ prefix는 `/api/v1`. project scope/role·CSRF/worker auth·cursor(기본25/최�
 | UI05 완료 후 결과 초안 저장 재시도 | recordings/{r}/case-drafts POST | 해당 REC의 input definition+기록으로 새 case version 생성(manifest_id/receipt별 멱등, 같은 REC의 복구 manifest는 새 version). TC 요구 없음 |
 | UI05/07 단절 후 증거 보관 복구 | recordings/{r}/evidence-recoveries POST | worker scope를 확인한 evidence_sync job, 제어 불가·새 보관 revision·기존 QA 불변 |
 | UI07 검토/승인·반려 | case-versions/{v}/review-requests, /action-reviews, /approvals, /rejections POST | exact stored source manifest·완결 절차·trial/action digest·expected_current_approval_id 검사, 승인/default/pin 원자 확정 |
+| UI04/07 재생 package | case-versions/{v}/replay-package GET | code/plan/lock·mapping·ready/불가 이유·OFF clean trial |
+| UI11 치유 이력·제안 | case-runs/{i}/healing-episodes GET, repair-proposals/{id} GET | 원래 오류/정책/dispatch/후속검증·role usage·immutable diff |
+| UI04/11 제안 재녹화 | cases/{c}/rerecordings POST에 repair_proposal_id | 새 입력/전체 REC, default/원본 package 유지 |
 | UI07 승인 취소 | approvals/{a}/revoke POST | 새 정식 claim 차단·진행 취소·current 철회 시 no fallback, 과거/저장본 유지 |
 | UI08 묶음/복제 | projects/{p}/suites GET/POST, suites/{s}/versions, /clone, /archive POST | exact AUT·data/defaults·새 구성 hash |
 | UI09 preview/수행 | projects/{p}/execution-previews POST, projects/{p}/executions POST | 정의/data/환경·제외 사유 점검, trial은 승인 불필요·정식/회귀만 exact version 승인 검사, 접수/claim 재검증→RUN/ITEM/jobs |
@@ -448,7 +482,9 @@ prefix는 `/api/v1`. project scope/role·CSRF/worker auth·cursor(기본25/최�
 
 worker claim/heartbeat/attempt events/artifact/finish는 유지하며 job_id와 선택 recording_id/case_run_id를 받는다. `(attempt_id,local_seq)`·generation/hash fencing을 유지하고 display_result는 서버가 계산한다. 미시작 skip만 원자 terminal 처리, 진행 skip은 거부한다. parent RUN은 모든 확정 ITEM terminal일 때만 terminal이다. failure stop은 남은 ITEM NOT_RUN, 사용자 취소는 CANCELLED다. slot1·정리/quarantine도 유지한다. 보조 job에는 모든 오류/취소/lease lost에서 verdict=null이다.
 
-### 7.3 대표 JSON
+### 7.3 대표 JSON — 설명용 축약
+
+아래는 화면/관계 설명용 축약이며 실제 API fixture가 아니다. AUT/REC/RUN 표시 ID·예시 hash와 생략된 필드는 실제 UUID/hash/DTO schema로 대체한다. 정식 request/response 필드 이름은 [공통 계약](docs/execution/CONTRACTS.md)의 C01/C02/C07–C09 및 요청 필드 보완을 따른다.
 
 **저장된 녹화 동작:**
 
@@ -469,9 +505,10 @@ worker claim/heartbeat/attempt events/artifact/finish는 유지하며 job_id와 
 {
   "case_id": "AUT-041", "case_version_id": "case-v2", "tc_reference": null,
   "definition": {"raw_text": "정상 계정으로 로그인하고 사용자 이름 표시를 검증", "final_expected": [{"id": "C1", "statement": "사용자 이름이 QA Tester로 표시됨", "required": true}]},
-  "execution_settings": {"target_kind": "android", "execution_mode": "fixed_steps_ai", "environment_revision_id": "env-v3"},
+  "execution_settings": {"target_kind": "android", "execution_mode": "recorded_replay", "environment_revision_id": "env-v3", "healing_policy": {"allowed": true, "default_enabled": false, "max_episodes_per_item": 1, "max_model_calls_per_item": 2, "max_seconds": 30}},
   "recorded_steps": [{"step_id": "S2", "source_action_ids": ["A003"], "check_ids": ["C1"]}],
   "manifest_hash": "sha256:example-case-v2",
+  "replay_package": {"id": "pkg-v2", "hash": "sha256:example-package", "runtime": "android-action-replay", "status": "ready"},
   "source_recording_id": "REC-018", "recording_storage_status": "stored", "draft_saved": true,
   "review_status": "needs_review", "validity": "valid", "required_action_ids": ["A001", "A002", "A003"], "approval": null
 }
@@ -495,8 +532,8 @@ worker claim/heartbeat/attempt events/artifact/finish는 유지하며 job_id와 
 ```json
 {
   "name": "로그인 회귀", "source": "selection", "purpose": "regression",
-  "failure_policy": "stop_on_non_pass", "preview_hash": "sha256:preview-example",
-  "items": [{"entry_id": "E1", "case_version_id": "case-v2", "manifest_hash": "sha256:example-case-v2", "dataset_version_id": "data-v1", "row_id": "account-A", "environment_revision_id": "env-v3", "resource_id": "phone-A", "install_policy": "use_installed"}],
+  "self_healing_enabled": false, "failure_policy": "stop_on_non_pass", "preview_hash": "sha256:preview-example",
+  "items": [{"entry_id": "E1", "case_version_id": "case-v2", "manifest_hash": "sha256:example-case-v2", "replay_package_id": "pkg-v2", "replay_package_hash": "sha256:example-package", "healing_policy_hash": "sha256:approved-policy", "dataset_version_id": "data-v1", "row_id": "account-A", "environment_revision_id": "env-v3", "resource_id": "phone-A", "install_policy": "use_installed"}],
   "exclusions": [{"case_id": "AUT-060", "reason": "승인 버전 없음, 이번 수행 제외 확인"}]
 }
 ```
@@ -541,4 +578,28 @@ Idempotency-Key는 header다. preview는 자원 예약이 아니며 enqueue/clai
 14. 같은 REC finish 재전송은 같은 version, recovery manifest는 새 version이다. 새 source/trial/review 없이 기존 승인 hash를 바꾸지 않는다.
 15. 장기 최소 facts/90일 상세/30일 파일·과거 유효 승인 pin/철회90일 유예·분석 기간/cohort·전체 이력 대 최근 완료·만료 안내를 확인한다. 자세한 장애/DB 검증은 DATA_DESIGN §11을 따른다.
 
+16. 승인 Web code/Android plan 직접 재생에서 모델 키/endpoint를 제거하고 결정적 검사+OFF 호출0·매 action 증거를 확인한다. 명시 verifier만 호출된다.
+17. healing 기본OFF·승인 scope 안의 ON/한도/접수 snapshot·진행 중 불변·trial OFF를 UI/API/DB에서 확인한다.
+18. 미dispatch locator 변경만 결정적 동일 target 검사를 거쳐 치유한다. expected/path 위반·결과 불명/rotation·click navigation timeout에서는 재클릭/우회하지 않는다.
+19. 치유 PASS badge/원래 오류·unassisted/역할별 비용·7결과 합계가 일치하고 terminal FAIL을 변경하지 않는다.
+20. repair proposal은 원본 code/default/suite 불변·새 전체 녹화/OFF trial/사후 승인으로만 채택한다. package 없음/컴파일 실패는 저장·승인 차단으로 구분한다.
+21. Web 격리/driver/broker·키 경계와 월3,000 TC 표본 비용/저장량·조건별 리포트를 확인한다. 자세한 실행 부정 시험은 실행 상세 §9·DATA_DESIGN §11을 따른다.
+
 출시 gate는 이 UI 동선과 양 플랫폼 정상/부정/장애 시험을 모두 포함한다. 보이는 메뉴만으로 완료 처리하지 않는다.
+
+## 10. v0.7 구현 지시·UI 누락 점검 보완
+
+[실행 안내](docs/execution/README.md)에서158개 작업을14개 영역으로 나눈다. [UI_COVERAGE](docs/execution/UI_COVERAGE.md)는 기본15화면+선택TC1화면과 공통 상태를94개 조작·상태 묶음으로 연결한다. 각 묶음의 필드/버튼/이동/성공/거부/빈 상태를 담당 leaf가 구현하며 W28에서 실제 UI로 통합 확인한다. 화면/메뉴 존재만으로 합격하지 않는다. 기존7개 와이어프레임과21개 UI 합격 조건은 유지한다.
+
+- UI04의 case별 실행 설정·verifier method/binding·healing allowed/scope/상한은 W10-11이 편집한다. UI15 global/default 변경과 구별하며 의미 변경은 새 draft/package=null·새 전체 REC다.
+- UI04/05 구조화·UI16 TC import diff는 영속 proposal/base/hash로 조회하고 명시 수락만 새 version으로 저장한다. 거부/실패/중복/오래된 base/409의 입력과 사유를 표시한다.
+- UI05 메모는 recording_notes의 독립 append이며 worker action 순번이나 검증 목표를 바꾸지 않는다. 녹화 중 승인 버튼은 없다.
+- UI14/05의 기기 화면은 최근 권한 있는 정제 capture+시각/상태다. 새 관찰은 읽기 resource_probe/lease/typed owner를 거친다. 다른 project 점유 화면을 노출하거나 raw ADB/CDP/수동 제어로 연결하지 않는다.
+- UI06 재컴파일는 recordings/{r}/package-rebuilds이며 관리 작업의 진행/실패·새 manifest/version·기존 version 보존을 표시한다.
+- UI07 review 보호 연장·UI11 repair proposal 저장·UI15 worker enrollment/revoke·pin/release·backup/restore의 누락 route는 [공통 계약 C11](docs/execution/CONTRACTS.md#c11--추가-route와-ui-책임-경계)에 담당을 명시했다.
+- 새 terminal 취소는409·기존 동일 key 취소 receipt 재전송은 원래 결과다. UI는 취소 요청/정지/정리를 구분하고 terminal FAIL을 바꾸지 않는다.
+- UI15 복원은 별도 경로 검사/명시 활성화·key 재설정·옛 실행 재개 금지 안내다. 파괴적 이력 purge는 이번 MVP 버튼으로 제공하지 않는다.
+
+앞선 작업에서 UI shell만 있는 탭은 실제 기능의 담당 ID/미준비 이유를 표시한다. 성공 mock으로 대체하지 않는다. [모델 인계](docs/execution/HANDOFF.md)는 해당 카드/공통 계약 절/직접 선행 근거만 전달하도록 하며 이전 대화 기억을 전제로 하지 않는다. 이 개정은 샘플 제품 코드를 수정하지 않았다.
+
+UI15 백업/복원은 **이 PC 전체 저장소**라는 범위·모든 project에 미치는 영향·진행 작업 정리를 표시한다. local_owner만 접수/조회/다운로드/활성화할 수 있고 project별 백업으로 표시하지 않는다.

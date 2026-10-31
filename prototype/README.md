@@ -1,6 +1,8 @@
 # QA Studio 인터랙티브 프런트 샘플
 
-[UI_SPEC v0.5](../UI_SPEC.md)를 직접 눌러보며 검토하기 위한 **폐기 가능한 UI 샘플**입니다. 제품 코드/DB/AI runner의 구현이 아닙니다. 외부 라이브러리·패키지 설치 없이 동작합니다.
+[UI_SPEC v0.5 보관본](../docs/history/v0.5/UI_SPEC.md)를 직접 눌러보며 검토하기 위한 **폐기 가능한 UI 샘플**입니다. 제품 코드/DB/AI runner의 구현이 아닙니다. 외부 라이브러리·패키지 설치 없이 동작합니다.
+
+현재 [v0.6 실행 설계](../docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)는 코드/동작 재생·선택 AI 검증·셀프힐링 ON/OFF를 추가했다. 이 샘플의 코드는 변경하지 않았으므로 해당 기능을 구현/검증한 화면으로 보지 않는다.
 
 ## 열기
 

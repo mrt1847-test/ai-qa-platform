@@ -1,8 +1,10 @@
-# 데이터·승인·재녹화·누적 분석 설계 v0.5
+# 데이터·승인·재녹화·누적 분석 설계 v0.6
 
 개정일: **2026-10-31 (Asia/Seoul)**. 상태: 검토용 상세 설계. **DB·migration·제품 코드·테스트를 생성/실행한 문서가 아니다.** 모든 API·필드·제약은 제안 플랫폼 계약이다.
 
 [DESIGN.md](DESIGN.md)는 전체 아키텍처, [UI_SPEC.md](UI_SPEC.md)는 화면/동선, [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)는 후속 작업이다. 이 문서는 세 문서의 **저장·무결성·승인/재녹화 transaction·분석/보관 계약**을 구체화한다. 물리 저장소를 나누어도 사용자의 기본 관리 단위는 검증 정의·설정·녹화 절차·증거를 함께 가진 케이스 하나다. TC는 계속 선택 사항이다.
+
+v0.6은 code/action replay·선택 verifier·healing ON/OFF를 추가한다. [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)가 실행/격리/dispatch/한도 규범이며 이 문서가 DB·불변성/보관 규범이다. [v0.5 데이터 설계](docs/history/v0.5/DATA_DESIGN.md)는 보관했다. 제품 DB·모델/기기는 아직 실행/검증하지 않았다.
 
 ## 1. 점검 결과와 보완 범위
 
@@ -39,6 +41,12 @@ erDiagram
   REVIEW_REQUESTS ||--o{ ACTION_REVIEWS : evidence_review
   REVIEW_REQUESTS ||--o{ APPROVALS : decisions
   CASE_VERSIONS ||--o{ CASE_RUNS : exact_version
+  CASE_VERSIONS ||--o| REPLAY_PACKAGES : recorded_replay
+  REPLAY_PACKAGES ||--o{ PACKAGE_STEPS : action_mapping
+  CASE_RUNS ||--o{ HEALING_EPISODES : bounded_attempt
+  HEALING_EPISODES ||--o{ HEALING_EVENTS : immutable_events
+  HEALING_EPISODES ||--o| RUNTIME_OVERRIDES : ephemeral_binding
+  HEALING_EPISODES ||--o{ REPAIR_PROPOSALS : reviewable_diff
   EXECUTIONS ||--|{ CASE_RUNS : fixed_items
   JOBS ||--o{ ATTEMPTS : attempts
   ATTEMPTS ||--o{ ACTIONS : actual_actions
@@ -74,7 +82,7 @@ JOBS는 recording 또는 case_run을 배타적으로 소유한다. optional TC·
 | case_versions | project/case/id/revision, parent_version_id, base_version_id, creation_kind(input/recorded/edit/import), immutable definition/settings/procedure JSON, content_hash/verification_digest, source_manifest_id nullable, actor/time/reason | UNIQUE(case_id,revision), parent/base/source는 동일 case. 새 revision 번호는 짧은 DB transaction에서 배정. 입력 draft의 source는 null 허용 |
 | case_steps/case_checks | case_version_id, stable logical step/check ID, order/required/kind, semantic_hash | UNIQUE(version,step_id/check_id), check의 step FK. version 생성 때 JSON에서 projection을 같은 transaction에 생성하며 내용 일치 검증 |
 | recording_sessions | project/case/id, mode(initial/rerecord), input_case_version_id, base_case_version_id nullable, reason, lifecycle/storage_status, outcome, procedure_readiness | input/base는 동일 case. rerecord면 base/reason 필수. stored가 completed를 의미하지 않음 |
-| recording_manifests | project/case/recording/id/revision, prior_manifest_id nullable, kind(original/recovery), body/hash, captured event range, evidence_completeness, request_key/body_hash | UNIQUE(recording,revision), UNIQUE(recording,request_key). immutable. 같은 key 다른 body409 |
+| recording_manifests | project/case/recording/id/revision, prior_manifest_id nullable, kind(original/recovery/package_rebuild), body/hash, captured event range, evidence_completeness, request_key/body_hash | UNIQUE(recording,revision), UNIQUE(recording,request_key). immutable. 같은 key 다른 body409 |
 | recording_materializations | recording_id/manifest_id/produced_case_version_id | UNIQUE(manifest_id), UNIQUE(produced_version_id), 동일 recording/case. 한 receipt에서 produced draft1개만 생성 |
 | review_requests | project/case/version, version_hash, source_manifest_id/hash, trial_case_run_id/final_result_hash, evidence_set_json/hash, expected_current_approval_id, actor/time | review snapshot은 불변. source/trial/version 동일 case·exact content 검증. 상태는 decision projection |
 | review_evidence_entries | review_request_id, owner_kind/REC 또는 ITEM ID, attempt_id/action_id, artifact_ref_id, role/hash | 불변 exact evidence membership. action→attempt→job owner가 선택 source REC/exact trial ITEM과 일치해야 함 |
@@ -83,19 +91,36 @@ JOBS는 recording 또는 case_run을 배타적으로 소유한다. optional TC·
 
 `case_steps/case_checks`는 사용자가 따로 관리하는 TC가 아니라 케이스 version 내부 정의의 검색/FK용 projection이다. 내용 변경은 새 case version이며 stable ID 의미가 바뀌면 semantic_hash도 바꾼다. 좌표만 달라졌다고 검증 의미가 바뀌는 것은 아니지만 expected/path 변경을 같은 의미라고 자동 추정하지 않는다.
 
+### 3.2.1 v0.6 replay package·dispatch·치유 기록
+
+| 저장 단위 | 필드·제약 |
+|---|---|
+| replay_packages/package_artifacts | project/case/version, source manifest/input hash·raw script/approved script 또는 Android plan·runtime/lock/transform·mapping·body_hash. version당0..1 UNIQUE, ready/승인 시1 필수. produced version FK는 hash body 밖 receipt |
+| package_steps | package/stable step/action ID·target semantic hash·source/code line mapping·condition·allowlist. 같은 version의 step/check와 composite FK, raw action 우회 금지 |
+| healing_episodes | project/case_run/attempt/package/failed action, ordinal/trigger/policy hash·reserved limit·상태/outcome/시각. 초기 ITEM당1개, 같은 ITEM/attempt/package membership·멱등 key/body 검사 |
+| healing_events | episode/commit_seq/type·candidate/accept/reject/dispatch/check·짧은 이유·evidence refs/hash. append-only, 제안·오류·마스킹 상세는 detail_payloads로 분리 |
+| runtime_overrides | episode UNIQUE·original binding hash·accepted candidate hash·target/action 의미·actual dispatch action ID. 실행 snapshot의 부속 사실이며 원본 package/code 변경 금지 |
+| repair_proposals/adoption_events | project/case/source version/package/ITEM/episode·diff/hash/근거·생성 actor/time, 채택 시 새 REC/input ref. proposal은 불변, 채택은 별도 append event. 승인 가능한 case version으로 자동 승격 금지 |
+
+case hash에는 package hash를 넣고 package body에는 produced case ID/hash를 넣지 않는다. source manifest는 compiled package hash를 포함하지 않는다. sealed source→compiler/계측 검사/artifact ready→짧은 materialization transaction에서 새 case version/package row/step mapping/receipt/CAS를 함께 확정한다. version↔package composite FK는 DEFERRABLE INITIALLY DEFERRED로 commit 시 검증한다. 입력/실패/부분 version의 package는 null 가능하며 나중 attach/UPDATE하지 않는다. compiler 실패는 사유 있는 draft로 먼저 저장하고 나중 컴파일은 `package_rebuild` manifest revision→새 version/trial/review다. recording_manifests.kind에 original/recovery/package_rebuild를 허용하며 manifest별 materialization 유일성은 유지한다. jobs.purpose enum에도 package_rebuild를 추가한다. 관리 job의 recording_id/case_run_id는 모두 null, QA=null이며 worker slot만 사용하고 physical session·기기/브라우저/모델 제어 권한은 없다. source_manifest_id는 별도 payload ref로 동일 project/case를 검사하고 compiler/lock ref·요청 멱등 키와 함께 고정한다. source 읽기·compile·artifact 작성·새 materialization만 허용한다.
+
+action의 dispatch journal은 planned/lookup_failed/dispatch_started/acknowledged/observed/unknown이다. read-only lookup 실패와 command 전달을 분리하고 command API 호출 전에 dispatch_started를 flush한다. 이후 click navigation timeout/ADB timeout·post capture 실패는 미dispatch로 되돌리지 않는다. DB/worker ACK 여부와 별개로 durable local journal이 없으면 행동 금지다. 치유는 dispatch_started 이력이 없는 lookup 실패에만 가능하다.
+
+episode 예약+case_run healing counter/모델 예약+audit는 같은 transaction/CAS로 처리하고 이벤트 재전송이 추가 호출/동작을 만들지 않게 한다. ITEM당 episode1·healer 합계2호출(전송 retry 포함)·30초 초기 제안, job/lease/예산 우선. runtime ON/OFF는 execution 접수 snapshot이며 scope 확대는 새 version/승인이다. 정상 lookup 재생은 model actor0, verifier/healer 권한은 별도 broker가 검사한다. [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)의 deterministic 동일 target 증명과 신뢰 driver 경계를 따른다.
+
 ### 3.3 실행·동작·결과
 
 | 저장 단위 | 필수 필드·연결 | 제약·분석 용도 |
 |---|---|---|
 | suites/suite_versions | exact case version/hash·data row·environment defaults·order/failure policy JSON | immutable 구성, 명시 version 교체. DATA 확장 후 실행 ITEM100개 한도 |
-| executions | project/id/purpose/source, requested_at, actor, suite_version nullable, resolved snapshot/hash·exclusions, status/cancel flag | purpose trial/regression/reverification. 시작 snapshot immutable, final parent 결과는 한 번 확정 |
-| case_runs | project/id/execution/entry, case/version/hash·verification_digest, purpose/scope_requested_at, approval_id nullable, data/env/target snapshot, rerun_of_item_id/root_lineage_id, final status/verdict/disposition/display_result·criteria_version/hash, first/latest attempt, usage/duration summaries | UNIQUE(execution,entry). scope_requested_at/purpose는 parent snapshot과 composite FK/transaction 검사. trial만 approval null 허용, 정식/reverification은 exact approval 필수 |
-| jobs | project/id/purpose, recording_id nullable, case_run_id nullable, payload hash·idempotency, status/lease·reason | recording이면 REC만, trial/regression이면 ITEM만, 관리 job은 둘 다 null인 CHECK. 각 REC/ITEM 소유 job 최대1 |
+| executions | project/id/purpose/source, release_label nullable, requested_at, actor, suite_version nullable, resolved snapshot/hash·exclusions, status/cancel flag | purpose trial/regression/reverification. 시작 snapshot immutable, final parent 결과는 한 번 확정 |
+| case_runs | project/id/execution/entry, case/version/hash·verification_digest, purpose/scope_requested_at, approval_id nullable, data/env/target snapshot, rerun_of_item_id/root_lineage_id, final status/verdict/disposition/display_result·criteria_version/hash, first/latest attempt, package_hash·resolved_healing_policy_hash·requested_self_healing·healing_used/outcome·unassisted_pass·role별 호출/usage/duration summaries | UNIQUE(execution,entry). scope_requested_at/purpose는 parent snapshot과 composite FK/transaction 검사. trial만 approval null 허용, 정식/reverification은 exact approval 필수 |
+| jobs | project/id/purpose(backup 포함), recording_id nullable, case_run_id nullable, payload hash·idempotency, status/lease·reason | recording이면 REC만, trial/regression이면 ITEM만, 관리 job은 둘 다 null인 CHECK. 각 REC/ITEM 소유 job 최대1 |
 | attempts | project/job/id/ordinal, resource/session/generation, start/end/duration, termination/error·side_effect_state | UNIQUE(job,ordinal). 모델/action 재시도를 별 attempt로 부풀리지 않음 |
 | events | attempt/local_seq, captured_at/received_at, event_type, body/hash | UNIQUE(attempt,local_seq). 동일 hash 재전송만 수락. 불변 identity/hash·최소 envelope, 상세는 detail_payloads |
-| actions | attempt/id/action_seq, version의 step ID, type/intent/target·coordinates/transform·input ref, before/after capture metadata·command result, error/recovery link·body_hash | UNIQUE(attempt,action_seq), step/version 및 attempt→job→REC/ITEM 소속 검사. 미완료 projection→seal 후 최소 content 불변, 상세는 detail_payloads |
+| actions | attempt/id/action_seq, replay/healing_override provenance·package_step·dispatch_state/history, version의 step ID, type/intent/target·coordinates/transform·input ref, before/after capture metadata·command result, error/recovery link·body_hash | UNIQUE(attempt,action_seq), step/version 및 attempt→job→REC/ITEM 소속 검사. 미완료 projection→seal 후 최소 content 불변, 상세는 detail_payloads |
 | check_results | attempt/version/check_id/action_id nullable, occurrence_seq, expected/observed/status/method·oracle version, evidence ref·reason/hash | check/version FK·action은 동일 attempt의 composite FK, UNIQUE(attempt,check_id,occurrence_seq). observation append-only. 필수 violation latch는 후속 satisfied로 삭제 불가 |
-| model_calls | attempt/role/call_id/provider request ID·actual model, started/end, usage nullable·measurement status, price/currency·reservation/settlement | call ID UNIQUE, count≥0 또는 null, 비용 decimal. 늦은 청구/보정은 별도 append record, 원본을 0으로 채우지 않음 |
+| model_calls | attempt/role(authoring/verification/healing/maintenance)·check 또는 episode owner/call_id/provider request ID·actual model, started/end, usage nullable·measurement status, price/currency·reservation/settlement | call ID UNIQUE, count≥0 또는 null, 비용 decimal. 늦은 청구/보정은 별도 append record, 원본을 0으로 채우지 않음 |
 | analysis_records | case_run_id, classification/status·assignee/comment/issue URL, actor/time, prior record ID | 별도 append-only. QA/result facts UPDATE 금지 |
 
 jobs에 `(recording_id)`와 `(case_run_id)`의 nullable owner unique 인덱스를 둔다. REC/ITEM의 job_id는 이 관계로 조회하는 projection이어도 된다. 양쪽에 독립 mutable backlink를 저장하지 않는다. REC/ITEM 생성+job 등록은 같은 transaction이어서 외부에 ‘저장만 되고 실행 job 없음’ 상태를 노출하지 않는다. `reverification` execution의 제어 job purpose는 regression으로 사상한다.
@@ -116,14 +141,14 @@ jobs에 `(recording_id)`와 `(case_run_id)`의 nullable owner unique 인덱스�
 
 actual build/model 등 실행 중 새로 알게 되는 fingerprint는 commit_seq를 가진 관찰 snapshot으로 남긴다. 과거 as_of에는 당시 확인된 값만 필터/strict cohort에 사용하고 미관찰 값은 unknown/planned를 구분한다. 최신 actual 값을 과거 진행 항목에 소급 적용하지 않는다.
 
-최종 facts가 현재 존재해도 `finalized_commit_seq > as_of`이면 당시 집계에서는 진행 항목이다. 접수/확정·usage ledger·필터용 immutable snapshot은 상세90일 정책에서 제외한다. 보고서 export는 as_of commit_seq·requested 기간·resolved filter/cohort/criteria version을 저장하고 그 cursor 이전 facts/ledger만 읽는다. 필요한 model_calls 최소 usage facts에는 commit_seq를 남겨 late settlement를 과거 비용에 소급 합산하지 않는다.
+최종 facts가 현재 존재해도 `finalized_commit_seq > as_of`이면 당시 집계에서는 진행 항목이다. 접수/확정·usage ledger·필터용 immutable snapshot은 상세90일 정책에서 제외한다. release_label은 접수 snapshot의 표시/필터 축이며 여러 RUN을 임의의 새 결과 하나로 합치지 않는다. 보고서 export는 as_of commit_seq·requested 기간·resolved filter/cohort/criteria version을 저장하고 그 cursor 이전 facts/ledger만 읽는다. 필요한 model_calls 최소 usage facts에는 commit_seq를 남겨 late settlement를 과거 비용에 소급 합산하지 않는다.
 
 ### 3.4 artifact·보관 참조
 
 | 저장 단위 | 필드·규칙 |
 |---|---|
 | artifacts | project/id, generated object_key/hash/bytes/content_type, storage_state(staging/ready/delete_pending/expired/quarantined), capture/redaction metadata, created/expiry. 파일 내용 불변·운영 보관 상태만 변경 |
-| artifact_refs | project/artifact, action_id/check_result_id/recording_manifest_id/review_request_id/app_build_id/export_job_id 중 **정확히 하나** FK, role(before/after/log/check/source/export), expected_hash |
+| artifact_refs | project/artifact, action_id/check_result_id/recording_manifest_id/review_request_id/app_build_id/export_job_id/package_artifact_id/healing_event_id/repair_proposal_id/resource_observation_id 중 **정확히 하나** FK, role(before/after/log/check/source/export), expected_hash |
 
 typed owner FK/project FK는 소속의 첫 검사다. 같은 project/case/version이라도 다른 실행의 증거를 쓸 수 없으므로 **artifact_ref→action/check→attempt→job→선택 source REC 또는 exact trial ITEM** 경로를 review 요청/승인 transaction에서 검증한다. check의 action은 동일 attempt, action의 case step은 job의 input/produced 또는 exact trial version mapping을 따른다. review_evidence_entries는 이 검사를 통과한 membership만 보존하며 action_review는 그 entry를 참조한다. JSON의 임의 ID/hash 일치만으로 승인하지 않는다. action의 role·capture time·expected hash는 source manifest에서 검증한다. `after_delayed`를 `after_immediate`로 바꾸지 않는다. approve 보호는 review evidence set에서 참조하는 required artifact를 모두 포함한다.
 
@@ -251,6 +276,10 @@ case version이 달라도 검증 정의가 같고 절차만 개선된 경우 같
 
 분석 분류·담당자/이의 의견 변경은 별도 기록이다. 자동 verdict를 수정하지 않는다. ‘정정 의견을 반영한 검토 보기’를 제공해도 원본 통계와 구분하고 criteria_version·사유를 표시한다. late usage는 commit_seq를 갖는 append 보정 ledger이고 원본 export는 as_of 결과를 유지한다.
 
+추가 최소 facts는 일반 action actor0·verification/healing/authoring/maintenance 호출 수와 계측 상태, episode outcome/원래 오류·runtime override/proposal hashes, package/runtime/lock hash·resolved policy/요청 ON/OFF·healing_used·unassisted_pass다. 실제 모델을 호출하지 않았으면 role의 actual model은 null+`not_used`이며 계측 실패 unknown과 구분한다. strict cohort에 replay runtime/lock·요청 ON/OFF·healing policy hash와 검증 method/binding을 추가한다. 모델0실행을 누락 usage로 오인하지 않는다.
+
+`PASS & healing_used`는 PASS bucket 안의 부분집합이다. 정상 동작 오류/retry/recovery/healing이 없는 PASS만 unassisted_pass다. AI verifier 사용 여부는 별도 축이다. 원래 lookup 오류/정책 거부·치유 성공/실패와 유효 제품 FAIL은 구분하고 같은 ITEM의 위반 latch/7결과 합계를 유지한다. episode/proposal·role usage ledger/commit_seq를 보존해 상세 만료 후에도 통계/as_of가 재현되어야 한다.
+
 ### 8.3 재계산·저장
 
 MVP는 indexed facts query로 계산하며 warehouse/매일 summary table은 필수가 아니다. 필요 시 cache에는 criteria_version/filter/cohort/time/as_of commit_seq를 key로 저장하고 원본이 아닌 삭제/재생성 가능한 projection으로 둔다. 새 산식으로 과거 summary를 다시 만들 수 있지만 원본 ITEM QA/승인/hash는 변경하지 않는다. PNG가 만료되면 과거 시각 판정을 다시 할 수 있다고 보장하지 않는다. 남아 있는 facts·판정 이유·hash로 당시에 무엇을 판정했는지 설명한다.
@@ -259,14 +288,14 @@ MVP는 indexed facts query로 계산하며 warehouse/매일 summary table은 필
 
 | 데이터 | 제안 기본 보관 |
 |---|---|
-| case versions·lineage·source/review/approval/revoke/audit, RUN/ITEM 최소 결과/snapshot hash·분모·usage 계측 facts·분석 기록 | 프로젝트 보관 중 유지, 기본 자동 삭제 기한 없음. project archive로 삭제하지 않음 |
+| case versions·replay package metadata/mapping·healing/proposal 최소 facts/hash·lineage·source/review/approval/revoke/audit, RUN/ITEM 최소 결과/snapshot hash·분모·usage 계측 facts·분석 기록 | 프로젝트 보관 중 유지, 기본 자동 삭제 기한 없음. project archive로 삭제하지 않음 |
 | detail_payloads·상세 events/action/check 관찰/정제 변수 | 기본90일. 불변 identity/hash·최소 사실과 payload를 별도 저장하므로 payload만 만료하고 retention event 유지 |
 | PNG/action log·영상 선택 증거 | 기본30일. required approval evidence는 아래 pin 규칙 우선 |
-| worker ACK spool | 최대7일, server hash/receipt 확인 후 정리 |
+| worker ACK spool | ACK된 기록만 최대7일, server hash/receipt 확인 후 정리. 미ACK는 자동폐기하지 않고 공간 압박 시 새 행동 중지/부분 보존 |
 | opt-in debug | 최대24시간, 비밀/hidden reasoning 원문은 opt-in이어도 보존 대상 아님 |
 | APK/export | 참조 build/승인 근거는 보호. export는 생성 시 명시한 기간/만료 상태 유지 |
 
-유효 approved version의 required source/trial evidence는 **현재 default가 아니어도** pin한다. 대체 승인이 생겼다는 이유로 old approval의 근거를 지우지 않는다. 철회 뒤에는 기본90일 검토 유예와 명시 pin을 적용하고, 유예 이후 정책에 따라 파일을 만료시킬 수 있다. 승인/철회 record·당시 evidence IDs/hash/판정 이유는 계속 유지하며 UI는 파일 만료와 이유를 표시한다. 기존 ‘승인 유효기간’ 문구는 이 구체 규칙으로 대체한다.
+유효 approved version의 required script/plan/lock/mapping artifact와 source/trial evidence는 **현재 default가 아니어도** pin한다. 대체 승인이 생겼다는 이유로 old approval의 근거를 지우지 않는다. 철회 뒤에는 기본90일 검토 유예와 명시 pin을 적용하고, 유예 이후 정책에 따라 파일을 만료시킬 수 있다. 승인/철회 record·당시 evidence IDs/hash/판정 이유는 계속 유지하며 UI는 파일 만료와 이유를 표시한다. 기존 ‘승인 유효기간’ 문구는 이 구체 규칙으로 대체한다.
 
 열린 review의 evidence는 기본30일 임시 보호, 연장 가능하다. 만료 후 artifact가 없으면 승인은 차단하고 필요한 새 녹화/시범으로 갱신한다. draft/반려 기록은 보관되지만 모든 파일을 영구 pin하지는 않는다. active artifact_protection이 남아 있으면 자동 GC 금지, 파일이 보호 상태인지/누가 왜 보호했는지 UI에서 확인한다.
 
@@ -282,6 +311,10 @@ MVP는 indexed facts query로 계산하며 warehouse/매일 summary table은 필
 | source 보관/부분 이력 | GET recordings/{id}/manifests | storage/outcome/procedure/evidence 상태·receipt별 output version |
 | 검토/승인 | POST case-versions/{id}/review-requests·/approvals: exact review/evidence digest, expected_current_approval_id, reason | 승인과 default pointer·보호 ref 원자 확정, 충돌409 |
 | old version 철회 | POST approvals/{id}/revoke: reason·expected current pointer | 자동 fallback 없음, snapshot된 queued/running 영향 설명 |
+| replay package 조회 | GET case-versions/{id}/replay-package | source/compiled hashes·runtime/lock·mapping·ready/차단 이유 |
+| healing 기록/제안 | GET case-runs/{id}/healing-episodes, repair-proposals/{id} | 원래 오류·제안/정책/dispatch/검증·role usage·immutable diff |
+| 실행 접수 | 기존 execution-previews/executions에 self_healing_enabled·package/policy hash | 기본OFF, 승인된 capability 범위만 ON·snapshot 고정 |
+| 수정 제안 채택 | rerecordings에 repair_proposal_id optional | 새 전체 REC/input 제안, 원본/current approval/suite 불변 |
 | 묶음 version 갱신 | POST suites/{id}/versions | old/new exact case version diff·영향 목록·새 구성 |
 | 누적 분석 | GET projects/{id}/analytics: from/to/timezone, purpose, case/version, verification_digest, cohort, build/model/data, view=all_observations 또는 latest_terminal, as_of/criteria_version | 분모/미검증·관측 수·필터·혼합 조건/비교 차이 표시 |
 | 증거 보관 | GET artifacts/{id}/retention | refs/pins·expiry·missing/corruption·tombstone. 권한 내 조회만 |
@@ -305,4 +338,38 @@ MVP는 indexed facts query로 계산하며 warehouse/매일 summary table은 필
 13. 접수→보고서 as_of→ITEM 확정→늦은 비용 보정 후에도 이전 as_of의 진행/분모/비용이 동일하다. 상세 payload 삭제가 불변 core/hash·최소 facts를 변경하지 않는다.
 14. 합성 ITEM10,000/action100,000 query plan/목표 지연·용량을 측정한다. 이 수치는 제안 시험 규모이지 입증 성능이 아니다.
 
+15. package0개인 입력/미완성 draft 저장, ready version의 package1개·hash 비순환·원자 materialization. 나중 컴파일은 package_rebuild/new version이며 기존 version UPDATE0.
+16. pure replay/결정적 검사/OFF에서 모델 key 제거·endpoint 차단으로 역할별 호출0; 명시 AI 검증은 OFF/ON과 독립.
+17. ON의 미dispatch lookup·결정적 동일 target만 episode1/2호출/30초, 중복 예약0; click navigation timeout/결과 불명은 재dispatch0.
+18. 유효 expected/path violation은 치유 이후에도 FAIL, 모든 조건 충족 치유 PASS는 PASS 부분집합·unassisted가 아님.
+19. runtime override/proposal 저장 후 원본 code/approval/default/suite/hash 불변. 제안은 새 전체 녹화·OFF clean trial·사후 승인으로만 기본본 교체.
+20. role usage·healing facts/commit_seq·ON/OFF·strict cohort·late correction과 만료 뒤 as_of 재현.
+21. script가 raw Playwright/CDP·model key·broker/행동 우회 시 격리·신뢰 driver에서 차단; VM/세션 종료도 기존 lease/cleanup 규칙 유지.
+22. 월1회3,000 TC의 최초녹화/반복검증/예외치유/전체재녹화 비용·정상/치유 통과·저장량을 표본에서 측정/추정하고 가격/성능 보장과 구분.
+
 이 계약을 구현하고 위 부정/장애/복원 시험을 통과하기 전에는 ‘DB 구성이 검증됐다’고 표현하지 않는다.
+
+## 12. v0.7 작업 세분화에서 발견한 저장 계약 보완
+
+[공통 계약 C12](docs/execution/CONTRACTS.md#c12--제안메모관찰의-영속-소유-보완)와 [검토 기록](docs/execution/REVIEW.md)을 적용한다. 제품 schema/migration은 아직 생성하지 않았다.
+
+| 저장 단위 | 불변 내용/연결 | 제약/담당 |
+|---|---|---|
+| recording_notes | project/REC/id/actor/time/commit_seq/text/request_key/body_hash | append-only·같은 key/body 같은 note·다른 body409. browser가 worker local_seq를 배정하지 않음. W06-01/W16-04 |
+| resource_observations | project/resource/probe_job/attempt/captured_at/geometry/scope_hash/artifact_id | resource_probe·같은 project/resource/physical lease/attempt 검사, typed artifact_refs.resource_observation_id 포함. action before/after 대체 금지. W06-08/W11 |
+| case_edit_proposals | project/case/base version/hash·kind(structure/tc_import)·정제 body/hash·source_job_id 또는 tc_version_id | structure는 같은 case의 structure job, tc_import는 같은 project TC. 불변 body·secret/hidden reasoning 제외. W06-09 |
+| case_proposal_decisions | proposal_id·accept/reject·actor/time/commit_seq·produced_version nullable·request_key/body_hash | 같은 proposal 수락 최대1, base/hash/expected_head 검사→새 version/decision/audit 원자 생성. 거부는 case 변경0, 재시작 후 diff/결정 조회 가능. W06-09 |
+
+- 공개 편집은 CaseEditInput만 받는다. source_manifest/package/approval/produced version은 서버 materializer가 검증해 공급한다. creation_kind=recorded 안에서 manifest.kind=package_rebuild를 구별하며 기존 버전에 package attach/UPDATE하지 않는다.
+- 관리 job purpose에 backup을 포함하고 recording_id/case_run_id 둘 다 null, QA=null이다. backup은 별도 source/receipt refs로 연결하며 기기/browser/model 제어 권한이 없다.
+- app_inspect는 저장 APK metadata 분석, live installed app/화면 capture는 physical lease의 읽기 resource_probe다. device alias가 달라도 동일 worker/native serial에는 lease1개다.
+- materialization·proposal 수락·notes·resource 관찰 모두 project commit_seq를 해당 변경과 같은 transaction에서 배정한다. worker local_seq와 혼용하지 않는다.
+- manual 보호 해제는 manual만, 승인/review/build/backup 보호는 해당 도메인의 수명 절차에서만 해제한다. approval provenance 참조를 지워 보호를 푸는 방식은 금지다.
+- 전체20GB는 project 합산 파일 한도다. 미ACK spool은7일 자동삭제하지 않고, 공간 압박 시 새 행동을 중지하고 수집한 정제 기록을 보존한다.
+- 복원 시 과거 queued/running을 재실행하지 않고 lease/token/session을 폐기·자원을 quarantine한다. 최소 facts/과거 QA는 그대로 두고 secret 가용성/재설정을 별도 검사한다.
+
+추가 검증은 W06-08/09·W11-01·W16-02/04·W26-02/05가 소유하며 기존22개 DATA 합격 조건을 대체하지 않는다. [요구·저장 모델 추적](docs/execution/COVERAGE.md)에서 함께 확인한다.
+
+백업 receipt의 scope는 local_store(PC 전체)이며 project별 commit cursor map을 보존한다. 접수/조회/다운로드/복원은 local_owner 전용이고 project-only 권한은 거부한다. worker는 DB/snapshot을 SQL로 열지 않고 API가 준비한 snapshot/manifest의 opaque bytes만 인증 HTTP로 복사한다. backup 파일은 일반 project artifact 조회로 노출하지 않는다.
+
+FK를 참조하는 service보다 canonical 부모 schema를 먼저 준비한다. W04-03은 worker/enrollment, W05-02는 case/folder/tag, W05-05는 env/data/model binding, W06-10은 physical key/resource alias, W06-02는 suite/entry와 RUN/ITEM/job/attempt/lease, W06-04는 artifact/protection 및 app_builds/backup_receipts/manual_retention_requests, W06-06은 장기 facts/analysis_records를 소유한다. W06 개별 제약 시험의 test-only 부모 fixture는 제품 DB 근거가 아니다. 실제 canonical head의 migration/FK/integrity/nullable insert 검사는 W06-07에서, 새 schema 추가 뒤 W06-08/09에서 다시 수행하며 W07은 W06-09 통과 뒤 시작한다.

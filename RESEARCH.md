@@ -1,6 +1,8 @@
 # 기술 조사 — Web·Android AI QA 플랫폼
 
-공개 코드 조사일: **2026-10-30**, UI 개정일: **2026-10-31 (Asia/Seoul)**. 문서 v0.5. 상태: 공개 소스 정적 검토 완료, 실행 검증 전. 중심 설계는 [DESIGN.md](DESIGN.md), 화면 명세는 [UI_SPEC.md](UI_SPEC.md), 후속 작업은 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 따른다.
+공개 코드 조사일: **2026-10-30**, UI 개정일: **2026-10-31 (Asia/Seoul)**. 문서 v0.6. 실행 정책 개정/일부 고정 소스 재확인: 2026-10-31. 상태: 공개 소스 정적 검토 완료, 실행 검증 전. 중심 설계는 [DESIGN.md](DESIGN.md), 화면 명세는 [UI_SPEC.md](UI_SPEC.md), 후속 작업은 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 따른다.
+
+현행 제품 결정은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)의 **CUAWright Web authoring/승인 code replay + Mobile-Agent Android authoring/플랫폼 action replay**, 선택 verifier·기본OFF bounded healing이다. [v0.5 조사](docs/history/v0.5/RESEARCH.md)의 A안/매 실행 AI 기본은 이전 결정이다. 아래 upstream 사실과 플랫폼 추가 개발을 구분한다.
 
 ## 1. 조사 범위와 신뢰 수준
 
@@ -103,7 +105,7 @@ MobileAgent root 코드는 MIT이다. 하위 AndroidWorld 등은 별도 라이�
 
 `src/cuawright/webwright/run/cli.py:run_one`이 config를 합성하고 model/env/agent를 생성한 뒤 `env.prepare`, `agent.run`, finally `env.close`를 호출한다. Python에서 import 가능한 함수가 있지만 서비스용 장기 안정 SDK 계약으로 문서화되었다고 단정하지 않는다. CLI도 `cuawright-web` 또는 모듈 경로로 노출된다.
 
-`base.yaml`의 `local_workspace` 환경은 모델이 bash 명령으로 Playwright 코드를 작성·실행하도록 한다. `final_script.py`, `plan.md`, `final_runs/`, screenshot·log를 남기도록 지시한다. 기본 browser mode는 Browserbase이고 `browser_mode=local`을 선택해야 로컬 Chromium이다. `/bin/bash` 기본값이므로 Windows native에서 그대로 동작한다고 가정하지 않는다. Linux VM 또는 별도 OS 검증이 필요하다.
+`base.yaml`의 `local_workspace` 환경은 모델이 bash 명령으로 Playwright 코드를 작성·실행하도록 한다. `final_script.py`, `plan.md`, `final_runs/`, screenshot·log를 남기도록 지시한다. 재확인한 같은 SHA의 base.yaml은 `browser_mode: local`이다. Browserbase 설정을 선택하는 경로에서는 별도 key/project ID가 필요하며 이를 로컬 실행의 필수 요구로 일반화하지 않는다. v0.5의 base 기본 Browserbase 표기는 정정한다. `/bin/bash` 기본값이므로 Windows native에서 그대로 동작한다고 가정하지 않는다. Linux VM 또는 별도 OS 검증이 필요하다.
 
 script가 생성돼도 탐색·디버깅·`image_qa`·`self_reflection`·컨텍스트 요약에는 모델 호출이 들어갈 수 있다. 생성 파일 자체가 helper 호출·API 호출을 담았는지 검사해야 무모델 실행 여부를 알 수 있다. [run_one](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/src/cuawright/webwright/run/cli.py#L32-L136), [base 설정](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/src/cuawright/webwright/config/base.yaml), [local workspace](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/src/cuawright/webwright/environments/local_workspace.py).
 
@@ -162,7 +164,7 @@ OpenAI·Anthropic·OpenRouter backend가 공개되어 있다. 검토한 OpenAI b
 반복 모드 구분:
 
 1. **매번 AI 탐색**: 세 경로 모두 가능. 매번 모델 호출, 목표 달성 경로가 달라질 수 있음.
-2. **단계 고정 + 탐색/일부 검증 AI**: 플랫폼이 승인 단계별 실행·금지 경로·검증을 강제하는 별도 모드. **추천 MVP**. Mobile-Agent의 단일 긴 task 루프를 그대로 반복하는 것과 다름.
+2. **단계 고정 + 탐색/일부 검증 AI**: 플랫폼이 승인 단계별 실행·금지 경로·검증을 강제하는 별도 모드. **v0.5의 기본안이며 v0.6에서는 대체**. Mobile-Agent의 단일 긴 task 루프를 그대로 반복하는 것과 다름.
 3. **일반 코드 + AI 0회**: CUAWright 산출물에 대해 조건부 가능. 승인·독립 replay·dependency 고정·격리·현재 assertion은 별도 기능 비용. Mobile-Agent에도 있다고 가정하지 않음.
 4. **산출물/로케이터 재사용 + 실패 시 AI**: CUAWright Skill Factory가 부분 지원하지만 추천·parameter 추론도 모델을 쓸 수 있음. 플랫폼은 승인한 코드를 먼저 직접 선택하는 방식이 더 명확하다. 과거 PASS 결과를 현재 PASS로 재사용하는 방식은 채택하지 않음.
 
@@ -183,7 +185,9 @@ OpenAI·Anthropic·OpenRouter backend가 공개되어 있다. 검토한 OpenAI b
 | 격리 | 구조화 행동 allowlist를 통제하기 상대적으로 쉬움 | shell/exec Python은 제한 계정·VM와 egress 통제가 먼저 필요 |
 | 코드 재사용 | 공통 정책·모델 계측 재사용, 일반 코드 replay 근거 없음 | Web script/Skill Factory 활용 가능. Android까지 같은 기능이 되지는 않음 |
 
-**설계 판단: A를 1차 추천한다.** 첫 제품의 목표는 Windows+USB 한 대에서 Web·Android 실행·검증·사람 승인을 완성하는 것이다. 코드 생성·재생까지 동시에 넣는 B는 추가 시스템 경계가 크다. A는 더 저렴하거나 성공률이 높다고 입증된 선택이 아니다. Mobile-Agent Web의 호환성 spike가 선행 조건이며, 해결 비용이 승인된 기술 검증 한도를 넘으면 B의 `local_browser/local_launch` 대안을 재검토한다. 이때도 임의 Python 격리 비용을 포함한다. 코드 재생이 첫 출시 필수로 바뀌면 B를 다시 결정한다. 두 엔진 사용은 필수가 아니다. Midscene 등 제3안은 두 후보의 구체적 탈락이 아직 확인되지 않아 조사 범위를 넓히지 않았다.
+**v0.6 설계 판단: B의 Web CUAWright + Android Mobile-Agent authoring을 채택하고 양쪽 모두 플랫폼의 recorded_replay를 기본 실행 경로로 만든다.** 사용자가 월1회3,000 TC의 반복 호출 비용을 줄이는 목적을 명확히 했으므로 승인 code/action 재생을 MVP 필수로 옮긴다. 기존 A 선택은 초기 구현 범위 최소화를 위한 과거 판단이며 두 구성의 실제 비용/성공률을 입증한 결과가 아니었다.
+
+CUAWright의 code 생성/직접 실행 경로를 활용하되 매 회귀마다 자동 recommend/agent fallback을 호출하지 않는다. source script→제한 IPC script/동작 mapping·현재 QA·권한/네트워크가 분리된 driver/로컬 VM·키 미주입은 플랫폼 개발/실측 gate다. Android의 원본 model loop 대신 structured plan runner도 별도 개발한다. 선택 verifier와 bounded healer는 역할/한도를 통제하고 제품 expected/path 위반·이미 처리됐을지 모르는 action은 치유로 우회하지 않는다. 전체 출시는 양 플랫폼 replay/격리/증거/판정 gate를 모두 만족해야 한다.
 
 ## 7. 보조 설계 근거와 남은 확인
 
@@ -211,7 +215,7 @@ FastAPI는 관리 API와 서버 렌더링 진입점으로 선택한다. 긴 실�
 
 ## 9. v0.3 UI·녹화 보관 요구 검토 — 이전 결정 기록
 
-2026-10-31 첨부 `AI_QA_UI_design.md`와 후속 사용자 설명으로 UI를 재설계했다. **녹화 동작별 PNG/로그는 먼저 저장하고, 녹화 완료·보관 뒤 사람이 저장본을 검토하여 AUT version을 승인한다.** 녹화 중 action별 승인을 받는 기능이나 승인이 저장 선행 조건인 구조가 아니다. TC/AUT/REC/RUN/ITEM 분리와 15개 화면·7개 wireframe·보고서/분모 계약은 UI_SPEC, 구현 준비는 현행 T0–T11을 따른다.
+2026-10-31 첨부 `AI_QA_UI_design.md`와 후속 사용자 설명으로 UI를 재설계했다. **녹화 동작별 PNG/로그는 먼저 저장하고, 녹화 완료·보관 뒤 사람이 저장본을 검토하여 AUT version을 승인한다.** 녹화 중 action별 승인을 받는 기능이나 승인이 저장 선행 조건인 구조가 아니다. TC/AUT/REC/RUN/ITEM 분리와 15개 화면·7개 wireframe·보고서/분모 계약은 UI_SPEC, 당시 구현 준비는 T0–T11이었으며 현행은 T0–T14와 W01–W32를 따른다.
 
 공개 engine에는 이 플랫폼의 TC/케이스 registry·원본 REC 보관·action별 전후 캡처/정제 로그 보장·완료 후 review/approval·공통 RUN report가 이미 있다고 확인한 바 없다. 검토한 Mobile-Agent의 pre-step PNG/history/stdout은 자료가 될 수 있으나, 각 tap/swipe/type/back 직전/직후 capture와 log/event의 신뢰 경계는 **별도 개발·실행 검증 필요**다. 녹화라는 UI 명칭으로 무모델 replay나 수동 입력 capture 지원을 가정하지 않는다.
 
@@ -242,5 +246,19 @@ v0.3은 기존 SHA의 source 검토를 재사용하며 새 HEAD/모델 호환성
 
 읽기 전용 설계 검토에서 provenance ref와 삭제 방지 protection 분리, 불변 core와 만료 payload 분리, 같은 case의 다른 실행 근거 혼입 차단, series/strict cohort 구분, 장기 commit cursor 재현성도 보완했다. 이것은 문서 검토 결과이며 실제 migration/DB 장애·부하·백업복원 시험의 합격 근거는 아니다. Mobile-Agent/CUAWright 조사 SHA는 §2를 유지하고 새 HEAD/동작 호환성을 추가 검증했다고 주장하지 않는다. 제품 코드·DB 생성·설치·모델/기기 실행·배포는 수행하지 않았다.
 
+## 12. v0.6 재생 우선·선택 검증·셀프힐링 결정
 
+사용자가 확정한 흐름은 AI agent로 녹화하고, 테스트는 녹화된 code/동작/조건 고정 좌표를 재생하며, 필요한 검증에만 AI를 사용하고 예외에서는 self-healing ON/OFF에 따라 국소 AI 복구를 허용하는 것이다. 핵심 정책은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md), 저장은 DATA_DESIGN, UI는 UI_SPEC, 진행 순서는 WORK_PROGRESS의32개 W 단위를 따른다.
 
+| 근거/경계 | 해석 |
+|---|---|
+| Mobile-Agent Android 원본은 매 loop capture→모델→action dispatch | 그대로 재실행하면 actor 호출이 반복되므로 recorder로 사용하고 deterministic action runner를 별도 개발 |
+| CUAWright execute.py는 Python skill 직접 실행, route.py는 추천/실패 시 agent 경로 | exact 승인 package를 직접 지정. script 안의 hidden model 호출·fallback을 차단해야 actor0이라고 표시 가능 |
+| CUAWright base.yaml은 local_workspace·shell /bin/bash·browser_mode local | 같은 PC 격리 Linux VM/Chromium을 제안. Windows/VM·driver 수명/cancel·실제 캡처는 미검증 |
+| code 생성/skill result shape가 실제 검증 정답을 보장하지 않음 | 코드 실행 완료와 QA PASS 분리·현재 oracle/근거·OFF clean trial·사후 사람 승인 필요 |
+
+이번에 고정 SHA의 관련 코드를 재확인했다. [Mobile-Agent Android loop](https://github.com/X-PLUG/MobileAgent/blob/81fa28b564ef7a695521500bc15a0e1324b2b394/Mobile-Agent-v3.5/mobile_use/run_gui_owl_1_5_for_mobile.py#L169-L213), [CUAWright 직접 실행](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py), [route/fallback](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/extensions/skill-factory/src/cuawright/webwright/skill_factory/route.py#L137-L160), [base 설정](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/src/cuawright/webwright/config/base.yaml). HEAD/새 release·실행 성공을 검증한 것은 아니다.
+
+월3,000 TC는1data×1환경×1회 가정이며 모델/제공자·이미지/이력·청구 출력·cache·retry·치유 빈도로 비용이 달라진다. OpenAI의 경우 이미지도 입력 token으로 과금되고 가격은 모델/처리 옵션별로 다르다. [공식 이미지 과금](https://developers.openai.com/api/docs/guides/images-vision), [공식 가격표](https://developers.openai.com/api/docs/pricing). 특정 모델의 앞선 대화 계산은 가정치이며 GUI 행동/검증 호환·정확성 추천이 아니다. W32에서 대표30–50 TC/각구성3회 제안 표본으로 authoring/verification/healing/maintenance·시간·저장량·오판을 측정한 뒤 예산을 정한다.
+
+제품 코드·샘플 기능·설치·실제 모델/기기 실행·DB 시험·배포는 이번 개정에서 수행하지 않는다. 기존 prototype 확인은 v0.5 모의 UI 근거로만 남긴다.

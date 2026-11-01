@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}녹화 이력{% endblock %}
+{% block content %}
+  <h1>녹화 이력</h1>
+  <p>재전송 대기는 저장 완료가 아닙니다.</p>
+  <p>로컬은 서버 저장이 아닙니다.</p>
+  <p>선택 action {{ selected_action }}</p>
+  {% if rows %}
+    <ul>
+      {% for row in rows %}
+      <li>
+        <p>REC {{ row.recording_id }}</p>
+        <p>input {{ row.input_case_version_id }}</p>
+        <p>output {{ row.output_version_id or "없음" }}</p>
+        <p>base {{ row.base_case_version_id or "없음" }}</p>
+        <p>대상 {{ row.target or "없음" }}</p>
+        <p>시각 {{ row.observed_at }}</p>
+        <p>action 수 {{ row.action_count }}</p>
+        <p>저장 {{ row.storage_status }}</p>
+        <p>종료 {{ row.stop_status }}</p>
+        <p>완결 {{ row.outcome or "없음" }}</p>
+        <p>절차 {{ row.procedure_readiness }}</p>
+        <p>증거 {{ row.evidence_completeness }}</p>
+        <p>검토 {{ row.review_status }}</p>
+        <p>수집 범위 {{ row.evidence_completeness }}</p>
+        <p>전후 증거는 이 기록의 receipt에 묶입니다.</p>
+        <p><a href="/api/v1/recordings/{{ row.recording_id }}/manifests">receipt {{ row.receipt_id or "없음" }}</a></p>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>녹화가 없습니다.</p>
+  {% endif %}
+{% endblock %}

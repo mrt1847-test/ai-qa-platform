@@ -1,0 +1,11 @@
+<section data-raw-control="false" data-preview="{{ item.reason }}">
+  {% if item.state == "unauthorized" %}
+  <p>권한이 없습니다.</p>
+  {% elif item.reason == "expired" %}
+  <p>보관 기한이 지났습니다.</p>
+  {% elif item.reason == "unobserved" %}
+  <p>아직 관찰이 없습니다.</p>
+  {% else %}
+  <p>정제된 최근 관찰입니다.</p>
+  {% endif %}
+</section>

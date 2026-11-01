@@ -6,23 +6,47 @@ import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from aiqa.contracts.resources import (
     INVENTORY_STATES,
     InventoryReceipt,
     InventoryReport,
+    ResourcePreviewView,
     require_target_kind,
     resource_key,
 )
+from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.store.database import Store
-from aiqa.store.models import WorkerScope
+from aiqa.store.models import Actor, Transaction, WorkerScope
+from aiqa.store.queue import enqueue_job
 
 _store: ContextVar[Store] = ContextVar("aiqa_inventory_store")
 
 
 class InventoryDenied(Exception):
     """The worker cannot report this project."""
+
+
+class PreviewDenied(Exception):
+    """This session cannot see the resource preview."""
+
+
+class DiagnosticBlocked(Exception):
+    """A diagnostic provider or recovery proof is missing."""
+
+
+_OBSERVATION_RETENTION = timedelta(days=30)
+_KIND_LABELS = {"web": "Web", "android": "Android"}
+_STATE_LABELS = {
+    "ready": "준비",
+    "busy": "사용 중",
+    "offline": "오프라인",
+    "unauthorized": "권한 없음",
+    "quarantine": "격리",
+    "unavailable": "사용할 수 없음",
+}
 
 
 @contextmanager
@@ -123,6 +147,213 @@ def report_inventory(worker: WorkerScope, report: InventoryReport) -> InventoryR
         state=report.state,
         project_id=project_id,
     )
+
+
+def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
+    """List project aliases. This does not open a device."""
+
+    store = _bound_store()
+    with store.transaction() as connection:
+        rows = connection.execute(
+            """
+            SELECT aliases.physical_key_id, aliases.display_name, aliases.target_kind,
+                   inventory.state, inventory.os_build, inventory.geometry, inventory.observed_at,
+                   quarantine.physical_key_id
+            FROM resource_aliases AS aliases
+            LEFT JOIN resource_inventory AS inventory
+              ON inventory.physical_key_id = aliases.physical_key_id
+            LEFT JOIN resource_quarantine AS quarantine
+              ON quarantine.physical_key_id = aliases.physical_key_id
+            WHERE aliases.project_id = ?
+            ORDER BY aliases.display_name
+            """,
+            (str(project_id),),
+        ).fetchall()
+        listed = []
+        for row in rows:
+            resource_id = str(row[0])
+            inventory_state = None if row[3] is None else str(row[3])
+            state = "quarantine" if row[7] is not None else (inventory_state or "unavailable")
+            observed = "" if row[6] is None else str(row[6])
+            observation = connection.execute(
+                """
+                SELECT artifact_id, captured_at FROM resource_observations
+                WHERE project_id = ? AND resource_id = ?
+                ORDER BY captured_at DESC LIMIT 1
+                """,
+                (str(project_id), resource_id),
+            ).fetchone()
+            lease = connection.execute(
+                """
+                SELECT job_id FROM leases
+                WHERE project_id = ? AND physical_key_id = ?
+                LIMIT 1
+                """,
+                (str(project_id), resource_id),
+            ).fetchone()
+            reason = _preview_reason(state, observed, observation is not None)
+            listed.append(
+                {
+                    "resource_id": resource_id,
+                    "display_name": str(row[1]),
+                    "target_kind": str(row[2]),
+                    "kind_label": _KIND_LABELS.get(str(row[2]), str(row[2])),
+                    "state": state,
+                    "state_label": _STATE_LABELS.get(state, state),
+                    "os_build": "" if row[4] is None else str(row[4]),
+                    "geometry": "" if row[5] is None else str(row[5]),
+                    "observed_at": observed,
+                    "availability": "unavailable" if observation is None else "observed",
+                    "reason": reason,
+                    "run_href": None
+                    if lease is None
+                    else f"/ui/projects/{project_id}/environments?run={lease[0]}",
+                }
+            )
+    return tuple(listed)
+
+
+def preview_resource(project_id: UUID, resource_id: UUID) -> ResourcePreviewView:
+    """Return the latest redacted observation. A preview is not device control."""
+
+    store = _bound_store()
+    with store.transaction() as connection:
+        row = connection.execute(
+            """
+            SELECT inventory.state, inventory.geometry, inventory.observed_at, quarantine.physical_key_id
+            FROM resource_aliases AS aliases
+            LEFT JOIN resource_inventory AS inventory
+              ON inventory.physical_key_id = aliases.physical_key_id
+            LEFT JOIN resource_quarantine AS quarantine
+              ON quarantine.physical_key_id = aliases.physical_key_id
+            WHERE aliases.project_id = ? AND aliases.physical_key_id = ?
+            """,
+            (str(project_id), str(resource_id)),
+        ).fetchone()
+        if row is None:
+            raise PreviewDenied("resource was not found")
+        state = "quarantine" if row[3] is not None else (None if row[0] is None else str(row[0]))
+        if state == "unauthorized":
+            raise PreviewDenied("preview is not allowed")
+        if state == "busy":
+            lease = connection.execute(
+                """
+                SELECT 1 FROM leases
+                WHERE project_id = ? AND physical_key_id = ?
+                LIMIT 1
+                """,
+                (str(project_id), str(resource_id)),
+            ).fetchone()
+            if lease is None:
+                raise PreviewDenied("preview is not allowed")
+        observation = connection.execute(
+            """
+            SELECT artifact_id, captured_at, geometry FROM resource_observations
+            WHERE project_id = ? AND resource_id = ?
+            ORDER BY captured_at DESC LIMIT 1
+            """,
+            (str(project_id), str(resource_id)),
+        ).fetchone()
+    observed = None if row[2] is None else str(row[2])
+    captured = None if observation is None else str(observation[1])
+    stamp = captured or observed
+    reason = _preview_reason(state or "unavailable", stamp or "", observation is not None)
+    artifact = None if observation is None or reason != "observed" else str(observation[0])
+    geometry = "" if row[1] is None else str(row[1])
+    if observation is not None and reason == "observed":
+        geometry = str(observation[2])
+    return ResourcePreviewView(resource_id, state or "unavailable", stamp, geometry, artifact, reason, False)
+
+
+def _preview_reason(state: str, observed_at: str, has_observation: bool) -> str:
+    if state == "unauthorized":
+        return "unauthorized"
+    if _stale(observed_at):
+        return "expired"
+    if not has_observation:
+        return "unobserved"
+    return "observed"
+
+
+def _stale(observed_at: str) -> bool:
+    if observed_at.strip() == "":
+        return False
+    parsed = datetime.fromisoformat(observed_at)
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return True
+    return datetime.now(timezone.utc) - parsed.astimezone(timezone.utc) > _OBSERVATION_RETENTION
+
+
+def submit_diagnostic(
+    actor: Actor,
+    project_id: UUID,
+    resource_id: UUID,
+    kind: str,
+    provider: str,
+    proof: str | None,
+    request_key: str,
+) -> tuple[object, bool]:
+    """Queue a management probe or recovery. Ready waits for VM proof."""
+
+    if provider != "fixture":
+        raise DiagnosticBlocked("provider is not configured")
+    if kind not in {"probe", "recovery"}:
+        raise DiagnosticBlocked("diagnostic kind is invalid")
+    if kind == "recovery" and (proof is None or proof.strip() == ""):
+        raise DiagnosticBlocked("recovery requires proof")
+    ready = kind == "probe" and proof == "vm-present"
+    store = _bound_store()
+    with store.transaction() as connection:
+        alias = connection.execute(
+            """
+            SELECT target_kind FROM resource_aliases
+            WHERE project_id = ? AND physical_key_id = ?
+            """,
+            (str(project_id), str(resource_id)),
+        ).fetchone()
+        if alias is None:
+            raise PreviewDenied("resource was not found")
+        if str(alias[0]) == "web" and proof != "vm-present":
+            ready = False
+        receipt = enqueue_job(
+            Transaction(connection),
+            JobSubmission(
+                project_id,
+                "resource_probe",
+                None,
+                None,
+                (str(resource_id),),
+                json.dumps({"kind": kind, "qa": None, "ready": ready}, sort_keys=True),
+            ),
+            IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
+        )
+    return receipt, ready
+
+
+def list_diagnostic_jobs(project_id: UUID) -> tuple[dict[str, object], ...]:
+    """List probe jobs for the environment page. This does not open a device."""
+
+    with _bound_store().transaction() as connection:
+        rows = connection.execute(
+            """
+            SELECT job_id, status, limits FROM jobs
+            WHERE project_id = ? AND purpose = 'resource_probe'
+            ORDER BY job_id
+            """,
+            (str(project_id),),
+        ).fetchall()
+    listed = []
+    for row in rows:
+        limits = json.loads(str(row[2]))
+        listed.append(
+            {
+                "job_id": str(row[0]),
+                "status": str(row[1]),
+                "kind": str(limits.get("kind", "probe")),
+                "ready": bool(limits.get("ready")),
+            }
+        )
+    return tuple(listed)
 
 
 def _bound_store() -> Store:

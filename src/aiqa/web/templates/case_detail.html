@@ -8,6 +8,8 @@
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=code">code</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">설정</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=history">실행이력</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/recordings">녹화 이력</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/execution-setup">시범</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=review">검토</a>
     <a href="/ui/projects/{{ project_id }}/tcs?case_id={{ case_id }}">선택 TC</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=versions&amp;version={{ board.latest_draft_version_id }}">버전</a>
@@ -35,6 +37,8 @@
   {% elif tab == "code" %}
     <p>code는 읽기 전용입니다.</p>
   {% elif tab == "settings" %}
+    <p>승인된 healing 범위와 수행에서 켜기는 다릅니다. 기본은 꺼져 있습니다.</p>
+    <p>항목당 episode는 1개, 호출은 2회, 시간은 30초입니다.</p>
     <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/settings">실행 설정</a></p>
   {% elif tab == "review" %}
     <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review">검토 보기</a></p>

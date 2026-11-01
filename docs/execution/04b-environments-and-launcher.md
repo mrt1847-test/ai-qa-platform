@@ -1,6 +1,6 @@
 # D-2 · 환경·기기·앱·data·launcher UI · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 11**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료9 / 11**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,23 +8,23 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W11-01](#w11-01) | [W10-10](04a-case-management-ui.md#w10-10), [W07-01](03-worker-and-sessions.md#w07-01), [W14-03](05a-action-evidence-and-models.md#w14-03) | 연결 자원 목록·현재 화면·기기에서 녹화 | not_started |
-| [W11-02](#w11-02) | [W11-01](04b-environments-and-launcher.md#w11-01) | Web·Android 환경 profile 편집 | not_started |
-| [W11-03](#w11-03) | [W11-02](04b-environments-and-launcher.md#w11-02) | data schema·행 편집·revision·연결 UI | not_started |
+| [W11-01](#w11-01) | [W10-10](04a-case-management-ui.md#w10-10), [W07-01](03-worker-and-sessions.md#w07-01), [W14-03](05a-action-evidence-and-models.md#w14-03) | 연결 자원 목록·현재 화면·기기에서 녹화 | complete |
+| [W11-02](#w11-02) | [W11-01](04b-environments-and-launcher.md#w11-01) | Web·Android 환경 profile 편집 | complete |
+| [W11-03](#w11-03) | [W11-02](04b-environments-and-launcher.md#w11-02) | data schema·행 편집·revision·연결 UI | complete |
 | [W11-04](#w11-04) | [W11-03](04b-environments-and-launcher.md#w11-03), [W07-03](03-worker-and-sessions.md#w07-03) | 설치 앱 선택과 metadata inspect | not_started |
-| [W11-05](#w11-05) | [W11-03](04b-environments-and-launcher.md#w11-03), [W14-03](05a-action-evidence-and-models.md#w14-03) | APK 제한 업로드·metadata·등록 UI | not_started |
+| [W11-05](#w11-05) | [W11-03](04b-environments-and-launcher.md#w11-03), [W14-03](05a-action-evidence-and-models.md#w14-03) | APK 제한 업로드·metadata·등록 UI | complete |
 | [W11-06](#w11-06) | [W11-04](04b-environments-and-launcher.md#w11-04), [W11-05](04b-environments-and-launcher.md#w11-05), [W07-03](03-worker-and-sessions.md#w07-03) | 명시 설치·reset 영향과 사후 관찰 | not_started |
-| [W11-07](#w11-07) | [W11-01](04b-environments-and-launcher.md#w11-01), [W09-03](03-worker-and-sessions.md#w09-03), [W08-05](03-worker-and-sessions.md#w08-05) | 환경 진단·quarantine·복구 UI | not_started |
-| [W11-08](#w11-08) | [W11-07](04b-environments-and-launcher.md#w11-07), [W10-09](04a-case-management-ui.md#w10-09) | 활동 이력·worker 범위·공간 설정 조회 | not_started |
-| [W12-01](#w12-01) | [W11-08](04b-environments-and-launcher.md#w11-08), [W00-04](00-bootstrap.md#w00-04) | 로컬 launcher·중복시작·상태 UI | not_started |
-| [W12-02](#w12-02) | [W12-01](04b-environments-and-launcher.md#w12-01) | polling·탭 재접속·선택 항목 복원 | not_started |
-| [W12-03](#w12-03) | [W12-02](04b-environments-and-launcher.md#w12-02) | PC 절전·복귀·종료 안내와 안전 종료 | not_started |
+| [W11-07](#w11-07) | [W11-01](04b-environments-and-launcher.md#w11-01), [W09-03](03-worker-and-sessions.md#w09-03), [W08-05](03-worker-and-sessions.md#w08-05) | 환경 진단·quarantine·복구 UI | complete |
+| [W11-08](#w11-08) | [W11-07](04b-environments-and-launcher.md#w11-07), [W10-09](04a-case-management-ui.md#w10-09) | 활동 이력·worker 범위·공간 설정 조회 | complete |
+| [W12-01](#w12-01) | [W11-08](04b-environments-and-launcher.md#w11-08), [W00-04](00-bootstrap.md#w00-04) | 로컬 launcher·중복시작·상태 UI | complete |
+| [W12-02](#w12-02) | [W12-01](04b-environments-and-launcher.md#w12-01) | polling·탭 재접속·선택 항목 복원 | complete |
+| [W12-03](#w12-03) | [W12-02](04b-environments-and-launcher.md#w12-02) | PC 절전·복귀·종료 안내와 안전 종료 | complete |
 
 <a id="w11-01"></a>
 
 ## W11-01 — 연결 자원 목록·현재 화면·기기에서 녹화
 
-- [ ] **W11-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-01.md`(구현 때 생성).
+- [x] **W11-01 완료** — 상태: `complete`. 근거: [W11-01 인계](../validation/tasks/W11-01.md).
 - **직접 선행:** [W10-10](04a-case-management-ui.md#w10-10), [W07-01](03-worker-and-sessions.md#w07-01), [W14-03](05a-action-evidence-and-models.md#w14-03)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 / C12 / C14 + 직접 선행 receipt의 interface/제약. 추적: R02, R07, R14, R25, R27, UI-14.01, UI-05.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -52,7 +52,7 @@ assert observed == {
 
 ## W11-02 — Web·Android 환경 profile 편집
 
-- [ ] **W11-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-02.md`(구현 때 생성).
+- [x] **W11-02 완료** — 상태: `complete`. 근거: [W11-02 인계](../validation/tasks/W11-02.md).
 - **직접 선행:** [W11-01](04b-environments-and-launcher.md#w11-01)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R01, R14, R25, UI-14.02.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -79,7 +79,7 @@ assert observed == {
 
 ## W11-03 — data schema·행 편집·revision·연결 UI
 
-- [ ] **W11-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-03.md`(구현 때 생성).
+- [x] **W11-03 완료** — 상태: `complete`. 근거: [W11-03 인계](../validation/tasks/W11-03.md).
 - **직접 선행:** [W11-02](04b-environments-and-launcher.md#w11-02)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R22, R32, UI-14.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -133,7 +133,7 @@ assert observed == {
 
 ## W11-05 — APK 제한 업로드·metadata·등록 UI
 
-- [ ] **W11-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-05.md`(구현 때 생성).
+- [x] **W11-05 완료** — 상태: `complete`. 근거: [W11-05 인계](../validation/tasks/W11-05.md).
 - **직접 선행:** [W11-03](04b-environments-and-launcher.md#w11-03), [W14-03](05a-action-evidence-and-models.md#w14-03)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 + 직접 선행 receipt의 interface/제약. 추적: R14, R23, UI-14.05.
 - **검증 등급:** `tool_integration`. 환경: `local_python`, `apk_metadata_tools`.
@@ -185,7 +185,7 @@ assert observed == {
 
 ## W11-07 — 환경 진단·quarantine·복구 UI
 
-- [ ] **W11-07 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-07.md`(구현 때 생성).
+- [x] **W11-07 완료** — 상태: `complete`. 근거: [W11-07 인계](../validation/tasks/W11-07.md).
 - **직접 선행:** [W11-01](04b-environments-and-launcher.md#w11-01), [W09-03](03-worker-and-sessions.md#w09-03), [W08-05](03-worker-and-sessions.md#w08-05)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R02, R15, R25, R26, UI-14.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -213,7 +213,7 @@ assert observed == {
 
 ## W11-08 — 활동 이력·worker 범위·공간 설정 조회
 
-- [ ] **W11-08 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W11-08.md`(구현 때 생성).
+- [x] **W11-08 완료** — 상태: `complete`. 근거: [W11-08 인계](../validation/tasks/W11-08.md).
 - **직접 선행:** [W11-07](04b-environments-and-launcher.md#w11-07), [W10-09](04a-case-management-ui.md#w10-09)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R14, R15, R21, UI-15.03, UI-15.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -240,7 +240,7 @@ assert observed == {
 
 ## W12-01 — 로컬 launcher·중복시작·상태 UI
 
-- [ ] **W12-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W12-01.md`(구현 때 생성).
+- [x] **W12-01 완료** — 상태: `complete`. 근거: [W12-01 인계](../validation/tasks/W12-01.md).
 - **직접 선행:** [W11-08](04b-environments-and-launcher.md#w11-08), [W00-04](00-bootstrap.md#w00-04)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R10, R21, R26, UI-COMMON.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -268,7 +268,7 @@ assert observed == {
 
 ## W12-02 — polling·탭 재접속·선택 항목 복원
 
-- [ ] **W12-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W12-02.md`(구현 때 생성).
+- [x] **W12-02 완료** — 상태: `complete`. 근거: [W12-02 인계](../validation/tasks/W12-02.md).
 - **직접 선행:** [W12-01](04b-environments-and-launcher.md#w12-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R10, R12, R26, UI-COMMON.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -296,7 +296,7 @@ assert observed == {
 
 ## W12-03 — PC 절전·복귀·종료 안내와 안전 종료
 
-- [ ] **W12-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W12-03.md`(구현 때 생성).
+- [x] **W12-03 완료** — 상태: `complete`. 근거: [W12-03 인계](../validation/tasks/W12-03.md).
 - **직접 선행:** [W12-02](04b-environments-and-launcher.md#w12-02)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R11, R15, R26, UI-COMMON.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

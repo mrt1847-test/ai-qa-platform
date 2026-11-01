@@ -1,0 +1,92 @@
+{
+  "checked_at": "2026-11-01T00:58:59.585212+00:00",
+  "head": "5ff4e5273bbfc5ae0283690bf91dbb2918f6c9bb",
+  "source_files_at_start": 153,
+  "changed_source_files": [],
+  "screenshots": [
+    "01-recording-entry-1440.png",
+    "02-recording-wizard-1440.png",
+    "03-cases-1440.png",
+    "04-definition-1440.png",
+    "05-definition-editor-1440.png",
+    "06-unsaved-after-tab-1440.png",
+    "07-header-search-1440.png",
+    "08-environment-editor-1440.png",
+    "09-environment-submit-error.png",
+    "10-dataset-submit-error.png",
+    "11-trial-setup-1440.png",
+    "12-definition-editor-1024.png",
+    "13-cases-1024.png",
+    "14-cases-page2-1024.png",
+    "15-resources-offline-1024.png",
+    "16-project-settings-1024.png"
+  ],
+  "scope": "Browser walkthrough with synthetic isolated runtime; no live device/model/install or product edits by reviewer",
+  "missing_report_links": [],
+  "screenshot_dimensions": {
+    "01-recording-entry-1440.png": [
+      65536,
+      4292542531
+    ],
+    "02-recording-wizard-1440.png": [
+      65536,
+      4292542531
+    ],
+    "03-cases-1440.png": [
+      65536,
+      4292542531
+    ],
+    "04-definition-1440.png": [
+      65536,
+      4292542531
+    ],
+    "05-definition-editor-1440.png": [
+      65536,
+      4292542531
+    ],
+    "06-unsaved-after-tab-1440.png": [
+      65536,
+      4292542531
+    ],
+    "07-header-search-1440.png": [
+      65536,
+      4292542531
+    ],
+    "08-environment-editor-1440.png": [
+      65536,
+      4292542531
+    ],
+    "09-environment-submit-error.png": [
+      65536,
+      4292542531
+    ],
+    "10-dataset-submit-error.png": [
+      65536,
+      4292542531
+    ],
+    "11-trial-setup-1440.png": [
+      65536,
+      4292542531
+    ],
+    "12-definition-editor-1024.png": [
+      65536,
+      4293001688
+    ],
+    "13-cases-1024.png": [
+      65536,
+      4292542531
+    ],
+    "14-cases-page2-1024.png": [
+      65536,
+      4293001688
+    ],
+    "15-resources-offline-1024.png": [
+      65536,
+      4292542531
+    ],
+    "16-project-settings-1024.png": [
+      65536,
+      4292542531
+    ]
+  }
+}

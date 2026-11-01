@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}묶음{% endblock %}
+{% block content %}
+  <h1>묶음</h1>
+  <form method="get">
+    <label>검색 <input name="q" value="{{ query }}"></label>
+    <button type="submit">검색</button>
+  </form>
+  <p>빈 묶음은 저장할 수 있습니다. 구성이 0이면 실행하지 않습니다.</p>
+  {% if suites %}
+  <ul>
+    {% for suite in suites %}
+    <li>
+      <span>{{ suite.suite_id }}</span>
+      <span>{{ suite.name }}</span>
+      <span>{{ suite.description }}</span>
+      <span>{{ suite.target_kind }}</span>
+      <span>담당 {{ suite.owner_name }}</span>
+      <span>구성 {{ suite.entry_count }}</span>
+      <span>최근 수행 {{ suite.latest_run_id }}</span>
+      <span>{{ suite.updated_at }}</span>
+      <span>{{ suite.classification }}</span>
+      <span>이력 {{ suite.history|length }}</span>
+      {% if suite.archived_at %}<span>보관</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>묶음이 없습니다.</p>
+  {% endif %}
+{% endblock %}

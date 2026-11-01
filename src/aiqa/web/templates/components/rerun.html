@@ -1,0 +1,38 @@
+<section>
+  <p>같은 구성으로 다시 실행합니다. 구성 변경은 명시합니다.</p>
+  <p>{{ configuration_label|default('같은 구성입니다') }}</p>
+  <p>원본과 사유가 남습니다. 원본 결과는 바꾸지 않습니다.</p>
+  <p>원본 {{ original_execution_id|default('') }} · 뿌리 {{ root_execution_id|default('') }}</p>
+  <p>사유 {{ rerun_reason|default('') }}</p>
+  <p>원본 결과 {{ original_result|default('') }}</p>
+  <p>새 결과는 따로 보입니다. 새 수행은 따로 셉니다.</p>
+  <p>철회된 승인은 다시 확인합니다. 확인 뒤에 새 수행을 만듭니다.</p>
+  <p><a href="/ui/projects/{{ project_id|default('') }}/cases">새 버전</a></p>
+  <p><a href="/ui/projects/{{ project_id|default('') }}/recordings">재녹화</a></p>
+  <label>재실행 사유 <input id="rerun-reason" value=""></label>
+  <label>범위
+    <select id="rerun-scope">
+      <option value="failed">실패 항목</option>
+      <option value="all">전체</option>
+      <option value="items">선택한 항목</option>
+    </select>
+  </label>
+  <button type="button" id="start-rerun" data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}">다시 실행</button>
+  <script>
+    (function () {
+      var button = document.getElementById("start-rerun");
+      if (!button || !window.aiqaRequest) return;
+      button.addEventListener("click", function () {
+        var reason = document.getElementById("rerun-reason");
+        var scope = document.getElementById("rerun-scope");
+        window.aiqaRequest("/api/v1/executions/" + button.getAttribute("data-execution") + "/reruns?project_id=" + button.getAttribute("data-project"), {
+          method: "POST",
+          body: JSON.stringify({
+            reason: reason ? reason.value : "",
+            scope: scope ? scope.value : "failed"
+          })
+        });
+      });
+    }());
+  </script>
+</section>

@@ -7,12 +7,19 @@ from fastapi.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
 from aiqa.api.artifacts import install_artifacts
+from aiqa.api.retention import install_retention
+from aiqa.api.backups import install_backups
+from aiqa.api.case_runs import install_case_runs
+from aiqa.api.executions import install_executions
+from aiqa.api.suites import install_suites
+from aiqa.api.healing import install_healing
 from aiqa.api.auth import install_auth
 from aiqa.api.cases import install_cases
 from aiqa.api.catalog import install_catalog, install_taxonomy
 from aiqa.api.mutations import current_mutation_store
 from aiqa.api.jobs import install_jobs
 from aiqa.api.recordings import install_recordings
+from aiqa.api.reports import install_reports
 from aiqa.api.resources import install_resources
 from aiqa.api.model_bindings import install_model_bindings
 from aiqa.api.secret_refs import install_secret_refs
@@ -21,6 +28,7 @@ from aiqa.api.tcs import install_tcs
 from aiqa.api.worker import install_worker
 from aiqa.config import AppSettings, SettingsError, load_settings
 from aiqa.store.database import StorageConfig, open_store
+from aiqa.api.lifecycle import install_local
 from aiqa.web.routes import ensure_css_media_type, install_shell, render_bootstrap, static_directory
 
 
@@ -52,7 +60,15 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     install_jobs(application)
     install_worker(application)
     install_artifacts(application)
+    install_retention(application)
+    install_backups(application)
     install_recordings(application)
+    install_healing(application)
+    install_executions(application)
+    install_case_runs(application)
+    install_reports(application)
+    install_suites(application)
+    install_local(application)
     application.add_api_route("/api/v1/health", health, methods=["GET"])
     install_shell(application)
     ensure_css_media_type()

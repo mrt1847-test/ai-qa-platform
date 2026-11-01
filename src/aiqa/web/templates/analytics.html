@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}누적 분석{% endblock %}
+{% block content %}
+<section>
+  <h1>누적 분석</h1>
+  <p>기간 {{ report.period_from }} 부터 {{ report.period_to }} 전까지</p>
+  <p>목적 {{ report.purpose }} · 케이스 {{ report.case_id }}</p>
+  <p>{% if report.criteria == "latest_terminal" %}최근 완료{% else %}전체 관측{% endif %}</p>
+  <p>표본 {{ report.sample_count }} · 분모 {{ report.denominator }} · 미검증 {{ report.unverified }}</p>
+  <p>기준 시각 {{ report.as_of }}</p>
+  <p>조건 {{ report.condition_count }}</p>
+  <p>추세 {% for day in report.trend_dates %}{{ day }} {% endfor %}</p>
+  <p>처음 만족 {{ report.first_satisfied }} · 복구 {{ report.recovery_count }}</p>
+  <p>반복 검사 {{ report.repeated_checks }} · 분석 {{ report.analysis_count }}</p>
+  <p>시간 중앙값 {{ report.p50 if report.p50 is not none else "없음" }}</p>
+  <p>시간 상위 {{ report.p95 if report.p95 is not none else "없음" }}</p>
+  <p>실행하지 않은 항목의 시간은 비어 있습니다.</p>
+  <p>비용 {{ report.cost if report.cost else "없음" }}</p>
+  <p>늦은 비용은 기준 시각 뒤에 더하지 않습니다.</p>
+  <p>저장량 {{ report.storage_count }}건</p>
+  <p>{% if report.rates is none %}빈 표본은 비율을 내지 않습니다.{% else %}비율을 표본과 함께 보입니다.{% endif %}</p>
+  <form method="get">
+    <input name="from" value="{{ report.period_from }}">
+    <input name="to" value="{{ report.period_to }}">
+    <input name="as_of" value="{{ report.as_of }}">
+    <input name="purpose" value="{{ report.purpose }}">
+    <input name="case" value="{{ report.case_id }}">
+    <input name="criteria" value="{{ report.criteria }}">
+  </form>
+</section>
+{% endblock %}

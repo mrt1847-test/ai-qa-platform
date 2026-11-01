@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}수행{% endblock %}
+{% block content %}
+  <h1>수행</h1>
+  <p>작업 상태 {{ job_status }}</p>
+  <p>단계 {{ phase }}</p>
+  <p>episode {{ episode_count }} · 호출 {{ call_count }} / {{ max_calls }} · {{ max_seconds }}초</p>
+  <p>항목당 episode는 1개, 호출은 2회, 시간은 30초입니다.</p>
+  <label>healing <input id="running-healing-toggle" type="checkbox" data-default="off"{% if not toggle_enabled %} disabled{% endif %}></label>
+  <p>기본은 꺼져 있습니다. 진행 중에는 바꿀 수 없습니다.</p>
+  <p>{{ run_name }} · {{ run_purpose }} · {{ run_source }}</p>
+  <p>요청자 {{ requester }}</p>
+  <p>환경 {{ environment }} · 빌드 {{ build }}</p>
+  <p>종료 {{ finished_count|default(0) }} · 성공 {{ pass_count|default(0) }}</p>
+  <p>전체 취소는 대기 항목을 끝내고, 진행 항목은 취소 요청입니다.</p>
+  <p>취소 요청, 정지, 정리는 서로 다릅니다. 정리는 정리가 끝난 뒤입니다.</p>
+  <p>완료된 항목은 바꾸지 않습니다. 실패는 유지합니다.</p>
+  <p>미시작 항목만 건너뜁니다. 진행 중 항목은 건너뛰지 않습니다.</p>
+  <p>건너뜀은 한 번만 집계합니다. 자원은 잡지 않습니다.</p>
+  <p>중단 정책에서는 뒤 항목을 실행하지 않습니다.</p>
+  <label>건너뛰기 사유 <input id="skip-reason" value=""></label>
+  <button type="button" id="cancel-execution" data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}">전체 취소</button>
+  <p>대기 {{ waiting_count|default(0) }} · 진행 {{ running_count|default(0) }} · 완료 {{ done_count|default(0) }}</p>
+  <p>{{ requested_at }}</p>
+  <p>{{ connection_label|default('연결 확인') }}</p>
+  {% if stale_label %}<p>{{ stale_label }}</p>{% endif %}
+  <p id="selected-item">선택 항목 {{ selected_item_id|default('') }}</p>
+  {% include "components/rerun.html" %}
+  <ul>
+    {% for item in items|default([]) %}
+    <li {% if item.selected %}data-selected="true"{% endif %}>
+      항목 {{ item.case_run_id }}
+      현재 화면 {{ item.screen }}
+      이벤트 {{ item.event_count }}
+      경과 {{ item.elapsed }}
+      자원 {{ item.resource }}
+      단계 {{ item.phase }}
+      호출 {{ item.calls }}
+      취소 단계 {{ item.cancel_label|default('') }}
+      <button type="button" data-cancel-item="{{ item.case_run_id }}">항목 취소</button>
+      <button type="button" data-skip-item="{{ item.case_run_id }}">건너뛰기</button>
+      {% if item.skip_reason %}<p>건너뜀 사유 {{ item.skip_reason }} · {{ item.skip_actor }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <script>
+    (function () {
+      var run = document.getElementById("cancel-execution");
+      if (!run || !window.aiqaRequest) return;
+      var project = run.getAttribute("data-project");
+      function send(url) {
+        window.aiqaRequest(url + "?project_id=" + project, {method: "POST", body: "{}"});
+      }
+      run.addEventListener("click", function () {
+        send("/api/v1/executions/" + run.getAttribute("data-execution") + "/cancel");
+      });
+      document.querySelectorAll("[data-cancel-item]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          send("/api/v1/case-runs/" + button.getAttribute("data-cancel-item") + "/cancel");
+        });
+      });
+      var reason = document.getElementById("skip-reason");
+      document.querySelectorAll("[data-skip-item]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var note = reason ? reason.value : "";
+          window.aiqaRequest("/api/v1/case-runs/" + button.getAttribute("data-skip-item") + "/skip?project_id=" + project, {
+            method: "POST",
+            body: JSON.stringify({reason: note})
+          });
+        });
+      });
+    }());
+  </script>
+{% endblock %}

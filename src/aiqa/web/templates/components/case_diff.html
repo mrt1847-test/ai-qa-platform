@@ -1,0 +1,18 @@
+<section id="case-diff" data-approve="{{ 'true' if readiness.approve_allowed else 'false' }}" data-old-review-copied="{{ 'true' if readiness.old_review_copied else 'false' }}" data-trial-off="{{ 'true' if readiness.trial_off else 'false' }}">
+  <h2>후보 차이</h2>
+  {% if not readiness.approve_allowed %}
+  <p>이 후보를 승인할 수 없습니다.</p>
+  {% endif %}
+  <p>{% if readiness.old_review_copied %}이전 검토가 복사되었습니다.{% else %}이전 검토를 복사하지 않았습니다.{% endif %}</p>
+  {% if readiness.trial_off %}
+  <p>시범 healing은 꺼져 있습니다.</p>
+  {% endif %}
+  {% for item in readiness.diffs %}
+  <p data-field="{{ item.field }}" data-changed="{{ 'true' if item.changed else 'false' }}">{{ item.label }} {{ item.base }} → {{ item.candidate }}</p>
+  {% endfor %}
+  {% for reason in readiness.block_reasons %}
+  <p data-block="{{ reason }}">{{ readiness.block_labels[reason] }}</p>
+  {% endfor %}
+  <article data-tab="source" data-owner="{{ readiness.source_owner_id }}"{% if tab == "trial" %} hidden{% endif %}>출처 기록 {{ readiness.source_owner_id }}</article>
+  <article data-tab="trial" data-owner="{{ readiness.trial_owner_id }}"{% if tab == "record" %} hidden{% endif %}>시범 항목 {{ readiness.trial_owner_id }}</article>
+</section>

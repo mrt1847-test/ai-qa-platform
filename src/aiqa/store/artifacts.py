@@ -5,19 +5,227 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from uuid import UUID
+from uuid import UUID, uuid4
+from aiqa.store.retention import FILE_WINDOW, UtcInstant
 from aiqa.worker.files import file_lock
 
 _MEDIA = {".png": "image/png", ".log": "text/plain"}
 _MAX_BYTES = 5_000_000
-ARTIFACT_RETENTION = timedelta(days=30)
+APK_BYTE_LIMIT = 500 * 1024 * 1024
+PROJECT_BYTE_LIMIT = 20 * 1024 * 1024 * 1024
+ARTIFACT_RETENTION = FILE_WINDOW
 
 
 class ArtifactRejected(ValueError):
     """The upload cannot become a ready file."""
+
+
+@dataclass(frozen=True, slots=True)
+class ProtectionReceipt:
+    protection_id: UUID
+    review_id: UUID
+    artifact_id: UUID
+    reason: str
+    expires_at: str
+    prior_expires_at: str
+    event_count: int
+    approve_allowed: bool
+    temporary: bool
+
+
+def extend_review_retention(
+    connection: object,
+    project_id: UUID,
+    review_id: UUID,
+    artifact_id: UUID,
+    reason: str,
+) -> ProtectionReceipt:
+    """Append one 30-day protection event. Earlier expiry rows stay as written."""
+
+    if reason.strip() == "":
+        raise ArtifactRejected("protection reason is missing")
+    review = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM reviews WHERE project_id = ? AND review_id = ?",
+        (str(project_id), str(review_id)),
+    ).fetchone()
+    if review is None:
+        raise ArtifactRejected("review is missing")
+    member = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT 1 FROM review_evidence_entries
+        WHERE project_id = ? AND review_id = ? AND artifact_ref_id = ?
+        """,
+        (str(project_id), str(review_id), str(artifact_id)),
+    ).fetchone()
+    if member is None:
+        raise ArtifactRejected("artifact is outside the review")
+    prior = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT expires_at FROM review_retention_events
+        WHERE project_id = ? AND review_id = ? AND artifact_id = ?
+        ORDER BY created_at, rowid
+        """,
+        (str(project_id), str(review_id), str(artifact_id)),
+    ).fetchall()
+    now = datetime.now(timezone.utc)
+    expires_at = (now + ARTIFACT_RETENTION).isoformat()
+    protection_id = uuid4()
+    event_id = uuid4()
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO artifact_protections (
+            project_id, protection_id, artifact_id, kind, backup_receipt_id, build_id, manual_request_id
+        ) VALUES (?, ?, ?, 'review', NULL, NULL, NULL)
+        """,
+        (str(project_id), str(protection_id), str(artifact_id)),
+    )
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO review_retention_events (
+            project_id, event_id, review_id, protection_id, artifact_id, reason, expires_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (str(project_id), str(event_id), str(review_id), str(protection_id), str(artifact_id), reason, expires_at, now.isoformat()),
+    )
+    return ProtectionReceipt(
+        protection_id,
+        review_id,
+        artifact_id,
+        reason,
+        expires_at,
+        "" if not prior else str(prior[-1][0]),
+        len(prior) + 1,
+        not _review_evidence_expired(connection, project_id, review_id, now),
+        True,
+    )
+
+
+def review_protection(connection: object, project_id: UUID, case_id: UUID) -> dict[str, object] | None:
+    """Show the latest temporary deadline. A rejected decision and an old expiry stay."""
+
+    review = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT review_id FROM reviews
+        WHERE project_id = ? AND case_id = ?
+        ORDER BY created_commit_seq DESC
+        LIMIT 1
+        """,
+        (str(project_id), str(case_id)),
+    ).fetchone()
+    if review is None:
+        return None
+    review_id = str(review[0])
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT expires_at, reason FROM review_retention_events
+        WHERE project_id = ? AND review_id = ?
+        ORDER BY created_at, rowid
+        """,
+        (str(project_id), review_id),
+    ).fetchall()
+    rejected = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT 1 FROM review_decisions
+        WHERE project_id = ? AND review_id = ? AND state = 'rejected'
+        """,
+        (str(project_id), review_id),
+    ).fetchone()
+    now = datetime.now(timezone.utc)
+    latest = rows[-1] if rows else None
+    prior = rows[-2] if len(rows) >= 2 else None
+    return {
+        "expires_at": "" if latest is None else str(latest[0]),
+        "reason": "" if latest is None else str(latest[1]),
+        "prior_expires_at": "" if prior is None else str(prior[0]),
+        "event_count": len(rows),
+        "temporary": True,
+        "expired": _review_evidence_expired(connection, project_id, UUID(review_id), now),
+        "rejected_retained": rejected is not None,
+    }
+
+
+def _review_evidence_expired(connection: object, project_id: UUID, review_id: UUID, now: datetime) -> bool:
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT artifact_objects.status, artifact_objects.custody, artifact_objects.stored_at
+        FROM review_evidence_entries
+        LEFT JOIN artifact_objects
+          ON artifact_objects.project_id = review_evidence_entries.project_id
+         AND artifact_objects.artifact_id = review_evidence_entries.artifact_ref_id
+        WHERE review_evidence_entries.project_id = ? AND review_evidence_entries.review_id = ?
+        """,
+        (str(project_id), str(review_id)),
+    ).fetchall()
+    if not rows:
+        return True
+    for row in rows:
+        if row[0] is None or str(row[0]) != "ready" or str(row[1]) == "expired" or expired_at(str(row[2] or ""), now):
+            return True
+    return False
+
+
+def pin_approval(connection: object, project_id: UUID, artifact_id: UUID, protection_id: UUID) -> None:
+    """Register one approval pin. An expired file cannot become protected here."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT custody, stored_at FROM artifact_objects
+        WHERE project_id = ? AND artifact_id = ? AND status = 'ready' AND acked = 1
+        """,
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    if row is None or str(row[0]) == "expired" or expired_at(str(row[1] or ""), datetime.now(timezone.utc)):
+        raise ArtifactRejected("artifact is not ready")
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO artifact_protections (
+            project_id, protection_id, artifact_id, kind, backup_receipt_id, build_id, manual_request_id
+        ) VALUES (?, ?, ?, 'approval', NULL, NULL, NULL)
+        """,
+        (str(project_id), str(protection_id), str(artifact_id)),
+    )
+
+
+def pin_review(connection: object, project_id: UUID, artifact_id: UUID, protection_id: UUID) -> None:
+    """Register one review pin. The retention horizon is 30 days."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT 1 FROM artifact_objects
+        WHERE project_id = ? AND artifact_id = ? AND status = 'ready' AND acked = 1
+        """,
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    if row is None:
+        raise ArtifactRejected("artifact is not ready")
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO artifact_protections (
+            project_id, protection_id, artifact_id, kind, backup_receipt_id, build_id, manual_request_id
+        ) VALUES (?, ?, ?, 'review', NULL, NULL, NULL)
+        """,
+        (str(project_id), str(protection_id), str(artifact_id)),
+    )
+
+
+def require_ready_artifacts(connection: object, project_id: UUID, artifact_ids: tuple[str, ...]) -> None:
+    """Refuse a package commit until every listed artifact is already ready."""
+
+    if artifact_ids == ():
+        raise ArtifactRejected("artifact is not ready")
+    for artifact_id in artifact_ids:
+        row = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT 1 FROM artifact_objects
+            WHERE project_id = ? AND artifact_id = ? AND status = 'ready' AND acked = 1
+            """,
+            (str(project_id), artifact_id),
+        ).fetchone()
+        if row is None:
+            raise ArtifactRejected("artifact is not ready")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +286,16 @@ def suffix_for(filename: str, media_type: str) -> str | None:
     if _MEDIA.get(suffix) != media_type:
         return None
     return suffix
+
+
+def within_apk_budget(declared_length: int, project_total: int) -> bool:
+    """One APK stays within 500MB and the project stays within 20GB."""
+
+    if type(declared_length) is not int or type(project_total) is not int:
+        return False
+    if declared_length < 1 or declared_length > APK_BYTE_LIMIT:
+        return False
+    return project_total + declared_length <= PROJECT_BYTE_LIMIT
 
 
 def acceptable_size(declared_length: int, body: bytes) -> bool:
@@ -143,3 +361,169 @@ def _hostile(filename: str) -> bool:
     if ".." in filename or filename.startswith(("/", "\\")) or "\\" in filename or ":" in filename:
         return True
     return False
+
+
+class ProtectionConflict(ValueError):
+    """The same pin command does not match the stored receipt."""
+
+
+@dataclass(frozen=True, slots=True)
+class GcClaim:
+    claim_id: UUID
+    artifact_id: UUID
+    state: str
+
+
+def append_typed_pin(connection: object, project_id: UUID, artifact_id: UUID, kind: str, now: datetime) -> UUID:
+    """Append one manual, backup, or build pin. A delete-pending artifact stays unapproved."""
+
+    if kind not in {"manual", "backup", "build"}:
+        raise ArtifactRejected("pin kind belongs to its own lifetime")
+    _require_artifact(connection, project_id, artifact_id)
+    if _pending(connection, project_id, artifact_id):
+        raise ArtifactRejected("delete pending blocks a new pin")
+    protection_id = uuid4()
+    parent = uuid4()
+    if kind == "manual":
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO manual_retention_requests (project_id, request_id, created_at) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), now.isoformat()),
+        )
+        columns = (str(parent), None, None)
+    elif kind == "backup":
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO backup_receipts (project_id, receipt_id, created_at) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), now.isoformat()),
+        )
+        columns = (None, None, str(parent))
+    else:
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO app_builds (project_id, build_id, content_hash) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), "sha256:build"),
+        )
+        columns = (None, str(parent), None)
+    _insert_pin(connection, project_id, protection_id, artifact_id, kind, columns)
+    return protection_id
+
+
+def protect_for_approval(connection: object, project_id: UUID, artifact_id: UUID) -> UUID:
+    """Append an approval pin when the artifact is not already claimed for deletion."""
+
+    _require_artifact(connection, project_id, artifact_id)
+    if _pending(connection, project_id, artifact_id):
+        raise ArtifactRejected("delete pending blocks approval")
+    protection_id = uuid4()
+    _insert_pin(connection, project_id, protection_id, artifact_id, "approval", (None, None, None))
+    return protection_id
+
+
+def release_manual_pin(connection: object, project_id: UUID, protection_id: UUID, now: datetime) -> None:
+    """Release one manual pin. Approval, review, backup, and build pins stay."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT kind FROM artifact_protections
+        WHERE project_id = ? AND protection_id = ?
+        """,
+        (str(project_id), str(protection_id)),
+    ).fetchone()
+    if row is None:
+        raise ArtifactRejected("pin is missing")
+    if str(row[0]) != "manual":
+        raise ArtifactRejected("manual release cannot drop another pin")
+    existing = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM protection_releases WHERE project_id = ? AND protection_id = ?",
+        (str(project_id), str(protection_id)),
+    ).fetchone()
+    if existing is not None:
+        raise ProtectionConflict("pin is already released")
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO protection_releases (project_id, release_id, protection_id, released_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        (str(project_id), str(uuid4()), str(protection_id), now.isoformat()),
+    )
+
+
+def claim_gc_artifact(connection: object, project_id: UUID, now: UtcInstant) -> GcClaim | None:
+    """Claim one unprotected ready artifact. Provenance rows stay."""
+
+    clock = now.value
+    if clock.tzinfo is None or clock.utcoffset() is None:
+        raise ArtifactRejected("retention time needs a timezone")
+    paused = connection.execute("SELECT 1 FROM gc_pause").fetchone()  # type: ignore[attr-defined]
+    if paused is not None:
+        return None
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT artifact_id FROM artifact_objects
+        WHERE project_id = ? AND status = 'ready' AND acked = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM artifact_protections AS pins
+              WHERE pins.project_id = artifact_objects.project_id
+                AND pins.artifact_id = artifact_objects.artifact_id
+                AND NOT EXISTS (
+                    SELECT 1 FROM protection_releases AS released
+                    WHERE released.project_id = pins.project_id
+                      AND released.protection_id = pins.protection_id
+                )
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM gc_claims
+              WHERE gc_claims.project_id = artifact_objects.project_id
+                AND gc_claims.artifact_id = artifact_objects.artifact_id
+          )
+        ORDER BY artifact_id
+        LIMIT 1
+        """,
+        (str(project_id),),
+    ).fetchone()
+    if row is None:
+        return None
+    claim_id = uuid4()
+    artifact_id = UUID(str(row[0]))
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO gc_claims (project_id, claim_id, artifact_id, state, claimed_at)
+        VALUES (?, ?, ?, 'delete_pending', ?)
+        """,
+        (str(project_id), str(claim_id), str(artifact_id), clock.astimezone(timezone.utc).isoformat()),
+    )
+    return GcClaim(claim_id, artifact_id, "delete_pending")
+
+
+def _require_artifact(connection: object, project_id: UUID, artifact_id: UUID) -> None:
+    row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM artifact_refs WHERE project_id = ? AND artifact_id = ?",
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    if row is None:
+        raise ArtifactRejected("artifact is missing")
+
+
+def _pending(connection: object, project_id: UUID, artifact_id: UUID) -> bool:
+    row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM gc_claims WHERE project_id = ? AND artifact_id = ?",
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    return row is not None
+
+
+def _insert_pin(
+    connection: object,
+    project_id: UUID,
+    protection_id: UUID,
+    artifact_id: UUID,
+    kind: str,
+    columns: tuple[str | None, str | None, str | None],
+) -> None:
+    manual_id, build_id, backup_id = columns
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO artifact_protections (
+            project_id, protection_id, artifact_id, kind, backup_receipt_id, build_id, manual_request_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (str(project_id), str(protection_id), str(artifact_id), kind, backup_id, build_id, manual_id),
+    )

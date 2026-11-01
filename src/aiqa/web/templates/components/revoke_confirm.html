@@ -1,0 +1,39 @@
+<section id="revoke-confirm" data-fallback="false" data-queued="{{ revoke.queued }}" data-running="{{ revoke.running }}" data-suites="{{ revoke.suites }}">
+  <h2>승인 철회</h2>
+  <p>대기 {{ revoke.queued }}건은 접수되지 않습니다.</p>
+  <p>진행 {{ revoke.running }}건은 취소 기록으로 남습니다.</p>
+  <p>묶음 참조 {{ revoke.suites }}건이 이 승인에 연결되어 있습니다.</p>
+  <p>철회하면 기본본은 비워지고 이전 승인으로 되돌리지 않습니다.</p>
+  <label>철회 사유 <textarea id="revoke-reason" name="reason"></textarea></label>
+  <button type="button" id="revoke-approval" data-approval="{{ revoke.approval_id }}">이 승인을 철회</button>
+  <p id="revoke-result"></p>
+</section>
+<script>
+  (function () {
+    var button = document.getElementById("revoke-approval");
+    var reason = document.getElementById("revoke-reason");
+    var result = document.getElementById("revoke-result");
+    if (!button || !reason || !window.aiqaRequest) return;
+    button.addEventListener("click", function () {
+      var decision = document.getElementById("case-decision");
+      var current = decision ? decision.getAttribute("data-default") : "";
+      window.aiqaRequest("/api/v1/approvals/" + button.getAttribute("data-approval") + "/revoke", {
+        method: "POST",
+        body: JSON.stringify({
+          reason: reason.value,
+          expected_current_approval_id: current ? current : null
+        })
+      }).then(function (response) {
+        return response.json().then(function (body) {
+          if (response.status === 201 && body.fallback === false && body.current_approval_id === null) {
+            result.textContent = "기본본이 비워졌습니다.";
+          } else if (response.status === 422) {
+            result.textContent = "철회 사유가 필요합니다.";
+          } else {
+            result.textContent = "철회되지 않았습니다.";
+          }
+        });
+      });
+    });
+  })();
+</script>

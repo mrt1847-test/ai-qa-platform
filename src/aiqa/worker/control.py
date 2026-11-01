@@ -137,6 +137,13 @@ class RunControl:
 
         self._runner.record_transport_retry()
 
+    def allow_model_action(self, *, late: bool) -> ControlDecision:
+        """A late or cancelled model response cannot start the next action."""
+
+        if late:
+            return ControlDecision(False, "late")
+        return self.checkpoint()
+
     def record_model_retry(self) -> None:
         """Record a model retry. The attempt counter stays unchanged."""
 

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.routing import APIRouter
 
 from aiqa.api.auth import (
@@ -17,6 +19,7 @@ from aiqa.api.auth import (
     ProjectHidden,
     WorkerDenied,
     authorize_browser,
+    authorize_page,
     authorize_worker,
     bound_auth_store,
 )
@@ -42,7 +45,19 @@ from aiqa.domain.model_bindings import (
 from aiqa.contracts.resources import InventoryReport
 from aiqa.store.database import migrate_store
 from aiqa.store.models import JobRef
-from aiqa.worker.resources import InventoryDenied, bind_inventory_store, report_inventory
+from aiqa.web.routes import UiQueryState, render_template
+from aiqa.store.queue import JobConflict
+from aiqa.worker.resources import (
+    DiagnosticBlocked,
+    InventoryDenied,
+    PreviewDenied,
+    bind_inventory_store,
+    list_diagnostic_jobs,
+    list_resources,
+    preview_resource,
+    report_inventory,
+    submit_diagnostic,
+)
 from aiqa.store.models import (
     DatasetRevisionInput,
     DatasetVersionView,
@@ -54,6 +69,7 @@ from aiqa.store.models import (
 )
 
 router = APIRouter(prefix="/api/v1")
+pages = APIRouter()
 _ERRORS = (
     CsrfRejected,
     OriginRejected,
@@ -123,7 +139,300 @@ def install_resources(application: FastAPI) -> None:
     if getattr(application.state, "resources_installed", False):
         return
     application.include_router(router)
+    application.include_router(pages)
+    from aiqa.api.app_builds import install_app_builds
+    from aiqa.api.datasets import install_datasets
+
+    install_datasets(application)
+    install_app_builds(application)
     application.state.resources_installed = True
+
+
+@router.get("/projects/{project_id}/resources")
+async def get_resources(project_id: str, request: Request) -> JSONResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return _error(404, "not_found", "resource was not found", {})
+    with _bound(request):
+        try:
+            authorize_browser(request, project, "resources")
+            items = list_resources(project)
+        except _ERRORS as exc:
+            return _auth_response(exc)
+    return JSONResponse(status_code=200, content={"resources": items})
+
+
+@router.get("/resources/{resource_id}/preview")
+async def get_preview(resource_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(resource_id)
+    if isinstance(parsed, JSONResponse):
+        return _error(404, "not_found", "resource was not found", {})
+    project = _project_query(request)
+    if isinstance(project, JSONResponse):
+        return project
+    with _bound(request):
+        try:
+            authorize_browser(request, project, "resource_preview")
+            view = preview_resource(project, parsed)
+        except PreviewDenied as exc:
+            status = 404 if "not found" in str(exc) else 403
+            code = "not_found" if status == 404 else "permission"
+            return _error(status, code, "preview is not allowed", {})
+        except _ERRORS as exc:
+            return _auth_response(exc)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "resource_id": str(view.resource_id),
+            "state": view.state,
+            "observed_at": view.observed_at,
+            "geometry": view.geometry,
+            "artifact_id": view.artifact_id,
+            "reason": view.reason,
+            "raw_control": view.raw_control,
+        },
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RecordingWizardState:
+    """The device-first draft. Target fields that do not apply are already cleared."""
+
+    resource_id: str
+    environment_revision_id: str
+    definition_buffer: str
+
+
+def apply_recording_wizard(settings: dict[str, object]) -> dict[str, object]:
+    """Keep the selected target. Drop fields that belong to the other target."""
+
+    resource_id = settings.get("resource_id")
+    if type(resource_id) is not str or resource_id.strip() == "":
+        raise ValueError("device is required first")
+    target = settings.get("target_kind")
+    if target not in {"web", "android"}:
+        raise ValueError("invalid settings")
+    cleaned = dict(settings)
+    environment_revision_id = cleaned.get("environment_revision_id", "")
+    definition_buffer = cleaned.get("definition_buffer", "")
+    if type(environment_revision_id) is not str or type(definition_buffer) is not str:
+        raise ValueError("invalid wizard")
+    if target == "web":
+        cleaned["android_package"] = ""
+        cleaned["build"] = ""
+        cleaned["account_ref"] = ""
+    else:
+        cleaned["web_url"] = ""
+    state = RecordingWizardState(resource_id, environment_revision_id, definition_buffer)
+    cleaned["resource_id"] = state.resource_id
+    cleaned["environment_revision_id"] = state.environment_revision_id
+    cleaned["definition_buffer"] = state.definition_buffer
+    cleaned["wizard"] = True
+    return cleaned
+
+
+@pages.get("/ui/projects/{project_id}/recordings/wizard", response_class=HTMLResponse)
+async def recording_wizard_page(project_id: str, request: Request) -> HTMLResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
+    case_text = request.query_params.get("case", "")
+    with _bound(request):
+        try:
+            authorize_page(request, project)
+            items = list_resources(project)
+            draft = {} if case_text == "" else _wizard_draft(project, case_text)
+        except (OriginRejected, ProjectHidden, AuthRequired):
+            return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
+    target = request.query_params.get("target") or str(draft.get("target_kind") or "web")
+    if target not in {"web", "android"}:
+        target = "web"
+    step = request.query_params.get("step", "1")
+    selected = str(draft.get("resource_id", ""))
+    disconnected = any(item["resource_id"] == selected and item["state"] != "ready" for item in items)
+    return render_template(
+        request,
+        "recording_setup.html",
+        {
+            "shell": True,
+            "title": "녹화 준비",
+            "heading": "녹화 준비",
+            "section": "list",
+            "connected": not disconnected,
+            "state": "empty" if items == () else "ready",
+            "dirty": False,
+            "query": UiQueryState("", "name", "", "", ""),
+            "crumbs": (("녹화", f"/ui/projects/{project}/recordings/wizard"),),
+            "list_href": "/ui/projects",
+            "detail_href": f"/ui/projects/{project}/recordings/wizard",
+            "request": request,
+            "project_id": str(project),
+            "case_id": case_text,
+            "resources": items,
+            "draft": draft,
+            "target": target,
+            "step": step,
+            "disconnected": disconnected and selected != "",
+        },
+    )
+
+
+def _wizard_draft(project_id: UUID, case_id: str) -> dict[str, object]:
+    from aiqa.worker.resources import _bound_store
+
+    try:
+        parsed = UUID(case_id)
+    except ValueError:
+        return {}
+    with _bound_store().transaction() as connection:
+        row = connection.execute(
+            """
+            SELECT versions.settings_json, versions.definition_json
+            FROM automation_cases AS cases
+            JOIN case_versions AS versions
+              ON versions.project_id = cases.project_id
+             AND versions.version_id = cases.latest_draft_version_id
+            WHERE cases.project_id = ? AND cases.case_id = ?
+            """,
+            (str(project_id), str(parsed)),
+        ).fetchone()
+    if row is None:
+        return {}
+    settings = json.loads(str(row[0]))
+    definition = json.loads(str(row[1]))
+    settings["raw_text"] = str(definition.get("raw_text", ""))
+    return settings
+
+
+@pages.get("/ui/projects/{project_id}/environments", response_class=HTMLResponse)
+async def environments_page(project_id: str, request: Request) -> HTMLResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return HTMLResponse(status_code=404, content="자원을 찾지 못했습니다.")
+    with _bound(request):
+        try:
+            authorize_page(request, project)
+            items = list_resources(project)
+            diagnostics = list_diagnostic_jobs(project)
+        except (OriginRejected, ProjectHidden, AuthRequired):
+            return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
+    return render_template(
+        request,
+        "environments.html",
+        {
+            "shell": True,
+            "title": "연결 자원",
+            "heading": "연결 자원",
+            "section": "list",
+            "connected": True,
+            "state": "empty" if items == () else "ready",
+            "dirty": False,
+            "query": UiQueryState("", "name", "", "", ""),
+            "crumbs": (("환경", f"/ui/projects/{project}/environments"),),
+            "list_href": "/ui/projects",
+            "detail_href": f"/ui/projects/{project}/environments",
+            "request": request,
+            "project_id": str(project),
+            "resources": items,
+            "diagnostics": diagnostics,
+        },
+    )
+
+
+@router.post("/resources/{resource_id}/probes")
+async def post_probe(resource_id: str, request: Request) -> JSONResponse:
+    return await _diagnostic(resource_id, "probe", request)
+
+
+@router.post("/resources/{resource_id}/recoveries")
+async def post_recovery(resource_id: str, request: Request) -> JSONResponse:
+    return await _diagnostic(resource_id, "recovery", request)
+
+
+async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResponse:
+    if not request.headers.get("idempotency-key"):
+        return _error(422, "validation", "Idempotency-Key is required", {})
+    parsed = _uuid(resource_id)
+    project = _project_query(request)
+    if isinstance(parsed, JSONResponse) or isinstance(project, JSONResponse):
+        return _error(404, "not_found", "resource was not found", {})
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    provider = payload.get("provider", "")
+    proof = payload.get("proof")
+    if type(provider) is not str or (proof is not None and type(proof) is not str):
+        return _error(422, "validation", "invalid diagnostic", {})
+    with _bound(request):
+        try:
+            actor = authorize_browser(request, project, "resource_diagnostic")
+            receipt, ready = submit_diagnostic(
+                actor,
+                project,
+                parsed,
+                kind,
+                provider,
+                proof,
+                request.headers.get("idempotency-key", ""),
+            )
+        except DiagnosticBlocked:
+            return _error(422, "validation", "diagnostic was blocked", {})
+        except PreviewDenied:
+            return _error(404, "not_found", "resource was not found", {})
+        except JobConflict:
+            return _error(409, "conflict", "idempotency body does not match", {})
+        except _ERRORS as exc:
+            return _auth_response(exc)
+    return JSONResponse(
+        status_code=201,
+        content={
+            "job_id": str(receipt.job_id),
+            "purpose": receipt.purpose,
+            "status": receipt.status,
+            "replayed": receipt.replayed,
+            "qa": None,
+            "ready": ready,
+        },
+    )
+
+
+@pages.get("/ui/projects/{project_id}/environments/editor", response_class=HTMLResponse)
+async def environment_editor_page(project_id: str, request: Request) -> HTMLResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return HTMLResponse(status_code=404, content="환경을 찾지 못했습니다.")
+    with _bound(request):
+        try:
+            authorize_page(request, project)
+        except (OriginRejected, ProjectHidden, AuthRequired):
+            return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
+    return render_template(
+        request,
+        "environment_editor.html",
+        {
+            "shell": True,
+            "title": "환경 편집",
+            "heading": "환경 편집",
+            "section": "detail",
+            "connected": True,
+            "state": "ready",
+            "dirty": False,
+            "query": UiQueryState("", "name", "", "", ""),
+            "crumbs": (("환경", f"/ui/projects/{project}/environments"), ("편집", "")),
+            "list_href": f"/ui/projects/{project}/environments",
+            "detail_href": f"/ui/projects/{project}/environments/editor",
+            "request": request,
+            "project_id": str(project),
+        },
+    )
+
+
+def _project_query(request: Request) -> UUID | JSONResponse:
+    raw = request.query_params.get("project_id", "")
+    parsed = _uuid(raw)
+    if isinstance(parsed, JSONResponse):
+        return _error(404, "not_found", "resource was not found", {})
+    return parsed
 
 
 @router.post("/projects/{project_id}/datasets")
@@ -159,6 +468,18 @@ async def post_environment(project_id: str, request: Request) -> JSONResponse:
 
 @router.post("/projects/{project_id}/environments/{environment_id}/revisions")
 async def post_environment_revision(project_id: str, environment_id: str, request: Request) -> JSONResponse:
+    return await _save_environment(project_id, environment_id, request)
+
+
+@router.post("/environments/{environment_id}/versions")
+async def post_environment_version(environment_id: str, request: Request) -> JSONResponse:
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    project_id = payload.get("project_id")
+    if type(project_id) is not str:
+        return _error(422, "validation", "invalid environment", {})
+    request.state.environment_payload = payload
     return await _save_environment(project_id, environment_id, request)
 
 
@@ -241,6 +562,7 @@ async def _save_dataset(project_id: str, dataset_id: str | None, request: Reques
         if any(type(row) is not dict for row in rows):
             raise ValueError("invalid rows")
         secret = _optional_ref(payload.get("secret_ref"))
+        case_id = None if payload.get("case_id") in (None, "") else UUID(str(payload.get("case_id")))
     except ValueError:
         return _error(422, "validation", "invalid dataset", {})
     with _bound(request):
@@ -255,6 +577,7 @@ async def _save_dataset(project_id: str, dataset_id: str | None, request: Reques
                     rows=tuple(row for row in rows if type(row) is dict),
                     dataset_id=parsed,
                     secret_ref=secret,
+                    case_id=case_id,
                 )
             )
         except _ERRORS as exc:
@@ -270,7 +593,9 @@ async def _save_environment(project_id: str, environment_id: str | None, request
     parsed = None if environment_id is None else _uuid(environment_id)
     if isinstance(project, JSONResponse) or isinstance(parsed, JSONResponse):
         return _error(404, "not_found", "environment was not found", {})
-    payload = await _body(request)
+    payload = getattr(request.state, "environment_payload", None)
+    if payload is None:
+        payload = await _body(request)
     if isinstance(payload, JSONResponse):
         return payload
     try:
@@ -292,6 +617,7 @@ async def _save_environment(project_id: str, environment_id: str | None, request
                     reset_policy=revision.reset_policy,
                     limits=revision.limits,
                     environment_id=parsed,
+                    profile=revision.profile,
                 )
             )
         except _ERRORS as exc:
@@ -332,7 +658,14 @@ def _environment_input(project_id: UUID, environment_id: UUID | None, payload: d
         reset_policy=reset_policy,
         limits=dict(limits),
         environment_id=environment_id,
+        profile=_profile(payload),
     )
+
+
+def _profile(payload: dict[str, object]) -> dict[str, object] | None:
+    keys = ("start_url", "package", "dpr", "timezone", "orientation", "setup", "reset", "cleanup", "account_ref", "capabilities")
+    profile = {key: payload[key] for key in keys if key in payload}
+    return profile or None
 
 
 def _binding_input(project_id: UUID, binding_id: UUID | None, payload: dict[str, object]) -> ModelBindingInput:

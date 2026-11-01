@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}앱 등록{% endblock %}
+{% block content %}
+  <h1>앱 등록</h1>
+  <p>단일 APK만 받습니다. 앱 코드는 실행하지 않습니다.</p>
+  {% for item in builds %}
+  <article data-ready="{{ 'true' if item.ready else 'false' }}">
+    <h2>{{ item.filename }}</h2>
+    <p>서명 {{ item.signature_status }}</p>
+    {% if not item.ready %}<p>분석 도구가 없어 등록할 수 없습니다.</p>{% endif %}
+  </article>
+  {% endfor %}
+  <form method="post" action="/api/v1/projects/{{ project_id }}/app-builds">
+    <label>파일 이름 <input name="filename" value="app.apk"></label>
+    <input type="submit" value="앱 등록">
+  </form>
+{% endblock %}

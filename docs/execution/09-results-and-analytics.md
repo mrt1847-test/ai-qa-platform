@@ -1,6 +1,6 @@
 # I · 결과·분석·내보내기 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 13**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료13 / 13**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,25 +8,25 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W23-01](#w23-01) | [W06-06](02b-job-evidence-schema.md#w06-06) | 7 결과·진행·분모·세 비율 산식 | not_started |
-| [W23-02](#w23-02) | [W23-01](09-results-and-analytics.md#w23-01), [W18-02](07-trial-and-review.md#w18-02), [W20-04](08b-execution-and-suites.md#w20-04) | ITEM 근거·첫 실패·attempt·실제 설정 상세 | not_started |
-| [W23-03](#w23-03) | [W23-02](09-results-and-analytics.md#w23-02) | 분류·담당·issue·분석/이의 append UI | not_started |
-| [W23-04](#w23-04) | [W23-03](09-results-and-analytics.md#w23-03) | 리포트 목록·단일/묶음 보고·필터 | not_started |
-| [W23-05](#w23-05) | [W23-04](09-results-and-analytics.md#w23-04), [W31-06](08a-self-healing.md#w31-06) | 치유·unassisted·role usage·측정 범위 표시 | not_started |
-| [W24-01](#w24-01) | [W23-05](09-results-and-analytics.md#w23-05) | 기간·관측 단위·as_of 분모 facts query | not_started |
-| [W24-02](#w24-02) | [W24-01](09-results-and-analytics.md#w24-01) | series·strict cohort·최근완료·unknown | not_started |
-| [W24-03](#w24-03) | [W24-02](09-results-and-analytics.md#w24-02) | 추세·반복 실패·시간·비용·저장량 분석 UI | not_started |
-| [W24-04](#w24-04) | [W24-03](09-results-and-analytics.md#w24-03) | RUN 비교·케이스 이력·조건 차이 UI | not_started |
-| [W24-05](#w24-05) | [W24-04](09-results-and-analytics.md#w24-04) | 장기 facts·late ledger·과거 보고 재현 | not_started |
-| [W25-01](#w25-01) | [W24-05](09-results-and-analytics.md#w24-05) | immutable export snapshot·관리 job 접수 | not_started |
-| [W25-02](#w25-02) | [W25-01](09-results-and-analytics.md#w25-01) | CSV 안전화·열·원본 추적 | not_started |
-| [W25-03](#w25-03) | [W25-02](09-results-and-analytics.md#w25-02) | 인쇄용 HTML·다운로드·만료 UI | not_started |
+| [W23-01](#w23-01) | [W06-06](02b-job-evidence-schema.md#w06-06) | 7 결과·진행·분모·세 비율 산식 | complete |
+| [W23-02](#w23-02) | [W23-01](09-results-and-analytics.md#w23-01), [W18-02](07-trial-and-review.md#w18-02), [W20-04](08b-execution-and-suites.md#w20-04) | ITEM 근거·첫 실패·attempt·실제 설정 상세 | complete |
+| [W23-03](#w23-03) | [W23-02](09-results-and-analytics.md#w23-02) | 분류·담당·issue·분석/이의 append UI | complete |
+| [W23-04](#w23-04) | [W23-03](09-results-and-analytics.md#w23-03) | 리포트 목록·단일/묶음 보고·필터 | complete |
+| [W23-05](#w23-05) | [W23-04](09-results-and-analytics.md#w23-04), [W31-06](08a-self-healing.md#w31-06) | 치유·unassisted·role usage·측정 범위 표시 | complete |
+| [W24-01](#w24-01) | [W23-05](09-results-and-analytics.md#w23-05) | 기간·관측 단위·as_of 분모 facts query | complete |
+| [W24-02](#w24-02) | [W24-01](09-results-and-analytics.md#w24-01) | series·strict cohort·최근완료·unknown | complete |
+| [W24-03](#w24-03) | [W24-02](09-results-and-analytics.md#w24-02) | 추세·반복 실패·시간·비용·저장량 분석 UI | complete |
+| [W24-04](#w24-04) | [W24-03](09-results-and-analytics.md#w24-03) | RUN 비교·케이스 이력·조건 차이 UI | complete |
+| [W24-05](#w24-05) | [W24-04](09-results-and-analytics.md#w24-04) | 장기 facts·late ledger·과거 보고 재현 | complete |
+| [W25-01](#w25-01) | [W24-05](09-results-and-analytics.md#w24-05) | immutable export snapshot·관리 job 접수 | complete |
+| [W25-02](#w25-02) | [W25-01](09-results-and-analytics.md#w25-01) | CSV 안전화·열·원본 추적 | complete |
+| [W25-03](#w25-03) | [W25-02](09-results-and-analytics.md#w25-02) | 인쇄용 HTML·다운로드·만료 UI | complete |
 
 <a id="w23-01"></a>
 
 ## W23-01 — 7 결과·진행·분모·세 비율 산식
 
-- [ ] **W23-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-01.md`(구현 때 생성).
+- [x] **W23-01 완료** — 상태: `complete`. 근거: [W23-01 인계](../validation/tasks/W23-01.md).
 - **직접 선행:** [W06-06](02b-job-evidence-schema.md#w06-06)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R31.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -55,7 +55,7 @@ assert observed == {
 
 ## W23-02 — ITEM 근거·첫 실패·attempt·실제 설정 상세
 
-- [ ] **W23-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-02.md`(구현 때 생성).
+- [x] **W23-02 완료** — 상태: `complete`. 근거: [W23-02 인계](../validation/tasks/W23-02.md).
 - **직접 선행:** [W23-01](09-results-and-analytics.md#w23-01), [W18-02](07-trial-and-review.md#w18-02), [W20-04](08b-execution-and-suites.md#w20-04)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R07, R21, R27, R31, UI-11.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -83,7 +83,7 @@ assert observed == {
 
 ## W23-03 — 분류·담당·issue·분석/이의 append UI
 
-- [ ] **W23-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-03.md`(구현 때 생성).
+- [x] **W23-03 완료** — 상태: `complete`. 근거: [W23-03 인계](../validation/tasks/W23-03.md).
 - **직접 선행:** [W23-02](09-results-and-analytics.md#w23-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R14, R24, R32, UI-11.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -112,7 +112,7 @@ assert observed == {
 
 ## W23-04 — 리포트 목록·단일/묶음 보고·필터
 
-- [ ] **W23-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-04.md`(구현 때 생성).
+- [x] **W23-04 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W23-04.md`.
 - **직접 선행:** [W23-03](09-results-and-analytics.md#w23-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R21, R27, R31, UI-12.02, UI-12.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -144,7 +144,7 @@ assert observed == {
 
 ## W23-05 — 치유·unassisted·role usage·측정 범위 표시
 
-- [ ] **W23-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-05.md`(구현 때 생성).
+- [x] **W23-05 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W23-05.md`.
 - **직접 선행:** [W23-04](09-results-and-analytics.md#w23-04), [W31-06](08a-self-healing.md#w31-06)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R31, R33, R35, UI-12.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -173,7 +173,7 @@ assert observed == {
 
 ## W24-01 — 기간·관측 단위·as_of 분모 facts query
 
-- [ ] **W24-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W24-01.md`(구현 때 생성).
+- [x] **W24-01 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W24-01.md`.
 - **직접 선행:** [W23-05](09-results-and-analytics.md#w23-05)
 - **읽기:** CONTRACTS C00 / C01 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R09, R31, R32.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -201,7 +201,7 @@ assert observed == {
 
 ## W24-02 — series·strict cohort·최근완료·unknown
 
-- [ ] **W24-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W24-02.md`(구현 때 생성).
+- [x] **W24-02 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W24-02.md`.
 - **직접 선행:** [W24-01](09-results-and-analytics.md#w24-01)
 - **읽기:** CONTRACTS C00 / C01 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R17, R31, R32, R35.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -229,7 +229,7 @@ assert observed == {
 
 ## W24-03 — 추세·반복 실패·시간·비용·저장량 분석 UI
 
-- [ ] **W24-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W24-03.md`(구현 때 생성).
+- [x] **W24-03 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W24-03.md`.
 - **직접 선행:** [W24-02](09-results-and-analytics.md#w24-02)
 - **읽기:** CONTRACTS C00 / C01 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R21, R27, R31, R35, UI-12.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -257,7 +257,7 @@ assert observed == {
 
 ## W24-04 — RUN 비교·케이스 이력·조건 차이 UI
 
-- [ ] **W24-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W24-04.md`(구현 때 생성).
+- [x] **W24-04 완료** — 상태: `complete`. 근거: [W24-04 인계](../validation/tasks/W24-04.md).
 - **직접 선행:** [W24-03](09-results-and-analytics.md#w24-03)
 - **읽기:** CONTRACTS C00 / C01 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R21, R24, R27, R32, UI-13.01, UI-13.02.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -285,7 +285,7 @@ assert observed == {
 
 ## W24-05 — 장기 facts·late ledger·과거 보고 재현
 
-- [ ] **W24-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W24-05.md`(구현 때 생성).
+- [x] **W24-05 완료** — 상태: `complete`. 근거: [W24-05 인계](../validation/tasks/W24-05.md).
 - **직접 선행:** [W24-04](09-results-and-analytics.md#w24-04)
 - **읽기:** CONTRACTS C00 / C01 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R13, R15, R31, R32.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -312,7 +312,7 @@ assert observed == {
 
 ## W25-01 — immutable export snapshot·관리 job 접수
 
-- [ ] **W25-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W25-01.md`(구현 때 생성).
+- [x] **W25-01 완료** — 상태: `complete`. 근거: [W25-01 인계](../validation/tasks/W25-01.md).
 - **직접 선행:** [W24-05](09-results-and-analytics.md#w24-05)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R10, R12, R14, R31.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -340,7 +340,7 @@ assert observed == {
 
 ## W25-02 — CSV 안전화·열·원본 추적
 
-- [ ] **W25-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W25-02.md`(구현 때 생성).
+- [x] **W25-02 완료** — 상태: `complete`. 근거: [W25-02 인계](../validation/tasks/W25-02.md).
 - **직접 선행:** [W25-01](09-results-and-analytics.md#w25-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R14, R31, UI-12.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -368,7 +368,7 @@ assert observed == {
 
 ## W25-03 — 인쇄용 HTML·다운로드·만료 UI
 
-- [ ] **W25-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W25-03.md`(구현 때 생성).
+- [x] **W25-03 완료** — 상태: `complete`. 근거: [W25-03 인계](../validation/tasks/W25-03.md).
 - **직접 선행:** [W25-02](09-results-and-analytics.md#w25-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R14, R21, R27, R31, UI-12.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

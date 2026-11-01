@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from aiqa.contracts.evidence import AckState, EvidenceEnvelope, IngestReceipt, LocalReceipt
@@ -70,6 +70,12 @@ def acknowledge_attempt(
             (str(lease.project_id), str(receipt.attempt_id), _boot_id()),
         )
         return receipt
+
+
+def reconcile_after_resume() -> ReconciliationReport:
+    """Mark interrupted work lost. A checkpoint is not resumed."""
+
+    return reconcile_jobs(datetime.now(timezone.utc))
 
 
 def reconcile_jobs(now: datetime) -> ReconciliationReport:

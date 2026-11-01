@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 from aiqa.domain.hashing import SCHEMA_VERSION, canonical_hash, canonical_json
@@ -14,6 +16,8 @@ from aiqa.store.database import Store
 from aiqa.store.models import EnvironmentRevisionInput, EnvironmentRevisionView
 
 _store: ContextVar[Store] = ContextVar("aiqa_environment_store")
+_PACKAGE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$")
+_UNSUPPORTED = frozenset({"multitab", "file", "rotation"})
 
 
 class EnvironmentNotFound(Exception):
@@ -133,7 +137,7 @@ def _document(revision: EnvironmentRevisionInput) -> dict[str, object]:
     actions = revision.limits.get("max_actions")
     if type(budget) is not str or type(currency) is not str or type(timeout) is not int or type(actions) is not int:
         raise ValueError("invalid environment")
-    return {
+    document = {
         "allowlist": list(revision.allowlist),
         "limits": {
             "budget": budget,
@@ -146,6 +150,56 @@ def _document(revision: EnvironmentRevisionInput) -> dict[str, object]:
         "target_kind": revision.target_kind,
         "viewport": {"height": height, "width": width},
     }
+    _apply_profile(revision, document)
+    return document
+
+
+def _apply_profile(revision: EnvironmentRevisionInput, document: dict[str, object]) -> None:
+    profile = revision.profile or {}
+    selected = profile.get("capabilities", ())
+    if type(selected) is not list and type(selected) is not tuple:
+        raise ValueError("invalid environment")
+    if any(item in _UNSUPPORTED for item in selected):
+        raise ValueError("invalid environment")
+    if revision.target_kind == "web":
+        origins = {_origin(item) for item in revision.allowlist}
+        start_url = profile.get("start_url")
+        if start_url is not None:
+            if type(start_url) is not str or _origin(start_url) not in origins:
+                raise ValueError("invalid environment")
+            document["start_url"] = start_url
+        if "dpr" in profile and profile.get("dpr") != 1:
+            raise ValueError("invalid environment")
+        if "timezone" in profile and profile.get("timezone") != "Asia/Seoul":
+            raise ValueError("invalid environment")
+        if "dpr" in profile:
+            document["dpr"] = 1
+        if "timezone" in profile:
+            document["timezone"] = "Asia/Seoul"
+        return
+    package = profile.get("package")
+    if type(package) is not str or _PACKAGE.fullmatch(package) is None:
+        raise ValueError("invalid environment")
+    if profile.get("orientation", "portrait") != "portrait":
+        raise ValueError("invalid environment")
+    document["package"] = package
+    document["orientation"] = "portrait"
+    for key in ("setup", "reset", "cleanup", "account_ref"):
+        value = profile.get(key)
+        if value is not None:
+            if type(value) is not str:
+                raise ValueError("invalid environment")
+            document[key] = value
+
+
+def _origin(url: str) -> str:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+        raise ValueError("invalid environment")
+    if parsed.scheme == "http" and parsed.hostname not in {"127.0.0.1", "localhost"}:
+        raise ValueError("invalid environment")
+    port = "" if parsed.port is None else f":{parsed.port}"
+    return f"{parsed.scheme}://{parsed.hostname}{port}"
 
 
 def _bound_store() -> Store:

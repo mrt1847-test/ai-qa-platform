@@ -1,22 +1,19 @@
 # Next Actions
 
-Updated: **2026-11-01 (Asia/Seoul)** — R01~R20/V01 계약 보완을 검증했다. Current는 W15-01을 유지한다. 실행 우선순위는 이 파일만 관리하며 완료 이력은 WORK_PROGRESS/작업 인계에 둔다.
+Updated: **2026-11-01 (Asia/Seoul)** — W27-04를 완료했다. W29-05는 VM이 아직이라 Current가 아니다. W29-03은 VM 선행이 아직이라 Current가 아니다. W19-04는 W16-04·W17-04와 실제 환경이 아직이라 Current가 아니다. Next 표의 1~8은 선행 또는 실제 환경이 끝나지 않았다. 색인에서 선행이 끝나고 local_python만 필요한 core는 남아 있지 않다. W32-02는 W22-04, W31-07, W27-03이 끝나기 전에는 Current가 아니다. W27-01은 W22-04와 실제 VM·기기·모델 환경이 끝나기 전에는 Current가 아니다. 완료126/163·상위6/33. 실행 우선순위는 이 파일만 관리하며 완료 이력은 WORK_PROGRESS/작업 인계에 둔다.
 
 상세 범위/검증 등급은 카드·지정 계약, 직접 선행/상태/환경 메모는 TASK_INDEX, 전체 진행은 WORK_PROGRESS가 소유한다.
 큐 문서만 고친 것으로 제품 작업을 완료 처리하지 않는다.
 
 ## Current
 
-**W15-01 — 공통 model broker·role/check/episode 권한.** 상태: `not_started`. 다음 후보: **W15-02**.
+**준비된 Current 없음.** 선행이 끝나고 local_python만 필요한 core는 남아 있지 않다. W29-05는 Linux VM이 있어야 다시 고를 수 있다. W32-02는 W22-04, W31-07, W27-03이 끝나기 전에는 준비되지 않는다. W27-01은 W22-04와 실제 VM·기기·모델 환경이 끝나기 전에는 준비되지 않는다.
 
-- 범위·완료 기준: [W15-01](docs/execution/05a-action-evidence-and-models.md#w15-01) 절 하나.
-- 읽기: [CONTRACTS](docs/execution/CONTRACTS.md)의 **C00 / C01 / C04 / C06 / C14**와 현재 관련 파일만.
-- 직접 선행: [W06-09](docs/execution/02b-job-evidence-schema.md#w06-09), [W04-04](docs/execution/02a-assets-and-scope.md#w04-04), [W08-01](docs/execution/03-worker-and-sessions.md#w08-01). 직전 완료 인계는 [W14-04](docs/validation/tasks/W14-04.md). 미전송 캡처는 새 recovery manifest다. 기존 결과는 그대로다. 늦은 사진은 즉시 후 캡처가 아니다. dispatch는 0이다.
-- 완료 인계: `docs/validation/tasks/W15-01.md`에 model broker를 기록한다. 아직 구현하지 않았다.
-- 이 단계는 model broker 계약이다. VM/agent 설치와 모델 호출은 하지 않는다. 실제 수용은 W15-04, W32-02에 남긴다.
-- 시작 시 branch/commit·dirty 파일·적용 지침을 확인하고 기존 사용자 변경을 보존한다.
+- 재개: VM이 생기면 [W29-05](docs/execution/06-replay-packages.md#w29-05)를 다시 평가한다. Next 표의 선행이 끝나면 그 행을 Current로 올린다.
+- 완료된 직전 작업: [W27-04](docs/execution/10-retention-and-release-gates.md#w27-04). 인계는 [W27-04](docs/validation/tasks/W27-04.md).
+- 이 상태는 새 구현 착수가 아니다. VM/agent 설치와 모델 호출은 하지 않는다.
 
-완료53/163·상위6/33과 개별 근거는 [WORK_PROGRESS](WORK_PROGRESS.md)를 따른다. 완료 표기는 새 결함의 수정을 금지한다는 뜻이 아니다. [이번 계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)의 마지막 한계/인계 절을 함께 따른다. 같은 보완을 다시 구현하지 않는다.
+완료126/163·상위6/33과 개별 근거는 [WORK_PROGRESS](WORK_PROGRESS.md)를 따른다. 완료 표기는 새 결함의 수정을 금지한다는 뜻이 아니다. [이번 계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)의 마지막 한계/인계 절을 함께 따른다. 같은 보완을 다시 구현하지 않는다.
 
 ## Next
 
@@ -24,14 +21,14 @@ Updated: **2026-11-01 (Asia/Seoul)** — R01~R20/V01 계약 보완을 검증했�
 
 | 순서 | ID | 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | [W15-02](docs/execution/05a-action-evidence-and-models.md#w15-02) | usage·retry·late settlement ledger | W15-01 |
-| 2 | [W15-03](docs/execution/05a-action-evidence-and-models.md#w15-03) | 호출 전 예산 예약·deadline·취소 | W15-02 |
+| 1 | [W11-04](docs/execution/04b-environments-and-launcher.md#w11-04) | 설치 앱 선택과 metadata inspect | W11-03, W07-03 |
+| 2 | [W11-06](docs/execution/04b-environments-and-launcher.md#w11-06) | 명시 설치·reset 영향과 사후 관찰 | W11-04, W11-05, W07-03 |
 | 3 | [W15-04](docs/execution/05a-action-evidence-and-models.md#w15-04) | 모델 연결 검사·비용·무키 replay 안내 UI | W15-03, W03-01 |
-| 4 | [W16-01](docs/execution/05b-recording-workflow.md#w16-01) | 디바이스 먼저 녹화 마법사·입력 초안 | W10-11, W11-03, W08-01 |
-| 5 | [W16-02](docs/execution/05b-recording-workflow.md#w16-02) | 자연어 구조화 관리 job·diff 수락 | W16-01, W15-04 |
-| 6 | [W16-03](docs/execution/05b-recording-workflow.md#w16-03) | 시작 preflight·REC/job 원자 접수 | W16-01, W15-03, W08-05 |
-| 7 | [W16-04](docs/execution/05b-recording-workflow.md#w16-04) | authoring loop·실시간 action timeline·메모 | W16-03, W01-03, W02-04, W07-02, W07-03, W13-04, W15-04, W14-03 |
-| 8 | [W16-05](docs/execution/05b-recording-workflow.md#w16-05) | 완료·중단·오류 seal 과 fallback 초안 | W16-03, W14-03, W13-04 |
+| 4 | [W16-02](docs/execution/05b-recording-workflow.md#w16-02) | 자연어 구조화 관리 job·diff 수락 | W16-01, W15-04 |
+| 5 | [W16-04](docs/execution/05b-recording-workflow.md#w16-04) | authoring loop·실시간 action timeline·메모 | W16-03, W01-03, W02-04, W07-02, W07-03, W13-04, W15-04, W14-03 |
+| 6 | [W16-07](docs/execution/05b-recording-workflow.md#w16-07) | finish 컴파일 통합·복구/재컴파일 새 버전 | W16-06, W29-06, W30-04, W16-04 |
+| 7 | [W29-03](docs/execution/06-replay-packages.md#w29-03) | trusted driver IPC·lease·capture dispatch | W29-02, W07-02, W01-02, W13-04 |
+| 8 | [W27-01](docs/execution/10-retention-and-release-gates.md#w27-01) | 중복·늦은 event·finish·복구 경합 matrix | W26-05, W22-04 |
 
 외부 환경 탐색보다 준비된 bootstrap/core를 우선한다. 이 표가 끝나거나 전부 막혔다고 전체 진행을 중단하지 않는다.
 [TASK_INDEX](docs/execution/TASK_INDEX.json)를 로컬 코드로 조회해 ID/선행/상태/환경/등급의 **후보 요약만** 확인한다. 전체 JSON/과거 audit를 context에 넣지 않는다.
@@ -41,7 +38,6 @@ Updated: **2026-11-01 (Asia/Seoul)** — R01~R20/V01 계약 보완을 검증했�
 | 대상 | 상태·재개 조건 | 막히는 범위 |
 |---|---|---|
 | W01-02 | blocked. 같은 PC VM의 실제 script/driver 격리 검증 가능 시 [인계](docs/validation/tasks/W01-02.md)에서 재개 | 해당 Web native 가지와 실제 통합 gate |
-| W09-04 | W23-01 선행 미완료 | 해당 runner 통합 검증 |
 | 민감 캡처 | 픽셀 정제 coverage 제공자 연결 전 차단. [수정 결과](docs/validation/reviews/2026-11-01-remediation-result.md#다음-작업자가-지킬-한계) 참고 | 민감 화면의 실제 authoring/증거 전송. 독립 broker/core는 계속 |
 
 진짜 선행을 삭제하거나 fixture로 live gate를 대신하지 않는다. 기존 완료 이력과 수정 상세는 인계/진행표에서 필요한 ID만 읽으며 큐에 누적하지 않는다.

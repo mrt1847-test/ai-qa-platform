@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}수행 준비{% endblock %}
+{% block content %}
+  <h1>수행 준비</h1>
+  <p>승인이 없어도 준비된 package를 시범할 수 있습니다.</p>
+  <form id="execution-wizard">
+    <button type="button" data-move="back">이전 단계</button>
+    <section data-step="1">
+      <h2>1 이름과 목적</h2>
+      <p>이름, purpose, 출처, 원본 사유, 대상을 확인합니다.</p>
+      <p>single, selection, suite, rerun으로 들어옵니다.</p>
+      <p>목적은 시범입니다. 정식과 섞지 않습니다.</p>
+      <p>이전 단계로 돌아갈 수 있습니다.</p>
+      <label>이름 <input name="name" value=""></label>
+      <label>목적 <input name="purpose" value="trial"></label>
+      <label>출처 <input name="source" value="single"></label>
+      <label>사유 <input name="reason" value=""></label>
+    </section>
+    <section data-step="2">
+      <h2>2 환경과 데이터</h2>
+      <p>환경, 데이터, 빌드, reset, 한도를 확인합니다.</p>
+      <p>단일과 선택과 묶음은 케이스 버전과 데이터 행과 대상으로 펼칩니다.</p>
+      <p>월 3000은 release label의 최소 30회 수행으로 집계합니다.</p>
+      <label>release label <input name="release_label" value=""></label>
+    </section>
+    <section data-step="3">
+      <h2>3 사전 검사와 제외</h2>
+      <p>사전 검사와 제외 사유를 확인합니다.</p>
+      <p>422가 나도 입력은 남습니다.</p>
+      <p>미리보기가 오래되면 409이며 시작하지 않습니다.</p>
+      <p>결정적 검사는 키 없이 진행합니다.</p>
+      <p>AI 검사는 키가 없으면 막습니다.</p>
+      <p>필요한 verifier를 표시합니다.</p>
+      <p>사용할 수 없는 항목은 사유와 확인이 있어야 빠집니다.</p>
+      <p>같은 항목 번호는 거절됩니다.</p>
+      <p>미승인 항목을 자동으로 빼지 않습니다.</p>
+      <p>사용 중인 대상, 없는 앱, 없는 변수, 없는 모델 역할과 키는 막습니다.</p>
+    </section>
+    <section data-step="4">
+      <h2>4 최종 확인</h2>
+      <p>최종 항목 수와 제외 수를 확인합니다.</p>
+      <p>재생은 actor 0입니다.</p>
+      <p>healing은 꺼져 있습니다. 켠 요청은 따로 표시합니다.</p>
+      <p>승인된 healing 범위와 수행에서 켜기는 다릅니다.</p>
+      <p>항목당 episode는 1개, 호출은 2회, 시간은 30초입니다.</p>
+      <p>기본은 꺼져 있습니다. 진행 중에는 바꿀 수 없습니다. 호출이 0이어도 진행을 표시합니다.</p>
+      <label>healing <input id="healing-toggle" type="checkbox" name="healing_enabled" data-default="off"></label>
+      <p>release label을 표시합니다.</p>
+      <p>정식은 정확한 승인이 있어야 합니다. 유효한 과거 승인은 그 버전에 남습니다.</p>
+      <p>항목이 0이거나 100을 넘으면 시작하지 않습니다.</p>
+      <p>같은 시작을 두 번 눌러도 접수는 한 번입니다.</p>
+      <p>접수 전에는 예약을 만들지 않습니다.</p>
+      <p>package가 없으면 시범을 시작하지 않습니다.</p>
+      <p id="wizard-counts"></p>
+      <button type="submit" id="wizard-start">시작</button>
+    </section>
+  </form>
+  <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 정의로</a></p>
+  <script src="/static/execution_setup.js"></script>
+{% endblock %}

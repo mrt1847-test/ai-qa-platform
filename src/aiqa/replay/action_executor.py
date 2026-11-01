@@ -17,6 +17,9 @@ class ReplayActionExecutor:
     def dispatch_action(self, prepared: PreparedAction, control: RunControl) -> DispatchReceipt:
         return self._inner.dispatch_action(prepared, control)
 
+    def observe_action(self, receipt: DispatchReceipt, control: RunControl) -> object:
+        return self._inner.observe_action(receipt, control)
+
     @property
     def journal_failure_dispatches(self) -> int:
         return self._inner.journal_failure_dispatches

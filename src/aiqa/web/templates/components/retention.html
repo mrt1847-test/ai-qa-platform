@@ -1,0 +1,18 @@
+<section>
+  <h2>보관</h2>
+  <p>최소 사실 {{ space.facts }}</p>
+  <p>파일 {{ space.project_bytes }}</p>
+  <p>보호 {{ space.protected_count }}</p>
+  <p>삭제 예정 {{ space.pending }}</p>
+  <p>전체 20GB {{ space.total_bytes }}</p>
+  <p>이 프로젝트 {{ space.project_bytes }}</p>
+  <p>REC와 ITEM은 500MB입니다.</p>
+  <p>{% if space.missing %}누락된 증거가 있습니다.{% else %}누락된 증거는 없습니다.{% endif %}</p>
+  <p><a href="/api/v1/artifacts/{{ space.artifact_id }}/retention">만료된 증거</a></p>
+  {% for pin in space.pins %}
+  <p>{{ pin }} pin</p>
+  {% endfor %}
+  <p>한도를 넘으면 새 행동을 멈춥니다.</p>
+  <p>일부 기록은 남습니다.</p>
+  <p>이력 정리는 이 화면에 없습니다.</p>
+</section>

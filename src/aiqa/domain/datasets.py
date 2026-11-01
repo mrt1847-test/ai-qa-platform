@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -34,17 +35,20 @@ def bind_dataset_store(store: Store) -> Iterator[None]:
 
 def save_dataset_revision(revision: DatasetRevisionInput) -> DatasetVersionView:
     _validate_rows(revision.row_schema, revision.rows)
-    document = {
+    document: dict[str, object] = {
         "rows": [dict(row) for row in revision.rows],
         "schema": revision.row_schema,
         "secret_ref": _secret_document(revision.secret_ref),
     }
+    if revision.case_id is not None:
+        document["case_id"] = str(revision.case_id)
     canonical_json(document)
     content_hash = canonical_hash(document, SCHEMA_VERSION)
     version_id = uuid4()
     created_at = datetime.now(timezone.utc).isoformat()
     with _bound_store().transaction() as connection:
         _require_local_secret(connection, revision.project_id, revision.secret_ref)
+        _require_case(connection, revision.project_id, revision.case_id)
         if revision.dataset_id is None:
             if revision.name.strip() == "":
                 raise ValueError("dataset name is required")
@@ -119,6 +123,104 @@ def get_dataset_revision(project_id: UUID, dataset_id: UUID, version_id: UUID) -
         content_hash=str(row[2]),
         secret_ref=None,
     )
+
+
+def list_datasets(project_id: UUID) -> tuple[dict[str, object], ...]:
+    """List dataset names and row diffs. Secret text is not selected."""
+
+    with _bound_store().transaction() as connection:
+        rows = connection.execute(
+            """
+            SELECT datasets.dataset_id, datasets.name, versions.revision, versions.body_json, versions.content_hash
+            FROM datasets
+            JOIN dataset_versions AS versions
+              ON versions.project_id = datasets.project_id
+             AND versions.version_id = datasets.latest_version_id
+            WHERE datasets.project_id = ?
+            ORDER BY datasets.name
+            """,
+            (str(project_id),),
+        ).fetchall()
+        listed = []
+        for row in rows:
+            body = json.loads(str(row[3]))
+            previous = None
+            if int(row[2]) > 1:
+                older = connection.execute(
+                    """
+                    SELECT body_json FROM dataset_versions
+                    WHERE project_id = ? AND dataset_id = ? AND revision = ?
+                    """,
+                    (str(project_id), str(row[0]), int(row[2]) - 1),
+                ).fetchone()
+                previous = None if older is None else json.loads(str(older[0]))
+            listed.append(_public_dataset(str(row[0]), str(row[1]), int(row[2]), str(row[4]), body, previous))
+    return tuple(listed)
+
+
+def read_dataset_version(project_id: UUID, dataset_id: UUID, version_id: UUID) -> dict[str, object]:
+    """Return one stored revision. The body never includes secret text."""
+
+    row = _bound_store()._connection.execute(
+        """
+        SELECT revision, body_json, content_hash
+        FROM dataset_versions
+        WHERE project_id = ? AND dataset_id = ? AND version_id = ?
+        """,
+        (str(project_id), str(dataset_id), str(version_id)),
+    ).fetchone()
+    if row is None:
+        raise DatasetNotFound("dataset was not found")
+    body = json.loads(str(row[1]))
+    view = _public_dataset(str(dataset_id), "", int(row[0]), str(row[2]), body, None)
+    view["rows"] = body.get("rows", [])
+    return view
+
+
+def _public_dataset(
+    dataset_id: str,
+    name: str,
+    revision: int,
+    content_hash: str,
+    body: dict[str, object],
+    previous: dict[str, object] | None,
+) -> dict[str, object]:
+    rows = body.get("rows", [])
+    return {
+        "dataset_id": dataset_id,
+        "name": name,
+        "revision": revision,
+        "content_hash": content_hash,
+        "case_id": body.get("case_id"),
+        "rows": rows,
+        "secret_ref": body.get("secret_ref"),
+        "changes": _changes(previous, rows),
+    }
+
+
+def _changes(previous: dict[str, object] | None, rows: object) -> list[str]:
+    if previous is None or type(rows) is not list:
+        return []
+    older = {str(item.get("id")): item.get("values") for item in previous.get("rows", []) if type(item) is dict}
+    changed = []
+    for item in rows:
+        if type(item) is not dict:
+            continue
+        row_id = str(item.get("id"))
+        if row_id in older and older[row_id] != item.get("values"):
+            changed.append(row_id)
+    return changed
+
+
+def _require_case(connection, project_id: UUID, case_id: UUID | None) -> None:
+    if case_id is None:
+        return
+    row = connection.execute(
+        "SELECT 1 FROM automation_cases WHERE project_id = ? AND case_id = ?",
+        (str(project_id), str(case_id)),
+    ).fetchone()
+    if row is None:
+        raise ValueError("case was not found")
 
 
 def _validate_rows(schema: dict[str, object], rows: tuple[dict[str, object], ...]) -> None:

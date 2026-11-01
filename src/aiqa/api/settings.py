@@ -36,6 +36,9 @@ def install_settings(application: FastAPI) -> None:
 
     application.include_router(router)
     application.include_router(pages)
+    from aiqa.api.audit import install_audit
+
+    install_audit(application)
 
 
 @router.get("/projects/{project_id}/settings")
@@ -114,6 +117,12 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
         try:
             authorize_page(request, project)
             view = _read(project)
+            from aiqa.api.audit import list_audit, list_workers, storage_view
+
+            audits = list_audit(project, "", "", 25)
+            workers = list_workers(project)
+            storage = storage_view(project)
+            space = storage
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     context = {
@@ -132,6 +141,10 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
         "project_id": str(project),
         "settings": view,
         "roles": _ROLES,
+        "audits": audits["items"],
+        "workers": workers,
+        "storage": storage,
+        "space": space,
     }
     return render_template(request, "settings.html", context)
 
@@ -302,11 +315,14 @@ def _bound(request: Request) -> Iterator[None]:
         migrate_store(store)
         from aiqa.domain.versions import bind_case_store
 
+        from aiqa.api.audit import bind_audit_store
+
         with bind_case_store(store):
             with bind_secret_store(store):
                 with bind_model_store(store):
-                    with bound_auth_store(store):
-                        yield
+                    with bind_audit_store(store):
+                        with bound_auth_store(store):
+                            yield
     finally:
         store.close()
 

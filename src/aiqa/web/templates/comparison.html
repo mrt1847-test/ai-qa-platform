@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}수행 비교{% endblock %}
+{% block content %}
+<section>
+  <h1>수행 비교</h1>
+  <p>기준 {{ comparison.baseline_id }}</p>
+  <p>비교 {{ comparison.candidate_id }}</p>
+  {% if comparison.mixed %}<p>조건이 섞였습니다. 구성 표본 {{ comparison.constituent_count }}</p>{% endif %}
+  <p>자동으로 개선을 확정하지 않습니다. 확정 {{ comparison.confirmed_improvements }}</p>
+  <p>자동으로 회귀를 확정하지 않습니다. 확정 {{ comparison.confirmed_regressions }}</p>
+  {% if comparison.original_fail_preserved %}<p>원본 실패는 그대로입니다.</p>{% endif %}
+  {% for pair in comparison.pairs %}
+  <article>
+    <p>케이스 {{ pair.case_id }} · 데이터 {{ pair.data }} · 대상 {{ pair.target }}</p>
+    {% if pair.kind == "changed" %}<p>변화</p>{% endif %}
+    {% if pair.kind == "continued_failure" %}<p>지속된 실패</p>{% endif %}
+    {% if pair.kind == "added" %}<p>추가</p>{% endif %}
+    {% if pair.kind == "removed" %}<p>제외</p>{% endif %}
+    {% if pair.separate_series %}<p>절차가 바뀌어 다른 비교입니다.</p>{% endif %}
+    {% if pair.condition_fields %}<p>조건 차이 {{ pair.condition_fields|join(', ') }}</p>{% endif %}
+    <p>기준 {% if pair.baseline %}{{ pair.baseline.result_label }} · 단계 {{ pair.baseline.step }} · 기대 {{ pair.baseline.expected }} · 관측 {{ pair.baseline.observed }} · 시간 {{ pair.baseline.duration }} · 비용 {{ pair.baseline.cost }} · {{ pair.baseline.capture }}{% else %}없음{% endif %}</p>
+    <p>비교 {% if pair.candidate %}{{ pair.candidate.result_label }} · 단계 {{ pair.candidate.step }} · 기대 {{ pair.candidate.expected }} · 관측 {{ pair.candidate.observed }} · 시간 {{ pair.candidate.duration }} · 비용 {{ pair.candidate.cost }} · {{ pair.candidate.capture }}{% else %}없음{% endif %}</p>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

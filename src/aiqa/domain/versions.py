@@ -167,6 +167,12 @@ def parse_case_settings(payload: dict[str, object], project_id: UUID | None) -> 
             "max_seconds": seconds,
         },
     }
+    if payload.get("wizard") is True:
+        document["wizard"] = True
+        document["resource_id"] = str(payload.get("resource_id", ""))
+        document["definition_buffer"] = str(payload.get("definition_buffer", ""))
+        document["build"] = str(payload.get("build", ""))
+        document["account_ref"] = str(payload.get("account_ref", ""))
     mode = payload.get("execution_mode", "recorded_replay")
     if mode != "recorded_replay":
         raise SettingsRejected("execution mode stays recorded", submitted)

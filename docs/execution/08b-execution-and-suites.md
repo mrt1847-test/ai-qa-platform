@@ -1,6 +1,6 @@
 # H-2 · 정식·선택·묶음·취소·재실행 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 13**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료12 / 13**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,25 +8,25 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W20-01](#w20-01) | [W17-01](07-trial-and-review.md#w17-01), [W19-01](07-trial-and-review.md#w19-01), [W31-01](08a-self-healing.md#w31-01), [W29-04](06-replay-packages.md#w29-04) | 정식 preview·exact 승인·명시 제외 | not_started |
-| [W20-02](#w20-02) | [W20-01](08b-execution-and-suites.md#w20-01) | 정식 접수 원자성·preview hash·claim 재검증 | not_started |
-| [W20-03](#w20-03) | [W20-02](08b-execution-and-suites.md#w20-02) | 공통 4 단계 수행 마법사·최종확인 | not_started |
-| [W20-04](#w20-04) | [W20-03](08b-execution-and-suites.md#w20-03) | 수행 목록·진행·ITEM·연결 상태 UI | not_started |
-| [W21-01](#w21-01) | [W20-04](08b-execution-and-suites.md#w20-04) | 묶음 목록·기본 metadata·복제·보관 | not_started |
-| [W21-02](#w21-02) | [W21-01](08b-execution-and-suites.md#w21-01) | 묶음 exact 구성·순서·data/env 편집 | not_started |
-| [W21-03](#w21-03) | [W21-02](08b-execution-and-suites.md#w21-02) | 새 승인본 diff·명시 suite 교체 | not_started |
-| [W21-04](#w21-04) | [W21-03](08b-execution-and-suites.md#w21-03) | 선택·data 확장·명시 제외·N 상한 | not_started |
-| [W21-05](#w21-05) | [W21-04](08b-execution-and-suites.md#w21-04) | 순차 continue/stop·NOT_RUN·부모 확정 | not_started |
-| [W22-01](#w22-01) | [W21-05](08b-execution-and-suites.md#w21-05) | RUN·ITEM 취소와 finish 경합 UI | not_started |
-| [W22-02](#w22-02) | [W22-01](08b-execution-and-suites.md#w22-01) | 미시작 skip 만 허용·사유·집계 | not_started |
-| [W22-03](#w22-03) | [W22-02](08b-execution-and-suites.md#w22-02) | 원본 연결 새 rerun·구성 확인·lineage | not_started |
+| [W20-01](#w20-01) | [W17-01](07-trial-and-review.md#w17-01), [W19-01](07-trial-and-review.md#w19-01), [W31-01](08a-self-healing.md#w31-01), [W29-04](06-replay-packages.md#w29-04) | 정식 preview·exact 승인·명시 제외 | complete |
+| [W20-02](#w20-02) | [W20-01](08b-execution-and-suites.md#w20-01) | 정식 접수 원자성·preview hash·claim 재검증 | complete |
+| [W20-03](#w20-03) | [W20-02](08b-execution-and-suites.md#w20-02) | 공통 4 단계 수행 마법사·최종확인 | complete |
+| [W20-04](#w20-04) | [W20-03](08b-execution-and-suites.md#w20-03) | 수행 목록·진행·ITEM·연결 상태 UI | complete |
+| [W21-01](#w21-01) | [W20-04](08b-execution-and-suites.md#w20-04) | 묶음 목록·기본 metadata·복제·보관 | complete |
+| [W21-02](#w21-02) | [W21-01](08b-execution-and-suites.md#w21-01) | 묶음 exact 구성·순서·data/env 편집 | complete |
+| [W21-03](#w21-03) | [W21-02](08b-execution-and-suites.md#w21-02) | 새 승인본 diff·명시 suite 교체 | complete |
+| [W21-04](#w21-04) | [W21-03](08b-execution-and-suites.md#w21-03) | 선택·data 확장·명시 제외·N 상한 | complete |
+| [W21-05](#w21-05) | [W21-04](08b-execution-and-suites.md#w21-04) | 순차 continue/stop·NOT_RUN·부모 확정 | complete |
+| [W22-01](#w22-01) | [W21-05](08b-execution-and-suites.md#w21-05) | RUN·ITEM 취소와 finish 경합 UI | complete |
+| [W22-02](#w22-02) | [W22-01](08b-execution-and-suites.md#w22-01) | 미시작 skip 만 허용·사유·집계 | complete |
+| [W22-03](#w22-03) | [W22-02](08b-execution-and-suites.md#w22-02) | 원본 연결 새 rerun·구성 확인·lineage | complete |
 | [W22-04](#w22-04) | [W22-03](08b-execution-and-suites.md#w22-03), [W17-04](07-trial-and-review.md#w17-04), [W19-04](07-trial-and-review.md#w19-04), [W31-07](08a-self-healing.md#w31-07) | 수행 편집·원본·취소·재시작 통합 동선 | not_started |
 
 <a id="w20-01"></a>
 
 ## W20-01 — 정식 preview·exact 승인·명시 제외
 
-- [ ] **W20-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W20-01.md`(구현 때 생성).
+- [x] **W20-01 완료** — 상태: `complete`. 근거: [W20-01 인계](../validation/tasks/W20-01.md).
 - **직접 선행:** [W17-01](07-trial-and-review.md#w17-01), [W19-01](07-trial-and-review.md#w19-01), [W31-01](08a-self-healing.md#w31-01), [W29-04](06-replay-packages.md#w29-04)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R09, R22, R28, UI-09.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -54,7 +54,7 @@ assert observed == {
 
 ## W20-02 — 정식 접수 원자성·preview hash·claim 재검증
 
-- [ ] **W20-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W20-02.md`(구현 때 생성).
+- [x] **W20-02 완료** — 상태: `complete`. 근거: [W20-02 인계](../validation/tasks/W20-02.md).
 - **직접 선행:** [W20-01](08b-execution-and-suites.md#w20-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R09, R10, R12, R22.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -82,7 +82,7 @@ assert observed == {
 
 ## W20-03 — 공통 4 단계 수행 마법사·최종확인
 
-- [ ] **W20-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W20-03.md`(구현 때 생성).
+- [x] **W20-03 완료** — 상태: `complete`. 근거: [W20-03 인계](../validation/tasks/W20-03.md).
 - **직접 선행:** [W20-02](08b-execution-and-suites.md#w20-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R21, R22, R27, R31, UI-09.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -110,7 +110,7 @@ assert observed == {
 
 ## W20-04 — 수행 목록·진행·ITEM·연결 상태 UI
 
-- [ ] **W20-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W20-04.md`(구현 때 생성).
+- [x] **W20-04 완료** — 상태: `complete`. 근거: [W20-04 인계](../validation/tasks/W20-04.md).
 - **직접 선행:** [W20-03](08b-execution-and-suites.md#w20-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R10, R21, R26, R31, UI-10.03, UI-10.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -138,7 +138,7 @@ assert observed == {
 
 ## W21-01 — 묶음 목록·기본 metadata·복제·보관
 
-- [ ] **W21-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W21-01.md`(구현 때 생성).
+- [x] **W21-01 완료** — 상태: `complete`. 근거: [W21-01 인계](../validation/tasks/W21-01.md).
 - **직접 선행:** [W20-04](08b-execution-and-suites.md#w20-04)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R21, R22, UI-08.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -165,7 +165,7 @@ assert observed == {
 
 ## W21-02 — 묶음 exact 구성·순서·data/env 편집
 
-- [ ] **W21-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W21-02.md`(구현 때 생성).
+- [x] **W21-02 완료** — 상태: `complete`. 근거: [W21-02 인계](../validation/tasks/W21-02.md).
 - **직접 선행:** [W21-01](08b-execution-and-suites.md#w21-01)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R22, R32, UI-08.02.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -193,7 +193,7 @@ assert observed == {
 
 ## W21-03 — 새 승인본 diff·명시 suite 교체
 
-- [ ] **W21-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W21-03.md`(구현 때 생성).
+- [x] **W21-03 완료** — 상태: `complete`. 근거: [W21-03 인계](../validation/tasks/W21-03.md).
 - **직접 선행:** [W21-02](08b-execution-and-suites.md#w21-02)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R22, R24, UI-08.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -221,7 +221,7 @@ assert observed == {
 
 ## W21-04 — 선택·data 확장·명시 제외·N 상한
 
-- [ ] **W21-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W21-04.md`(구현 때 생성).
+- [x] **W21-04 완료** — 상태: `complete`. 근거: [W21-04 인계](../validation/tasks/W21-04.md).
 - **직접 선행:** [W21-03](08b-execution-and-suites.md#w21-03)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R22, R28, R31, R35, UI-03.04, UI-09.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -249,7 +249,7 @@ assert observed == {
 
 ## W21-05 — 순차 continue/stop·NOT_RUN·부모 확정
 
-- [ ] **W21-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W21-05.md`(구현 때 생성).
+- [x] **W21-05 완료** — 상태: `complete`. 근거: [W21-05 인계](../validation/tasks/W21-05.md).
 - **직접 선행:** [W21-04](08b-execution-and-suites.md#w21-04)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R11, R12, R22, R31, UI-10.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -277,7 +277,7 @@ assert observed == {
 
 ## W22-01 — RUN·ITEM 취소와 finish 경합 UI
 
-- [ ] **W22-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W22-01.md`(구현 때 생성).
+- [x] **W22-01 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W22-01.md`.
 - **직접 선행:** [W21-05](08b-execution-and-suites.md#w21-05)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R11, R12, R31, UI-10.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -304,7 +304,7 @@ assert observed == {
 
 ## W22-02 — 미시작 skip 만 허용·사유·집계
 
-- [ ] **W22-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W22-02.md`(구현 때 생성).
+- [x] **W22-02 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W22-02.md`.
 - **직접 선행:** [W22-01](08b-execution-and-suites.md#w22-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R11, R12, R22, R31, UI-10.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -332,7 +332,7 @@ assert observed == {
 
 ## W22-03 — 원본 연결 새 rerun·구성 확인·lineage
 
-- [ ] **W22-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W22-03.md`(구현 때 생성).
+- [x] **W22-03 완료** — 상태: `complete`. 근거: `docs/validation/tasks/W22-03.md`.
 - **직접 선행:** [W22-02](08b-execution-and-suites.md#w22-02)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R09, R24, R31, R32, UI-10.08, UI-11.04, UI-12.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

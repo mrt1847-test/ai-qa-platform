@@ -139,6 +139,7 @@ class DatasetRevisionInput:
     rows: tuple[dict[str, object], ...]
     dataset_id: UUID | None = None
     secret_ref: SecretRef | None = None
+    case_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +164,7 @@ class EnvironmentRevisionInput:
     reset_policy: str
     limits: dict[str, object]
     environment_id: UUID | None = None
+    profile: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)

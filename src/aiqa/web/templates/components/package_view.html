@@ -1,10 +1,29 @@
 <section id="snapshot" data-editable="false">
   {% if board.replay_package_id %}
   <p>패키지 준비됨</p>
+  <p>source {{ board.package.raw_source_hash }}</p>
+  <p>approved {{ board.package.approved_code_hash }}</p>
+  <p>runtime {{ board.package.runtime_ref }}</p>
+  <p>compiler {{ board.package.compiler_ref }}</p>
+  <p>lock {{ board.package.lock_hash }}</p>
+  <p>package {{ board.package.package_hash }}</p>
+  <ul>
+    {% for step in board.package.steps %}
+    <li>{{ step.step_id }} {{ step.position }} {{ step.step_hash }}</li>
+    {% endfor %}
+  </ul>
   {% else %}
   <p>패키지가 없습니다.</p>
   {% endif %}
+  {% for reason in board.package.reasons %}
+  <p>{{ reason }}</p>
+  {% endfor %}
+  {% if board.package.recording_ids %}
+  <p>기록 {{ board.package.recording_ids|length }}건</p>
+  {% else %}
   <p>REC가 없습니다.</p>
+  {% endif %}
   <p>trial이 없습니다.</p>
+  <p>code는 읽기 전용입니다.</p>
   <p>{{ board.selected_text }}</p>
 </section>

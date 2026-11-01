@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}항목 치유{% endblock %}
+{% block content %}
+  <h1>항목 치유</h1>
+  <p>작업 상태 {{ job_status }}</p>
+  <p>단계 {{ phase }}</p>
+  <p>episode {{ episode_count }} · 호출 {{ call_count }} / {{ max_calls }} · {{ max_seconds }}초</p>
+  <ol>
+    <li>원래 오류 {{ original_error }}</li>
+    <li>제안 {{ proposal_id }}</li>
+    <li>{% if same_target %}정책과 같은 대상{% else %}정책과 다른 대상{% endif %}</li>
+    <li>override {{ override_id }}</li>
+    <li>dispatch {{ dispatch_state }}</li>
+    <li>QA {{ qa_label }}</li>
+  </ol>
+  {% if badge %}<p data-healing-badge="used">치유를 사용했습니다.</p>{% endif %}
+  {% if terminal_failed %}<p><a href="{{ new_run_href }}">새 수행</a></p>{% endif %}
+  <p>원래 오류는 그대로 보입니다.</p>
+  <section>
+    <p>{{ assistance_label|default('이 항목의 결과입니다.') }}</p>
+    <p>검증 역할은 따로 셉니다.</p>
+    <p>측정 {{ usage_display|default('not_used') }}</p>
+    <p>비용 {{ usage_cost|default('없음') }}</p>
+    <p>episode 결과 {{ episode_result|default('없음') }}</p>
+    <p>역할 호출 {{ role_calls|default('없음') }}</p>
+    <p>미사용은 불명과 다릅니다.</p>
+  </section>
+  {% if case_version_id %}
+  <section>
+    <h2>{{ case_name }}</h2>
+    <p>정확한 버전 {{ case_version_id }}</p>
+    <p>검증 {{ verification_digest }}</p>
+    <p>패키지 {{ package_id or "없음" }}</p>
+    <p>정책 {{ policy }}</p>
+    <p>데이터 {{ data_name }} · 환경 {{ environment_revision_id }} · 빌드 {{ build_id }}</p>
+    <p>기기 {{ device }} · 엔진 {{ engine }} · 모델 {{ model_name }}</p>
+    <p>단계 {{ step_id }} · 행동 {{ action_id }} · 검사 {{ check_status }}</p>
+    <p>첫 시도 {{ first_attempt_id }} · 마지막 시도 {{ latest_attempt_id }} · 선택 시도 {{ selected_attempt_id }}</p>
+    <p>첫 실패 {{ first_failure_attempt_id }} {{ first_failure_reason }}</p>
+    <p>현재 판정 {{ verdict_reason }}</p>
+    <p>{{ recovery }}</p>
+    <p>전후 화면과 기록과 설정과 복구와 근거를 함께 봅니다.</p>
+    <p>기록 {{ check_reason }}</p>
+    <p>대상 화면 {{ capture_reason or "보관됨" }}</p>
+    <p>모델 그림으로 바꾸지 않습니다.</p>
+    <p>근거 {{ evidence_reason }}</p>
+  </section>
+  {% endif %}
+  {% include "components/rerun.html" %}
+{% endblock %}

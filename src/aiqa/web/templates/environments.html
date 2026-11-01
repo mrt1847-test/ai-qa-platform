@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}연결 자원{% endblock %}
+{% block content %}
+  <h1 data-tab="resources">연결 자원</h1>
+  <p>Web과 Android의 최근 관찰입니다. 이 화면은 기기를 열거나 조작하지 않습니다.</p>
+  <section>
+    <h2>진단</h2>
+    <p>VM, driver, IPC, broker, script의 키와 외부 전송은 막혀 있습니다.</p>
+    <p>USB 권한, IME, capture, lease, cleanup은 진단 결과에만 표시합니다.</p>
+    <p>ready는 관찰 proof 뒤에만 표시합니다.</p>
+    {% for item in diagnostics %}
+    <p>진단 작업 {{ item.job_id }} {{ item.status }} {% if item.ready %}proof 있음{% else %}proof 없음{% endif %}</p>
+    {% endfor %}
+  </section>
+  {% for item in resources %}
+  <article data-kind="{{ item.target_kind }}" data-state="{{ item.state }}">
+    <h2>{{ item.display_name }}</h2>
+    <p>{{ item.kind_label }} · {{ item.state_label }}</p>
+    <p>OS {{ item.os_build }}</p>
+    <p>화면 {{ item.geometry }}</p>
+    <p>빌드 {{ item.os_build }}</p>
+    <p>마지막 수신 <time datetime="{{ item.observed_at }}">{{ item.observed_at }}</time></p>
+    {% if item.availability == "unavailable" %}<p>사용할 수 없음</p>{% endif %}
+    {% if item.run_href %}<p><a href="{{ item.run_href }}">점유 실행</a></p>{% endif %}
+    {% include "components/device_preview.html" %}
+    <p><a href="/ui/projects/{{ project_id }}/recordings/new">이 기기로 녹화</a></p>
+  </article>
+  {% endfor %}
+{% endblock %}

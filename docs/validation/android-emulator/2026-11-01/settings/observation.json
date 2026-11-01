@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-11-01T11:31:53.385591+00:00",
+  "serial": "emulator-5580",
+  "avd": "AIQA_API36",
+  "device_kind": "android_emulator",
+  "android_release": "16",
+  "api_level": "36",
+  "model": "sdk_gphone64_x86_64",
+  "emulator": true,
+  "display_size": "Physical size: 1080x2400",
+  "display_density": "Physical density: 420",
+  "capture": {
+    "path": "observation.png",
+    "width": 1080,
+    "height": 2400,
+    "sha256": "b3eb56610eadd0db2d7b070dcb8b14569db8900467a8efa3e7af3719655d01b5"
+  },
+  "scope": "isolated emulator observation; not USB/native-model acceptance",
+  "model_calls": 0
+}

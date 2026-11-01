@@ -1,5 +1,7 @@
 # 작은 컨텍스트 모델을 위한 실행 작업서 v0.8
 
+> 2026-11-01 후속: 기존 W 색인의 준비 후보 없음과 제품 개발 종료는 다르다. 실제 Android 에뮬레이터를 사용하는 [개발/UI 보완7개](11-development-follow-ups.md)와 [별도 색인](DEV_FOLLOW_UP_INDEX.json)을 추가했다. 현재 순서는 NEXT_ACTION만 따른다.
+
 기준일: **2026-11-01** · 제품 설계: **v0.6 + 보완 계약** · 현재: **완료126/163**, W00·W04·W05·W06·W08·W10 상위 완료, W01-02 외부 차단 보존.
 [Current 큐](../../NEXT_ACTION.md) · [상위 진행표](../../WORK_PROGRESS.md) · [선행/차단 수정](SCHEDULING.md).
 

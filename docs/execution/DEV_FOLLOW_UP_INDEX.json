@@ -1,0 +1,131 @@
+{
+  "schema_version": "development-follow-ups-v1",
+  "date": "2026-11-01",
+  "baseline": "3db8a58",
+  "legacy_counts_unchanged": {
+    "complete": 126,
+    "total": 163
+  },
+  "tasks": [
+    {
+      "id": "AD-01",
+      "title": "명시 serial Android 관찰 제공자",
+      "deps": [
+        "W07-01",
+        "W13-01"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python",
+        "android_emulator"
+      ],
+      "doc_file": "11-development-follow-ups.md#ad-01",
+      "evidence_path": "docs/validation/tasks/AD-01.md",
+      "verification_scope": "live_integration",
+      "work_kind": "integration"
+    },
+    {
+      "id": "AD-02",
+      "title": "에뮬레이터 inventory와 UI 선택 연결",
+      "deps": [
+        "AD-01",
+        "W11-01"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python",
+        "android_emulator"
+      ],
+      "doc_file": "11-development-follow-ups.md#ad-02",
+      "evidence_path": "docs/validation/tasks/AD-02.md",
+      "verification_scope": "live_integration",
+      "work_kind": "integration"
+    },
+    {
+      "id": "AD-03",
+      "title": "결정적 Android 동작·스텝 증거 연결",
+      "deps": [
+        "AD-02",
+        "W13-04",
+        "W14-03",
+        "W30-02"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python",
+        "android_emulator"
+      ],
+      "doc_file": "11-development-follow-ups.md#ad-03",
+      "evidence_path": "docs/validation/tasks/AD-03.md",
+      "verification_scope": "live_integration",
+      "work_kind": "integration"
+    },
+    {
+      "id": "AD-04",
+      "title": "worker 실제 소비 루프와 명시 dispatch 연결",
+      "deps": [
+        "AD-03",
+        "W08-05",
+        "W09-04"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python",
+        "android_emulator"
+      ],
+      "doc_file": "11-development-follow-ups.md#ad-04",
+      "evidence_path": "docs/validation/tasks/AD-04.md",
+      "verification_scope": "live_integration",
+      "work_kind": "integration"
+    },
+    {
+      "id": "UX-01",
+      "title": "묶음·수행·리포트 탐색 복원",
+      "deps": [
+        "W20-04",
+        "W21-01",
+        "W23-04"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "doc_file": "11-development-follow-ups.md#ux-01",
+      "evidence_path": "docs/validation/tasks/UX-01.md",
+      "verification_scope": "core_contract",
+      "work_kind": "core_contract"
+    },
+    {
+      "id": "UX-02",
+      "title": "묶음 생성·복제·보관 실제 UI",
+      "deps": [
+        "UX-01"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "doc_file": "11-development-follow-ups.md#ux-02",
+      "evidence_path": "docs/validation/tasks/UX-02.md",
+      "verification_scope": "core_contract",
+      "work_kind": "core_contract"
+    },
+    {
+      "id": "UX-03",
+      "title": "묶음 entry 편집·불변 revision 저장 UI",
+      "deps": [
+        "UX-02",
+        "W21-02",
+        "W21-03"
+      ],
+      "status": "not_started",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "doc_file": "11-development-follow-ups.md#ux-03",
+      "evidence_path": "docs/validation/tasks/UX-03.md",
+      "verification_scope": "core_contract",
+      "work_kind": "core_contract"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # 뼈대 우선·차단 독립 진행 · v0.8
 
+> 아래는 원래 W163개 설계의 변경 이력이다. 최신 Android 에뮬레이터 개발/누락 UI 작업은 [보완 카드](11-development-follow-ups.md)를 별도로 따르며 USB/양 플랫폼 live gate를 대신하지 않는다. 현재 완료 수와 실행 순서는 NEXT_ACTION/WORK_PROGRESS를 따른다.
+
 기준일: 2026-10-31. [Current 큐](../../NEXT_ACTION.md) · [뼈대4개](00-bootstrap.md) · [공통 계약 C13/C14](CONTRACTS.md).
 이 개정은 문서 변경이다. 기존 probe code/완료·차단 인계는 수정하지 않았다.
 

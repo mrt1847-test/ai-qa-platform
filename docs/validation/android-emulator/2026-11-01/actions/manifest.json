@@ -1,0 +1,123 @@
+{
+  "scope": "isolated Android emulator Settings development spike",
+  "avd": "AIQA_API36",
+  "serial": "emulator-5580",
+  "steps": [
+    {
+      "step_id": "step-01",
+      "kind": "tap",
+      "intent": "Open the observed Network & internet row",
+      "serial": "emulator-5580",
+      "arguments": [
+        "tap",
+        "428",
+        "640"
+      ],
+      "started_at": "2026-11-01T11:33:31.054103+00:00",
+      "before": {
+        "path": "step-01-before.png",
+        "sha256": "2e5a6e57e8fc86e30ab4cb4c981f1a675822c668dcafe5b870e93f946a5ddc4a",
+        "bytes": 194317
+      },
+      "state": "observed",
+      "model_calls": 0,
+      "finished_at": "2026-11-01T11:33:39.787859+00:00",
+      "elapsed_seconds": 8.735,
+      "after": {
+        "path": "step-01-after.png",
+        "sha256": "c35bacdb98b522206335afa5b9baffd2e4e3352a40749bb747e469cd403af514",
+        "bytes": 15580
+      },
+      "output": "",
+      "qa_result": "not_evaluated"
+    },
+    {
+      "step_id": "step-02",
+      "kind": "back",
+      "intent": "Return to Settings home",
+      "serial": "emulator-5580",
+      "arguments": [
+        "keyevent",
+        "KEYCODE_BACK"
+      ],
+      "started_at": "2026-11-01T11:33:41.050904+00:00",
+      "before": {
+        "path": "step-02-before.png",
+        "sha256": "c35bacdb98b522206335afa5b9baffd2e4e3352a40749bb747e469cd403af514",
+        "bytes": 15580
+      },
+      "state": "observed",
+      "model_calls": 0,
+      "finished_at": "2026-11-01T11:33:48.135250+00:00",
+      "elapsed_seconds": 7.078,
+      "after": {
+        "path": "step-02-after.png",
+        "sha256": "9c594b9ba90883f5ceea6df308d47f104d170814b9e87eeb9813030e15ea5313",
+        "bytes": 185463
+      },
+      "output": "",
+      "qa_result": "not_evaluated"
+    },
+    {
+      "step_id": "step-03",
+      "kind": "swipe",
+      "intent": "Scroll the Settings list",
+      "serial": "emulator-5580",
+      "arguments": [
+        "swipe",
+        "540",
+        "1800",
+        "540",
+        "650",
+        "350"
+      ],
+      "started_at": "2026-11-01T11:33:49.530938+00:00",
+      "before": {
+        "path": "step-03-before.png",
+        "sha256": "8be1d4270732a6fbea3b7537d931aebe94ab6ffe00499d44c82e41abda735d23",
+        "bytes": 186229
+      },
+      "state": "observed",
+      "model_calls": 0,
+      "finished_at": "2026-11-01T11:33:53.536300+00:00",
+      "elapsed_seconds": 4.0,
+      "after": {
+        "path": "step-03-after.png",
+        "sha256": "49709ee24cd8548baf37c1870bf6ca1925871fbc9b1932cd5e26c7c834789c38",
+        "bytes": 186242
+      },
+      "output": "",
+      "qa_result": "not_evaluated"
+    },
+    {
+      "step_id": "step-04",
+      "kind": "back",
+      "intent": "Leave Settings",
+      "serial": "emulator-5580",
+      "arguments": [
+        "keyevent",
+        "KEYCODE_BACK"
+      ],
+      "started_at": "2026-11-01T11:33:54.604456+00:00",
+      "before": {
+        "path": "step-04-before.png",
+        "sha256": "49709ee24cd8548baf37c1870bf6ca1925871fbc9b1932cd5e26c7c834789c38",
+        "bytes": 186242
+      },
+      "state": "observed",
+      "model_calls": 0,
+      "finished_at": "2026-11-01T11:33:58.509096+00:00",
+      "elapsed_seconds": 3.906,
+      "after": {
+        "path": "step-04-after.png",
+        "sha256": "39b88d430a5bb4331f574f39bf8c3ec00acd0b41071af57c0f58d3a33e17fed7",
+        "bytes": 186156
+      },
+      "output": "",
+      "qa_result": "not_evaluated"
+    }
+  ],
+  "model_calls": 0,
+  "usb_acceptance": false,
+  "product_recording_integrated": false
+}

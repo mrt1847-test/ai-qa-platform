@@ -54,6 +54,28 @@ from aiqa.domain.proposals import (
     reject_case_proposal,
 )
 from aiqa.domain.hashing import CanonicalJsonError
+from aiqa.recording.review_manifest import (
+    ReviewConflict,
+    ReviewRejected,
+    request_review,
+    review_action,
+    review_board,
+    review_notice,
+)
+from aiqa.domain.approvals import (
+    ApprovalConflict,
+    ApprovalInput,
+    ApprovalRejected,
+    RejectionInput,
+    RevokeInput,
+    approve_case,
+    bind_approval_store,
+    case_decision,
+    reject_case,
+    revoke_case,
+    revoke_preview,
+)
+from aiqa.store.artifacts import ArtifactRejected, extend_review_retention, review_protection
 from aiqa.domain.versions import (
     CaseNotFound,
     ForeignParent,
@@ -200,6 +222,13 @@ def _revision(payload: dict[str, object], project: UUID | None = None) -> CaseRe
     settings = payload.get("settings")
     if type(definition) is not dict or type(settings) is not dict:
         raise ValueError("invalid revision")
+    if settings.get("wizard") is True:
+        from aiqa.api.resources import apply_recording_wizard
+
+        settings = apply_recording_wizard(settings)
+        if definition.get("raw_text", "") == "" and type(settings.get("definition_buffer")) is str:
+            definition = dict(definition)
+            definition["raw_text"] = str(settings["definition_buffer"])
     target = settings.get("target_kind")
     if target not in {"web", "android"}:
         raise ValueError("invalid settings")
@@ -606,9 +635,447 @@ async def case_single_run_page(project_id: str, case_id: str, request: Request) 
     return _entry_page(project_id, request, "run", "실행", "이 화면은 실행을 시작하지 않습니다.", case_id)
 
 
+@router.get("/case-versions/{version_id}/replay-package")
+async def get_replay_package(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return _error(404, "not_found", "package was not found", {})
+    from aiqa.domain.versions import _bound_store
+    from aiqa.replay.packages import load_replay_package_view
+
+    with _bound(request):
+        with _bound_store().transaction() as connection:
+            owner = connection.execute(
+                "SELECT project_id FROM case_versions WHERE version_id = ?",
+                (str(parsed),),
+            ).fetchone()
+        if owner is None:
+            return _error(404, "not_found", "package was not found", {})
+        try:
+            actor = authorize_browser(request, UUID(str(owner[0])), "replay_package")
+            with _bound_store().transaction() as connection:
+                view = load_replay_package_view(connection, actor.project_scope, parsed)
+        except CsrfRejected:
+            return _error(403, "permission", "csrf token was rejected", {})
+        except OriginRejected:
+            return _error(403, "permission", "origin was rejected", {})
+        except ProjectHidden:
+            return _error(404, "not_found", "package was not found", {})
+        except AuthRequired:
+            return _error(401, "unauthorized", "session is missing", {})
+    if view is None:
+        return _error(404, "not_found", "package was not found", {})
+    return JSONResponse(status_code=200, content=_package_json(view))
+
+
+@router.post("/case-versions/{version_id}/review-requests")
+async def post_review_request(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    with _bound(request):
+        try:
+            store = request.app.state.open_store()
+            try:
+                with store.transaction() as connection:
+                    snapshot = request_review(connection, actor.project_scope, parsed, payload)
+            finally:
+                store.close()
+        except ReviewRejected as exc:
+            return _error(422, "validation", exc.reason, {})
+        except ProjectHidden:
+            return _error(404, "not_found", "review was not found", {})
+    return JSONResponse(
+        status_code=201,
+        content={
+            "id": str(snapshot.review_id),
+            "case_version_id": str(snapshot.case_version_id),
+            "version_hash": snapshot.version_hash,
+            "source_manifest_id": str(snapshot.source_manifest_id),
+            "source_manifest_hash": snapshot.source_manifest_hash,
+            "trial_case_run_id": str(snapshot.trial_case_run_id),
+            "final_result_hash": snapshot.final_result_hash,
+            "evidence_set_hash": snapshot.evidence_set_hash,
+            "created_commit_seq": snapshot.created_commit_seq,
+            "retain_days": snapshot.retain_days,
+        },
+    )
+
+
+@router.post("/case-versions/{version_id}/action-reviews")
+async def post_action_review(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    with _bound(request):
+        try:
+            store = request.app.state.open_store()
+            try:
+                with store.transaction() as connection:
+                    view = review_action(connection, actor.project_scope, parsed, actor.actor_id, payload)
+            finally:
+                store.close()
+        except ReviewConflict as exc:
+            return _error(409, "conflict", exc.reason, {})
+        except ReviewRejected as exc:
+            return _error(422, "validation", exc.reason, {})
+        except ProjectHidden:
+            return _error(404, "not_found", "review was not found", {})
+    return JSONResponse(
+        status_code=201,
+        content={
+            "review_id": str(view.review_id),
+            "entry_id": str(view.entry_id),
+            "owner_kind": view.owner_kind,
+            "owner_id": view.owner_id,
+            "attempt_id": view.attempt_id,
+            "action_id": view.action_id,
+            "evidence_digest": view.evidence_digest,
+            "state": view.state,
+            "actor_id": str(view.actor_id),
+            "created_at": view.created_at,
+            "comment": view.comment,
+            "history_count": view.history_count,
+            "latest_state": view.latest_state,
+            "source_reviewed": view.source_reviewed,
+            "source_total": view.source_total,
+            "trial_reviewed": view.trial_reviewed,
+            "trial_total": view.trial_total,
+            "next_unreviewed_entry_id": view.next_unreviewed_entry_id,
+        },
+    )
+
+
+@router.post("/review-requests/{review_id}/retention-extensions")
+async def post_retention_extension(review_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(review_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    artifact_text = payload.get("artifact_id")
+    reason = payload.get("reason")
+    if type(artifact_text) is not str or type(reason) is not str:
+        return _error(422, "validation", "retention extension is invalid", {})
+    try:
+        artifact_id = UUID(artifact_text)
+    except ValueError:
+        return _error(422, "validation", "retention extension is invalid", {})
+    with _bound(request):
+        try:
+            store = request.app.state.open_store()
+            try:
+                with store.transaction() as connection:
+                    receipt = extend_review_retention(
+                        connection, actor.project_scope, parsed, artifact_id, reason
+                    )
+            finally:
+                store.close()
+        except ArtifactRejected as exc:
+            return _error(422, "validation", str(exc), {})
+        except ProjectHidden:
+            return _error(404, "not_found", "review was not found", {})
+    return JSONResponse(
+        status_code=201,
+        content={
+            "protection_id": str(receipt.protection_id),
+            "review_id": str(receipt.review_id),
+            "artifact_id": str(receipt.artifact_id),
+            "reason": receipt.reason,
+            "expires_at": receipt.expires_at,
+            "prior_expires_at": receipt.prior_expires_at,
+            "event_count": receipt.event_count,
+            "approve_allowed": receipt.approve_allowed,
+            "temporary": receipt.temporary,
+        },
+    )
+
+
+@router.post("/case-versions/{version_id}/approvals")
+async def post_approval(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    approval = _approval_input(parsed, payload)
+    if isinstance(approval, JSONResponse):
+        return approval
+    store = request.app.state.open_store()
+    try:
+        with bind_approval_store(store):
+            receipt = approve_case(actor, approval)
+    except ApprovalConflict as exc:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": {
+                    "code": "conflict",
+                    "message": exc.reason,
+                    "fields": {},
+                    "retryable": False,
+                    "request_id": str(uuid4()),
+                },
+                "current_approval_id": exc.current_approval_id,
+                "kept_input": True,
+            },
+        )
+    except ApprovalRejected as exc:
+        return _error(422, "validation", exc.reason, {})
+    finally:
+        store.close()
+    return JSONResponse(
+        status_code=201,
+        content={
+            "approval_id": str(receipt.approval_id),
+            "review_id": str(receipt.review_id),
+            "case_id": str(receipt.case_id),
+            "case_version_id": str(receipt.case_version_id),
+            "previous_default_id": None if receipt.previous_default_id is None else str(receipt.previous_default_id),
+            "audit_id": str(receipt.audit_id),
+            "protection_ids": [str(item) for item in receipt.protection_ids],
+        },
+    )
+
+
+def _approval_input(version_id: UUID, payload: dict[str, object]) -> ApprovalInput | JSONResponse:
+    review_text = payload.get("review_id")
+    version_hash = payload.get("version_hash")
+    evidence_hash = payload.get("evidence_set_hash")
+    reason = payload.get("reason")
+    if "expected_current_approval_id" not in payload:
+        return _error(422, "validation", "approval input is invalid", {})
+    expected_text = payload.get("expected_current_approval_id")
+    if type(review_text) is not str or type(version_hash) is not str or type(evidence_hash) is not str or type(reason) is not str:
+        return _error(422, "validation", "approval input is invalid", {})
+    if expected_text is not None and type(expected_text) is not str:
+        return _error(422, "validation", "approval input is invalid", {})
+    try:
+        review_id = UUID(review_text)
+        expected = None if expected_text is None else UUID(expected_text)
+    except ValueError:
+        return _error(422, "validation", "approval input is invalid", {})
+    return ApprovalInput(review_id, version_id, version_hash, evidence_hash, expected, reason)
+
+
+@router.post("/case-versions/{version_id}/rejections")
+async def post_rejection(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    review_text = payload.get("review_id")
+    version_hash = payload.get("version_hash")
+    reason = payload.get("reason")
+    if type(review_text) is not str or type(version_hash) is not str or type(reason) is not str:
+        return _error(422, "validation", "rejection input is invalid", {})
+    try:
+        rejection = RejectionInput(UUID(review_text), parsed, version_hash, reason)
+    except ValueError:
+        return _error(422, "validation", "rejection input is invalid", {})
+    store = request.app.state.open_store()
+    try:
+        with bind_approval_store(store):
+            receipt = reject_case(actor, rejection)
+    except ApprovalConflict as exc:
+        return _error(409, "conflict", exc.reason, {})
+    except ApprovalRejected as exc:
+        return _error(422, "validation", exc.reason, {})
+    finally:
+        store.close()
+    return JSONResponse(
+        status_code=201,
+        content={
+            "decision_id": str(receipt.decision_id),
+            "review_id": str(receipt.review_id),
+            "case_id": str(receipt.case_id),
+            "case_version_id": str(receipt.case_version_id),
+            "state": receipt.state,
+            "reason": receipt.reason,
+            "actor_id": str(receipt.actor_id),
+            "created_at": receipt.created_at,
+            "version_hash": receipt.version_hash,
+            "current_approval_id": None if receipt.current_approval_id is None else str(receipt.current_approval_id),
+        },
+    )
+
+
+@router.post("/approvals/{approval_id}/revoke")
+async def post_revoke(approval_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(approval_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    actor = getattr(request.state, "browser_actor", None)
+    if actor is None or actor.project_scope is None:
+        return _error(401, "unauthorized", "session is missing", {})
+    reason = payload.get("reason")
+    if "expected_current_approval_id" not in payload or type(reason) is not str:
+        return _error(422, "validation", "revoke input is invalid", {})
+    expected_text = payload.get("expected_current_approval_id")
+    if expected_text is not None and type(expected_text) is not str:
+        return _error(422, "validation", "revoke input is invalid", {})
+    try:
+        expected = None if expected_text is None else UUID(expected_text)
+    except ValueError:
+        return _error(422, "validation", "revoke input is invalid", {})
+    store = request.app.state.open_store()
+    try:
+        with bind_approval_store(store):
+            receipt = revoke_case(actor, RevokeInput(parsed, expected, reason))
+    except ApprovalConflict as exc:
+        return _error(409, "conflict", exc.reason, {})
+    except ApprovalRejected as exc:
+        return _error(422, "validation", exc.reason, {})
+    finally:
+        store.close()
+    return JSONResponse(
+        status_code=201,
+        content={
+            "revoke_id": str(receipt.revoke_id),
+            "approval_id": str(receipt.approval_id),
+            "case_id": str(receipt.case_id),
+            "current_approval_id": None if receipt.current_approval_id is None else str(receipt.current_approval_id),
+            "queued_blocked": receipt.queued_blocked,
+            "running_cancelled": receipt.running_cancelled,
+            "grace_until": receipt.grace_until,
+            "fallback": receipt.fallback,
+        },
+    )
+
+
 @pages.get("/ui/projects/{project_id}/cases/{case_id}/review", response_class=HTMLResponse)
 async def case_review_page(project_id: str, case_id: str, request: Request) -> HTMLResponse:
-    return _entry_page(project_id, request, "review", "검토", "이 화면은 승인하지 않습니다.", case_id)
+    project = _uuid(project_id)
+    parsed = _uuid(case_id) if case_id is not None else None
+    if isinstance(project, JSONResponse) or isinstance(parsed, JSONResponse) or parsed is None:
+        return HTMLResponse(status_code=404, content="케이스를 찾지 못했습니다.")
+    query = _case_query(project, request)
+    if isinstance(query, JSONResponse):
+        return HTMLResponse(status_code=422, content="목록 조건을 다시 확인해 주세요.")
+    notice = "이 화면은 승인하지 않습니다."
+    board = None
+    readiness = None
+    protection = None
+    decision = None
+    revoke = None
+    with _bound(request):
+        try:
+            authorize_page(request, project)
+            store = request.app.state.open_store()
+            try:
+                with store.transaction() as connection:
+                    extra = review_notice(connection, project, parsed)
+                    board = review_board(connection, project, parsed)
+                    latest = connection.execute(
+                        """
+                        SELECT version_id FROM case_versions
+                        WHERE project_id = ? AND case_id = ?
+                        ORDER BY revision DESC
+                        LIMIT 1
+                        """,
+                        (str(project), str(parsed)),
+                    ).fetchone()
+                    if latest is not None:
+                        try:
+                            version_uuid = UUID(str(latest[0]))
+                        except ValueError:
+                            version_uuid = None
+                        if version_uuid is not None:
+                            readiness = load_review_readiness(connection, project, version_uuid)
+                    try:
+                        protection = review_protection(connection, project, parsed)
+                    except ValueError:
+                        protection = None
+                    try:
+                        decision = case_decision(connection, project, parsed)
+                    except ValueError:
+                        decision = None
+                    try:
+                        revoke = revoke_preview(connection, project, parsed)
+                    except ValueError:
+                        revoke = None
+            finally:
+                store.close()
+        except _CATALOG_ERRORS:
+            return _case_screen(request, project, query, (), "forbidden")
+    if extra:
+        notice = notice + " " + extra
+    selected = request.query_params.get("entry", "")
+    return render_template(
+        request,
+        "case_review.html",
+        {
+            "notice": notice,
+            "board": board,
+            "readiness": readiness,
+            "protection": protection,
+            "decision": decision,
+            "revoke": revoke,
+            "selected": selected,
+            "tab": request.query_params.get("tab", "input"),
+            "intent": request.query_params.get("intent", ""),
+            "case_id": str(parsed),
+            "project_id": str(project),
+        },
+    )
+
+
+@router.get("/case-versions/{version_id}/review-readiness")
+async def get_review_readiness(version_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(version_id)
+    if isinstance(parsed, JSONResponse):
+        return parsed
+    with _bound(request):
+        project = _project_of_version(parsed)
+        if project is None:
+            return _error(404, "not_found", "review was not found", {})
+        try:
+            actor = authorize_browser(request, project, "case")
+            store = request.app.state.open_store()
+            try:
+                with store.transaction() as connection:
+                    readiness = load_review_readiness(connection, actor.project_scope, parsed)
+            finally:
+                store.close()
+        except CsrfRejected:
+            return _error(403, "permission", "csrf token was rejected", {})
+        except OriginRejected:
+            return _error(403, "permission", "origin was rejected", {})
+        except ProjectHidden:
+            return _error(404, "not_found", "review was not found", {})
+        except AuthRequired:
+            return _error(401, "unauthorized", "session is missing", {})
+    if readiness is None:
+        return _error(404, "not_found", "review was not found", {})
+    return JSONResponse(status_code=200, content=readiness)
 
 
 @pages.get("/ui/projects/{project_id}/cases/{case_id}/definition", response_class=HTMLResponse)
@@ -1058,9 +1525,12 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
             "SELECT case_run_id FROM case_runs WHERE project_id = ? AND case_id = ?",
             (str(actor.project_scope), str(case_id)),
         ).fetchall()
+        from aiqa.replay.packages import load_replay_package_view
+
+        draft_id = None if case[0] is None else str(case[0])
+        chosen = str(selected) if selected is not None else draft_id
+        package = None if chosen in {None, ""} else load_replay_package_view(connection, actor.project_scope, UUID(chosen))
     versions = tuple(_version_public(row) for row in stored)
-    draft_id = None if case[0] is None else str(case[0])
-    chosen = str(selected) if selected is not None else draft_id
     draft_row = next((item for item in versions if item["id"] == draft_id), None)
     approved_row = next((item for item in versions if item["id"] == approved_id), None)
     selected_row = next((item for item in versions if item["id"] == chosen), draft_row)
@@ -1074,11 +1544,54 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
         "selected_version_id": None if selected_row is None else selected_row["id"],
         "selected_text": "" if selected_row is None else str(selected_row["raw_text"]),
         "replay_package_id": package_id,
+        "package": _package_json(package) if package is not None else _empty_package(chosen),
         "package_reason": None if package_id is not None else "패키지가 없습니다.",
         "history": [{"case_run_id": str(row[0])} for row in runs],
         "revoked_approval_id": None if revoked is None else str(revoked[0]),
         "snapshot_editable": False,
         "versions": list(versions),
+    }
+
+
+def _package_json(view: object) -> dict[str, object]:
+    from aiqa.replay.packages import ReplayPackageView
+
+    assert isinstance(view, ReplayPackageView)
+    return {
+        "version_id": str(view.version_id),
+        "replay_package_id": None if view.replay_package_id is None else str(view.replay_package_id),
+        "ready": view.ready,
+        "raw_source_hash": view.raw_source_hash,
+        "approved_code_hash": view.approved_code_hash,
+        "runtime_ref": view.runtime_ref,
+        "compiler_ref": view.compiler_ref,
+        "lock_hash": view.lock_hash,
+        "package_hash": view.package_hash,
+        "steps": [
+            {"step_id": step.step_id, "position": step.position, "step_hash": step.step_hash}
+            for step in view.steps
+        ],
+        "reasons": list(view.reasons),
+        "recording_ids": list(view.recording_ids),
+        "editable": view.editable,
+    }
+
+
+def _empty_package(version_id: str | None) -> dict[str, object]:
+    return {
+        "version_id": version_id,
+        "replay_package_id": None,
+        "ready": False,
+        "raw_source_hash": "",
+        "approved_code_hash": "",
+        "runtime_ref": "",
+        "compiler_ref": "",
+        "lock_hash": "",
+        "package_hash": "",
+        "steps": [],
+        "reasons": ["package is missing"],
+        "recording_ids": [],
+        "editable": False,
     }
 
 
@@ -1091,6 +1604,286 @@ def _version_public(row: tuple[object, ...]) -> dict[str, object]:
         "settings": str(row[2]),
         "replay_package_id": None if row[3] is None else str(row[3]),
     }
+
+
+_BLOCK_LABELS = {
+    "recording is partial": "녹화가 일부만 저장되었습니다.",
+    "evidence is incomplete": "증거가 완전하지 않습니다.",
+    "package is missing": "패키지가 없습니다.",
+    "lock is missing": "lock이 없습니다.",
+    "mapping is missing": "mapping이 없습니다.",
+    "trial is not off": "시범이 OFF가 아닙니다.",
+    "trial hash is stale": "시범 hash가 오래되었습니다.",
+    "action review is missing": "미검토 행동이 있습니다.",
+}
+
+
+def load_review_readiness(connection: object, project_id: UUID, version_id: UUID) -> dict[str, object] | None:
+    """Read candidate blockers and the base diff. This does not copy a review or approve."""
+
+    version = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT case_id, base_version_id, definition_json, settings_json, recorded_steps_json,
+               content_hash, source_manifest_id, replay_package_id
+        FROM case_versions
+        WHERE project_id = ? AND version_id = ?
+        """,
+        (str(project_id), str(version_id)),
+    ).fetchone()
+    if version is None:
+        return None
+    case_id = str(version[0])
+    base_id = None if version[1] is None else str(version[1])
+    base = None
+    if base_id is not None:
+        base = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT definition_json, settings_json, recorded_steps_json, source_manifest_id
+            FROM case_versions
+            WHERE project_id = ? AND version_id = ?
+            """,
+            (str(project_id), base_id),
+        ).fetchone()
+    reasons = _readiness_reasons(connection, project_id, version_id, case_id, str(version[5]), version[6], version[7])
+    copied = _review_was_copied(connection, project_id, str(version_id), base_id)
+    source_owner, trial_owner, trial_off = _owners(connection, project_id, case_id, version[6])
+    candidate_evidence = _recording_evidence(connection, project_id, version[6])
+    base_evidence = "" if base is None else _recording_evidence(connection, project_id, base[3])
+    return {
+        "case_version_id": str(version_id),
+        "base_version_id": base_id,
+        "approve_allowed": reasons == [],
+        "block_reasons": reasons,
+        "block_labels": {reason: _BLOCK_LABELS[reason] for reason in reasons},
+        "old_review_copied": copied,
+        "trial_off": trial_off,
+        "source_owner_id": source_owner,
+        "trial_owner_id": trial_owner,
+        "diffs": _candidate_diffs(version, base, base_evidence, candidate_evidence),
+    }
+
+
+def _field_text(raw: object, name: str) -> str:
+    try:
+        body = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return ""
+    if type(body) is not dict:
+        return ""
+    value = body.get(name, "")
+    if type(value) is str:
+        return value
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _candidate_diffs(
+    version: tuple[object, ...],
+    base: tuple[object, ...] | None,
+    base_evidence: str,
+    candidate_evidence: str,
+) -> list[dict[str, object]]:
+    candidate_definition = version[2]
+    candidate_settings = str(version[3])
+    candidate_steps = str(version[4])
+    if base is None:
+        base_definition: object = "{}"
+        base_settings = ""
+        base_steps = ""
+    else:
+        base_definition = base[0]
+        base_settings = str(base[1])
+        base_steps = str(base[2])
+    pairs = (
+        ("expected", "기대", _field_text(base_definition, "expected"), _field_text(candidate_definition, "expected")),
+        ("path", "경로", _field_text(base_definition, "path"), _field_text(candidate_definition, "path")),
+        ("procedure", "절차", base_steps, candidate_steps),
+        ("target", "대상", _field_text(base_definition, "target"), _field_text(candidate_definition, "target")),
+        ("settings", "설정", base_settings, candidate_settings),
+        ("errors", "오류", _field_text(base_definition, "errors"), _field_text(candidate_definition, "errors")),
+        ("evidence", "근거", base_evidence, candidate_evidence),
+    )
+    return [
+        {"field": field, "label": label, "base": left, "candidate": right, "changed": left != right}
+        for field, label, left, right in pairs
+    ]
+
+
+def _recording_evidence(connection: object, project_id: UUID, manifest_id: object) -> str:
+    if manifest_id is None:
+        return ""
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT recordings.storage_status, recordings.evidence_status
+        FROM recording_manifests
+        JOIN recordings
+          ON recordings.project_id = recording_manifests.project_id
+         AND recordings.recording_id = recording_manifests.recording_id
+        WHERE recording_manifests.project_id = ? AND recording_manifests.manifest_id = ?
+        """,
+        (str(project_id), str(manifest_id)),
+    ).fetchone()
+    if row is None:
+        return ""
+    return str(row[0]) + "/" + str(row[1])
+
+
+def _readiness_reasons(
+    connection: object,
+    project_id: UUID,
+    version_id: UUID,
+    case_id: str,
+    content_hash: str,
+    manifest_id: object,
+    package_id: object,
+) -> list[str]:
+    reasons: list[str] = []
+    recording = None
+    if manifest_id is not None:
+        recording = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT recordings.storage_status, recordings.evidence_status
+            FROM recording_manifests
+            JOIN recordings
+              ON recordings.project_id = recording_manifests.project_id
+             AND recordings.recording_id = recording_manifests.recording_id
+            WHERE recording_manifests.project_id = ? AND recording_manifests.manifest_id = ?
+            """,
+            (str(project_id), str(manifest_id)),
+        ).fetchone()
+    if recording is None or str(recording[0]) != "stored":
+        reasons.append("recording is partial")
+    if recording is None or str(recording[1]) != "complete":
+        reasons.append("evidence is incomplete")
+    package = None
+    if package_id is not None:
+        package = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT ready, lock_hash, step_mapping_hash
+            FROM replay_packages
+            WHERE project_id = ? AND package_id = ?
+            """,
+            (str(project_id), str(package_id)),
+        ).fetchone()
+    if package is None or int(package[0]) != 1:
+        reasons.append("package is missing")
+    if package is None or str(package[1]) == "":
+        reasons.append("lock is missing")
+    if package is None or str(package[2]) == "":
+        reasons.append("mapping is missing")
+    trial = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT case_runs.case_run_id, case_runs.case_version_id, case_versions.content_hash, jobs.limits
+        FROM case_runs
+        JOIN case_versions
+          ON case_versions.project_id = case_runs.project_id
+         AND case_versions.version_id = case_runs.case_version_id
+        LEFT JOIN jobs
+          ON jobs.project_id = case_runs.project_id
+         AND jobs.case_run_id = case_runs.case_run_id
+         AND jobs.purpose = 'trial'
+        WHERE case_runs.project_id = ? AND case_runs.case_id = ? AND case_runs.purpose = 'trial'
+        ORDER BY case_runs.requested_at
+        LIMIT 1
+        """,
+        (str(project_id), case_id),
+    ).fetchone()
+    if trial is None or not _trial_off(trial[3]):
+        reasons.append("trial is not off")
+    if trial is None or str(trial[1]) != str(version_id) or str(trial[2]) != content_hash:
+        reasons.append("trial hash is stale")
+    if _unreviewed_count(connection, project_id, version_id) != 0:
+        reasons.append("action review is missing")
+    return reasons
+
+
+def _trial_off(raw: object) -> bool:
+    if raw is None:
+        return False
+    try:
+        limits = json.loads(str(raw))
+    except json.JSONDecodeError:
+        return False
+    if type(limits) is not dict:
+        return False
+    return limits.get("self_healing_enabled") is False and limits.get("actor") == 0
+
+
+def _unreviewed_count(connection: object, project_id: UUID, version_id: UUID) -> int:
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT review_evidence_entries.entry_id
+        FROM reviews
+        JOIN review_evidence_entries
+          ON review_evidence_entries.project_id = reviews.project_id
+         AND review_evidence_entries.review_id = reviews.review_id
+        WHERE reviews.project_id = ? AND reviews.case_version_id = ?
+        """,
+        (str(project_id), str(version_id)),
+    ).fetchall()
+    if not rows:
+        return 1
+    missing = 0
+    for row in rows:
+        latest = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT state FROM action_reviews
+            WHERE project_id = ? AND entry_id = ?
+            ORDER BY created_at DESC, rowid DESC
+            LIMIT 1
+            """,
+            (str(project_id), str(row[0])),
+        ).fetchone()
+        if latest is None or str(latest[0]) != "reviewed":
+            missing += 1
+    return missing
+
+
+def _review_was_copied(connection: object, project_id: UUID, version_id: str, base_id: str | None) -> bool:
+    if base_id is None:
+        return False
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT COUNT(*)
+        FROM reviews AS candidate
+        JOIN reviews AS base
+          ON base.project_id = candidate.project_id
+         AND base.case_version_id = ?
+         AND base.evidence_set_hash = candidate.evidence_set_hash
+         AND IFNULL(base.source_manifest_id, '') = IFNULL(candidate.source_manifest_id, '')
+         AND IFNULL(base.trial_case_run_id, '') = IFNULL(candidate.trial_case_run_id, '')
+        WHERE candidate.project_id = ? AND candidate.case_version_id = ?
+        """,
+        (base_id, str(project_id), version_id),
+    ).fetchone()
+    return row is not None and int(row[0]) > 0
+
+
+def _owners(connection: object, project_id: UUID, case_id: str, manifest_id: object) -> tuple[str, str, bool]:
+    source = ""
+    if manifest_id is not None:
+        row = connection.execute(  # type: ignore[attr-defined]
+            "SELECT recording_id FROM recording_manifests WHERE project_id = ? AND manifest_id = ?",
+            (str(project_id), str(manifest_id)),
+        ).fetchone()
+        if row is not None:
+            source = str(row[0])
+    trial = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT case_runs.case_run_id, jobs.limits
+        FROM case_runs
+        LEFT JOIN jobs
+          ON jobs.project_id = case_runs.project_id
+         AND jobs.case_run_id = case_runs.case_run_id
+         AND jobs.purpose = 'trial'
+        WHERE case_runs.project_id = ? AND case_runs.case_id = ? AND case_runs.purpose = 'trial'
+        ORDER BY case_runs.requested_at
+        LIMIT 1
+        """,
+        (str(project_id), case_id),
+    ).fetchone()
+    if trial is None:
+        return source, "", False
+    return source, str(trial[0]), _trial_off(trial[1])
 
 
 def _version_diff(actor: object, version_id: UUID, base_id: UUID) -> dict[str, object] | None:

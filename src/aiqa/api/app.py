@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 
 from aiqa.api.artifacts import install_artifacts
+from aiqa.api.executions import install_executions
 from aiqa.api.auth import install_auth
 from aiqa.api.cases import install_cases
 from aiqa.api.catalog import install_catalog, install_taxonomy
@@ -21,6 +22,7 @@ from aiqa.api.tcs import install_tcs
 from aiqa.api.worker import install_worker
 from aiqa.config import AppSettings, SettingsError, load_settings
 from aiqa.store.database import StorageConfig, open_store
+from aiqa.api.lifecycle import install_local
 from aiqa.web.routes import ensure_css_media_type, install_shell, render_bootstrap, static_directory
 
 
@@ -53,6 +55,8 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     install_worker(application)
     install_artifacts(application)
     install_recordings(application)
+    install_executions(application)
+    install_local(application)
     application.add_api_route("/api/v1/health", health, methods=["GET"])
     install_shell(application)
     ensure_css_media_type()

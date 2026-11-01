@@ -1,0 +1,15 @@
+<section id="live-connection"
+  data-poll-seconds="2"
+  data-project-events="{{ project_events_url }}"
+  data-attempt-events="{{ attempt_events_url }}"
+  data-selected-rec="{{ selected_rec }}"
+  data-selected-item="{{ selected_item }}"
+  data-selected-action="{{ selected_action }}">
+  <h2>수신</h2>
+  <p>마지막 수신 <span id="last-received">없음</span></p>
+  <p id="stale" hidden>수신이 오래되었습니다</p>
+  <p>선택 REC <span id="selected-rec">{{ selected_rec }}</span></p>
+  <p>선택 ITEM <span id="selected-item">{{ selected_item }}</span></p>
+  <p>선택 action <span id="selected-action">{{ selected_action }}</span></p>
+</section>
+<script src="/static/polling.js"></script>

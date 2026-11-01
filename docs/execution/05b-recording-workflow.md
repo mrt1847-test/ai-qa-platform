@@ -1,6 +1,6 @@
 # E-2 · 녹화 입력·진행·저장·재녹화 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 8**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료5 / 8**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,20 +8,20 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W16-01](#w16-01) | [W10-11](04a-case-management-ui.md#w10-11), [W11-03](04b-environments-and-launcher.md#w11-03), [W08-01](03-worker-and-sessions.md#w08-01) | 디바이스 먼저 녹화 마법사·입력 초안 | not_started |
+| [W16-01](#w16-01) | [W10-11](04a-case-management-ui.md#w10-11), [W11-03](04b-environments-and-launcher.md#w11-03), [W08-01](03-worker-and-sessions.md#w08-01) | 디바이스 먼저 녹화 마법사·입력 초안 | complete |
 | [W16-02](#w16-02) | [W16-01](05b-recording-workflow.md#w16-01), [W15-04](05a-action-evidence-and-models.md#w15-04) | 자연어 구조화 관리 job·diff 수락 | not_started |
-| [W16-03](#w16-03) | [W16-01](05b-recording-workflow.md#w16-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W08-05](03-worker-and-sessions.md#w08-05) | 시작 preflight·REC/job 원자 접수 | not_started |
+| [W16-03](#w16-03) | [W16-01](05b-recording-workflow.md#w16-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W08-05](03-worker-and-sessions.md#w08-05) | 시작 preflight·REC/job 원자 접수 | complete |
 | [W16-04](#w16-04) | [W16-03](05b-recording-workflow.md#w16-03), [W01-03](01-foundation-probes.md#w01-03), [W02-04](01-foundation-probes.md#w02-04), [W07-02](03-worker-and-sessions.md#w07-02), [W07-03](03-worker-and-sessions.md#w07-03), [W13-04](05a-action-evidence-and-models.md#w13-04), [W15-04](05a-action-evidence-and-models.md#w15-04), [W14-03](05a-action-evidence-and-models.md#w14-03) | authoring loop·실시간 action timeline·메모 | not_started |
-| [W16-05](#w16-05) | [W16-03](05b-recording-workflow.md#w16-03), [W14-03](05a-action-evidence-and-models.md#w14-03), [W13-04](05a-action-evidence-and-models.md#w13-04) | 완료·중단·오류 seal 과 fallback 초안 | not_started |
-| [W16-06](#w16-06) | [W16-05](05b-recording-workflow.md#w16-05) | 녹화 이력·미완성·receipt·저장상태 UI | not_started |
+| [W16-05](#w16-05) | [W16-03](05b-recording-workflow.md#w16-03), [W14-03](05a-action-evidence-and-models.md#w14-03), [W13-04](05a-action-evidence-and-models.md#w13-04) | 완료·중단·오류 seal 과 fallback 초안 | complete |
+| [W16-06](#w16-06) | [W16-05](05b-recording-workflow.md#w16-05) | 녹화 이력·미완성·receipt·저장상태 UI | complete |
 | [W16-07](#w16-07) | [W16-06](05b-recording-workflow.md#w16-06), [W29-06](06-replay-packages.md#w29-06), [W30-04](06-replay-packages.md#w30-04), [W16-04](05b-recording-workflow.md#w16-04) | finish 컴파일 통합·복구/재컴파일 새 버전 | not_started |
-| [W16-08](#w16-08) | [W16-06](05b-recording-workflow.md#w16-06) | 같은 case 전체 재녹화·기준/사유·branch | not_started |
+| [W16-08](#w16-08) | [W16-06](05b-recording-workflow.md#w16-06) | 같은 case 전체 재녹화·기준/사유·branch | complete |
 
 <a id="w16-01"></a>
 
 ## W16-01 — 디바이스 먼저 녹화 마법사·입력 초안
 
-- [ ] **W16-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W16-01.md`(구현 때 생성).
+- [x] **W16-01 완료** — 상태: `complete`. 근거: [W16-01 인계](../validation/tasks/W16-01.md).
 - **직접 선행:** [W10-11](04a-case-management-ui.md#w10-11), [W11-03](04b-environments-and-launcher.md#w11-03), [W08-01](03-worker-and-sessions.md#w08-01)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R03, R21, R27, R28, UI-05.02, UI-05.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -75,7 +75,7 @@ assert observed == {
 
 ## W16-03 — 시작 preflight·REC/job 원자 접수
 
-- [ ] **W16-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W16-03.md`(구현 때 생성).
+- [x] **W16-03 완료** — 상태: `complete`. 근거: [W16-03 인계](../validation/tasks/W16-03.md).
 - **직접 선행:** [W16-01](05b-recording-workflow.md#w16-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W08-05](03-worker-and-sessions.md#w08-05)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R10, R12, R28, UI-05.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -129,7 +129,7 @@ assert observed == {
 
 ## W16-05 — 완료·중단·오류 seal 과 fallback 초안
 
-- [ ] **W16-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W16-05.md`(구현 때 생성).
+- [x] **W16-05 완료** — 상태: `complete`. 근거: [W16-05 인계](../validation/tasks/W16-05.md).
 - **직접 선행:** [W16-03](05b-recording-workflow.md#w16-03), [W14-03](05a-action-evidence-and-models.md#w14-03), [W13-04](05a-action-evidence-and-models.md#w13-04)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R12, R15, R30, UI-05.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -157,7 +157,7 @@ assert observed == {
 
 ## W16-06 — 녹화 이력·미완성·receipt·저장상태 UI
 
-- [ ] **W16-06 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W16-06.md`(구현 때 생성).
+- [x] **W16-06 완료** — 상태: `complete`. 근거: [W16-06 인계](../validation/tasks/W16-06.md).
 - **직접 선행:** [W16-05](05b-recording-workflow.md#w16-05)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R15, R21, R30, UI-06.01, UI-06.02, UI-04.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -211,7 +211,7 @@ assert observed == {
 
 ## W16-08 — 같은 case 전체 재녹화·기준/사유·branch
 
-- [ ] **W16-08 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W16-08.md`(구현 때 생성).
+- [x] **W16-08 완료** — 상태: `complete`. 근거: [W16-08 인계](../validation/tasks/W16-08.md).
 - **직접 선행:** [W16-06](05b-recording-workflow.md#w16-06)
 - **읽기:** CONTRACTS C00 / C01 / C02 / C03 / C04 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R24, R28, R30, UI-04.07, UI-06.04.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}검토{% endblock %}
+{% block content %}
+<section id="case-review">
+  <h1>검토</h1>
+  <p>{{ notice }}</p>
+  <p>QA 판정을 바꾸지 않습니다.</p>
+  <nav aria-label="검토 단계">
+    <a href="?tab=input" data-tab-link="input">입력</a>
+    <a href="?tab=settings" data-tab-link="settings">설정</a>
+    <a href="?tab=trial" data-tab-link="trial">시범</a>
+    <a href="?tab=record" data-tab-link="record">저장 기록</a>
+    <a href="?tab=version" data-tab-link="version">버전</a>
+  </nav>
+  <p>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">새 초안</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review?intent=rerecord">전체 재녹화</a>
+  </p>
+  {% if intent == "rerecord" %}
+  <p>전체 재녹화는 새 녹화입니다. 이전 검토는 따라가지 않습니다.</p>
+  {% endif %}
+  {% if readiness %}
+  {% include "components/case_diff.html" %}
+  {% endif %}
+  {% if protection %}
+  <section id="review-protection" data-temporary="true" data-event-count="{{ protection.event_count }}" data-expired="{{ 'true' if protection.expired else 'false' }}" data-approve="{{ 'false' if protection.expired else 'true' }}">
+    <p>보호 기한 {{ protection.expires_at }}</p>
+    <p>보호 사유 {{ protection.reason }}</p>
+    <p>이 보호는 30일 임시 보호이며 영구 pin이 아닙니다.</p>
+    {% if protection.prior_expires_at %}
+    <p data-prior-expires="{{ protection.prior_expires_at }}">이전 기한은 그대로입니다.</p>
+    {% endif %}
+    {% if protection.expired %}
+    <p>만료된 근거가 있어 승인할 수 없습니다. 새 녹화와 새 시범이 필요합니다.</p>
+    {% endif %}
+    {% if protection.rejected_retained %}
+    <p>반려 기록은 남아 있습니다.</p>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% if revoke %}
+  {% include "components/revoke_confirm.html" %}
+  {% endif %}
+  {% if decision %}
+  <section id="case-decision" data-auto-retry="false" data-default="{{ decision.current_approval_id }}" data-blocked="{{ 'true' if decision.blocked else 'false' }}">
+    <p id="current-default">현재 기본본 {{ decision.current_approval_id or '없음' }}</p>
+    <p>기본본은 유지됩니다.</p>
+    {% if decision.blocked %}
+    <p>실패한 후보는 기본본을 바꾸지 않습니다.</p>
+    {% endif %}
+    {% if decision.rejected_retained %}
+    <p data-rejected-hash="{{ decision.rejected_hash }}">반려 기록은 남아 있습니다. {{ decision.rejected_reason }}</p>
+    {% endif %}
+    <label>반려 사유 <textarea id="reject-reason" name="reason"></textarea></label>
+    <button type="button" id="approve-case" data-version="{{ decision.version_id }}" data-review="{{ decision.review_id }}" data-hash="{{ decision.version_hash }}" data-evidence="{{ decision.evidence_set_hash }}">이 버전 승인 및 기본 실행본으로 사용</button>
+    <button type="button" id="reject-case">반려</button>
+    <p id="decision-conflict" hidden>기본본이 바뀌었습니다. 입력은 그대로입니다. 비교를 다시 확인하세요.</p>
+    <p id="decision-result"></p>
+  </section>
+  <script>
+    (function () {
+      var section = document.getElementById("case-decision");
+      var approve = document.getElementById("approve-case");
+      var reject = document.getElementById("reject-case");
+      var reason = document.getElementById("reject-reason");
+      var conflict = document.getElementById("decision-conflict");
+      var result = document.getElementById("decision-result");
+      if (!section || !approve || !reject || !window.aiqaRequest) return;
+      function showConflict(body) {
+        conflict.hidden = false;
+        if (body && body.current_approval_id) {
+          document.getElementById("current-default").textContent = "현재 기본본 " + body.current_approval_id;
+          section.setAttribute("data-default", body.current_approval_id);
+        }
+      }
+      approve.addEventListener("click", function () {
+        var current = section.getAttribute("data-default");
+        window.aiqaRequest("/api/v1/case-versions/" + approve.getAttribute("data-version") + "/approvals", {
+          method: "POST",
+          body: JSON.stringify({
+            review_id: approve.getAttribute("data-review"),
+            version_hash: approve.getAttribute("data-hash"),
+            evidence_set_hash: approve.getAttribute("data-evidence"),
+            expected_current_approval_id: current ? current : null,
+            reason: "이 버전을 기본 실행본으로 사용합니다."
+          })
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            if (response.status === 409) showConflict(body);
+            else result.textContent = response.status === 201 ? "기본본으로 저장했습니다." : "승인되지 않았습니다.";
+          });
+        });
+      });
+      reject.addEventListener("click", function () {
+        window.aiqaRequest("/api/v1/case-versions/" + approve.getAttribute("data-version") + "/rejections", {
+          method: "POST",
+          body: JSON.stringify({
+            review_id: approve.getAttribute("data-review"),
+            version_hash: approve.getAttribute("data-hash"),
+            reason: reason.value
+          })
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            if (response.status === 201) result.textContent = "반려 기록은 남아 있습니다.";
+            else if (response.status === 422) result.textContent = "반려 사유가 필요합니다.";
+            else result.textContent = "반려되지 않았습니다.";
+          });
+        });
+      });
+    })();
+  </script>
+  {% endif %}
+  {% if board %}
+  <p data-source-reviewed="{{ board.source_reviewed }}" data-source-total="{{ board.source_total }}">출처 검토 {{ board.source_reviewed }} / {{ board.source_total }}</p>
+  <p data-trial-reviewed="{{ board.trial_reviewed }}" data-trial-total="{{ board.trial_total }}">시범 검토 {{ board.trial_reviewed }} / {{ board.trial_total }}</p>
+  {% for owner in board.owners %}
+  <p data-owner-kind="{{ owner.owner_kind }}" data-owner-id="{{ owner.owner_id }}" data-reviewed="{{ owner.reviewed }}" data-total="{{ owner.total }}">{{ owner.owner_kind }} {{ owner.reviewed }} / {{ owner.total }}</p>
+  {% endfor %}
+  {% if board.next_unreviewed_entry_id %}
+  <p><a href="?entry={{ board.next_unreviewed_entry_id }}" data-next-unreviewed="{{ board.next_unreviewed_entry_id }}">다음 미검토</a></p>
+  {% endif %}
+  {% for entry in board.entries %}
+  <article data-entry="{{ entry.entry_id }}" data-action="{{ entry.action_id }}" data-owner-kind="{{ entry.owner_kind }}" data-latest="{{ entry.latest_state or 'unreviewed' }}"{% if selected and entry.entry_id != selected %} hidden{% endif %}>
+    <h2>{{ entry.owner_kind }} {{ entry.action_id }}</h2>
+    <p>{% if entry.latest_state %}최신 의견 {{ entry.latest_state }}{% else %}미검토{% endif %}</p>
+    <ol data-history="{{ entry.entry_id }}">
+      {% for opinion in entry.history %}
+      <li data-state="{{ opinion.state }}">{{ opinion.state }} {{ opinion.comment }}</li>
+      {% endfor %}
+    </ol>
+  </article>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

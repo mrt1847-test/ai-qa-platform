@@ -1,6 +1,6 @@
 # G · 시범·사후 검토·승인 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 13**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료11 / 13**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,25 +8,25 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W17-01](#w17-01) | [W29-04](06-replay-packages.md#w29-04), [W08-05](03-worker-and-sessions.md#w08-05), [W15-03](05a-action-evidence-and-models.md#w15-03), [W16-03](05b-recording-workflow.md#w16-03) | 미승인 trial preview·공통 RUN/ITEM 접수 | not_started |
-| [W17-02](#w17-02) | [W17-01](07-trial-and-review.md#w17-01), [W13-01](05a-action-evidence-and-models.md#w13-01) | 결정적 Web·Android check 와 필수 경로 | not_started |
-| [W17-03](#w17-03) | [W17-02](07-trial-and-review.md#w17-02), [W15-03](05a-action-evidence-and-models.md#w15-03) | 명시 AI verifier·unknown 보완·실패 latch | not_started |
+| [W17-01](#w17-01) | [W29-04](06-replay-packages.md#w29-04), [W08-05](03-worker-and-sessions.md#w08-05), [W15-03](05a-action-evidence-and-models.md#w15-03), [W16-03](05b-recording-workflow.md#w16-03) | 미승인 trial preview·공통 RUN/ITEM 접수 | complete |
+| [W17-02](#w17-02) | [W17-01](07-trial-and-review.md#w17-01), [W13-01](05a-action-evidence-and-models.md#w13-01) | 결정적 Web·Android check 와 필수 경로 | complete |
+| [W17-03](#w17-03) | [W17-02](07-trial-and-review.md#w17-02), [W15-03](05a-action-evidence-and-models.md#w15-03) | 명시 AI verifier·unknown 보완·실패 latch | complete |
 | [W17-04](#w17-04) | [W17-03](07-trial-and-review.md#w17-03), [W16-07](05b-recording-workflow.md#w16-07), [W29-05](06-replay-packages.md#w29-05), [W30-03](06-replay-packages.md#w30-03) | ITEM seal·trial 현재근거·QA 표시 | not_started |
-| [W18-01](#w18-01) | [W17-03](07-trial-and-review.md#w17-03), [W29-04](06-replay-packages.md#w29-04), [W14-03](05a-action-evidence-and-models.md#w14-03) | exact 검토 snapshot·evidence membership | not_started |
-| [W18-02](#w18-02) | [W18-01](07-trial-and-review.md#w18-01) | 전후 screenshot·로그·단계 탐색 공통 viewer | not_started |
-| [W18-03](#w18-03) | [W18-02](07-trial-and-review.md#w18-02) | action 별 사후 검토·미검토 이동·counts | not_started |
-| [W18-04](#w18-04) | [W18-03](07-trial-and-review.md#w18-03) | 검토 입력·시범·버전·후보 diff 패널 | not_started |
-| [W18-05](#w18-05) | [W18-04](07-trial-and-review.md#w18-04) | 검토 요청 수명·보호 조회·연장 UI | not_started |
-| [W19-01](#w19-01) | [W18-05](07-trial-and-review.md#w18-05) | 승인·default·보호·audit 원자 CAS | not_started |
-| [W19-02](#w19-02) | [W19-01](07-trial-and-review.md#w19-01) | 승인·반려 버튼·충돌·사유 UI | not_started |
-| [W19-03](#w19-03) | [W19-02](07-trial-and-review.md#w19-02) | 명시 철회·queued 차단·running 취소 | not_started |
+| [W18-01](#w18-01) | [W17-03](07-trial-and-review.md#w17-03), [W29-04](06-replay-packages.md#w29-04), [W14-03](05a-action-evidence-and-models.md#w14-03) | exact 검토 snapshot·evidence membership | complete |
+| [W18-02](#w18-02) | [W18-01](07-trial-and-review.md#w18-01) | 전후 screenshot·로그·단계 탐색 공통 viewer | complete |
+| [W18-03](#w18-03) | [W18-02](07-trial-and-review.md#w18-02) | action 별 사후 검토·미검토 이동·counts | complete |
+| [W18-04](#w18-04) | [W18-03](07-trial-and-review.md#w18-03) | 검토 입력·시범·버전·후보 diff 패널 | complete |
+| [W18-05](#w18-05) | [W18-04](07-trial-and-review.md#w18-04) | 검토 요청 수명·보호 조회·연장 UI | complete |
+| [W19-01](#w19-01) | [W18-05](07-trial-and-review.md#w18-05) | 승인·default·보호·audit 원자 CAS | complete |
+| [W19-02](#w19-02) | [W19-01](07-trial-and-review.md#w19-01) | 승인·반려 버튼·충돌·사유 UI | complete |
+| [W19-03](#w19-03) | [W19-02](07-trial-and-review.md#w19-02) | 명시 철회·queued 차단·running 취소 | complete |
 | [W19-04](#w19-04) | [W19-03](07-trial-and-review.md#w19-03), [W16-08](05b-recording-workflow.md#w16-08), [W16-04](05b-recording-workflow.md#w16-04), [W17-04](07-trial-and-review.md#w17-04) | 과거 승인·새 기본본·suite/RUN 불변 통합 | not_started |
 
 <a id="w17-01"></a>
 
 ## W17-01 — 미승인 trial preview·공통 RUN/ITEM 접수
 
-- [ ] **W17-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W17-01.md`(구현 때 생성).
+- [x] **W17-01 완료** — 상태: `complete`. 근거: [W17-01 인계](../validation/tasks/W17-01.md).
 - **직접 선행:** [W29-04](06-replay-packages.md#w29-04), [W08-05](03-worker-and-sessions.md#w08-05), [W15-03](05a-action-evidence-and-models.md#w15-03), [W16-03](05b-recording-workflow.md#w16-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R09, R10, R28, R34, UI-07.02, UI-09.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -55,7 +55,7 @@ assert observed == {
 
 ## W17-02 — 결정적 Web·Android check 와 필수 경로
 
-- [ ] **W17-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W17-02.md`(구현 때 생성).
+- [x] **W17-02 완료** — 상태: `complete`. 근거: [W17-02 인계](../validation/tasks/W17-02.md).
 - **직접 선행:** [W17-01](07-trial-and-review.md#w17-01), [W13-01](05a-action-evidence-and-models.md#w13-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R09, R17.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -83,7 +83,7 @@ assert observed == {
 
 ## W17-03 — 명시 AI verifier·unknown 보완·실패 latch
 
-- [ ] **W17-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W17-03.md`(구현 때 생성).
+- [x] **W17-03 완료** — 상태: `complete`. 근거: [W17-03 인계](../validation/tasks/W17-03.md).
 - **직접 선행:** [W17-02](07-trial-and-review.md#w17-02), [W15-03](05a-action-evidence-and-models.md#w15-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R13, R17.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -137,7 +137,7 @@ assert observed == {
 
 ## W18-01 — exact 검토 snapshot·evidence membership
 
-- [ ] **W18-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W18-01.md`(구현 때 생성).
+- [x] **W18-01 완료** — 상태: `complete`. 근거: [W18-01 인계](../validation/tasks/W18-01.md).
 - **직접 선행:** [W17-03](07-trial-and-review.md#w17-03), [W29-04](06-replay-packages.md#w29-04), [W14-03](05a-action-evidence-and-models.md#w14-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R08, R30, R34, UI-07.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -165,7 +165,7 @@ assert observed == {
 
 ## W18-02 — 전후 screenshot·로그·단계 탐색 공통 viewer
 
-- [ ] **W18-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W18-02.md`(구현 때 생성).
+- [x] **W18-02 완료** — 상태: `complete`. 근거: [W18-02 인계](../validation/tasks/W18-02.md).
 - **직접 선행:** [W18-01](07-trial-and-review.md#w18-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R14, R21, R27, UI-07.04, UI-11.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -193,7 +193,7 @@ assert observed == {
 
 ## W18-03 — action 별 사후 검토·미검토 이동·counts
 
-- [ ] **W18-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W18-03.md`(구현 때 생성).
+- [x] **W18-03 완료** — 상태: `complete`. 근거: [W18-03 인계](../validation/tasks/W18-03.md).
 - **직접 선행:** [W18-02](07-trial-and-review.md#w18-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R08, R30, UI-07.05.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -221,7 +221,7 @@ assert observed == {
 
 ## W18-04 — 검토 입력·시범·버전·후보 diff 패널
 
-- [ ] **W18-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W18-04.md`(구현 때 생성).
+- [x] **W18-04 완료** — 상태: `complete`. 근거: [W18-04 인계](../validation/tasks/W18-04.md).
 - **직접 선행:** [W18-03](07-trial-and-review.md#w18-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R24, R27, R30, R34, UI-07.06.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -249,7 +249,7 @@ assert observed == {
 
 ## W18-05 — 검토 요청 수명·보호 조회·연장 UI
 
-- [ ] **W18-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W18-05.md`(구현 때 생성).
+- [x] **W18-05 완료** — 상태: `complete`. 근거: [W18-05 인계](../validation/tasks/W18-05.md).
 - **직접 선행:** [W18-04](07-trial-and-review.md#w18-04)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C05 / C07 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R15, R30, UI-07.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -277,7 +277,7 @@ assert observed == {
 
 ## W19-01 — 승인·default·보호·audit 원자 CAS
 
-- [ ] **W19-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W19-01.md`(구현 때 생성).
+- [x] **W19-01 완료** — 상태: `complete`. 근거: [W19-01 인계](../validation/tasks/W19-01.md).
 - **직접 선행:** [W18-05](07-trial-and-review.md#w18-05)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R12, R24, R30, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -305,7 +305,7 @@ assert observed == {
 
 ## W19-02 — 승인·반려 버튼·충돌·사유 UI
 
-- [ ] **W19-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W19-02.md`(구현 때 생성).
+- [x] **W19-02 완료** — 상태: `complete`. 근거: [W19-02 인계](../validation/tasks/W19-02.md).
 - **직접 선행:** [W19-01](07-trial-and-review.md#w19-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R21, R24, R30, UI-07.08.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -333,7 +333,7 @@ assert observed == {
 
 ## W19-03 — 명시 철회·queued 차단·running 취소
 
-- [ ] **W19-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W19-03.md`(구현 때 생성).
+- [x] **W19-03 완료** — 상태: `complete`. 근거: [W19-03 인계](../validation/tasks/W19-03.md).
 - **직접 선행:** [W19-02](07-trial-and-review.md#w19-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C08 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R11, R12, R24, UI-07.09.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

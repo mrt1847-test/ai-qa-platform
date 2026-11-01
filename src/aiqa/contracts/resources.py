@@ -15,6 +15,7 @@ __all__ = [
     "TARGET_KINDS",
     "InventoryReceipt",
     "InventoryReport",
+    "ResourcePreviewView",
     "PhysicalResourceKey",
     "ResourceAlias",
     "ResourceObservation",
@@ -43,6 +44,17 @@ class InventoryReceipt:
     resource_key: str
     state: str
     project_id: UUID
+
+
+@dataclass(frozen=True, slots=True)
+class ResourcePreviewView:
+    resource_id: UUID
+    state: str
+    observed_at: str | None
+    geometry: str
+    artifact_id: str | None
+    reason: str
+    raw_control: bool
 
 
 def resource_key(worker_id: UUID, native_id: str) -> str:

@@ -1,4 +1,7 @@
-"""Typed web IPC. A script message cannot carry a browser or CDP handle."""
+"""Typed web IPC. A script message cannot carry a browser or CDP handle.
+
+The compiler emits only these calls. Parsing a message does not execute it.
+"""
 
 from __future__ import annotations
 
@@ -46,3 +49,13 @@ def parse_ipc_message(payload: dict) -> TypedAction:
     if not isinstance(selector, str) or not isinstance(value, str):
         raise ValueError("ipc selector and value must be strings")
     return TypedAction(type=action_type, selector=selector, value=value)
+
+
+def runtime_call(action: TypedAction) -> str:
+    """Render one allowed action as a qa_runtime call. The selector and value stay unchanged."""
+
+    if action.type not in WEB_ACTION_TYPES:
+        raise ValueError("ipc action type is outside the web subset")
+    if action.type in {"fill", "select"}:
+        return f"qa_runtime.{action.type}({action.selector!r}, {action.value!r})"
+    return f"qa_runtime.{action.type}({action.selector!r})"

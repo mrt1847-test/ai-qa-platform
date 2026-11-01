@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}로컬 연결{% endblock %}
+{% block content %}
+  <h1>로컬 연결</h1>
+  <p>{{ status.explanation }}</p>
+  <p>API {{ status.api_instances }}</p>
+  <p>worker {{ status.worker_instances }}</p>
+  <p>시작 명령 {{ status.command }}</p>
+  <p>{% if status.tab_close_cancels %}탭이 프로세스를 끝냅니다{% else %}탭을 닫아도 프로세스는 유지됩니다{% endif %}</p>
+  {% if stop_notice %}
+  <p>{{ stop_notice.summary }}</p>
+  <p>자동 재개 {{ stop_notice.automatic_resume }}</p>
+  <p>복귀 뒤 lost, 불명, quarantine 안내 뒤 새 실행이 필요합니다.</p>
+  <p>PC 중단 동안 실행 유지를 보장하지 않습니다.</p>
+  {% endif %}
+  {% include "components/connection.html" %}
+{% endblock %}

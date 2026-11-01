@@ -59,9 +59,9 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 | UI-04.03 | 검증/단계·code/설정/실행이력/검토·버전 통합 탭·읽기 전용 snapshot | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | complete |
 | UI-04.04 | 최신 draft와 기본 approved 병기·선택 버전·정의/절차/설정 diff | [W10-08](04a-case-management-ui.md#w10-08) | `test_w10_08` | complete |
 | UI-04.05 | AI 구조화 job·대기/실패·제안 diff·원문 유지·명시 수락 | [W16-02](05b-recording-workflow.md#w16-02) | `test_w16_02` | 미구현·미실행 |
-| UI-04.06 | 녹화 이력·source/produced receipt·부분 기록 열기 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | 미구현·미실행 |
-| UI-04.07 | 재녹화 base/사유/목표 유지·변경 diff·장치/data/reset·기존 default | [W16-08](05b-recording-workflow.md#w16-08) | `test_w16_08` | 미구현·미실행 |
-| UI-04.08 | 원본/승인 code 또는 plan·runtime/compiler/lock/package hash·mapping | [W29-06](06-replay-packages.md#w29-06) | `test_w29_06` | 미구현·미실행 |
+| UI-04.06 | 녹화 이력·source/produced receipt·부분 기록 열기 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | complete |
+| UI-04.07 | 재녹화 base/사유/목표 유지·변경 diff·장치/data/reset·기존 default | [W16-08](05b-recording-workflow.md#w16-08) | `test_w16_08` | complete |
+| UI-04.08 | 원본/승인 code 또는 plan·runtime/compiler/lock/package hash·mapping | [W29-06](06-replay-packages.md#w29-06) | `test_w29_06` | complete |
 | UI-04.09 | 승인 healing capability/scope/상한·기본OFF와 run ON/OFF의 구분 | [W31-06](08a-self-healing.md#w31-06) | `test_w31_06` | 미구현·미실행 |
 | UI-04.10 | 케이스별 환경/앱URL/data·reset/cleanup/limits·check method/binding·정책 편집 | [W10-11](04a-case-management-ui.md#w10-11) | `test_w10_11` | complete |
 | UI-05.01 | Android/Web 기기 선택·권한 있는 최근 화면·시각·busy/없음/만료 | [W11-01](04b-environments-and-launcher.md#w11-01) | `test_w11_01` | 미구현·미실행 |
@@ -71,24 +71,24 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 | UI-05.05 | 시작 preflight·불가 사유·busy 대기/돌아가기·중복 시작 차단 | [W16-03](05b-recording-workflow.md#w16-03) | `test_w16_03` | 미구현·미실행 |
 | UI-05.06 | 현재 화면·action 전후PNG/log·ACK/대기/오류 counts·메모·마지막 수신 | [W16-04](05b-recording-workflow.md#w16-04) | `test_w16_04` | 미구현·미실행 |
 | UI-05.07 | 녹화 완료/중단·flush/정리/저장 구분·실패/부분도 저장·사후 화면 이동 | [W16-05](05b-recording-workflow.md#w16-05) | `test_w16_05` | 미구현·미실행 |
-| UI-06.01 | REC 목록/input/output/base·대상/시각/action 수·저장/종료/완결/증거/검토 분리 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | 미구현·미실행 |
-| UI-06.02 | 미완성/반려 기록·전후 증거/수집 범위/종료 사유·receipt 열기 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | 미구현·미실행 |
+| UI-06.01 | REC 목록/input/output/base·대상/시각/action 수·저장/종료/완결/증거/검토 분리 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | complete |
+| UI-06.02 | 미완성/반려 기록·전후 증거/수집 범위/종료 사유·receipt 열기 | [W16-06](05b-recording-workflow.md#w16-06) | `test_w16_06` | complete |
 | UI-06.03 | 복구/재컴파일 요청·진행/실패·새 manifest/version·기존 version 보존 | [W16-07](05b-recording-workflow.md#w16-07) | `test_w16_07` | 미구현·미실행 |
-| UI-06.04 | 미완성 후보에서 새 전체 재녹화·이전 프로세스 재개 없음 | [W16-08](05b-recording-workflow.md#w16-08) | `test_w16_08` | 미구현·미실행 |
-| UI-07.01 | package/lock/mapping ready·컴파일/격리/계측 차단 사유 | [W29-06](06-replay-packages.md#w29-06) | `test_w29_06` | 미구현·미실행 |
-| UI-07.02 | 미승인 시범·OFF actor0·명시 verifier·새 현재 근거 | [W17-01](07-trial-and-review.md#w17-01) | `test_w17_01` | 미구현·미실행 |
-| UI-07.03 | 완료/저장 후 검토 요청·exact source/trial/evidence snapshot | [W18-01](07-trial-and-review.md#w18-01) | `test_w18_01` | 미구현·미실행 |
-| UI-07.04 | step/action 전후PNG·확대/이동/100%·시각/좌표/로그·출처 구분 | [W18-02](07-trial-and-review.md#w18-02) | `test_w18_02` | 미구현·미실행 |
-| UI-07.05 | reviewed/needs_change/evidence_missing·의견·미검토 이동/counts | [W18-03](07-trial-and-review.md#w18-03) | `test_w18_03` | 미구현·미실행 |
-| UI-07.06 | 입력/설정/시범/기록/버전 탭·base/candidate diff·불가 사유·새 draft/REC | [W18-04](07-trial-and-review.md#w18-04) | `test_w18_04` | 미구현·미실행 |
-| UI-07.07 | review 보관 기한/보호·연장·만료 근거의 승인 차단 | [W18-05](07-trial-and-review.md#w18-05) | `test_w18_05` | 미구현·미실행 |
-| UI-07.08 | 승인 및 기본본 사용·반려 사유·409 재비교·기록/기존 기본본 유지 | [W19-02](07-trial-and-review.md#w19-02) | `test_w19_02` | 미구현·미실행 |
-| UI-07.09 | 철회 영향/사유·queued 차단/running 취소·no fallback | [W19-03](07-trial-and-review.md#w19-03) | `test_w19_03` | 미구현·미실행 |
+| UI-06.04 | 미완성 후보에서 새 전체 재녹화·이전 프로세스 재개 없음 | [W16-08](05b-recording-workflow.md#w16-08) | `test_w16_08` | complete |
+| UI-07.01 | package/lock/mapping ready·컴파일/격리/계측 차단 사유 | [W29-06](06-replay-packages.md#w29-06) | `test_w29_06` | complete |
+| UI-07.02 | 미승인 시범·OFF actor0·명시 verifier·새 현재 근거 | [W17-01](07-trial-and-review.md#w17-01) | `test_w17_01` | complete |
+| UI-07.03 | 완료/저장 후 검토 요청·exact source/trial/evidence snapshot | [W18-01](07-trial-and-review.md#w18-01) | `test_w18_01` | complete |
+| UI-07.04 | step/action 전후PNG·확대/이동/100%·시각/좌표/로그·출처 구분 | [W18-02](07-trial-and-review.md#w18-02) | `test_w18_02` | complete |
+| UI-07.05 | reviewed/needs_change/evidence_missing·의견·미검토 이동/counts | [W18-03](07-trial-and-review.md#w18-03) | `test_w18_03` | complete |
+| UI-07.06 | 입력/설정/시범/기록/버전 탭·base/candidate diff·불가 사유·새 draft/REC | [W18-04](07-trial-and-review.md#w18-04) | `test_w18_04` | complete |
+| UI-07.07 | review 보관 기한/보호·연장·만료 근거의 승인 차단 | [W18-05](07-trial-and-review.md#w18-05) | `test_w18_05` | complete |
+| UI-07.08 | 승인 및 기본본 사용·반려 사유·409 재비교·기록/기존 기본본 유지 | [W19-02](07-trial-and-review.md#w19-02) | `test_w19_02` | complete |
+| UI-07.09 | 철회 영향/사유·queued 차단/running 취소·no fallback | [W19-03](07-trial-and-review.md#w19-03) | `test_w19_03` | complete |
 | UI-07.10 | 필수 근거의 보호/만료/누락 조회·pin 이유·재검증 안내 | [W26-03](10-retention-and-release-gates.md#w26-03) | `test_w26_03` | 미구현·미실행 |
 | UI-08.01 | 묶음 목록·검색/생성·metadata·복제/보관·구성/수행 이력 | [W21-01](08b-execution-and-suites.md#w21-01) | `test_w21_01` | 미구현·미실행 |
 | UI-08.02 | AUT 검색·entry 추가/제거/정렬·exact version/data/env/reset·continue/stop | [W21-02](08b-execution-and-suites.md#w21-02) | `test_w21_02` | 미구현·미실행 |
 | UI-08.03 | 새 승인 알림·diff/영향·명시 선택 교체·새 suite revision | [W21-03](08b-execution-and-suites.md#w21-03) | `test_w21_03` | 미구현·미실행 |
-| UI-09.01 | 시범 목적/미승인 허용·OFF 고정·공통 마법사 진입 | [W17-01](07-trial-and-review.md#w17-01) | `test_w17_01` | 미구현·미실행 |
+| UI-09.01 | 시범 목적/미승인 허용·OFF 고정·공통 마법사 진입 | [W17-01](07-trial-and-review.md#w17-01) | `test_w17_01` | complete |
 | UI-09.02 | replay/actor0·verifier 필요 조건·healing OFF/ON/한도·진행 중 불변 | [W31-06](08a-self-healing.md#w31-06) | `test_w31_06` | 미구현·미실행 |
 | UI-09.03 | exact 승인/과거본·기기/앱/변수/모델 차단·busy·명시 제외 | [W20-01](08b-execution-and-suites.md#w20-01) | `test_w20_01` | 미구현·미실행 |
 | UI-09.04 | 4단계·이름/purpose/source/사유·data/env/build/reset·릴리스·최종 counts/시작 | [W20-03](08b-execution-and-suites.md#w20-03) | `test_w20_03` | 미구현·미실행 |
@@ -101,7 +101,7 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 | UI-10.06 | 전체/ITEM 취소·요청/정지/정리·완료/FAIL 보존 | [W22-01](08b-execution-and-suites.md#w22-01) | `test_w22_01` | 미구현·미실행 |
 | UI-10.07 | 미시작 skip·사유·running 거부·SKIPPED 집계 | [W22-02](08b-execution-and-suites.md#w22-02) | `test_w22_02` | 미구현·미실행 |
 | UI-10.08 | 같은 구성/선택 ITEM 새 재실행·원본/사유·확인 마법사 | [W22-03](08b-execution-and-suites.md#w22-03) | `test_w22_03` | 미구현·미실행 |
-| UI-11.01 | 공통 증거 viewer·첫 실패/이전다음·로그/시도·만료/누락 | [W18-02](07-trial-and-review.md#w18-02) | `test_w18_02` | 미구현·미실행 |
+| UI-11.01 | 공통 증거 viewer·첫 실패/이전다음·로그/시도·만료/누락 | [W18-02](07-trial-and-review.md#w18-02) | `test_w18_02` | complete |
 | UI-11.02 | 불변 수정 제안 저장/보기·diff·새 전체 REC 채택 | [W31-05](08a-self-healing.md#w31-05) | `test_w31_05` | 미구현·미실행 |
 | UI-11.03 | 원래 오류→제안→정책→override→dispatch→QA·치유 금지 사유·badge | [W31-06](08a-self-healing.md#w31-06) | `test_w31_06` | 미구현·미실행 |
 | UI-11.04 | 원본/사유가 있는 새 재실행·새 버전/재녹화 이동 | [W22-03](08b-execution-and-suites.md#w22-03) | `test_w22_03` | 미구현·미실행 |

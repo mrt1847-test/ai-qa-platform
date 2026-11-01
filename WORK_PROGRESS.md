@@ -1,6 +1,6 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
-기준일: **2026-11-01 (Asia/Seoul)** · 제품 설계 v0.6+보완 · **완료53/163**, 상위6/33 W.
+기준일: **2026-11-01 (Asia/Seoul)** · 제품 설계 v0.6+보완 · **완료89/163**, 상위6/33 W.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**
 [최소 기반4개](docs/execution/00-bootstrap.md)를 먼저 만들고 환경에 막히지 않는 독립 core 경로로 진행한다.
@@ -8,7 +8,7 @@
 
 [전체 실행 안내](docs/execution/README.md) · [공통 계약 C13/C14](docs/execution/CONTRACTS.md) · [선행/차단 수정](docs/execution/SCHEDULING.md) · [UI 추적](docs/execution/UI_COVERAGE.md) · [요구 추적](docs/execution/COVERAGE.md)
 
-2026-11-01 검토 후 [R01~R20/V01 보완](docs/validation/reviews/2026-11-01-remediation-result.md)을 구현·검증했다. 기존53개 완료의 결함 수정이며 새 완료 수를 추가하지 않았다. Current는 W15-01이며 실제 VM/기기/모델/최종 수용 gate는 그대로다.
+2026-11-01 검토 후 [R01~R20/V01 보완](docs/validation/reviews/2026-11-01-remediation-result.md)을 구현·검증했다. 기존53개 완료의 결함 수정이며 새 완료 수를 추가하지 않았다. Current는 W31-02이며 실제 VM/기기/모델/최종 수용 gate는 그대로다.
 
 ## 1. 현재 상태
 
@@ -18,7 +18,7 @@
 | 외부 대기 | W01-02 blocked, [VM 근거](docs/validation/tasks/W01-02.md) 보존 |
 | 제품 최소 앱 | W00 완료(상세4/4). 엔진·VM·USB 검증은 아님 |
 | 상위 작업 | **완료6 / 33 W** |
-| 상세 작업 | **완료53 / 163** |
+| 상세 작업 | **완료89 / 163** |
 | 실행 지시 대상 | [NEXT_ACTION Current](NEXT_ACTION.md#current) |
 | 이후 후보 | [NEXT_ACTION Next](NEXT_ACTION.md#next) |
 | 실제 engine/DB/회귀 합격 | source 조사와 구별, 해당 live/통합 gate 근거 필요 |
@@ -36,14 +36,14 @@ W00-01–04와 W00 상위, W04-01–04와 W04 상위, W05·W06·W08·W10 상위�
 | A · 공개 코드·모델·연결 탐색 | W01 W02 W03 | 11 | 1 | [A · 공개 코드·모델·연결 탐색](docs/execution/01-foundation-probes.md) |
 | B · 데이터·권한·불변 버전 | W04 W05 W06 | 20 | 20 | [B-1 · 권한·케이스·TC·환경·data](docs/execution/02a-assets-and-scope.md) / [B-2 · 자원·REC·job·증거·장기 facts schema](docs/execution/02b-job-evidence-schema.md) |
 | C · 세션·작업 큐·중단 | W07 W08 W09 | 13 | 9 | [C · 세션·작업 큐·중단](docs/execution/03-worker-and-sessions.md) |
-| D · 관리 화면·환경·설정 | W10 W11 W12 | 22 | 11 | [D-1 · 프로젝트·케이스·설정·선택 TC UI](docs/execution/04a-case-management-ui.md) / [D-2 · 환경·기기·앱·data·launcher UI](docs/execution/04b-environments-and-launcher.md) |
-| E · AI 녹화·먼저 저장·증거 | W13 W14 W15 W16 | 20 | 8 | [E-1 · 행동·증거·spool·모델 계측](docs/execution/05a-action-evidence-and-models.md) / [E-2 · 녹화 입력·진행·저장·재녹화](docs/execution/05b-recording-workflow.md) |
-| F · 승인 package·모델 없는 재생 | W29 W30 | 10 | 0 | [F · 승인 package·모델 없는 재생](docs/execution/06-replay-packages.md) |
-| G · 시범·사후 검토·승인 | W17 W18 W19 | 13 | 0 | [G · 시범·사후 검토·승인](docs/execution/07-trial-and-review.md) |
-| H · 선택 치유·정식·묶음 수행 | W31 W20 W21 W22 | 20 | 0 | [H-1 · 선택 셀프힐링·제안](docs/execution/08a-self-healing.md) / [H-2 · 정식·선택·묶음·취소·재실행](docs/execution/08b-execution-and-suites.md) |
-| I · 결과·분석·내보내기 | W23 W24 W25 | 13 | 0 | [I · 결과·분석·내보내기](docs/execution/09-results-and-analytics.md) |
+| D · 관리 화면·환경·설정 | W10 W11 W12 | 22 | 20 | [D-1 · 프로젝트·케이스·설정·선택 TC UI](docs/execution/04a-case-management-ui.md) / [D-2 · 환경·기기·앱·data·launcher UI](docs/execution/04b-environments-and-launcher.md) |
+| E · AI 녹화·먼저 저장·증거 | W13 W14 W15 W16 | 20 | 16 | [E-1 · 행동·증거·spool·모델 계측](docs/execution/05a-action-evidence-and-models.md) / [E-2 · 녹화 입력·진행·저장·재녹화](docs/execution/05b-recording-workflow.md) |
+| F · 승인 package·모델 없는 재생 | W29 W30 | 10 | 6 | [F · 승인 package·모델 없는 재생](docs/execution/06-replay-packages.md) |
+| G · 시범·사후 검토·승인 | W17 W18 W19 | 13 | 11 | [G · 시범·사후 검토·승인](docs/execution/07-trial-and-review.md) |
+| H · 선택 치유·정식·묶음 수행 | W31 W20 W21 W22 | 20 | 1 | [H-1 · 선택 셀프힐링·제안](docs/execution/08a-self-healing.md) / [H-2 · 정식·선택·묶음·취소·재실행](docs/execution/08b-execution-and-suites.md) |
+| I · 결과·분석·내보내기 | W23 W24 W25 | 13 | 1 | [I · 결과·분석·내보내기](docs/execution/09-results-and-analytics.md) |
 | J · 보관·장애·비용·최종 동선 | W26 W27 W32 W28 | 17 | 0 | [J · 보관·장애·비용·최종 동선](docs/execution/10-retention-and-release-gates.md) |
-| 합계 | **33 W** | **163** | **53** | **15영역** |
+| 합계 | **33 W** | **163** | **89** | **15영역** |
 
 `W00-01→02→03→04→W04-01`로 기본 앱과 DB/core를 진행할 수 있다.
 W01-02 VM이 없어도 W04–06/queue/관리 UI·core 보고/보관 경로를 전부 묶어 막지 않는다.
@@ -160,12 +160,12 @@ fixture 데이터/가짜 성공을 생산 경로에 넣지 않는다. 기존 실
 
 ### W11 — 기기·브라우저·앱 빌드·데이터 UI
 
-- [ ] **W11 완료** — 상세0/8. Web은 테스트 브라우저, Android는 직접 연결 기기를 선택하고 필요한 정보를 웹에서 지정한다.
+- [ ] **W11 완료** — 상세6/8. Web은 테스트 브라우저, Android는 직접 연결 기기를 선택하고 필요한 정보를 웹에서 지정한다.
 - 상세 작업: [W11-01](docs/execution/04b-environments-and-launcher.md#w11-01), [W11-02](docs/execution/04b-environments-and-launcher.md#w11-02), [W11-03](docs/execution/04b-environments-and-launcher.md#w11-03), [W11-04](docs/execution/04b-environments-and-launcher.md#w11-04), [W11-05](docs/execution/04b-environments-and-launcher.md#w11-05), [W11-06](docs/execution/04b-environments-and-launcher.md#w11-06), [W11-07](docs/execution/04b-environments-and-launcher.md#w11-07), [W11-08](docs/execution/04b-environments-and-launcher.md#w11-08).
 
 ### W12 — 로컬 시작·연결 상태·탭 재접속
 
-- [ ] **W12 완료** — 상세0/3. 일상 테스트 조작에 터미널 입력이 필요하지 않고 탭/PC 수명 차이를 안내한다.
+- [ ] **W12 완료** — 상세3/3. 일상 테스트 조작에 터미널 입력이 필요하지 않고 탭/PC 수명 차이를 안내한다.
 - 상세 작업: [W12-01](docs/execution/04b-environments-and-launcher.md#w12-01), [W12-02](docs/execution/04b-environments-and-launcher.md#w12-02), [W12-03](docs/execution/04b-environments-and-launcher.md#w12-03).
 - 상위 실제 수용 gate: [W27-02](docs/execution/10-retention-and-release-gates.md#w27-02). core leaf만으로 부모를 완료하지 않는다.
 
@@ -182,43 +182,43 @@ fixture 데이터/가짜 성공을 생산 경로에 넣지 않는다. 기존 실
 
 ### W15 — 모델 역할별 호출·usage·예산 제어
 
-- [ ] **W15 완료** — 상세0/4. 계측되지 않은 usage를0으로 표시하지 않고 승인한 실행 한도를 신뢰 코드가 적용한다.
+- [ ] **W15 완료** — 상세3/4. 계측되지 않은 usage를0으로 표시하지 않고 승인한 실행 한도를 신뢰 코드가 적용한다.
 - 상세 작업: [W15-01](docs/execution/05a-action-evidence-and-models.md#w15-01), [W15-02](docs/execution/05a-action-evidence-and-models.md#w15-02), [W15-03](docs/execution/05a-action-evidence-and-models.md#w15-03), [W15-04](docs/execution/05a-action-evidence-and-models.md#w15-04).
 
 ### W16 — 녹화 마법사·완료/중단 저장·새 후보 생성
 
-- [ ] **W16 완료** — 상세0/8. 실패/중단/반려 여부와 무관하게 기록이 먼저 저장되고 전체 재녹화 후보가 같은 케이스에 남는다.
+- [ ] **W16 완료** — 상세5/8. 실패/중단/반려 여부와 무관하게 기록이 먼저 저장되고 전체 재녹화 후보가 같은 케이스에 남는다.
 - 상세 작업: [W16-01](docs/execution/05b-recording-workflow.md#w16-01), [W16-02](docs/execution/05b-recording-workflow.md#w16-02), [W16-03](docs/execution/05b-recording-workflow.md#w16-03), [W16-04](docs/execution/05b-recording-workflow.md#w16-04), [W16-05](docs/execution/05b-recording-workflow.md#w16-05), [W16-06](docs/execution/05b-recording-workflow.md#w16-06), [W16-07](docs/execution/05b-recording-workflow.md#w16-07), [W16-08](docs/execution/05b-recording-workflow.md#w16-08).
 
 ### W29 — CUAWright 승인 Web package·격리 direct replay
 
-- [ ] **W29 완료** — 상세0/6. 승인된 exact code/lock/mapping을 격리 재생하고 일반 actor0·driver/lease/capture 통제를 입증한다.
+- [ ] **W29 완료** — 상세4/6. 승인된 exact code/lock/mapping을 격리 재생하고 일반 actor0·driver/lease/capture 통제를 입증한다.
 - 상세 작업: [W29-01](docs/execution/06-replay-packages.md#w29-01), [W29-02](docs/execution/06-replay-packages.md#w29-02), [W29-03](docs/execution/06-replay-packages.md#w29-03), [W29-04](docs/execution/06-replay-packages.md#w29-04), [W29-05](docs/execution/06-replay-packages.md#w29-05), [W29-06](docs/execution/06-replay-packages.md#w29-06).
 
 ### W30 — Android action plan·결정적/좌표 replay
 
-- [ ] **W30 완료** — 상세0/4. 같은 package·화면 조건으로 재생하며 기록과 현재 검증을 새로 남기고 actor0이다.
+- [ ] **W30 완료** — 상세2/4. 같은 package·화면 조건으로 재생하며 기록과 현재 검증을 새로 남기고 actor0이다.
 - 상세 작업: [W30-01](docs/execution/06-replay-packages.md#w30-01), [W30-02](docs/execution/06-replay-packages.md#w30-02), [W30-03](docs/execution/06-replay-packages.md#w30-03), [W30-04](docs/execution/06-replay-packages.md#w30-04).
 
 ### W17 — 미승인 시범과 실제 QA 판정
 
-- [ ] **W17 완료** — 상세0/4. 승인 이전에도 시범이 가능하며 판정/증거는 이번 수행에서 새로 수집한다.
+- [ ] **W17 완료** — 상세3/4. 승인 이전에도 시범이 가능하며 판정/증거는 이번 수행에서 새로 수집한다.
 - 상세 작업: [W17-01](docs/execution/07-trial-and-review.md#w17-01), [W17-02](docs/execution/07-trial-and-review.md#w17-02), [W17-03](docs/execution/07-trial-and-review.md#w17-03), [W17-04](docs/execution/07-trial-and-review.md#w17-04).
 
 ### W18 — 저장본·동작별 출처/시범 검토 UI
 
-- [ ] **W18 완료** — 상세0/5. 사람이 녹화가 끝나 저장된 동작을 보고 사후 검토하며 runtime 허가와 섞이지 않는다.
+- [ ] **W18 완료** — 상세5/5. 사람이 녹화가 끝나 저장된 동작을 보고 사후 검토하며 runtime 허가와 섞이지 않는다.
 - 상세 작업: [W18-01](docs/execution/07-trial-and-review.md#w18-01), [W18-02](docs/execution/07-trial-and-review.md#w18-02), [W18-03](docs/execution/07-trial-and-review.md#w18-03), [W18-04](docs/execution/07-trial-and-review.md#w18-04), [W18-05](docs/execution/07-trial-and-review.md#w18-05).
 - 상위 실제 수용 gate: [W17-04](docs/execution/07-trial-and-review.md#w17-04). core leaf만으로 부모를 완료하지 않는다.
 
 ### W19 — 승인·반려·철회·재녹화 전환의 원자성
 
-- [ ] **W19 완료** — 상세0/4. 저장과 승인이 분리되고 재녹화/철회/경합에서도 잘못된 기본본이나 사라진 승인 근거가 없다.
+- [ ] **W19 완료** — 상세3/4. 저장과 승인이 분리되고 재녹화/철회/경합에서도 잘못된 기본본이나 사라진 승인 근거가 없다.
 - 상세 작업: [W19-01](docs/execution/07-trial-and-review.md#w19-01), [W19-02](docs/execution/07-trial-and-review.md#w19-02), [W19-03](docs/execution/07-trial-and-review.md#w19-03), [W19-04](docs/execution/07-trial-and-review.md#w19-04).
 
 ### W31 — bounded healing ON/OFF·runtime override·수정 제안
 
-- [ ] **W31 완료** — 상세0/7. 제안은 immutable repair proposal로 남고 채택은 새 전체 REC→OFF trial→사후 승인이다. 원본 code/default/suite 자동 수정0, 생성 code 즉시 치유 실행0.
+- [ ] **W31 완료** — 상세1/7. 제안은 immutable repair proposal로 남고 채택은 새 전체 REC→OFF trial→사후 승인이다. 원본 code/default/suite 자동 수정0, 생성 code 즉시 치유 실행0.
 - 상세 작업: [W31-01](docs/execution/08a-self-healing.md#w31-01), [W31-02](docs/execution/08a-self-healing.md#w31-02), [W31-03](docs/execution/08a-self-healing.md#w31-03), [W31-04](docs/execution/08a-self-healing.md#w31-04), [W31-05](docs/execution/08a-self-healing.md#w31-05), [W31-06](docs/execution/08a-self-healing.md#w31-06), [W31-07](docs/execution/08a-self-healing.md#w31-07).
 
 ### W20 — 단독 정식 접수·exact snapshot
@@ -240,7 +240,7 @@ fixture 데이터/가짜 성공을 생산 경로에 넣지 않는다. 기존 실
 
 ### W23 — ITEM 근거·실패 분석·7결과 리포트
 
-- [ ] **W23 완료** — 상세0/5. 완료율/검증 통과/전체 통과·미검증을 구분하고 분석 의견이 원본 판정을 바꾸지 않는다.
+- [ ] **W23 완료** — 상세1/5. 완료율/검증 통과/전체 통과·미검증을 구분하고 분석 의견이 원본 판정을 바꾸지 않는다.
 - 상세 작업: [W23-01](docs/execution/09-results-and-analytics.md#w23-01), [W23-02](docs/execution/09-results-and-analytics.md#w23-02), [W23-03](docs/execution/09-results-and-analytics.md#w23-03), [W23-04](docs/execution/09-results-and-analytics.md#w23-04), [W23-05](docs/execution/09-results-and-analytics.md#w23-05).
 - 상위 실제 수용 gate: [W22-04](docs/execution/08b-execution-and-suites.md#w22-04), [W31-07](docs/execution/08a-self-healing.md#w31-07). core leaf만으로 부모를 완료하지 않는다.
 
@@ -341,6 +341,42 @@ fixture 데이터/가짜 성공을 생산 경로에 넣지 않는다. 기존 실
 | 2026-11-01 | W14-02 | complete | ready 전에 ACK하지 않는다. hash가 다르면 ready가 아니다. 경로가 밖으로 나가지 않는다. 같은 파일은 같은 receipt다. W14 상위는 열림 | W14-03 |
 | 2026-11-01 | W14-03 | complete | 없는 파일을 성공으로 돌려주지 않는다. 바뀐 파일은 corruption이다. 원래 hash는 바꾸지 않는다. W14 상위는 열림 | W14-04 |
 | 2026-11-01 | W14-04 | complete | 미전송 캡처는 새 recovery manifest다. 기존 결과는 그대로다. 늦은 사진은 즉시 후 캡처가 아니다. dispatch는 0이다. W14 상위는 열림 | W15-01 |
+| 2026-11-01 | W15-01 | complete | 등록되지 않은 check 호출은 거절된다. 다른 ITEM episode 호출은 거절된다. replay script에는 key가 없다. authoring 호출은 계측된다. W15 상위는 열림 | W15-02 |
+| 2026-11-01 | W15-02 | complete | 미보고 토큰은 null이다. 미사용 role의 call은 0이다. 일부 토큰만 있으면 partial이다. 늦은 정산은 원래 값을 바꾸지 않는다. W15 상위는 열림 | W15-03 |
+| 2026-11-01 | W15-03 | complete | 예산을 넘는 예약은 0이다. 가격이 없는 strict 호출은 거절된다. healer 세 번째 전송은 거절된다. 늦은 응답은 행동을 시작하지 않는다. W15 상위는 열림 | W11-01 |
+| 2026-11-01 | W11-01 | complete | 관리 화면은 테스트 브라우저가 아니다. 오래된 수신 시각이 보인다. 권한 없는 preview는 거절된다. preview는 기기를 조작하지 않는다. W11 상위는 열림 | W11-02 |
+| 2026-11-01 | W11-02 | complete | 허용 범위 밖 주소와 패키지는 거절된다. 미지원 기능은 선택할 수 없다. 새 revision은 이전 스냅샷을 바꾸지 않는다. W11 상위는 열림 | W11-03 |
+| 2026-11-01 | W11-03 | complete | 필수 열이 없으면 422이다. 같은 행 ID는 거절된다. 이전 revision의 값은 유지된다. 응답에 비밀 원문은 없다. W11 상위는 열림 | W11-05 |
+| 2026-11-01 | W11-05 | complete | 분할 묶음은 거절된다. ZIP 경로 탈출은 거절된다. 분석 도구가 없으면 ready가 아니다. 올린 파일은 실행하지 않는다. W11 상위는 열림 | W11-07 |
+| 2026-11-01 | W11-07 | complete | VM이 없으면 Web은 ready가 아니다. 복구는 proof가 필요하다. 지원하지 않는 버튼은 0이다. 진단 QA는 null이다. W11 상위는 열림 | W11-08 |
+| 2026-11-01 | W11-08 | complete | 다른 프로젝트 이력은 0건이다. 권한이 폐기된 worker는 작업을 받지 못한다. 보호 공간이 보인다. W11 상위는 열림 | W12-01 |
+| 2026-11-01 | W12-01 | complete | API는 1개다. worker는 1개다. 탭을 닫아도 프로세스는 유지된다. 포트 충돌은 설명된다. W12 상위는 열림 | W12-02 |
+| 2026-11-01 | W12-02 | complete | 조회 간격은 2초다. 재연결 mutation은 0이다. 선택한 action이 복원된다. 두 커서는 섞이지 않는다. W12 상위는 열림 | W12-03 |
+| 2026-11-01 | W12-03 | complete | 자동 재개는 0이다. 불명 상태를 성공으로 바꾸지 않는다. 마지막 수신이 보인다. 정리 또는 quarantine이 있다. W12 상위는 열림 | W16-01 |
+| 2026-11-01 | W16-01 | complete | 기기가 먼저다. TC는 필수가 아니다. 불완전 초안이 저장된다. 다른 대상 필드는 남지 않는다. W16 상위는 열림 | W16-03 |
+| 2026-11-01 | W16-03 | complete | 같은 키의 녹화는 1건이다. 다른 본문은 409이다. 해시가 다르면 409이다. TC가 없어도 접수된다. W16 상위는 열림 | W16-05 |
+| 2026-11-01 | W16-05 | complete | 승인 없이 저장된다. 실패도 저장된다. 같은 완료의 materialization은 1건이다. compiler가 없으면 package는 비어 있다. W16 상위는 열림 | W16-06 |
+| 2026-11-01 | W16-06 | complete | 저장된 기록이 완료를 뜻하지 않는다. 반려도 보인다. receipt 버전이 보인다. 로컬은 서버 저장이 아니다. W16 상위는 열림 | W16-08 |
+| 2026-11-01 | W16-08 | complete | 같은 케이스다. 기준 버전은 남는다. 기존 승인은 바뀌지 않는다. 늦은 완료가 head를 덮지 않는다. W16 상위는 열림 | W29-01 |
+| 2026-11-01 | W29-01 | complete | hash 순환은 허용되지 않는다. mapping이 없으면 ready가 아니다. 다른 source는 허용되지 않는다. W29 상위는 열림 | W29-02 |
+| 2026-11-01 | W29-02 | complete | 지원하지 않는 문법은 거절된다. expected는 바뀌지 않는다. 모든 행동이 매핑된다. W29 상위는 열림 | W29-04 |
+| 2026-11-01 | W29-04 | complete | ready package는 1건이다. 부분 commit은 0이다. 같은 manifest version은 1건이다. 늦은 attach는 거절된다. W29 상위는 열림 | W17-01 |
+| 2026-11-01 | W17-01 | complete | 승인 없는 ready package 시범은 가능하다. package가 없으면 시범은 거절된다. healing은 꺼져 있다. 결정적 검사는 키 없이 진행된다. AI 검사는 키가 없으면 막힌다. W17 상위는 열림 | W29-06 |
+| 2026-11-01 | W29-06 | complete | package가 없어도 기록은 보인다. code는 읽기 전용이다. mapping은 저장된 step과 같다. 다른 프로젝트 조회는 거절된다. W29 상위는 열림 | W17-02 |
+| 2026-11-01 | W17-02 | complete | 같은 값은 satisfied다. 다른 값은 violated다. 관찰이 없으면 unknown이다. 엔진 완료만으로 만족이 되지 않는다. W17 상위는 열림 | W30-01 |
+| 2026-11-01 | W30-01 | complete | tap/type/swipe/back만 plan이 된다. model loop는 plan 명령이 아니다. secret 원문은 저장되지 않는다. geometry가 없으면 ready가 아니다. W30 상위는 열림 | W17-03 |
+| 2026-11-01 | W17-03 | complete | violated에는 모델을 호출하지 않는다. 선언되지 않은 method도 호출하지 않는다. parse 실패는 unknown이다. 필수 위반 latch는 FAIL이다. W17 상위는 열림 | W30-02 |
+| 2026-11-01 | W30-02 | complete | 겹친 target은 dispatch하지 않는다. 해상도가 바뀌면 막는다. 추정 좌표 dispatch는 0이다. W30 상위는 열림 | W18-01 |
+| 2026-11-01 | W18-01 | complete | 다른 ITEM 증거와 섞인 action은 거절된다. healing 시범은 받지 않는다. 검토 pin과 30일 보호가 생긴다. W18 상위는 열림 | W18-02 |
+| 2026-11-01 | W18-02 | complete | 같은 시도의 전후 화면만 보인다. 다른 실행 그림으로 바꾸지 않는다. 만료는 사유로 보인다. 키보드로 다음 행동으로 이동한다. W18 상위는 열림 | W18-03 |
+| 2026-11-01 | W18-03 | complete | 의견은 entry에 덧붙는다. 출처와 시범의 같은 action 표시는 따로 센다. digest가 바뀌면 409이다. 녹화 중 의견은 거절된다. QA 행은 그대로다. W18 상위는 열림 | W18-04 |
+| 2026-11-01 | W18-04 | complete | 미완성 후보는 승인되지 않는다. 차단 사유가 보인다. 이전 검토는 복사되지 않는다. 출처와 시범은 따로 보인다. W18 상위는 열림 | W18-05 |
+| 2026-11-01 | W18-05 | complete | 연장은 새 보호 사건이다. 이전 기한은 그대로다. 만료된 근거는 승인을 막는다. 반려 기록은 남는다. 다른 승인 pin은 그대로다. W18 상위는 열림 | W19-01 |
+| 2026-11-01 | W19-01 | complete | 승인 사건과 pin과 기본본과 감사가 함께 남는다. 진 요청은 409이다. 이전 승인은 철회되지 않는다. 부분 승인 행은 0이다. W19 상위는 열림 | W19-02 |
+| 2026-11-01 | W19-02 | complete | 실패한 후보는 기본본을 바꾸지 않는다. 반려 기록은 남는다. 409는 다시 승인하지 않는다. 빈 사유는 거절된다. W19 상위는 열림 | W19-03 |
+| 2026-11-01 | W19-03 | complete | 철회하면 기본본은 비워진다. 이전 승인으로 돌아가지 않는다. 대기 접수는 막힌다. 끝난 판정은 그대로다. W19 상위는 열림 | W31-01 |
+| 2026-11-01 | W31-01 | complete | healing 기본은 꺼져 있다. 허용이 없으면 켜기 요청은 거절된다. 시범은 켜지지 않는다. 진행 중 snapshot은 바뀌지 않는다. W31 상위는 열림 | W23-01 |
+| 2026-11-01 | W23-01 | complete | 종료 10개의 완료율은 1, 검증 통과율은 0.75, 전체 통과율은 0.6, 미검증은 2다. 빈 실행의 비율은 비운다. 위반 취소는 실패 1회다. W23 상위는 열림 | W31-02 |
 
 진행률은50/163이다. W00, W04, W05, W06, W08, W10 상위는 각각 상세를 마쳤고, 엔진 검증은 아니다. W07 상위는 상세 1/4, W09 상위는 상세 3/4, W13 상위는 상세 4/4이고 parent gate는 남아 있다. W14 상위는 상세 4/4이고 parent gate는 남아 있다. W09-04는 W23-01을 기다린다. W11-01은 W14-03을 기다린다. W01-02 차단은 유지한다.
 

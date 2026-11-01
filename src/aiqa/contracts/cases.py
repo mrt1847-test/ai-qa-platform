@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from aiqa.contracts.healing import ApprovedHealingPolicy
 from aiqa.store.models import SecretRef
 
 JsonObject = dict[str, object]
@@ -78,6 +79,7 @@ class CaseVersion:
     verification_digest: str
     parent_version_id: UUID | None = None
     rebuild: bool = False
+    approved_healing: ApprovedHealingPolicy | None = None
 
 
 @dataclass(frozen=True, slots=True)

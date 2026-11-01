@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}데이터{% endblock %}
+{% block content %}
+  <h1>데이터</h1>
+  <p>이름, 열, 행, 값 참조, 케이스 연결을 새 revision으로 저장합니다.</p>
+  {% for item in datasets %}
+  <article>
+    <h2>{{ item.name }}</h2>
+    <p>revision {{ item.revision }}</p>
+    {% if item.case_id %}<p>연결 케이스 {{ item.case_id }}</p>{% endif %}
+    {% for row in item.rows %}
+    <p>{{ row.id }} {% for key, value in row["values"].items() %}{{ key }} {{ value }} {% endfor %}</p>
+    {% endfor %}
+    {% for row_id in item.changes %}
+    <p>{{ row_id }} 값이 바뀌었습니다.</p>
+    {% endfor %}
+  </article>
+  {% endfor %}
+  <form method="post" action="/api/v1/projects/{{ project_id }}/datasets">
+    <label>이름 <input name="name" value=""></label>
+    <label>열 이름 <input name="column" value="amount"></label>
+    <label>열 종류 <input name="column_type" value="string"></label>
+    <label>행 ID <input name="row_id" value=""></label>
+    <label>값 <input name="row_value" value=""></label>
+    <label>케이스 <input name="case_id" value=""></label>
+    <label>참조 <input name="ref_id" value=""></label>
+    <input type="submit" value="데이터 저장">
+  </form>
+{% endblock %}

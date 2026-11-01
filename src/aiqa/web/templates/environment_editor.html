@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}환경 편집{% endblock %}
+{% block content %}
+  <h1>환경 편집</h1>
+  <p>Web은 1280×720, DPR 1, ko-KR, Asia/Seoul 입니다. Android는 세로 화면입니다. 저장하면 새 revision이 생깁니다.</p>
+  <form method="post" action="/api/v1/projects/{{ project_id }}/environments">
+    <label>이름 <input name="name" value="로컬"></label>
+    <label>종류 <input name="target_kind" value="web"></label>
+    <label>허용 주소 <input name="allowlist" value="https://shop.example"></label>
+    <label>시작 주소 <input name="start_url" value="https://shop.example"></label>
+    <label>너비 <input name="width" value="1280"></label>
+    <label>높이 <input name="height" value="720"></label>
+    <label>DPR <input name="dpr" value="1"></label>
+    <label>로케일 <input name="locale" value="ko-KR"></label>
+    <label>시간대 <input name="timezone" value="Asia/Seoul"></label>
+    <label>패키지 <input name="package" value="com.example.app"></label>
+    <label>방향 <input name="orientation" value="portrait"></label>
+    <label>준비 <input name="setup" value=""></label>
+    <label>초기화 <input name="reset" value=""></label>
+    <label>정리 <input name="cleanup" value=""></label>
+    <label>계정 참조 <input name="account_ref" value=""></label>
+    <label>시간 한도 <input name="timeout_seconds" value="600"></label>
+    <label>행동 한도 <input name="max_actions" value="50"></label>
+    <input type="submit" value="환경 저장">
+  </form>
+{% endblock %}

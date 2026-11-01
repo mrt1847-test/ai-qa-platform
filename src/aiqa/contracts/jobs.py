@@ -68,6 +68,7 @@ class JobSubmission:
     case_version_id: UUID | None
     source_refs: tuple[str, ...]
     limits: str
+    base_case_version_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)

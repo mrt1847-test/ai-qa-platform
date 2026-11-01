@@ -1,6 +1,6 @@
 # E-1 · 행동·증거·spool·모델 계측 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료8 / 12**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료11 / 12**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -16,9 +16,9 @@
 | [W14-02](#w14-02) | [W14-01](05a-action-evidence-and-models.md#w14-01) | staging→rename→ready·ingest ACK | complete |
 | [W14-03](#w14-03) | [W14-02](05a-action-evidence-and-models.md#w14-02) | 파일 reconcile·missing/corruption 조회 | complete |
 | [W14-04](#w14-04) | [W14-03](05a-action-evidence-and-models.md#w14-03) | terminal 뒤 read-only 증거 복구 | complete |
-| [W15-01](#w15-01) | [W06-09](02b-job-evidence-schema.md#w06-09), [W04-04](02a-assets-and-scope.md#w04-04), [W08-01](03-worker-and-sessions.md#w08-01) | 공통 model broker·role/check/episode 권한 | not_started |
-| [W15-02](#w15-02) | [W15-01](05a-action-evidence-and-models.md#w15-01) | usage·retry·late settlement ledger | not_started |
-| [W15-03](#w15-03) | [W15-02](05a-action-evidence-and-models.md#w15-02) | 호출 전 예산 예약·deadline·취소 | not_started |
+| [W15-01](#w15-01) | [W06-09](02b-job-evidence-schema.md#w06-09), [W04-04](02a-assets-and-scope.md#w04-04), [W08-01](03-worker-and-sessions.md#w08-01) | 공통 model broker·role/check/episode 권한 | complete |
+| [W15-02](#w15-02) | [W15-01](05a-action-evidence-and-models.md#w15-01) | usage·retry·late settlement ledger | complete |
+| [W15-03](#w15-03) | [W15-02](05a-action-evidence-and-models.md#w15-02) | 호출 전 예산 예약·deadline·취소 | complete |
 | [W15-04](#w15-04) | [W15-03](05a-action-evidence-and-models.md#w15-03), [W03-01](01-foundation-probes.md#w03-01) | 모델 연결 검사·비용·무키 replay 안내 UI | not_started |
 
 <a id="w13-01"></a>
@@ -245,7 +245,7 @@ assert observed == {
 
 ## W15-01 — 공통 model broker·role/check/episode 권한
 
-- [ ] **W15-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W15-01.md`(구현 때 생성).
+- [x] **W15-01 완료** — 상태: `complete`. 근거: [W15-01 인계](../validation/tasks/W15-01.md).
 - **직접 선행:** [W06-09](02b-job-evidence-schema.md#w06-09), [W04-04](02a-assets-and-scope.md#w04-04), [W08-01](03-worker-and-sessions.md#w08-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C06 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R14, R17, R33.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -273,7 +273,7 @@ assert observed == {
 
 ## W15-02 — usage·retry·late settlement ledger
 
-- [ ] **W15-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W15-02.md`(구현 때 생성).
+- [x] **W15-02 완료** — 상태: `complete`. 근거: [W15-02 인계](../validation/tasks/W15-02.md).
 - **직접 선행:** [W15-01](05a-action-evidence-and-models.md#w15-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C06 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R35.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -301,7 +301,7 @@ assert observed == {
 
 ## W15-03 — 호출 전 예산 예약·deadline·취소
 
-- [ ] **W15-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W15-03.md`(구현 때 생성).
+- [x] **W15-03 완료** — 상태: `complete`. 근거: [W15-03 인계](../validation/tasks/W15-03.md).
 - **직접 선행:** [W15-02](05a-action-evidence-and-models.md#w15-02)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C06 / C14 + 직접 선행 receipt의 interface/제약. 추적: R11, R13, R33.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

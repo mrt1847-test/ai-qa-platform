@@ -179,13 +179,14 @@ def _insert_recording(connection: object, submission: JobSubmission) -> UUID:
             project_id, case_id, recording_id, creation_kind, input_case_version_id,
             base_case_version_id, parent_recording_id, source_recording_id,
             storage_status, stop_status, completion_status, evidence_status
-        ) VALUES (?, ?, ?, 'recorded', ?, NULL, NULL, NULL, 'local', 'running', 'open', 'incomplete')
+        ) VALUES (?, ?, ?, 'recorded', ?, ?, NULL, NULL, 'local', 'running', 'open', 'incomplete')
         """,
         (
             str(submission.project_id),
             str(submission.case_id),
             str(recording_id),
             str(submission.case_version_id),
+            None if submission.base_case_version_id is None else str(submission.base_case_version_id),
         ),
     )
     return recording_id
@@ -303,6 +304,8 @@ def claim_queued_job(connection: sqlite3.Connection, worker: WorkerScope, now: d
     for project_id, job_id, purpose, case_run_id, source_refs in rows:
         if _cleanup_pending(connection, str(project_id), None if case_run_id is None else str(case_run_id)):
             continue
+        if _approval_blocks_claim(connection, str(project_id), str(job_id)):
+            continue
         usable, physical_key_id = _device(connection, str(project_id), str(purpose), str(source_refs))
         if not usable or _active_slots(connection) >= 1:
             continue
@@ -351,6 +354,14 @@ def _active_slots(connection: sqlite3.Connection) -> int:
         _ACTIVE,
     ).fetchone()
     return 0 if row is None else int(row[0])
+
+
+def _approval_blocks_claim(connection: sqlite3.Connection, project_id: str, job_id: str) -> bool:
+    row = connection.execute(
+        "SELECT 1 FROM approval_queue_blocks WHERE project_id = ? AND job_id = ?",
+        (project_id, job_id),
+    ).fetchone()
+    return row is not None
 
 
 def _cleanup_pending(connection: sqlite3.Connection, project_id: str, case_run_id: str | None) -> bool:

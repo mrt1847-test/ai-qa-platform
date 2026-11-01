@@ -1,6 +1,6 @@
 # F · 승인 package·모델 없는 재생 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 10**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료6 / 10**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,14 +8,14 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W29-01](#w29-01) | [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09) | package body·hash·source mapping 검증 | not_started |
-| [W29-02](#w29-02) | [W29-01](06-replay-packages.md#w29-01), [W01-01](01-foundation-probes.md#w01-01) | raw Web code 에서 제한 IPC compiler | not_started |
+| [W29-01](#w29-01) | [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09) | package body·hash·source mapping 검증 | complete |
+| [W29-02](#w29-02) | [W29-01](06-replay-packages.md#w29-01), [W01-01](01-foundation-probes.md#w01-01) | raw Web code 에서 제한 IPC compiler | complete |
 | [W29-03](#w29-03) | [W29-02](06-replay-packages.md#w29-02), [W07-02](03-worker-and-sessions.md#w07-02), [W01-02](01-foundation-probes.md#w01-02), [W13-04](05a-action-evidence-and-models.md#w13-04) | trusted driver IPC·lease·capture dispatch | not_started |
-| [W29-04](#w29-04) | [W29-02](06-replay-packages.md#w29-02), [W14-03](05a-action-evidence-and-models.md#w14-03) | artifact ready 후 package/version 원자 확정 | not_started |
+| [W29-04](#w29-04) | [W29-02](06-replay-packages.md#w29-02), [W14-03](05a-action-evidence-and-models.md#w14-03) | artifact ready 후 package/version 원자 확정 | complete |
 | [W29-05](#w29-05) | [W29-04](06-replay-packages.md#w29-04) | Web direct runner·현재 조건·actor0 | not_started |
-| [W29-06](#w29-06) | [W29-04](06-replay-packages.md#w29-04), [W10-08](04a-case-management-ui.md#w10-08) | code·plan·lock·mapping·재컴파일 조회 UI | not_started |
-| [W30-01](#w30-01) | [W29-04](06-replay-packages.md#w29-04), [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09) | Android trace→immutable action plan | not_started |
-| [W30-02](#w30-02) | [W30-01](06-replay-packages.md#w30-01) | 결정적 binding·고정 좌표 preflight | not_started |
+| [W29-06](#w29-06) | [W29-04](06-replay-packages.md#w29-04), [W10-08](04a-case-management-ui.md#w10-08) | code·plan·lock·mapping·재컴파일 조회 UI | complete |
+| [W30-01](#w30-01) | [W29-04](06-replay-packages.md#w29-04), [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09) | Android trace→immutable action plan | complete |
+| [W30-02](#w30-02) | [W30-01](06-replay-packages.md#w30-01) | 결정적 binding·고정 좌표 preflight | complete |
 | [W30-03](#w30-03) | [W30-02](06-replay-packages.md#w30-02), [W07-03](03-worker-and-sessions.md#w07-03), [W13-04](05a-action-evidence-and-models.md#w13-04) | Android direct runner·행동별 현재 증거 | not_started |
 | [W30-04](#w30-04) | [W30-03](06-replay-packages.md#w30-03), [W29-06](06-replay-packages.md#w29-06) | 양 플랫폼 replay 동등 계약 gate | not_started |
 
@@ -23,7 +23,7 @@
 
 ## W29-01 — package body·hash·source mapping 검증
 
-- [ ] **W29-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W29-01.md`(구현 때 생성).
+- [x] **W29-01 완료** — 상태: `complete`. 근거: [W29-01 인계](../validation/tasks/W29-01.md).
 - **직접 선행:** [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R17, R29, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -50,7 +50,7 @@ assert observed == {
 
 ## W29-02 — raw Web code 에서 제한 IPC compiler
 
-- [ ] **W29-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W29-02.md`(구현 때 생성).
+- [x] **W29-02 완료** — 상태: `complete`. 근거: [W29-02 인계](../validation/tasks/W29-02.md).
 - **직접 선행:** [W29-01](06-replay-packages.md#w29-01), [W01-01](01-foundation-probes.md#w01-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R14, R17, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -103,7 +103,7 @@ assert observed == {
 
 ## W29-04 — artifact ready 후 package/version 원자 확정
 
-- [ ] **W29-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W29-04.md`(구현 때 생성).
+- [x] **W29-04 완료** — 상태: `complete`. 근거: [W29-04 인계](../validation/tasks/W29-04.md).
 - **직접 선행:** [W29-02](06-replay-packages.md#w29-02), [W14-03](05a-action-evidence-and-models.md#w14-03)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R12, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -157,7 +157,7 @@ assert observed == {
 
 ## W29-06 — code·plan·lock·mapping·재컴파일 조회 UI
 
-- [ ] **W29-06 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W29-06.md`(구현 때 생성).
+- [x] **W29-06 완료** — 상태: `complete`. 근거: [W29-06 인계](../validation/tasks/W29-06.md).
 - **직접 선행:** [W29-04](06-replay-packages.md#w29-04), [W10-08](04a-case-management-ui.md#w10-08)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R07, R21, R34, UI-04.08, UI-07.01.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -185,7 +185,7 @@ assert observed == {
 
 ## W30-01 — Android trace→immutable action plan
 
-- [ ] **W30-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W30-01.md`(구현 때 생성).
+- [x] **W30-01 완료** — 상태: `complete`. 근거: [W30-01 인계](../validation/tasks/W30-01.md).
 - **직접 선행:** [W29-04](06-replay-packages.md#w29-04), [W16-05](05b-recording-workflow.md#w16-05), [W06-09](02b-job-evidence-schema.md#w06-09)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R05, R14, R17, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -218,7 +218,7 @@ assert observed == {
 
 ## W30-02 — 결정적 binding·고정 좌표 preflight
 
-- [ ] **W30-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W30-02.md`(구현 때 생성).
+- [x] **W30-02 완료** — 상태: `complete`. 근거: [W30-02 인계](../validation/tasks/W30-02.md).
 - **직접 선행:** [W30-01](06-replay-packages.md#w30-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C07 / C14 + 직접 선행 receipt의 interface/제약. 추적: R02, R05, R14, R17.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

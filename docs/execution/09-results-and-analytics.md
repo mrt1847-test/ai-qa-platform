@@ -1,6 +1,6 @@
 # I · 결과·분석·내보내기 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 13**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료1 / 13**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,7 +8,7 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W23-01](#w23-01) | [W06-06](02b-job-evidence-schema.md#w06-06) | 7 결과·진행·분모·세 비율 산식 | not_started |
+| [W23-01](#w23-01) | [W06-06](02b-job-evidence-schema.md#w06-06) | 7 결과·진행·분모·세 비율 산식 | complete |
 | [W23-02](#w23-02) | [W23-01](09-results-and-analytics.md#w23-01), [W18-02](07-trial-and-review.md#w18-02), [W20-04](08b-execution-and-suites.md#w20-04) | ITEM 근거·첫 실패·attempt·실제 설정 상세 | not_started |
 | [W23-03](#w23-03) | [W23-02](09-results-and-analytics.md#w23-02) | 분류·담당·issue·분석/이의 append UI | not_started |
 | [W23-04](#w23-04) | [W23-03](09-results-and-analytics.md#w23-03) | 리포트 목록·단일/묶음 보고·필터 | not_started |
@@ -26,7 +26,7 @@
 
 ## W23-01 — 7 결과·진행·분모·세 비율 산식
 
-- [ ] **W23-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W23-01.md`(구현 때 생성).
+- [x] **W23-01 완료** — 상태: `complete`. 근거: [W23-01 인계](../validation/tasks/W23-01.md).
 - **직접 선행:** [W06-06](02b-job-evidence-schema.md#w06-06)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R31.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

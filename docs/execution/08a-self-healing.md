@@ -1,6 +1,6 @@
 # H-1 · 선택 셀프힐링·제안 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 7**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료1 / 7**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,7 +8,7 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W31-01](#w31-01) | [W19-01](07-trial-and-review.md#w19-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W13-03](05a-action-evidence-and-models.md#w13-03) | 실행별 healing 정책·ON/OFF snapshot | not_started |
+| [W31-01](#w31-01) | [W19-01](07-trial-and-review.md#w19-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W13-03](05a-action-evidence-and-models.md#w13-03) | 실행별 healing 정책·ON/OFF snapshot | complete |
 | [W31-02](#w31-02) | [W31-01](08a-self-healing.md#w31-01) | 미 dispatch eligibility·episode 원자 예약 | not_started |
 | [W31-03](#w31-03) | [W31-02](08a-self-healing.md#w31-02) | typed AI target 제안·동일 대상 증명 | not_started |
 | [W31-04](#w31-04) | [W31-03](08a-self-healing.md#w31-03) | 임시 override·원래 동작 1 회·후속 QA | not_started |
@@ -20,7 +20,7 @@
 
 ## W31-01 — 실행별 healing 정책·ON/OFF snapshot
 
-- [ ] **W31-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-01.md`(구현 때 생성).
+- [x] **W31-01 완료** — 상태: `complete`. 근거: [W31-01 인계](../validation/tasks/W31-01.md).
 - **직접 선행:** [W19-01](07-trial-and-review.md#w19-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W13-03](05a-action-evidence-and-models.md#w13-03)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R17, R33.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

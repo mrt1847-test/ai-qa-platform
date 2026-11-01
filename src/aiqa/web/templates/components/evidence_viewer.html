@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}증거{% endblock %}
+{% block content %}
+<section id="evidence-viewer" tabindex="0" data-keynav="true" data-max-px="1024"
+  data-owner-kind="{{ selection.owner_kind }}" data-owner-id="{{ selection.owner_id }}"
+  data-attempt-id="{{ selection.attempt_id }}" data-action-id="{{ selection.action_id }}"
+  data-first-failure="{{ first_failure }}">
+  <h1>증거</h1>
+  <p>선택한 시도의 전후 화면만 보입니다. 다른 실행의 그림으로 바꾸지 않습니다.</p>
+  <p>비밀 값은 마스킹되어 있습니다.</p>
+  <p>
+    <a href="#previous" data-step="previous">이전</a>
+    <a href="#next" data-step="next">다음</a>
+    <a href="#first-failure" data-step="first-failure">첫 실패</a>
+  </p>
+  <p>
+    <a href="#fit" data-view-mode="fit">맞추기</a>
+    <a href="#hundred" data-view-mode="hundred">100%</a>
+    <a href="#zoom" data-view-mode="zoom">확대</a>
+    <a href="#pan" data-view-mode="pan">이동</a>
+    <a href="#full" data-view-mode="full">전체보기</a>
+  </p>
+  {% for action in actions %}
+  <article data-action="{{ action.action_id }}" data-step-id="{{ action.step_id }}"{% if action.action_id != selection.action_id %} hidden{% endif %}>
+    <h2>단계 {{ action.step_id }} · 행동 {{ action.action_id }}</h2>
+    <p>캡처 시각 {{ action.before.captured_at or action.after.captured_at }}</p>
+    <p data-geometry>기록된 geometry만 표시합니다.</p>
+    <p data-swipe>이 행동의 swipe 좌표는 없습니다.</p>
+    {% if action.check_status %}<p data-check>{{ action.check_status }}</p>{% endif %}
+    {% if action.error_text %}<p data-error>{{ action.error_text }}</p>{% endif %}
+    <figure data-role="before" data-state="{{ action.before.state }}" data-artifact="{{ action.before.artifact_id }}">
+      {% if action.before.state == "stored" %}
+      <img alt="이전 화면" src="/api/v1/artifacts/{{ action.before.artifact_id }}" style="max-width:1024px">
+      {% else %}
+      <p>{{ action.before.reason }}</p>
+      {% endif %}
+    </figure>
+    <figure data-role="after" data-state="{{ action.after.state }}" data-artifact="{{ action.after.artifact_id }}">
+      {% if action.after.state == "stored" %}
+      <img alt="이후 화면" src="/api/v1/artifacts/{{ action.after.artifact_id }}" style="max-width:1024px">
+      {% else %}
+      <p>{{ action.after.reason }}</p>
+      {% endif %}
+    </figure>
+    <pre data-log{% if action.log_text|length > 1024 %} data-long="true"{% endif %}>{{ action.log_text }}</pre>
+  </article>
+  {% endfor %}
+</section>
+<script src="/static/evidence_viewer.js"></script>
+{% endblock %}

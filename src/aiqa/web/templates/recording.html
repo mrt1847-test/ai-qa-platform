@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}녹화{% endblock %}
+{% block content %}
+  <h1>녹화</h1>
+  <p>상태 {{ completion_status }}</p>
+  <p>package {% if package_id %}{{ package_id }}{% else %}없음{% endif %}</p>
+  <p>{% if approved %}승인됨{% else %}승인되지 않음{% endif %}</p>
+  <p>엔진 종료는 승인이나 QA가 아닙니다.</p>
+  <p>compiler가 없으면 package는 비어 있습니다.</p>
+  <p>실패와 중단도 보존합니다.</p>
+{% endblock %}

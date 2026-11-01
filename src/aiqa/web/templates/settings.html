@@ -26,6 +26,21 @@
     <li>{{ item.role }} {{ item.model }}</li>
     {% endfor %}
   </ul>
+  <section>
+    <h2>활동</h2>
+    {% for item in audits %}
+    <p>{{ item.action }} {{ item.actor_id }} {{ item.created_at }} {{ item.reason }}</p>
+    {% endfor %}
+    <h2>작업자</h2>
+    {% for item in workers %}
+    <p>{{ item.worker_id }} {{ item.purpose }} {% if item.revoked %}권한 없음{% else %}범위 있음{% endif %}</p>
+    {% endfor %}
+    <h2>공간</h2>
+    <p>보호 공간 {{ storage.protected_bytes }}</p>
+    <p>{% if storage.used_bytes == 0 %}빈 공간{% endif %}</p>
+    <p>{% if storage.over_protected %}보호 공간이 한도를 넘었습니다{% else %}한도 안{% endif %}</p>
+    <p>삭제 예정 {{ storage.deletion_scheduled }}</p>
+  </section>
   <script>
     (function () {
       var form = document.getElementById("project-settings");

@@ -467,6 +467,9 @@ def install_recordings(application: FastAPI) -> None:
                     authorize_page(request, project)
                 except (CsrfRejected, OriginRejected, ProjectHidden, AuthRequired):
                     return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
+                row = store._connection.execute('SELECT c.name,c.current_approval_id,c.latest_draft_version_id,v.version_id,v.revision FROM automation_cases c LEFT JOIN case_versions v ON v.project_id=c.project_id AND v.case_id=c.case_id AND v.version_id=COALESCE(NULLIF(?, ?),c.latest_draft_version_id) WHERE c.project_id=? AND c.case_id=?',(request.query_params.get('base',''),'',str(project),str(case))).fetchone()
+                if row is None or row[3] is None:
+                    return HTMLResponse(status_code=404,content='기준 버전을 찾지 못했습니다.')
         finally:
             store.close()
         return render_template(
@@ -485,7 +488,7 @@ def install_recordings(application: FastAPI) -> None:
                 "list_href": f"/ui/projects/{project}/cases/{case}/recordings",
                 "detail_href": f"/ui/projects/{project}/cases/{case}/rerecord",
                 "request": request,
-                "base_version_id": request.query_params.get("base", ""),
+                "base_version_id": str(row[3]),"case_id":str(case),"project_id":str(project),"case_name":str(row[0]),"base_revision":row[4],"current_approval_id":row[1],
             },
         )
 

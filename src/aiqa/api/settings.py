@@ -122,6 +122,9 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
             audits = list_audit(project, "", "", 25)
             workers = list_workers(project)
             storage = storage_view(project)
+            from aiqa.web.usage_context import usage_view
+            from aiqa.domain.versions import _bound_store
+            usage = usage_view(_bound_store()._connection,project)
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     context = {
@@ -143,6 +146,7 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
         "audits": audits["items"],
         "workers": workers,
         "storage": storage,
+        "usage":usage,
     }
     return render_template(request, "settings.html", context)
 
@@ -163,6 +167,29 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
     roles = payload.get("roles", [])
     if type(roles) is not list:
         return _error(422, "validation", "invalid settings", {})
+    fields = {}
+    seen = set()
+    for item in roles:
+        if type(item) is not dict or item.get('role') not in _ROLES or item.get('role') in seen:
+            return _error(422, "validation", "역할을 다시 확인해 주세요.", {})
+        role = item['role']
+        seen.add(role)
+        if item.get('mode') not in {None, 'keep', 'replace'}:
+            return _error(422, "validation", "연결 해제는 아직 지원하지 않습니다.", {})
+        if item.get('mode') == 'replace':
+            from urllib.parse import urlsplit
+            for key in ('endpoint', 'model', 'key'):
+                if type(item.get(key)) is not str or not item[key].strip():
+                    fields[f'{key}-{role}'] = ['교체할 연결의 값을 입력해 주세요.']
+            if f'endpoint-{role}' not in fields:
+                try:
+                    parsed_endpoint = urlsplit(item['endpoint'])
+                    if parsed_endpoint.scheme != 'https' or not parsed_endpoint.hostname or parsed_endpoint.username or parsed_endpoint.password:
+                        fields[f'endpoint-{role}'] = ['사용자 정보가 없는 HTTPS 주소를 입력해 주세요.']
+                except ValueError:
+                    fields[f'endpoint-{role}'] = ['HTTPS 주소를 확인해 주세요.']
+    if fields:
+        return _error(422, 'validation', '모델 연결 입력을 확인해 주세요.', fields)
     try:
         expected, timeout = _validated_limits(payload)
     except (TypeError, ValueError):
@@ -170,8 +197,11 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
     with _bound(request):
         try:
             actor = authorize_browser(request, project, "settings")
+            prior = _read(project)
             for item in roles:
                 if type(item) is not dict:
+                    continue
+                if item.get('mode') == 'keep':
                     continue
                 key = item.get("key", "")
                 model = item.get("model", "")
@@ -192,6 +222,7 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                         prompt_hash="sha256:" + ("ab" * 32),
                         tariff_id="t1",
                         compatibility_status="unchecked",
+                        binding_id=next((UUID(binding['binding_id']) for binding in reversed(prior['bindings']) if binding['role'] == item.get('role')), None),
                     )
                 )
             stored = _write(

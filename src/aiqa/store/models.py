@@ -244,6 +244,11 @@ class CaseListRow:
     archived_at: str | None
     lock_version: int
     tc_reference: UUID | None = None
+    target_kind: str | None = None
+    draft_revision: int | None = None
+    approved_revision: int | None = None
+    latest_result: str | None = None
+    latest_run_at: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,6 +256,10 @@ class CursorPage:
     items: tuple[CaseListRow, ...]
     next_cursor: str | None
     snapshot_seq: int
+    total: int = 0
+    start: int = 0
+    end: int = 0
+    previous_cursor: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -93,7 +93,11 @@ async def overview_page(project_id: str, request: Request) -> HTMLResponse:
 
 @pages.get("/ui/projects/{project_id}/recordings/new", response_class=HTMLResponse)
 async def recording_step_page(project_id: str, request: Request) -> HTMLResponse:
-    return await _overview_screen(project_id, request, "device")
+    from fastapi.responses import RedirectResponse
+    from urllib.parse import urlencode
+    query = {key: request.query_params[key] for key in ("resource_id", "case", "base_version") if key in request.query_params}
+    suffix = "?" + urlencode(query) if query else ""
+    return RedirectResponse(f"/ui/projects/{project_id}/recordings/wizard{suffix}", status_code=303)
 
 
 @pages.get("/ui/projects/{project_id}/bundles", response_class=HTMLResponse)
@@ -348,6 +352,7 @@ async def _overview_screen(project_id: str, request: Request, step: str) -> HTML
     context = _page_context(request, "프로젝트 개요", "ready", (), "", False)
     context["overview"] = overview
     context["step"] = step
+    context['crumbs'] = (('개요',''),)
     return render_template(request, "overview.html", context)
 
 

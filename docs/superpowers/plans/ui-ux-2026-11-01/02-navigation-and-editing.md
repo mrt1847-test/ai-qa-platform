@@ -5,7 +5,7 @@
 **Goal:** 사용자가 프로젝트와 케이스 맥락을 유지하며 내용을 작성·저장·검토한다.
 **Architecture:** 기존 페이지를 프로젝트 shell과 케이스 작업 공간으로 연결하고, 공통 폼 상태에 이동 보호와 구조화 편집을 붙인다. 기존 version/readiness/approval 모델을 유지한다.
 **Tech Stack:** 기존 FastAPI/Jinja/JavaScript/pytest.
-**Spec / Global Constraints / Review Focus:** [전체 계획](../2026-11-01-ui-ux-improvements.md)을 적용한다. 파일 경로는 저장소 루트 기준이며 `web/...`, `api/...` 축약은 `src/aiqa/` 아래다. 모든 단위는 `planned`다.
+**Spec / Global Constraints / Review Focus:** [전체 계획](../2026-11-01-ui-ux-improvements.md)을 적용한다. 파일 경로는 저장소 루트 기준이며 `web/...`, `api/...` 축약은 `src/aiqa/` 아래다. 계획 당시 상태는 `planned`였다. 현재 실행 결과는 [단위별 인계](../../../validation/ux/README.md)를 따른다. 아래 수용 체크리스트를 보존하며 체크박스만 보고 재구현하지 않는다.
 
 <a id="ux-03"></a>
 ## UX-03 — 작성 도중 이동을 통제하고 저장 실패에서 복구

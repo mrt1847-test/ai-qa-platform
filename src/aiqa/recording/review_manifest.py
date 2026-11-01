@@ -178,6 +178,7 @@ class EntryBoard:
     action_id: str
     latest_state: str
     history: tuple[OpinionRecord, ...]
+    role: str = ''
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,32 +281,33 @@ def review_action(
     )
 
 
-def review_board(connection: object, project_id: UUID, case_id: UUID) -> ReviewBoard | None:
+def review_board(connection: object, project_id: UUID, case_id: UUID, version_id: UUID | None = None) -> ReviewBoard | None:
     """Project the latest opinion per exact entry. Older opinions stay in the history."""
 
     review = connection.execute(  # type: ignore[attr-defined]
         """
         SELECT review_id FROM reviews
         WHERE project_id = ? AND case_id = ?
+          AND (? IS NULL OR case_version_id = ?)
         ORDER BY created_commit_seq DESC
         LIMIT 1
         """,
-        (str(project_id), str(case_id)),
+        (str(project_id), str(case_id), None if version_id is None else str(version_id), None if version_id is None else str(version_id)),
     ).fetchone()
     if review is None:
         return None
     review_id = str(review[0])
     rows = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT entry_id, owner_kind, owner_id, attempt_id, action_id
+        SELECT entry_id, owner_kind, owner_id, attempt_id, action_id, role
         FROM review_evidence_entries
         WHERE project_id = ? AND review_id = ?
-        ORDER BY owner_kind, owner_id, action_id, entry_id
+        ORDER BY CASE owner_kind WHEN 'REC' THEN 0 ELSE 1 END, owner_id, action_id, role, entry_id
         """,
         (str(project_id), review_id),
     ).fetchall()
     entries = tuple(
-        EntryBoard(str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]), _latest_state(_history(connection, project_id, str(row[0]))), _history(connection, project_id, str(row[0])))
+        EntryBoard(str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]), _latest_state(_history(connection, project_id, str(row[0]))), _history(connection, project_id, str(row[0])), str(row[5]))
         for row in rows
     )
     source_reviewed, source_total, trial_reviewed, trial_total = _totals(entries)

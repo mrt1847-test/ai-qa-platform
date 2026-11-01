@@ -1,26 +1,11 @@
-{% extends "base.html" %}
-{% block title %}시범 준비{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ case_name }} · 시범 준비{% endblock %}
 {% block content %}
-  <h1>시범 준비</h1>
-  <p>승인이 없어도 준비된 package를 시범할 수 있습니다.</p>
-  <p>healing은 꺼져 있습니다.</p>
-  <section>
-    <h2>1 목적</h2>
-    <p>목적은 시범입니다. 정식과 섞지 않습니다.</p>
-  </section>
-  <section>
-    <h2>2 환경과 데이터</h2>
-    <p>버전, package, 환경, 데이터, 대상을 확인합니다.</p>
-  </section>
-  <section>
-    <h2>3 검사와 키</h2>
-    <p>결정적 검사는 키 없이 진행합니다.</p>
-    <p>AI 검사는 키가 없으면 막습니다.</p>
-  </section>
-  <section>
-    <h2>4 확인</h2>
-    <p>접수 전에는 예약을 만들지 않습니다.</p>
-    <p>package가 없으면 시범을 시작하지 않습니다.</p>
-  </section>
-  <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 정의로</a></p>
+<header class="page-heading"><div><p class="eyebrow">CASE / TRIAL</p><h1>{{ case_name }} · 시범 준비</h1><p class="muted">승인 전에도 저장된 동작·코드로 검증합니다. healing은 꺼져 있습니다.</p></div><a class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">케이스로</a></header>
+<div class="editor-layout"><form id="trial-setup" data-project="{{ project_id }}" data-case="{{ case_id }}" novalidate>
+<section class="panel"><h2>1. 저장본과 대상</h2><label>시범할 버전 <select name="case_version_id"><option value="">버전 선택</option>{% for item in versions %}<option value="{{ item.id }}" data-package="{{ item.package_id or '' }}">v{{ item.revision }} · {{ '재생 패키지 있음' if item.package_id else '재생 패키지 없음' }}</option>{% endfor %}</select></label><label>환경 프로필 <select name="environment_revision_id"><option value="">저장된 환경 선택</option>{% for item in profiles %}<option value="{{ item.id }}">{{ item.name }} · v{{ item.revision }} · {{ item.profile.target_kind }}</option>{% endfor %}</select></label><a href="/ui/projects/{{ project_id }}/environments/editor">환경 프로필 작성</a><label>기기 <select name="resource_id"><option value="">기기 선택</option>{% for item in resources %}<option value="{{ item.resource_id }}">{{ item.display_name }} · {{ item.kind_label }} · {{ item.state_label }}</option>{% endfor %}</select></label><label>데이터 <select name="dataset_version_id"><option value="">데이터 없음</option>{% for item in datasets %}<option value="{{ item.version_id }}">{{ item.name }} · v{{ item.revision }}</option>{% endfor %}</select></label><label>실패 시 처리 <select name="failure_policy"><option value="stop_on_non_pass">통과하지 못하면 중단</option><option value="continue">다음 항목 계속</option></select></label></section>
+<section class="panel"><h2>2. 사전 검사</h2><p>검사만으로 예약·장치 제어·모델 호출을 만들지 않습니다. 입력이 바뀌면 검사를 다시 받아야 합니다.</p><input type="button" id="preview-trial" value="준비 상태 확인" class="secondary"><p id="trial-status" role="status"></p><ul id="trial-blockers"></ul><details><summary>검사한 고정값</summary><pre id="trial-pins"></pre></details></section>
+{% include 'components/form_feedback.html' %}<div class="action-bar"><input type="button" id="enqueue-trial" value="이 저장본으로 시범 접수" disabled></div>
+</form><aside class="panel"><h2>시범 실행 기준</h2><p>저장한 버전·재생 패키지·환경·데이터·기기를 고정합니다. 접수 시 서버가 다시 검사합니다.</p><p>결정적 검사는 키 없이 진행합니다. AI 검사가 포함되어 있으면 검증 AI 연결과 비용 한도가 필요합니다.</p><p>시범은 healing OFF입니다. 실행 접수 후 필요한 AI 검증 비용이 발생할 수 있습니다.</p><p>package가 없으면 시범을 시작하지 않습니다.</p><a href="/ui/projects/{{ project_id }}/recordings/wizard?case={{ case_id }}">녹화·패키지 준비</a><a href="/ui/projects/{{ project_id }}/settings">검증 AI 설정</a></aside></div>
+<script src="/static/execution_setup.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

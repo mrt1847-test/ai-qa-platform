@@ -29,5 +29,5 @@
   <button type="button" id="tc-unlink" data-action="unlink"{% if not selected_case %} disabled title="대상 케이스를 선택하세요."{% endif %}>참조 해제</button>
   {% include "components/tc_import.html" %}
   <script id="tc-data" type="application/json">{{ {'project_id':project_id,'selected_case':selected_case,'snapshot':snapshot,'items':items} | tojson }}</script>
-  <script src="/static/tcs.js"></script>
+  <script src="/static/tcs.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

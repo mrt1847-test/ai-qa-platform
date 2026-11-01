@@ -4,45 +4,47 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AI QA{% endblock %}</title>
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/api.js"></script>
+  <link rel="stylesheet" href="/static/app.css?v={{ ui_asset_version }}">
+  <link rel="stylesheet" href="/static/studio.css?v={{ ui_asset_version }}">
+  <script src="/static/api.js?v={{ ui_asset_version }}"></script>
+  <script src="/static/form_state.js?v={{ ui_asset_version }}"></script>
+  <script src="/static/command.js?v={{ ui_asset_version }}"></script>
+  <script src="/static/conflict_comparison.js?v={{ ui_asset_version }}"></script>
+  <script src="/static/asset_feedback.js?v={{ ui_asset_version }}"></script>
 </head>
-<body{% if shell %} data-dirty="{{ 'true' if dirty else 'false' }}"{% endif %}>
+<body{% if project_nav %} class="studio-app"{% endif %}{% if shell %} data-dirty="{{ 'true' if dirty else 'false' }}"{% endif %}>
   {% if shell %}
   <a class="skip" href="#content">본문으로</a>
-  <header class="top">
+  {% if project_nav %}
+  {% include "components/project_navigation.html" %}
+  <header class="studio-topbar">
+    <nav class="studio-crumb" aria-label="경로"><a href="/ui/projects">워크스페이스</a><span>/</span><a href="{{ project_nav.base }}/overview">{{ project_nav.name }}</a>{% for label, href in crumbs|default([]) %}<span>/</span>{% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}<span>{{ label }}</span>{% endif %}{% endfor %}</nav>
+    <form class="global-search" method="get" action="{{ project_nav.base }}/cases">
+      <label class="sr-only" for="project-search">현재 프로젝트 케이스 검색</label>
+      <input id="project-search" type="search" name="q" value="{{ project_nav.search }}" placeholder="이 프로젝트의 케이스 검색">
+      <input type="submit" class="secondary" value="검색">
+    </form>
+    <a class="top-status" href="{{ project_nav.base }}/environments"><span class="dot"></span>로컬 API 접속 중</a>
+  </header>
+  {% elif request.url.path == "/ui/projects" %}
+  <header class="top"><a class="brand" href="/ui/projects">AI<span>QA</span></a><strong>프로젝트</strong><p class="muted">검증할 제품의 프로젝트를 선택하세요.</p></header>
+  {% else %}
+  <header class="top"><a class="brand" href="/ui/projects">AI<span>QA</span></a>
     <p class="pc">이 PC: {{ "연결됨" if connected else "연결 확인 필요" }}</p>
-    <nav aria-label="프로젝트">
-      <a href="{{ list_href }}" aria-current="page">현재 프로젝트</a>
-    </nav>
-    <form method="get" action="/ui/shell">
-      <input type="search" name="filter" data-query="filter" value="{{ query.filter }}">
+    <nav aria-label="프로젝트"><a href="{{ list_href }}" aria-current="page">현재 프로젝트</a></nav>
+    <form method="get" action="{{ '/ui/projects' if request.url.path == '/ui/projects' else '/ui/shell' }}">
+      <label class="sr-only" for="global-search">목록 검색</label><input id="global-search" type="search" name="filter" data-query="filter" value="{{ query.filter }}"><input type="submit" class="secondary" value="검색">
       <input type="hidden" name="sort" data-query="sort" value="{{ query.sort }}">
       <input type="hidden" name="page" data-query="page" value="{{ query.cursor }}">
       <input type="hidden" name="selected" data-query="selected" value="{{ query.selected_id }}">
-      <input type="submit" value="검색">
     </form>
-    <nav aria-label="메뉴">
-      <a href="{{ list_href }}"{% if section == "list" %} aria-current="page"{% endif %}>목록</a>
-      <a href="{{ detail_href }}">상세</a>
-    </nav>
-    <nav aria-label="경로">
-      {% for label, href in crumbs %}
-        {% if href %}<a href="{{ href }}">{{ label }}</a>{% else %}<span>{{ label }}</span>{% endif %}
-      {% endfor %}
-    </nav>
+    <nav aria-label="메뉴"><a href="{{ list_href }}">목록</a><a href="{{ detail_href }}">상세</a></nav>
   </header>
+  {% endif %}
   {% include "components/states.html" %}
-  <div id="unsaved-dialog" hidden>
-    <p>저장하지 않은 변경이 있습니다.</p>
-    <a href="{{ list_href }}">이동</a>
-  </div>
+  {% include "components/unsaved_dialog.html" %}
   {% endif %}
-  <main id="content" class="shell">
-    {% block content %}{% endblock %}
-  </main>
-  {% if shell %}
-  <script src="/static/navigation.js"></script>
-  {% endif %}
+  <main id="content" class="shell">{% block content %}{% endblock %}</main>
+  {% if shell %}<script src="/static/navigation.js?v={{ ui_asset_version }}"></script>{% endif %}
 </body>
 </html>

@@ -382,3 +382,16 @@ FK를 참조하는 service보다 canonical 부모 schema를 먼저 준비한다.
 
 W00 최소 실행 기반 뒤 W04–06의 실제 SQLite/migration/소속/불변 계약을 VM/모델 key 없이 구현한다. tests 전용 DB/관찰 fixture의 core 검증과 실제 기록의 native 통합을 구분한다. fixture를 일반 프로젝트의 녹화/승인/결과로 넣지 않는다.
 core leaf 완료는 실제 source/trial evidence와 같지 않으며 parent_gate_tasks/live gate와 사후 승인 조건은 그대로다. 기존 source/probe/두 인계는 변경하지 않고 W01-01 complete/W01-02 blocked를 유지한다. [C14](docs/execution/CONTRACTS.md)의 scope와 독립 후보 선택 규칙을 따른다.
+
+
+## 2026-11-01 UI/core 저장·조회 보완
+
+이번 UI 개선은 새 DB나 중복 receipt 저장소를 만들지 않았다. 기존 BrowserMutationRoute의 actor/project/operation/key 및 보호된 body fingerprint를 asset CRUD에 재사용한다. asset 내용과 receipt는 같은 트랜잭션이며 worker inventory/diagnostic admission을 CRUD receipt로 감싸지 않는다. 키/모델 binding과 project settings lock 실패는 DB rollback 및 기존 OS secret 보상 경계를 유지한다.
+
+CaseListRow/CursorPage의 additive projection은 최신 초안/승인 개정·대상·최신 ITEM의 item_finalizations.core_result/요청 시각과 정확한 total/start/end/previous cursor다. 조회 범위는 같은 filter/sort/project이고 row별 SQL 호출을 추가하지 않는다. jobs.status를 QA PASS로 변환하지 않는다.
+
+시범 single admission은 현재1 ITEM이다. preview hash에 dataset_version_id를 포함하고 jobs.limits.execution_snapshot에 case_version_id/manifest_hash/environment_revision_id/resource_id/dataset_version_id/approval_id를 보존한다. 패키지/복구 정책 hash와 한도는 같은 접수에서 고정한다. 재요청은 live readiness 재검사보다 durable receipt를 먼저 확인하고 다른 body는409다. 새 접수는 현재 resource 상태와 preview/pin을 다시 검사한다.
+
+재녹화 초안은 CaseVersion.parent_version_id/base_version_id와 저장 설정의 기준/사유/확인 메타데이터, 새 REC의 base_case_version_id를 유지한다. 기존 CaseVersion/REC/approval를 갱신하지 않는다. 저장된 검토 화면은 review_evidence_entries의 artifact ID 집합을 사용하며 다른 캡처로 대체하지 않는다.
+
+비용 UI는 item_usage_facts/usage_adjustments의 원본·보정 개수와 최근10개를 읽는다. 미보고 금액은 null이며 최종 통화별/as_of 합계를 임의 산출하지 않는다. 실제 계측/최종 집계는 기존 분석 작업의 별도 완료 조건이다. [실제 검증·미실시 경계](docs/validation/ux/README.md).

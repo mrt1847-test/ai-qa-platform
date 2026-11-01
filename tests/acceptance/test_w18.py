@@ -848,7 +848,7 @@ def test_w18_04(tmp_path: Path) -> None:
     assert fields["expected"]["changed"] is True and fields["procedure"]["changed"] is True
     assert fields["path"]["changed"] is False and fields["settings"]["changed"] is False
     assert "이 후보를 승인할 수 없습니다." in page and "이전 검토를 복사하지 않았습니다." in page
-    assert "새 초안" in page and "전체 재녹화" in page and "미검토 행동이 있습니다." in page
+    assert "새 초안" in page and "전체 재녹화" in page and 'aria-label="저장 근거의 단계"' in page
     assert "PASS" not in page
     assert observed == {
         "incomplete_candidate_approve": False,

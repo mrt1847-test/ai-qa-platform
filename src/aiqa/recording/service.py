@@ -100,10 +100,16 @@ def start_recording(
     if spec.input_version_hash != stored_hash:
         raise HashMismatch("version hash does not match")
     settings = json.loads(settings_json)
-    _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
-    _require_secrets(connection, project_id, settings.get("secret_refs", {}))
-    _require_authoring(connection, project_id)
-    _require_budget(settings.get("limits", {}))
+    base_id = _rerecord_base(connection, project_id, spec.case_id, settings)
+    existing = connection.execute(
+        "SELECT 1 FROM job_receipts WHERE project_id=? AND actor_id=? AND operation='enqueue_job' AND request_key=?",
+        (str(project_id),str(actor.actor_id),request_key),
+    ).fetchone()
+    if existing is None:
+        _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
+        _require_secrets(connection, project_id, settings.get("secret_refs", {}))
+        _require_authoring(connection, project_id)
+        _require_budget(settings.get("limits", {}))
     receipt = enqueue_job(
         Transaction(connection),  # type: ignore[arg-type]
         JobSubmission(
@@ -111,6 +117,7 @@ def start_recording(
             purpose="recording",
             case_id=spec.case_id,
             case_version_id=spec.input_case_version_id,
+            base_case_version_id=base_id,
             source_refs=(spec.resource_id,),
             limits=json.dumps({"timeout_seconds": int(settings["limits"]["timeout_seconds"])}, sort_keys=True),
         ),
@@ -119,6 +126,21 @@ def start_recording(
     if receipt.recording_id is None:
         raise PreflightRejected("recording was not created")
     return RecordingReceipt(receipt.recording_id, receipt.job_id, receipt.replayed, receipt.status)
+
+
+def _rerecord_base(connection, project_id, case_id, settings):
+    raw = settings.get('rerecord_base_version_id')
+    if raw is None or raw == '':
+        return None
+    try:
+        base_id = UUID(str(raw))
+    except ValueError as exc:
+        raise PreflightRejected('base version is missing') from exc
+    if not str(settings.get('rerecord_reason','')).strip() or settings.get('rerecord_confirmed') is not True:
+        raise PreflightRejected('rerecording confirmation is missing')
+    if connection.execute('SELECT 1 FROM case_versions WHERE project_id=? AND case_id=? AND version_id=?',(str(project_id),str(case_id),str(base_id))).fetchone() is None:
+        raise PreflightRejected('base version is missing')
+    return base_id
 
 
 def _version(
@@ -703,3 +725,28 @@ def _require_budget(limits: object) -> None:
         raise PreflightRejected("budget is missing") from exc
     if timeout < 1:
         raise PreflightRejected("budget is missing")
+
+
+def inspect_recording(connection: object, project_id: UUID, spec: RecordingStartInput) -> dict[str, object]:
+    """Report current blockers without creating a recording, lease, job or model call."""
+    version = _version(connection, project_id, spec)
+    if version is None:
+        raise PreflightRejected("case version is missing")
+    if spec.input_version_hash != version[0]:
+        raise HashMismatch("version hash does not match")
+    settings = json.loads(version[1])
+    reasons = []
+    checks = [
+        ('base',lambda: _rerecord_base(connection, project_id, spec.case_id, settings)),
+        ("resource", lambda: _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))),
+        ("secrets", lambda: _require_secrets(connection, project_id, settings.get("secret_refs", {}))),
+        ("authoring", lambda: _require_authoring(connection, project_id)),
+        ("budget", lambda: _require_budget(settings.get("limits", {}))),
+    ]
+    for code, check in checks:
+        try:
+            check()
+        except (PreflightRejected, ResourceBusy) as exc:
+            label = {"base":"재녹화 기준과 사유·확인을 보완해 주세요.", "resource":"기기 연결·권한·점유 상태를 확인해 주세요.", "secrets":"사용할 계정의 비밀 참조를 확인해 주세요.", "authoring":"녹화 AI 모델 연결이 필요합니다.", "budget":"녹화 시간·비용 한도를 확인해 주세요."}[code]
+            reasons.append({"code":code, "message":label, "detail":str(exc), "href":f"/ui/projects/{project_id}/"+("settings" if code in {"authoring","budget","secrets"} else "environments")})
+    return {"ready":not reasons,"reasons":reasons,"input_case_version_id":str(spec.input_case_version_id),"input_version_hash":spec.input_version_hash}

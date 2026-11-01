@@ -1,5 +1,7 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
+> 2026-11-01 UI 개선: [단위별 구현·검증 결과](docs/validation/ux/README.md). 기존 W 완료 수를 올리지 않고 UI/core·실제 환경·독립 수용을 구분했다.
+
 기준일: **2026-11-01 (Asia/Seoul)** · 제품 설계 v0.6+보완 · **완료89/163**, 상위6/33 W.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**

@@ -14,23 +14,17 @@
   <p>대기 실행 {{ overview.queued_runs }}</p>
   <p><a href="/ui/projects/{{ overview.project_id }}/overview">프로젝트 개요</a></p>
   {% else %}
-  <h1>프로젝트 개요</h1>
-  <ul class="entries">
-    <li>미완성 녹화 {{ overview.incomplete_recordings }}</li>
-    <li>검토 대기 {{ overview.reviews_waiting }}</li>
-    <li>미분류 실패 {{ overview.unclassified_failures }}</li>
-    <li>진행 실행 {{ overview.running_runs }}</li>
-    <li>대기 실행 {{ overview.queued_runs }}</li>
-    <li>차단 환경 {{ overview.blocked_environments }}</li>
-    <li>초안 {{ overview.draft_cases }}</li>
-    <li>승인 {{ overview.approved_cases }}</li>
-    <li>최근 범위 {{ overview.recent_scope or "없음" }}</li>
-    <li>최근 결과 {{ overview.recent_result or "없음" }}</li>
-  </ul>
-  <p>
-    <a href="{{ overview.new_recording_href }}">새 녹화</a>
-    <a href="{{ overview.saved_cases_href }}">저장 케이스</a>
-    <a href="{{ overview.bundle_href }}">묶음</a>
-  </p>
+  <header class="page-heading"><div><p class="eyebrow">PROJECT OVERVIEW</p><h1>테스트의 모든 흐름을 한곳에서</h1><p class="muted">검증 정의부터 녹화, 저장본 검토와 테스트 수행까지 프로젝트 현황입니다.</p></div><div class="actions"><a class="secondary-link" href="{{ overview.saved_cases_href }}?view=ready">케이스 실행</a><a class="primary-link" href="{{ overview.new_recording_href }}">＋ 새 녹화</a></div></header>
+  <section class="metrics" aria-label="프로젝트 개요">
+    <article class="metric"><span class="metric-label">전체 자동화 케이스</span><strong class="metric-value">{{ project_nav.case_total if project_nav else '—' }}</strong><small>검증 정의와 녹화 기록을 함께 관리</small></article>
+    <article class="metric"><span class="metric-label">승인된 케이스</span><strong class="metric-value">{{ overview.approved_cases }}</strong><small>현재 승인본이 있는 케이스</small></article>
+    <article class="metric"><span class="metric-label">저장본 검토 대기</span><strong class="metric-value">{{ overview.reviews_waiting }}</strong><small>저장 후 사람이 검토할 기록</small></article>
+    <article class="metric"><span class="metric-label">분류가 필요한 실패</span><strong class="metric-value">{{ overview.unclassified_failures }}</strong><small>원본 결과와 분석 의견을 분리</small></article>
+  </section>
+  <section class="studio-hero"><div><h2>무엇을 검증할지 적으면, 녹화부터 시작합니다.</h2><p>디바이스 선택 → 필요 정보 → 자연어 검증 → 동작별 기록 저장 → 완료 후 사람 검토</p></div><a class="secondary-link" href="{{ overview.new_recording_href }}">기기 선택부터 시작 →</a></section>
+  <div class="overview-grid"><section class="panel"><div class="section-heading"><h2>최근 테스트 수행</h2><a href="{{ overview.saved_cases_href }}">저장 케이스 보기</a></div>
+    {% if overview.recent_result %}<dl><div class="overview-facts"><dt>최근 범위</dt><dd>{{ overview.recent_scope or '없음' }}</dd></div><div class="overview-facts"><dt>최근 작업 상태</dt><dd>{{ {'completed':'처리 완료 · QA 판정은 실행 기록에서 확인','running':'실행 중','queued':'접수 대기','error':'작업 오류'}.get(overview.recent_result,overview.recent_result) }}</dd></div></dl>{% else %}<div class="empty-work"><h3>아직 수행 결과가 없습니다.</h3><p>케이스를 준비하면 사용한 버전과 결과가 이곳에 누적됩니다.</p><a href="{{ overview.saved_cases_href }}">케이스 준비하기 →</a></div>{% endif %}
+    <dl><div class="overview-facts"><dt>진행 실행</dt><dd>{{ overview.running_runs }}</dd></div><div class="overview-facts"><dt>대기 실행</dt><dd>{{ overview.queued_runs }}</dd></div></dl>
+  </section><section class="panel"><h2>완료 후 검토할 기록</h2><dl><div class="overview-facts"><dt>검토 대기</dt><dd>{{ overview.reviews_waiting }}</dd></div><div class="overview-facts"><dt>미완성 녹화</dt><dd>{{ overview.incomplete_recordings }}</dd></div><div class="overview-facts"><dt>초안</dt><dd>{{ overview.draft_cases }}</dd></div><div class="overview-facts"><dt>차단 환경</dt><dd>{{ overview.blocked_environments }}</dd></div></dl><p class="muted">녹화 중 승인을 요구하지 않습니다. 저장된 단계·화면·로그를 확인한 뒤 승인합니다.</p><a href="{{ overview.saved_cases_href }}?view=review">검토 대기 케이스 보기 →</a></section></div>
   {% endif %}
 {% endblock %}

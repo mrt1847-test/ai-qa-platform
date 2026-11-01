@@ -1,26 +1,58 @@
 {% extends "base.html" %}
-{% block title %}환경 편집{% endblock %}
+{% block title %}환경 프로필 · AI QA{% endblock %}
 {% block content %}
-  <h1>환경 편집</h1>
-  <p>Web은 1280×720, DPR 1, ko-KR, Asia/Seoul 입니다. Android는 세로 화면입니다. 저장하면 새 revision이 생깁니다.</p>
-  <form method="post" action="/api/v1/projects/{{ project_id }}/environments">
-    <label>이름 <input name="name" value="로컬"></label>
-    <label>종류 <input name="target_kind" value="web"></label>
-    <label>허용 주소 <input name="allowlist" value="https://shop.example"></label>
-    <label>시작 주소 <input name="start_url" value="https://shop.example"></label>
-    <label>너비 <input name="width" value="1280"></label>
-    <label>높이 <input name="height" value="720"></label>
-    <label>DPR <input name="dpr" value="1"></label>
-    <label>로케일 <input name="locale" value="ko-KR"></label>
-    <label>시간대 <input name="timezone" value="Asia/Seoul"></label>
-    <label>패키지 <input name="package" value="com.example.app"></label>
-    <label>방향 <input name="orientation" value="portrait"></label>
-    <label>준비 <input name="setup" value=""></label>
-    <label>초기화 <input name="reset" value=""></label>
-    <label>정리 <input name="cleanup" value=""></label>
-    <label>계정 참조 <input name="account_ref" value=""></label>
-    <label>시간 한도 <input name="timeout_seconds" value="600"></label>
-    <label>행동 한도 <input name="max_actions" value="50"></label>
-    <input type="submit" value="환경 저장">
-  </form>
+{% set p = selected_profile.profile if selected_profile else {} %}
+{% set limits = p.get("limits", {}) %}
+<header class="page-heading">
+  <div><p class="eyebrow">실행 환경 / 프로필</p><h1>{{ selected_profile.name if selected_profile else "환경 프로필 만들기" }}</h1>
+  <p class="muted">앱과 주소, 실행 조건을 저장해 여러 케이스에서 재사용하세요. 저장만으로 기기를 조작하지 않습니다.</p></div>
+  <a href="/ui/projects/{{ project_id }}/environments" class="secondary-link">실행 환경으로</a>
+</header>
+<div class="work-grid">
+<form id="environment-form" data-environment-id="{{ selected_profile.environment_id if selected_profile else '' }}" method="post" action="/api/v1/projects/{{ project_id }}/environments" novalidate>
+  <fieldset class="panel"><legend>1. 기본 정보</legend>
+    <div class="form-grid">
+    <label>프로필 이름 <input name="name"{% if selected_profile %} readonly{% endif %} value="{{ selected_profile.name if selected_profile else '' }}" required placeholder="예: 쇼핑몰 QA · Chrome"></label>
+    <label>테스트 대상 <select name="target_kind"><option value="web"{% if p.get("target_kind", "web") == "web" %} selected{% endif %}>Web</option><option value="android"{% if p.get("target_kind") == "android" %} selected{% endif %}>Android</option></select></label>
+    </div>
+  </fieldset>
+  <fieldset class="panel" data-target="web"><legend>2. Web 접속 정보</legend>
+    <label>시작 주소 <input name="start_url" type="url" value="{{ p.get('start_url', '') }}" placeholder="https://qa.example.com"></label>
+    <label>허용 주소 목록 <textarea name="allowlist" rows="3" placeholder="https://qa.example.com">{{ p.get("allowlist", [])|join("\n") }}</textarea><small>한 줄에 주소 하나. 시작 주소의 origin이 포함되어야 합니다.</small></label>
+    <div class="form-grid">
+    <label>화면 너비 (px) <input name="viewport.width" type="number" min="1" value="{{ p.get('viewport', {}).get('width', 1280) }}"></label>
+    <label>화면 높이 (px) <input name="viewport.height" type="number" min="1" value="{{ p.get('viewport', {}).get('height', 720) }}"></label>
+    </div>
+    <p class="hint">MVP 지원: DPR 1 · Asia/Seoul · 단일 탭</p>
+  </fieldset>
+  <fieldset class="panel" data-target="android"><legend>2. Android 앱 정보</legend>
+    <label>앱 패키지 <input name="package" value="{{ p.get('package', '') }}" placeholder="com.example.app"></label>
+    <label>허용 앱 패키지 목록 <textarea name="android_allowlist" rows="2">{{ p.get('allowlist',[])|join('\n') }}</textarea><small>한 줄에 패키지 하나. 비워두면 위 앱 패키지를 사용합니다.</small></label>
+    <div class="form-grid">
+    <label>준비 지침 <input name="setup" value="{{ p.get('setup', '') }}"></label>
+    <label>초기화 지침 <input name="reset" value="{{ p.get('reset', '') }}"></label>
+    <label>정리 지침 <input name="cleanup" value="{{ p.get('cleanup', '') }}"></label>
+    <label>저장된 계정 참조 (선택) <input name="account_ref" value="{{ p.get('account_ref', '') }}"><small>비밀 원문을 입력하지 않습니다. 기존 참조를 유지하거나 케이스의 비밀 참조 선택에서 연결을 확인하세요.</small></label>
+    </div>
+    <p class="hint">세로 화면을 지원합니다. 앱 설치·데이터 초기화는 별도 지원 작업이며 이 저장에서 실행하지 않습니다.</p>
+  </fieldset>
+  <fieldset class="panel"><legend>3. 실행 조건과 한도</legend>
+    <div class="form-grid">
+    <label>언어·지역 <select name="locale"><option value="ko-KR">한국어 · ko-KR</option>{% if p.get('locale') and p.get('locale') != 'ko-KR' %}<option selected value="{{ p.locale }}">{{ p.locale }}</option>{% endif %}</select></label>
+    <label>초기화 정책 <select name="reset_policy"><option value="none">초기화하지 않음</option>{% if p.get('reset_policy') and p.get('reset_policy') != 'none' %}<option selected value="{{ p.reset_policy }}">저장된 정책 · {{ p.reset_policy }}</option>{% endif %}</select></label>
+    <label>시간 한도 (초) <input name="limits.timeout_seconds" type="number" min="1" max="600" value="{{ limits.get('timeout_seconds',600) }}"></label>
+    <label>동작 한도 (회) <input name="limits.max_actions" type="number" min="1" value="{{ limits.get('max_actions',50) }}"></label>
+    <label>AI 비용 한도 <input name="limits.budget" inputmode="decimal" value="{{ limits.get('budget','1') }}"></label>
+    <label>통화 <input name="limits.currency" value="{{ limits.get('currency','USD') }}"></label>
+    </div>
+  </fieldset>
+  {% include "components/form_feedback.html" %}
+  <div class="action-bar"><input type="submit" data-save-button value="프로필 저장"><span id="environment-version" class="muted">{% if selected_profile %}저장본 v{{ selected_profile.revision }}{% endif %}</span></div>
+</form>
+<aside class="panel supporting" data-asset-list><h2>저장된 프로필</h2><p class="muted">새 개정은 이전 실행의 설정을 바꾸지 않습니다.</p>
+  {% for item in profiles %}<a class="list-card" data-asset-id="{{ item.environment_id }}" href="?environment={{ item.environment_id }}"><strong>{{ item.name }}</strong><span>{{ item.profile.target_kind }} · v{{ item.revision }}</span></a>{% else %}<p data-empty-assets>아직 저장한 프로필이 없습니다.</p>{% endfor %}
+  <a href="/ui/projects/{{ project_id }}/environments/editor">새 프로필 만들기</a>
+</aside>
+</div>
+<script id="environment-snapshot" type="application/json">{{ p|tojson }}</script><script src="/static/environment_editor.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

@@ -374,13 +374,13 @@ def test_w16_01(tmp_path: Path) -> None:
     second = json.loads(rows[1][0])
     steps = json.loads(rows[0][1])["steps"]
     observed = {
-        "device_first": page.text.find("1 기기") < page.text.find("2 대상"),
+        "device_first": page.text.find('data-wizard-step="1"') < page.text.find('data-wizard-step="2"'),
         "tc_required": steps != [],
         "incomplete_draft_saved": saved.status_code == 201 and steps == [],
         "wrong_target_fields_retained": first["android_package"] != "" or second["web_url"] != "",
     }
     assert missing.status_code == 422
-    assert "기기가 끊겼습니다." in page.text
+    assert "오프라인" in page.text
     assert "로그인 확인" in page.text
     assert "com.example.app" in page.text
     assert "http://127.0.0.1/old" not in page.text
@@ -806,6 +806,8 @@ async def _start(app: object, project_id: str, database: Path, actor_id: str):
                 (project_id, actor_id),
             )
         saved = await client.post(f"/api/v1/projects/{project_id}/recordings", json=body, headers=headers)
+        with sqlite3.connect(database) as connection:
+            connection.execute("UPDATE resource_inventory SET state = 'busy' WHERE physical_key_id = 'key-a'")
         replay = await client.post(f"/api/v1/projects/{project_id}/recordings", json=body, headers=headers)
         other = dict(body)
         other["resource_id"] = "key-b"

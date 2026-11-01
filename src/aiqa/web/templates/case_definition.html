@@ -1,14 +1,15 @@
 <form id="definition-form" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">
   <input id="expected-head" type="hidden" value="{{ draft.version_id or '' }}">
-  <label>자연어 <textarea name="raw_text">{{ snapshot.definition.raw_text }}</textarea></label>
-  <label>목적 <input name="objective" value="{{ snapshot.definition.objective }}"></label>
-  <label>사전조건 <textarea name="preconditions">{{ snapshot.definition.preconditions | tojson }}</textarea></label>
-  <label>변수 <textarea name="variables">{{ snapshot.definition.variables | tojson }}</textarea></label>
-  <label>비밀 참조 <textarea name="secret_refs">{{ snapshot.definition.secret_refs | tojson }}</textarea></label>
-  <label>단계와 검증 <textarea name="steps">{{ snapshot.definition.steps | tojson }}</textarea></label>
-  <label>최종 기대 <textarea name="final_expected">{{ snapshot.definition.final_expected | tojson }}</textarea></label>
-  <label>필수 경로 및 금지 경로 <textarea name="path_policy">{{ snapshot.definition.path_policy | tojson }}</textarea></label>
-  <input type="submit" value="초안 저장">
+  <section class="panel"><h2>검증 내용</h2><label>자연어 <textarea name="raw_text" rows="6" placeholder="어떤 순서로 무엇을 확인할지 자연어로 적어 주세요.">{{ snapshot.definition.raw_text }}</textarea></label><label>목적 <input name="objective" value="{{ snapshot.definition.objective }}"></label><label>사전조건 <textarea name="preconditions" rows="3">{{ snapshot.definition.preconditions|join('\n') }}</textarea><small>한 줄에 조건 하나씩 적어 주세요.</small></label></section>
+  <section class="panel"><div class="section-heading"><h2>입력 변수</h2><input type="button" class="secondary" id="add-variable" value="변수 추가"></div><p class="hint">변수 이름을 바꾸면 검증 내용의 참조도 함께 확인하세요. 복합 값은 원본을 유지합니다.</p><div class="table-scroll"><table><caption class="sr-only">검증에 사용할 변수</caption><thead><tr><th scope="col">이름</th><th scope="col">값 종류</th><th scope="col">값</th><th scope="col">동작</th></tr></thead><tbody id="definition-variables"></tbody></table></div></section>
+  <section class="panel"><div class="section-heading"><h2>계정·비밀 참조</h2><input type="button" class="secondary" id="add-secret-reference" value="참조 추가"></div><p class="muted">같은 프로젝트의 저장된 참조를 선택합니다. 비밀번호·API 키 원문을 입력하지 않습니다.</p><div id="definition-secret-refs"></div></section>
+  <section class="panel"><div class="section-heading"><h2>수행 의도와 단계별 검증</h2><input type="button" class="secondary" id="add-definition-step" value="단계 추가"></div><p class="hint" id="recorded-step-hint" hidden>녹화된 절차의 수정·재배치는 단계 탭에서 새 버전으로 진행합니다. 여기서는 기존 연결을 유지합니다.</p><div id="definition-steps"></div></section>
+  <section class="panel"><div class="section-heading"><h2>최종 기대 결과</h2><input type="button" class="secondary" id="add-final-check" value="최종 검증 추가"></div><div id="definition-final-checks"></div><p class="muted">아직 기대 결과가 명확하지 않아도 초안을 저장할 수 있습니다.</p></section>
+  <section class="panel"><h2>필수·금지 경로</h2><div class="form-grid"><label>필수 경로 <textarea name="must_use" rows="3">{{ snapshot.definition.path_policy.must_use|join('\n') }}</textarea></label><label>금지 경로 <textarea name="forbidden" rows="3">{{ snapshot.definition.path_policy.forbidden|join('\n') }}</textarea></label></div></section>
+  {% include "components/form_feedback.html" %}
+  <div class="action-bar"><input type="submit" data-save-button value="초안 저장"><span class="muted">수정은 새 초안 버전으로 저장됩니다.</span></div>
+  <details><summary>고급 · 검증 정의 원본 보기</summary><pre id="definition-preview" aria-label="검증 정의 원본"></pre></details>
 </form>
 <script id="definition-snapshot" type="application/json">{{ snapshot | tojson }}</script>
-<script src="/static/definition_editor.js"></script>
+<script src="/static/definition_model.js?v={{ ui_asset_version }}"></script>
+<script src="/static/definition_editor.js?v={{ ui_asset_version }}"></script>

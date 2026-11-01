@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 {% block title %}검증 정의{% endblock %}
 {% block content %}
-  <h1>검증 정의</h1>
-  <nav aria-label="케이스 탭">
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=definition">검증</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=steps">단계</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=code">code</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">설정</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=history">실행이력</a>
+  <header class="page-heading"><div><p class="eyebrow">AUTOMATION CASE / 검증 정의</p><h1>{{ board.case_name }}</h1><p class="muted">검증 내용과 녹화 기록을 하나의 케이스에서 관리합니다.</p></div><div class="actions"><a class="secondary-link" href="{{ list_href_full }}">목록으로</a><a class="primary-link" href="/ui/projects/{{ project_id }}/recordings/wizard?case={{ case_id }}">녹화 준비</a></div></header>
+  {% if board.selected_version_id != board.latest_draft_version_id %}<p class="hint">과거 v{{ (board.versions|selectattr('id','equalto',board.selected_version_id)|first).revision }}를 읽고 있습니다. 검증·설정 편집은 최신 초안에서 진행합니다.</p>{% endif %}<section class="case-state-grid" aria-label="케이스 상태"><article class="metric"><span class="metric-label">최신 초안</span><strong>{% if board.draft_revision %}v{{ board.draft_revision }} 저장됨{% else %}작성 전{% endif %}</strong></article><article class="metric"><span class="metric-label">현재 승인본</span><strong>{% if board.approved_revision %}v{{ board.approved_revision }}{% else %}승인 전{% endif %}</strong></article><article class="metric"><span class="metric-label">재생 절차</span><strong>{{ '준비됨' if board.package.ready else '준비 필요' }}</strong></article></section>
+  <nav class="case-tabs" aria-label="케이스 탭">
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=definition"{% if tab == 'definition' %} aria-current="page"{% endif %}>검증</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=steps"{% if tab == 'steps' %} aria-current="page"{% endif %}>단계</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=code"{% if tab == 'code' %} aria-current="page"{% endif %}>재생 코드</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings"{% if tab == 'settings' %} aria-current="page"{% endif %}>설정</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=history"{% if tab == 'history' %} aria-current="page"{% endif %}>실행이력</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/recordings">녹화 이력</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/execution-setup">시범</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=review">검토</a>
+    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=review"{% if tab == 'review' %} aria-current="page"{% endif %}>검토</a>
     <a href="/ui/projects/{{ project_id }}/tcs?case_id={{ case_id }}">선택 TC</a>
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=versions&amp;version={{ board.latest_draft_version_id }}">버전</a>
   </nav>
-  <p>최신 초안 {{ board.draft_text }}</p>
-  <p>승인본 {{ board.approved_text }}</p>
-  {% include "components/package_view.html" %}
+  <details><summary>실행 절차·버전 상세</summary><p>최신 초안 {{ board.draft_text }}</p><p>승인본 {{ board.approved_text }}</p>{% include "components/package_view.html" %}</details>
   {% if tab == "history" %}
+    <h2>최근 실행 기록 · 최대 25건</h2>
     {% if board.history %}
       <ul>
         {% for item in board.history %}
-        <li>{{ item.case_run_id }}</li>
+        <li class="panel"><strong>{{ {'trial':'시범','regression':'회귀','reverification':'재검증'}.get(item.purpose,item.purpose) }} · {{ item.result or 'QA 판정 대기' }}</strong><p>{{ item.requested_at }} · 작업 {{ item.job_status or '기록 없음' }}</p><details><summary>실행·시도 참조</summary><p>{{ item.case_run_id }}</p><p>{{ item.attempt_id or '시도 전' }}</p></details>{% if item.attempt_id and item.first_action %}<a href="/ui/projects/{{ project_id }}/evidence?owner_kind=ITEM&amp;owner_id={{ item.case_run_id }}&amp;attempt_id={{ item.attempt_id }}&amp;action_id={{ item.first_action }}">이 시도의 증거</a>{% endif %}</li>
         {% endfor %}
       </ul>
     {% else %}

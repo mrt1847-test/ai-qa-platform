@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.templating import Jinja2Templates
 
 _PACKAGE = "aiqa.web"
+_UI_ASSET_VERSION = "20261101-ux1"
 _templates: Jinja2Templates | None = None
 
 
@@ -31,6 +32,7 @@ def _jinja() -> Jinja2Templates:
     global _templates
     if _templates is None:
         _templates = Jinja2Templates(directory=str(_resource_dir("templates")))
+        _templates.env.globals['ui_asset_version'] = _UI_ASSET_VERSION
     return _templates
 
 
@@ -87,8 +89,14 @@ class PageContext:
 
 
 def render_template(request: Request, name: str, context: dict[str, object]) -> HTMLResponse:
-    """Render one template. This does not open a database."""
+    """Render a product page with its authorized project navigation."""
 
+    from aiqa.web.context import project_navigation
+    context = dict(context)
+    navigation = project_navigation(request, context)
+    if navigation is not None:
+        context["project_nav"] = navigation
+        context["shell"] = True
     return _jinja().TemplateResponse(request, name, context)
 
 

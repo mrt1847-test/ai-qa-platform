@@ -44,6 +44,7 @@ class ResolvedTrialItem:
     resource_id: UUID
     dataset_version_id: UUID | None
     approval_id: UUID | None
+    limits: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,11 +90,7 @@ def enqueue_execution(
     _scope(actor, project_id)
     if key.project_id != project_id or key.operation != _OPERATION or key.key.strip() == "":
         raise ExecutionRejected("idempotency key does not match")
-    preview = preview_execution(tx, actor, project_id, _preview_payload(payload))
-    if not preview.ready or payload.get("preview_hash") != preview.preview_hash:
-        raise ExecutionRejected("trial is not ready")
-    _require_item_pins(payload, preview)
-    body_hash = _request_hash(payload, preview)
+    body_hash = _request_hash(payload)
     existing = tx.connection.execute(
         """
         SELECT body_hash, job_id, execution_id, case_run_id
@@ -117,6 +114,10 @@ def enqueue_execution(
             int(stored.get("commit_seq", 0)),
             True,
         )
+    preview = preview_execution(tx, actor, project_id, _preview_payload(payload))
+    if not preview.ready or payload.get("preview_hash") != preview.preview_hash:
+        raise ExecutionRejected("trial is not ready")
+    _require_item_pins(payload, preview)
     item = preview.resolved_items[0]
     execution_id = uuid4()
     case_run_id = uuid4()
@@ -141,14 +142,18 @@ def enqueue_execution(
     )
     limits = canonical_json(
         {
-            "budget": "2.00",
+            **item.limits,
             "commit_seq": commit_seq,
-            "currency": "USD",
             "healing_snapshot": item.healing_snapshot,
             "replay_package_hash": item.replay_package_hash,
             "replay_package_id": str(item.replay_package_id),
             "self_healing_enabled": False,
-            "timeout_seconds": 600,
+            "execution_snapshot": {
+                "case_version_id":str(item.case_version_id),"manifest_hash":item.manifest_hash,
+                "environment_revision_id":str(item.environment_revision_id),"resource_id":str(item.resource_id),
+                "dataset_version_id":None if item.dataset_version_id is None else str(item.dataset_version_id),
+                "approval_id":None if item.approval_id is None else str(item.approval_id),
+            },
         }
     )
     tx.connection.execute(
@@ -198,8 +203,8 @@ def _resolve(
         raise ExecutionRejected("failure policy is required")
     selection = payload.get("selection", payload)
     raw_items = selection.get("items") if type(selection) is dict else None
-    if type(raw_items) is not list or not 1 <= len(raw_items) <= 100:
-        raise ExecutionRejected("item count is outside 1..100")
+    if type(raw_items) is not list or len(raw_items) != 1:
+        raise ExecutionRejected("single trial requires exactly one item")
     resolved: list[ResolvedTrialItem] = []
     blockers: list[ExecutionBlocker] = []
     for raw in raw_items:
@@ -256,11 +261,12 @@ def _one_item(
         (str(project_id), str(environment_id)),
     ).fetchone() is None:
         blockers.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "environment is missing"))
-    if tx.connection.execute(
-        "SELECT 1 FROM resource_aliases WHERE project_id = ? AND physical_key_id = ?",
+    resource = tx.connection.execute(
+        "SELECT r.target_kind,i.state FROM resource_aliases r LEFT JOIN resource_inventory i ON i.physical_key_id=r.physical_key_id WHERE r.project_id = ? AND r.physical_key_id = ?",
         (str(project_id), str(resource_id)),
-    ).fetchone() is None:
-        blockers.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "resource is missing"))
+    ).fetchone()
+    if resource is None or resource[1] != 'ready' or resource[0] != json.loads(str(row[2])).get('target_kind'):
+        blockers.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "resource is not ready for this target"))
     if dataset_id is not None and tx.connection.execute(
         "SELECT 1 FROM dataset_versions WHERE project_id = ? AND version_id = ?",
         (str(project_id), str(dataset_id)),
@@ -304,6 +310,7 @@ def _one_item(
         resource_id,
         dataset_id,
         approval,
+        {"timeout_seconds":_timeout(settings),"budget":str(settings.get('limits',{}).get('budget','2.00')),"currency":str(settings.get('limits',{}).get('currency','USD')),"max_actions":_bounded(settings.get('limits',{}).get('max_actions'),50),"max_model_calls":_bounded(settings.get('limits',{}).get('max_model_calls'),80)},
     )
     return item, tuple(blockers)
 
@@ -447,6 +454,8 @@ def _preview_hash(
                     "replay_package_hash": item.replay_package_hash,
                     "replay_package_id": None if item.replay_package_id is None else str(item.replay_package_id),
                     "resource_id": str(item.resource_id),
+                    "dataset_version_id":None if item.dataset_version_id is None else str(item.dataset_version_id),
+                    "entry_id":item.entry_id,
                 }
                 for item in items
             ],
@@ -458,12 +467,14 @@ def _preview_hash(
     )
 
 
-def _request_hash(payload: dict[str, object], preview: ExecutionPreview) -> str:
+def _request_hash(payload: dict[str, object]) -> str:
     return canonical_hash(
         {
             "failure_policy": payload.get("failure_policy"),
             "name": _name(payload),
-            "preview_hash": preview.preview_hash,
+            "preview_hash": payload.get('preview_hash'),
+            "items": payload.get('items'),
+            "exclusions":payload.get('exclusions',[]),
             "purpose": "trial",
             "self_healing_enabled": False,
             "source": "single",

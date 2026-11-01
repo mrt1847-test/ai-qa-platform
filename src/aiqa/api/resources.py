@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.routing import APIRouter
 
+from aiqa.api.mutations import BrowserMutationRoute
 from aiqa.api.auth import (
     AuthRequired,
     CsrfRejected,
@@ -28,12 +29,14 @@ from aiqa.domain.datasets import (
     ForeignSecret as DatasetForeignSecret,
     bind_dataset_store,
     get_dataset_revision,
+    list_datasets,
     save_dataset_revision,
 )
 from aiqa.domain.environments import (
     EnvironmentNotFound,
     bind_environment_store,
     get_environment_revision,
+    list_environment_profiles,
     save_environment_revision,
 )
 from aiqa.domain.model_bindings import (
@@ -69,6 +72,7 @@ from aiqa.store.models import (
 )
 
 router = APIRouter(prefix="/api/v1")
+assets = APIRouter(prefix="/api/v1", route_class=BrowserMutationRoute)
 pages = APIRouter()
 _ERRORS = (
     CsrfRejected,
@@ -139,6 +143,7 @@ def install_resources(application: FastAPI) -> None:
     if getattr(application.state, "resources_installed", False):
         return
     application.include_router(router)
+    application.include_router(assets)
     application.include_router(pages)
     from aiqa.api.app_builds import install_app_builds
     from aiqa.api.datasets import install_datasets
@@ -241,7 +246,25 @@ async def recording_wizard_page(project_id: str, request: Request) -> HTMLRespon
         try:
             authorize_page(request, project)
             items = list_resources(project)
-            draft = {} if case_text == "" else _wizard_draft(project, case_text)
+            base_text = request.query_params.get('base', '')
+            if base_text:
+                try: UUID(base_text)
+                except ValueError: return HTMLResponse(status_code=404,content='기준 버전을 찾지 못했습니다.')
+            draft = {} if case_text == "" else _wizard_draft(project, case_text, base_text)
+            if case_text and not draft:
+                return HTMLResponse(status_code=404, content="케이스를 찾지 못했습니다.")
+            profiles = list_environment_profiles(project)
+            datasets = list_datasets(project)
+            from aiqa.web.asset_options import fixed_revision_choices
+            from aiqa.worker.resources import _bound_store
+            profiles,datasets = fixed_revision_choices(_bound_store()._connection,project,profiles,datasets,draft)
+            requested_resource = request.query_params.get("resource_id", "")
+            if requested_resource:
+                chosen = next((item for item in items if item["resource_id"] == requested_resource), None)
+                if chosen is None:
+                    return HTMLResponse(status_code=404, content="기기를 찾지 못했습니다.")
+                draft["resource_id"] = requested_resource
+                draft["target_kind"] = chosen["target_kind"]
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     target = request.query_params.get("target") or str(draft.get("target_kind") or "web")
@@ -273,11 +296,13 @@ async def recording_wizard_page(project_id: str, request: Request) -> HTMLRespon
             "target": target,
             "step": step,
             "disconnected": disconnected and selected != "",
+            "profiles": profiles,
+            "datasets": datasets,
         },
     )
 
 
-def _wizard_draft(project_id: UUID, case_id: str) -> dict[str, object]:
+def _wizard_draft(project_id: UUID, case_id: str, base_version: str = '') -> dict[str, object]:
     from aiqa.worker.resources import _bound_store
 
     try:
@@ -287,20 +312,35 @@ def _wizard_draft(project_id: UUID, case_id: str) -> dict[str, object]:
     with _bound_store().transaction() as connection:
         row = connection.execute(
             """
-            SELECT versions.settings_json, versions.definition_json
+            SELECT versions.settings_json, versions.definition_json, versions.version_id, versions.content_hash, cases.name, versions.recorded_steps_json, versions.revision, cases.latest_draft_version_id
             FROM automation_cases AS cases
-            JOIN case_versions AS versions
+            LEFT JOIN case_versions AS versions
               ON versions.project_id = cases.project_id
-             AND versions.version_id = cases.latest_draft_version_id
+             AND versions.case_id = cases.case_id
+             AND versions.version_id = COALESCE(NULLIF(?, ''), cases.latest_draft_version_id)
             WHERE cases.project_id = ? AND cases.case_id = ?
             """,
-            (str(project_id), str(parsed)),
+            (base_version, str(project_id), str(parsed)),
         ).fetchone()
     if row is None:
         return {}
-    settings = json.loads(str(row[0]))
-    definition = json.loads(str(row[1]))
+    if base_version and row[2] is None:
+        return {}
+    settings = {} if row[0] is None else json.loads(str(row[0]))
+    definition = {} if row[1] is None else json.loads(str(row[1]))
     settings["raw_text"] = str(definition.get("raw_text", ""))
+    settings["definition"] = definition
+    settings["version_id"] = "" if row[2] is None else str(row[2])
+    settings["input_version_hash"] = "" if row[3] is None else str(row[3])
+    settings["case_name"] = str(row[4])
+    settings["recorded_steps"] = [] if row[5] is None else json.loads(str(row[5]))
+    settings['version_revision'] = row[6]
+    settings['expected_head'] = row[7]
+    if base_version:
+        settings['rerecord_base_version_id'] = base_version
+        settings['rerecord_reason'] = ''
+        settings['rerecord_confirmed'] = False
+        settings['recorded_steps'] = []
     return settings
 
 
@@ -404,6 +444,11 @@ async def environment_editor_page(project_id: str, request: Request) -> HTMLResp
     with _bound(request):
         try:
             authorize_page(request, project)
+            profiles = list_environment_profiles(project)
+            chosen = request.query_params.get("environment", "")
+            selected = next((item for item in profiles if item["environment_id"] == chosen), None)
+            if chosen and selected is None:
+                return HTMLResponse(status_code=404, content="환경을 찾지 못했습니다.")
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     return render_template(
@@ -421,6 +466,8 @@ async def environment_editor_page(project_id: str, request: Request) -> HTMLResp
             "crumbs": (("환경", f"/ui/projects/{project}/environments"), ("편집", "")),
             "list_href": f"/ui/projects/{project}/environments",
             "detail_href": f"/ui/projects/{project}/environments/editor",
+            "profiles": profiles,
+            "selected_profile": selected,
             "request": request,
             "project_id": str(project),
         },
@@ -435,12 +482,12 @@ def _project_query(request: Request) -> UUID | JSONResponse:
     return parsed
 
 
-@router.post("/projects/{project_id}/datasets")
+@assets.post("/projects/{project_id}/datasets")
 async def post_dataset(project_id: str, request: Request) -> JSONResponse:
     return await _save_dataset(project_id, None, request)
 
 
-@router.post("/projects/{project_id}/datasets/{dataset_id}/revisions")
+@assets.post("/projects/{project_id}/datasets/{dataset_id}/revisions")
 async def post_dataset_revision(project_id: str, dataset_id: str, request: Request) -> JSONResponse:
     return await _save_dataset(project_id, dataset_id, request)
 
@@ -461,12 +508,12 @@ async def get_dataset(project_id: str, dataset_id: str, version_id: str, request
     return JSONResponse(status_code=200, content=_dataset_json(view))
 
 
-@router.post("/projects/{project_id}/environments")
+@assets.post("/projects/{project_id}/environments")
 async def post_environment(project_id: str, request: Request) -> JSONResponse:
     return await _save_environment(project_id, None, request)
 
 
-@router.post("/projects/{project_id}/environments/{environment_id}/revisions")
+@assets.post("/projects/{project_id}/environments/{environment_id}/revisions")
 async def post_environment_revision(project_id: str, environment_id: str, request: Request) -> JSONResponse:
     return await _save_environment(project_id, environment_id, request)
 
@@ -503,7 +550,7 @@ async def get_environment(project_id: str, environment_id: str, revision_id: str
     return JSONResponse(status_code=200, content=_environment_json(view))
 
 
-@router.post("/projects/{project_id}/model-bindings")
+@assets.post("/projects/{project_id}/model-bindings")
 async def post_binding(project_id: str, request: Request) -> JSONResponse:
     rejected = _idempotency(request)
     if rejected is not None:
@@ -553,6 +600,10 @@ async def _save_dataset(project_id: str, dataset_id: str | None, request: Reques
     payload = await _body(request)
     if isinstance(payload, JSONResponse):
         return payload
+    from aiqa.api.asset_validation import dataset_fields
+    fields = dataset_fields(payload, require_name=parsed is None)
+    if fields:
+        return _error(422, "validation", "invalid dataset", fields)
     try:
         schema = payload.get("row_schema")
         rows = payload.get("rows")
@@ -598,6 +649,10 @@ async def _save_environment(project_id: str, environment_id: str | None, request
         payload = await _body(request)
     if isinstance(payload, JSONResponse):
         return payload
+    from aiqa.api.asset_validation import environment_fields
+    fields = environment_fields(payload, require_name=parsed is None)
+    if fields:
+        return _error(422, "validation", "invalid environment", fields)
     try:
         revision = _environment_input(project, parsed, payload)
     except ValueError:
@@ -811,3 +866,44 @@ def _error(status: int, code: str, message: str, fields: dict[str, list[str]]) -
             }
         },
     )
+
+
+@router.get("/projects/{project_id}/environments")
+async def get_environment_profiles(project_id: str, request: Request) -> JSONResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    with _bound(request):
+        try:
+            authorize_browser(request, project, "environment")
+            profiles = list_environment_profiles(project)
+        except _ERRORS as exc:
+            return _auth_response(exc)
+    return JSONResponse(content={"environments": profiles})
+
+
+@router.post("/projects/{project_id}/recording-previews")
+async def preview_recording_start(project_id: str, request: Request) -> JSONResponse:
+    from aiqa.recording.service import RecordingStartInput, PreflightRejected, HashMismatch, inspect_recording
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    try:
+        spec = RecordingStartInput(UUID(str(payload.get("case_id"))), UUID(str(payload.get("input_case_version_id"))), str(payload.get("input_version_hash", "")), str(payload.get("resource_id", "")))
+    except ValueError:
+        return _error(422, "validation", "invalid recording", {})
+    with _bound(request):
+        try:
+            authorize_browser(request, project, "recording_preview")
+            from aiqa.worker.resources import _bound_store
+            report = inspect_recording(_bound_store()._connection, project, spec)
+        except HashMismatch:
+            return _error(409, "conflict", "version hash does not match", {})
+        except PreflightRejected:
+            return _error(404, "not_found", "case version was not found", {})
+        except _ERRORS as exc:
+            return _auth_response(exc)
+    return JSONResponse(content=report)

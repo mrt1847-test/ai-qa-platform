@@ -131,7 +131,7 @@ def list_datasets(project_id: UUID) -> tuple[dict[str, object], ...]:
     with _bound_store().transaction() as connection:
         rows = connection.execute(
             """
-            SELECT datasets.dataset_id, datasets.name, versions.revision, versions.body_json, versions.content_hash
+            SELECT datasets.dataset_id, datasets.name, versions.revision, versions.body_json, versions.content_hash, versions.version_id
             FROM datasets
             JOIN dataset_versions AS versions
               ON versions.project_id = datasets.project_id
@@ -154,7 +154,12 @@ def list_datasets(project_id: UUID) -> tuple[dict[str, object], ...]:
                     (str(project_id), str(row[0]), int(row[2]) - 1),
                 ).fetchone()
                 previous = None if older is None else json.loads(str(older[0]))
-            listed.append(_public_dataset(str(row[0]), str(row[1]), int(row[2]), str(row[4]), body, previous))
+            view = _public_dataset(str(row[0]), str(row[1]), int(row[2]), str(row[4]), body, previous)
+            view["id"] = str(row[5])
+            view['version_id'] = str(row[5])
+            view["row_schema"] = body.get("schema", {})
+            view["secret_ref"] = body.get("secret_ref")
+            listed.append(view)
     return tuple(listed)
 
 
@@ -174,6 +179,10 @@ def read_dataset_version(project_id: UUID, dataset_id: UUID, version_id: UUID) -
     body = json.loads(str(row[1]))
     view = _public_dataset(str(dataset_id), "", int(row[0]), str(row[2]), body, None)
     view["rows"] = body.get("rows", [])
+    view["id"] = str(version_id)
+    view['version_id'] = str(version_id)
+    view["row_schema"] = body.get("schema", {})
+    view["secret_ref"] = body.get("secret_ref")
     return view
 
 

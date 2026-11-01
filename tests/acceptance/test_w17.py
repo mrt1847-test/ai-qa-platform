@@ -233,6 +233,7 @@ def _packages(
             """,
             (project_id, environment_id),
         )
+        connection.execute("INSERT INTO resource_inventory(physical_key_id,state,os_build,geometry,permissions,ime,observed_at) VALUES(?,'ready','','','[]','','2026-11-01')",(resource_id,))
         connection.execute(
             """
             INSERT INTO environment_revisions (

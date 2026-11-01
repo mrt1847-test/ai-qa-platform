@@ -266,13 +266,28 @@ def list_cases(query: CaseListQuery) -> CursorPage:
         )
         params.append(query.tag)
     connection = _bound_store()._connection
+    scope_where = ' AND '.join(clauses)
+    scope_params = tuple(params)
+    total = int(connection.execute(f"SELECT COUNT(*) FROM automation_cases WHERE {scope_where}", scope_params).fetchone()[0])
+    offset = 0
+    previous_cursor = None
     if query.cursor is not None:
         anchor = connection.execute(
-            f"SELECT {order}, automation_cases.case_id FROM automation_cases WHERE project_id = ? AND case_id = ?",
-            (str(query.project_id), query.cursor),
+            f"SELECT {order}, automation_cases.case_id FROM automation_cases WHERE {scope_where} AND automation_cases.case_id = ?",
+            (*scope_params, query.cursor),
         ).fetchone()
         if anchor is None:
             raise ValueError("invalid cursor")
+        offset = int(connection.execute(
+            f"SELECT COUNT(*) FROM automation_cases WHERE {scope_where} AND ({order} < ? OR ({order} = ? AND automation_cases.case_id <= ?))",
+            (*scope_params, anchor[0], anchor[0], anchor[1]),
+        ).fetchone()[0])
+        if offset > query.limit:
+            previous = connection.execute(
+                f"SELECT automation_cases.case_id FROM automation_cases WHERE {scope_where} ORDER BY {order}, automation_cases.case_id LIMIT 1 OFFSET ?",
+                (*scope_params, max(0, offset - query.limit - 1)),
+            ).fetchone()
+            previous_cursor = None if previous is None else str(previous[0])
         clauses.append(f"({order} > ? OR ({order} = ? AND automation_cases.case_id > ?))")
         params.extend([anchor[0], anchor[0], anchor[1]])
     rows = connection.execute(
@@ -292,11 +307,34 @@ def list_cases(query: CaseListQuery) -> CursorPage:
         (str(query.project_id),),
     ).fetchone()
     visible = rows[: query.limit]
+    # One batched projection for this page; no row-by-row queries or evidence loads.
+    projections = {}
+    if visible:
+        ids = tuple(str(row[0]) for row in visible)
+        details = connection.execute(f"""
+            WITH latest_run AS (
+                SELECT r.case_id, r.requested_at, f.core_result,
+                       ROW_NUMBER() OVER (PARTITION BY r.case_id ORDER BY r.requested_at DESC, r.case_run_id DESC) AS position
+                FROM case_runs r LEFT JOIN item_finalizations f
+                  ON f.project_id = r.project_id AND f.case_run_id = r.case_run_id
+                WHERE r.project_id = ? AND r.case_id IN ({','.join('?' for _ in ids)})
+            )
+            SELECT c.case_id, json_extract(d.settings_json, '$.target_kind'), d.revision,
+                   a.revision, r.core_result, r.requested_at
+            FROM automation_cases c
+            LEFT JOIN case_versions d ON d.project_id = c.project_id AND d.version_id = c.latest_draft_version_id
+            LEFT JOIN approval_events e ON e.project_id = c.project_id AND e.approval_id = c.current_approval_id AND e.event_kind = 'approved'
+            LEFT JOIN case_versions a ON a.project_id = e.project_id AND a.version_id = e.case_version_id
+            LEFT JOIN latest_run r ON r.case_id = c.case_id AND r.position = 1
+            WHERE c.project_id = ? AND c.case_id IN ({','.join('?' for _ in ids)})
+        """, (str(query.project_id), *ids, str(query.project_id), *ids)).fetchall()
+        projections = {str(item[0]): tuple(item[1:]) for item in details}
     next_cursor = None if len(rows) <= query.limit else str(visible[-1][0])
     return CursorPage(
-        items=tuple(_row(item) for item in visible),
+        items=tuple(_row(item, projections.get(str(item[0]))) for item in visible),
         next_cursor=next_cursor,
         snapshot_seq=0 if clock is None else int(clock[0]),
+        total=total, start=offset + 1 if visible else 0, end=offset + len(visible), previous_cursor=previous_cursor,
     )
 
 
@@ -482,7 +520,7 @@ def _view(actor: Actor, case_id: UUID, row) -> CaseView:
     )
 
 
-def _row(item) -> CaseListRow:
+def _row(item, projection=None) -> CaseListRow:
     return CaseListRow(
         case_id=UUID(str(item[0])),
         name=str(item[1]),
@@ -493,6 +531,7 @@ def _row(item) -> CaseListRow:
         archived_at=None if item[6] is None else str(item[6]),
         lock_version=int(item[7]),
         tc_reference=None if item[8] is None else UUID(str(item[8])),
+        **({} if projection is None else dict(zip(('target_kind', 'draft_revision', 'approved_revision', 'latest_result', 'latest_run_at'), projection))),
     )
 
 

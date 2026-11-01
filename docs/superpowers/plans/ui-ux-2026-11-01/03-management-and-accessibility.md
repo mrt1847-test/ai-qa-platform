@@ -5,7 +5,7 @@
 **Goal:** 월3,000개 회귀 케이스를 이해 가능한 상태와 선택 범위로 관리하고, 두 해상도와 키보드에서 같은 작업을 완료한다.
 **Architecture:** 서버 목록 projection·정확한 조회 범위와 기존 설정 계약을 보완하고 공통 UI 구성 요소로 표현한다. 기능별 수용과 전체 여정 수용을 분리한다.
 **Tech Stack:** 기존 FastAPI/Jinja/JavaScript/CSS/SQLite/pytest.
-**Spec / Global Constraints / Review Focus:** [전체 계획](../2026-11-01-ui-ux-improvements.md)을 적용한다. `web/...`, `api/...` 축약은 `src/aiqa/` 아래다. 모든 단위는 `planned`다.
+**Spec / Global Constraints / Review Focus:** [전체 계획](../2026-11-01-ui-ux-improvements.md)을 적용한다. `web/...`, `api/...` 축약은 `src/aiqa/` 아래다. 계획 당시 상태는 `planned`였다. 현재 실행 결과는 [단위별 인계](../../../validation/ux/README.md)를 따른다. 아래 수용 체크리스트를 보존하며 체크박스만 보고 재구현하지 않는다.
 
 <a id="ux-07"></a>
 ## UX-07 — 목록을 실행 대상 선별 작업 공간으로 개선

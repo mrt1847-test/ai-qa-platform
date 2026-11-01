@@ -88,7 +88,7 @@ def test_w19_02(tmp_path: Path) -> None:
         "reason_required": empty_status == 422 and rejected_status == 201 and decision is not None and decision[1] != "",
     }
     assert "이 버전 승인 및 기본 실행본으로 사용" in page
-    assert "기본본은 유지됩니다." in page and "이 화면은 승인하지 않습니다." in page
+    assert "기본본은 유지됩니다." in page and "화면 방문만으로 승인하지 않습니다." in page
     assert "PASS" not in page
     assert observed == {
         "failed_candidate_changes_default": False,

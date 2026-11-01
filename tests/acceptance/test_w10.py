@@ -288,7 +288,8 @@ def test_w10_03(tmp_path: Path) -> None:
             filled = await client.get(f"/api/v1/projects/{project_id}/overview")
             blank = await client.get(f"/api/v1/projects/{empty_id}/overview")
             page = await client.get(f"/ui/projects/{empty_id}/overview")
-            device = await client.get(f"/ui/projects/{empty_id}/recordings/new")
+            await _ui_session(client, empty_id, "overview-wizard-session")
+            device = await client.get(f"/ui/projects/{empty_id}/recordings/new", follow_redirects=True)
             return {"filled": filled, "blank": blank, "page": page, "device": device}
 
     pages = asyncio.run(read())
@@ -309,8 +310,8 @@ def test_w10_03(tmp_path: Path) -> None:
         "new_recording_opens_device_step": (
             blank["new_recording_href"] in pages["page"].text
             and pages["device"].status_code == 200
-            and "기기 단계" in device_text
-            and "기기를 열지 않습니다." in device_text
+            and 'id="recording-form"' in device_text
+            and "디바이스 선택" in device_text
         ),
     }
     assert observed == {
@@ -636,7 +637,8 @@ def test_w10_04(tmp_path: Path) -> None:
             and found["items"][0]["case_id"] == target_id
             and found["items"][0]["tc_reference"] is None
             and f'value="{target_id}"' in listed
-            and "disabled" not in listed
+            and f'value="{target_id}" disabled' not in listed
+            and f'disabled value="{target_id}"' not in listed
         ),
     }
     assert observed == {
@@ -796,13 +798,12 @@ def test_w10_05(tmp_path: Path) -> None:
     assert pages["single"].status_code == 200
     assert "이 화면은 실행을 시작하지 않습니다." in pages["single"].text
     assert pages["review"].status_code == 200
-    assert "이 화면은 승인하지 않습니다." in pages["review"].text
+    assert "화면 방문만으로 승인하지 않습니다." in pages["review"].text
     assert pages["chosen"].status_code == 200
-    assert f"/cases/{approved}/run" in listed
+    assert f"/cases/{approved}/execution-setup" in listed
     assert f"/cases/{approved}/review" in listed
     assert f"/cases/{approved}" in listed
-    assert "/cases/run?selected=" in listed
-    assert "/bundles?selected=" in listed
+    assert 'id="selected-trial" aria-disabled="true"' in listed
     assert "/recordings/new" in listed
     assert 'value="복제"' in listed
     assert 'value="보관"' in listed
@@ -1583,7 +1584,7 @@ def test_w10_11(tmp_path: Path) -> None:
     assert "plain-secret-not-shown" not in foreign.text
     assert stored["healing_policy"]["allowed"] is False
     assert stored["environment_revision_id"] == "env-1"
-    assert "전역 기본" in page and "기본 OFF" in page and "Web URL" in page
+    assert "전역 기본" in page and "기본 OFF" in page and 'name="web_url"' in page
     assert "실행은 여기서 시작하지 않습니다." in page
     assert observed == {
         "new_case_revision": True,
@@ -2055,7 +2056,7 @@ def test_w10_09(tmp_path: Path) -> None:
     assert result["stale"].status_code == 409
     assert result["expanded"].status_code == 422
     assert "authoring" in page and "verification" in page and "healing" in page and "maintenance" in page
-    assert "키는 한 번 입력한 뒤 비웁니다." in page
+    assert 'type="password"' in page and "기존 키 원문은 표시하지 않습니다." in page
     assert observed == {
         "role_bindings_separate": True,
         "read_secret_plaintext": False,

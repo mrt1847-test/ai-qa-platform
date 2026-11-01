@@ -1,5 +1,7 @@
 # Next Actions
 
+> 이 UI 개선 분기의 검토 결과: [샘플 기반 UI 인계](docs/validation/ux/README.md). UI/core 변경과 native 미검증을 구분한다. 기존 W 완료 수·Current는 아래 그대로이며 UI 검증으로 W 부모 gate를 올리지 않는다.
+
 Updated: **2026-11-01 (Asia/Seoul)** — W23-01을 완료했다. W29-05는 VM 선행이 아직이라 Current가 아니다. W29-03은 VM 선행이 아직이라 Current가 아니다. W19-04는 W16-04·W17-04와 실제 환경이 아직이라 Current가 아니다. Next 표의 1~7은 선행이 끝나지 않았다. 표에서 선행이 끝난 W31-02를 Current로 옮겼다. 완료89/163·상위6/33. 실행 우선순위는 이 파일만 관리하며 완료 이력은 WORK_PROGRESS/작업 인계에 둔다.
 
 상세 범위/검증 등급은 카드·지정 계약, 직접 선행/상태/환경 메모는 TASK_INDEX, 전체 진행은 WORK_PROGRESS가 소유한다.

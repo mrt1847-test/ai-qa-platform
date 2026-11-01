@@ -1,5 +1,8 @@
-<section data-raw-control="false" data-preview="{{ item.reason }}">
-  {% if item.state == "unauthorized" %}
+<section data-raw-control="false" data-preview="{{ item.reason }}" data-resource-preview="{{ item.resource_id }}" data-project="{{ project_id }}" data-observed="{{ item.observed_at }}">
+  <img alt="{{ item.display_name }} · 저장된 정제 관찰" hidden style="max-width:100%;max-height:280px;object-fit:contain">
+  <time datetime="{{ item.observed_at }}">{{ item.observed_at }}</time>
+  <p data-preview-note>저장된 최근 관찰을 확인합니다.</p>
+  <noscript>{% if item.state == "unauthorized" %}
   <p>권한이 없습니다.</p>
   {% elif item.reason == "expired" %}
   <p>보관 기한이 지났습니다.</p>
@@ -7,5 +10,5 @@
   <p>아직 관찰이 없습니다.</p>
   {% else %}
   <p>정제된 최근 관찰입니다.</p>
-  {% endif %}
+  {% endif %}</noscript>
 </section>

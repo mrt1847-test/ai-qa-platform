@@ -1,86 +1,23 @@
 {% extends "base.html" %}
-{% block title %}케이스{% endblock %}
+{% block title %}자동화 케이스{% endblock %}
 {% block content %}
-  <h1>{% if step == "detail" %}케이스 상세{% elif step == "run" %}{{ entry_title }}{% elif step == "review" %}{{ entry_title }}{% else %}케이스{% endif %}</h1>
-  {% if step == "run" or step == "review" %}
-  <p>{{ entry_message }}</p>
-  <p><a href="{{ list_href_full }}">목록으로</a></p>
-  {% elif step == "detail" %}
-  {% for item in items %}
-  <p>{{ item.name }}</p>
-  <p>TC {% if item.tc_reference %}{{ item.tc_reference }}{% else %}없음{% endif %}</p>
-  {% endfor %}
-  <p><a href="{{ list_href_full }}">목록으로</a></p>
-  {% for item in items %}
-  <p><a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/definition">검증</a></p>
-  {% endfor %}
-  {% else %}
-  <form id="create-case" method="post" action="/api/v1/projects/{{ project_id }}/cases">
-    <label>새 케이스 이름 <input name="name" required></label>
-    <input type="submit" value="케이스 만들기">
-  </form>
-  <p id="case-create-status" role="status"></p>
-  <script src="/static/case_create.js"></script>
-  <nav aria-label="케이스 범위">
-    <a href="/ui/projects/{{ project_id }}/cases?view=all&amp;sort={{ sort }}">전체</a>
-    <a href="/ui/projects/{{ project_id }}/cases?view=ready&amp;sort={{ sort }}">가능</a>
-    <a href="/ui/projects/{{ project_id }}/cases?view=draft&amp;sort={{ sort }}">초안</a>
-    <a href="/ui/projects/{{ project_id }}/cases?view=review&amp;sort={{ sort }}">검토</a>
-    <a href="/ui/projects/{{ project_id }}/cases?view=incomplete&amp;sort={{ sort }}">미완성</a>
-    <a href="/ui/projects/{{ project_id }}/cases?view=archived&amp;sort={{ sort }}">보관</a>
-  </nav>
-  <form method="get" action="/ui/projects/{{ project_id }}/cases">
-    <input type="search" name="q" data-query="filter" value="{{ q }}" aria-label="케이스 검색">
-    <input type="hidden" name="sort" data-query="sort" value="{{ sort }}">
-    <input type="hidden" name="cursor" data-query="page" value="{{ query.cursor }}">
-    <input type="hidden" name="selected" data-query="selected" value="{{ selected }}">
-    <input type="hidden" name="view" value="{{ view }}">
-    <input type="submit" value="검색">
-  </form>
-  <p data-page-size="{{ page_size }}">페이지 크기 {{ page_size }}</p>
-  <p>
-    <a href="/ui/projects/{{ project_id }}/cases/run?selected={{ selected }}">선택 실행</a>
-    <a href="/ui/projects/{{ project_id }}/bundles?selected={{ selected }}">묶음 추가</a>
-    <a href="/ui/projects/{{ project_id }}/recordings/new">새 녹화</a>
-  </p>
-  <form id="bulk-clone" method="post" action="/ui/projects/{{ project_id }}/cases/bulk">
-    <input type="hidden" name="bulk_action" value="clone">
-    <input type="submit" value="복제">
-  </form>
-  <form id="bulk-archive" method="post" action="/ui/projects/{{ project_id }}/cases/bulk">
-    <input type="hidden" name="bulk_action" value="archive">
-    <input type="submit" value="보관">
-  </form>
-  {% include "components/bulk_confirm.html" %}
-  <table>
-    <thead>
-      <tr>
-        <th>선택</th><th>ID</th><th>이름</th><th>TC</th><th>우선순위</th><th>승인</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in items %}
-      <tr data-name="{{ item.name }}" data-lock="{{ item.lock_version }}">
-        <td><input type="checkbox" name="selected" value="{{ item.case_id }}"{% if selected == item.case_id|string %} checked{% endif %}></td>
-        <td>{{ item.case_id }}</td>
-        <td>
-          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}?{{ list_href_full.split('?', 1)[1] }}">{{ item.name }}</a>
-          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}">상세</a>
-          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">검토</a>
-          <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/run">실행</a>
-        </td>
-        <td>{% if item.tc_reference %}{{ item.tc_reference }}{% else %}없음{% endif %}</td>
-        <td>{{ item.priority or "없음" }}</td>
-        <td>{% if item.current_approval_id %}있음{% else %}없음{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% if next_cursor %}
-  <p><a href="/ui/projects/{{ project_id }}/cases?q={{ q }}&amp;sort={{ sort }}&amp;view={{ view }}&amp;cursor={{ next_cursor }}&amp;selected={{ selected }}">다음</a></p>
-  {% endif %}
-  <div data-columns="name,priority"></div>
-  {% endif %}
-  <script src="/static/case_list.js"></script>
-  <script src="/static/case_bulk.js"></script>
+<header class="page-heading"><div><p class="eyebrow">WORKSPACE / CASES</p><h1>자동화 케이스</h1><p class="muted">검증할 내용과 녹화 기록, 승인본을 함께 관리합니다.</p></div><a class="primary-link" href="/ui/projects/{{ project_id }}/recordings/new">새 녹화</a></header>
+{% if step == 'run' or step == 'review' %}
+<section class="panel"><h2>{{ entry_title }}</h2><p>{{ entry_message }}</p><a href="{{ list_href_full }}">목록으로</a></section>
+{% else %}
+<nav class="case-tabs" aria-label="케이스 범위">{% for key,label in [('all','전체'),('ready','승인본 있음'),('draft','초안'),('review','검토 대기'),('incomplete','녹화 미완료'),('archived','보관')] %}<a href="/ui/projects/{{ project_id }}/cases?view={{ key }}&amp;sort={{ sort }}"{% if view == key or (not view and key == 'all') %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+<section class="panel">
+<div class="section-heading"><form method="get" action="/ui/projects/{{ project_id }}/cases" id="case-filter"><label class="sr-only" for="case-search">케이스 검색</label><input id="case-search" type="search" name="q" data-query="filter" value="{{ q }}" placeholder="케이스 이름 검색"><input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="limit" value="{{ page_size }}"><input type="hidden" name="archived" value="{{ 'true' if archived|default(false) else 'false' }}"><label class="sr-only" for="case-sort">정렬</label><select id="case-sort" name="sort" data-query="sort">{% for key,label in [('name','이름순'),('priority','우선순위'),('case_id','ID순')] %}<option value="{{ key }}"{% if sort == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select><input type="submit" value="조회" class="secondary"></form><a href="/ui/projects/{{ project_id }}/cases">조건 지우기</a></div>
+<p data-page-size="{{ page_size }}">전체 {{ total|default(0) }}개 중 {{ range_start|default(0) }}–{{ range_end|default(0) }}{% if q %} · ‘{{ q }}’ 검색{% endif %}</p>
+<div class="selection-bar"><label><input type="checkbox" id="select-page" aria-label="현재 페이지 {{ items|length }}개 선택"> 현재 페이지 선택</label><strong id="selection-count" role="status">0개 선택</strong><input type="button" id="clear-selection" class="secondary" value="선택 해제" disabled><a id="selected-trial" aria-disabled="true">선택 시범 준비</a><form id="bulk-clone" method="post" action="/ui/projects/{{ project_id }}/cases/bulk"><input type="submit" value="복제" disabled></form><form id="bulk-archive" method="post" action="/ui/projects/{{ project_id }}/cases/bulk"><input type="submit" value="보관" class="secondary" disabled></form></div>
+<p class="hint" id="selection-scope">선택은 현재 페이지에만 적용됩니다. 페이지·검색·프로젝트를 바꾸면 해제됩니다. 시범 준비는 한 번에 한 케이스를 선택하세요.</p>
+{% include 'components/bulk_confirm.html' %}
+<div class="table-scroll"><table><caption class="sr-only">현재 조건에 해당하는 자동화 케이스</caption><thead><tr><th scope="col">선택</th><th scope="col">케이스</th><th scope="col">대상</th><th scope="col">초안 / 승인본</th><th scope="col">최근 실행</th><th scope="col">저장·검토</th></tr></thead><tbody>
+{% for item in items %}<tr data-name="{{ item.name }}" data-lock="{{ item.lock_version }}"><td><input type="checkbox" name="selected" value="{{ item.case_id }}" aria-label="{{ (item.case_id|string)[:8] }} {{ item.name }} 선택"></td><td><a class="case-name" href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}?{{ list_href_full.split('?',1)[1] }}">{{ item.name }}</a><small class="muted"><span>{{ (item.case_id|string)[:8] }}…</span> <input type="button" class="copy-id secondary" value="ID 복사" data-copy="{{ item.case_id }}" aria-label="{{ item.name }} 전체 ID 복사"></small></td><td>{{ 'Web' if item.target_kind == 'web' else 'Android' if item.target_kind == 'android' else '대상 미설정' }}</td><td>{{ 'v' ~ item.draft_revision if item.draft_revision else '초안 없음' }} / {{ 'v' ~ item.approved_revision if item.approved_revision else '승인 전' }}</td><td>{{ item.latest_result or ('진행·판정 대기' if item.latest_run_at else '실행 이력 없음') }}{% if item.latest_run_at %}<small class="muted">{{ item.latest_run_at }}</small>{% endif %}</td><td><a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/recordings">녹화 기록</a> · <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">검토</a> · <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/execution-setup">시범 준비</a></td></tr>
+{% else %}<tr><td colspan="6"><div class="empty"><h2>조건에 맞는 케이스가 없습니다.</h2><p>검색어나 범위를 바꾸거나 새 녹화를 준비해 보세요.</p><a href="/ui/projects/{{ project_id }}/recordings/new">새 케이스 녹화 준비</a></div></td></tr>{% endfor %}
+</tbody></table></div>
+<nav class="pagination" aria-label="케이스 페이지">{% if query.cursor %}<a href="{{ first_href }}">처음</a><a href="{{ previous_href }}">이전</a>{% endif %}{% if next_cursor %}<a href="{{ next_href }}">다음</a>{% endif %}</nav>
+<details><summary>녹화 없이 빈 케이스 만들기</summary><form id="create-case" method="post" action="/api/v1/projects/{{ project_id }}/cases"><label>새 케이스 이름 <input name="name" required></label><input type="submit" data-save-button value="케이스 만들기">{% include "components/form_feedback.html" %}</form><p id="case-create-status" role="status"></p></details>
+</section><script src="/static/case_create.js?v={{ ui_asset_version }}"></script><script src="/static/case_list.js?v={{ ui_asset_version }}"></script><script src="/static/case_bulk.js?v={{ ui_asset_version }}"></script>
+{% endif %}
 {% endblock %}

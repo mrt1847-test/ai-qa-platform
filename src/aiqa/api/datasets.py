@@ -27,6 +27,8 @@ from aiqa.domain.datasets import (
     read_dataset_version,
     save_dataset_revision,
 )
+from aiqa.domain.catalog import bind_catalog_store, bind_catalog_actor, list_cases
+from aiqa.store.models import CaseListQuery
 from aiqa.store.database import migrate_store
 from aiqa.store.models import DatasetRevisionInput, SecretRef
 from aiqa.web.routes import UiQueryState, render_template
@@ -148,6 +150,16 @@ async def datasets_page(project_id: str, request: Request) -> HTMLResponse:
         try:
             authorize_page(request, project)
             items = list_datasets(project)
+            with bind_catalog_actor(authorize_page(request, project)):
+                case_options = list_cases(CaseListQuery(project_id=project, limit=100)).items
+            chosen = request.query_params.get("dataset", "")
+            selected = next((item for item in items if item["dataset_id"] == chosen), None)
+            if chosen and selected is None:
+                return HTMLResponse(status_code=404, content="데이터를 찾지 못했습니다.")
+            if selected and selected.get('case_id') and not any(str(item.case_id)==selected['case_id'] for item in case_options):
+                from aiqa.domain.datasets import _bound_store
+                row=_bound_store()._connection.execute('SELECT case_id,name FROM automation_cases WHERE project_id=? AND case_id=?',(str(project),selected['case_id'])).fetchone()
+                if row: case_options=(*case_options,{'case_id':str(row[0]),'name':str(row[1])})
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     return render_template(
@@ -168,6 +180,8 @@ async def datasets_page(project_id: str, request: Request) -> HTMLResponse:
             "request": request,
             "project_id": str(project),
             "datasets": items,
+            "selected_dataset": selected,
+            "case_options": case_options,
         },
     )
 
@@ -211,9 +225,8 @@ def _bound(request: Request) -> Iterator[None]:
     store = request.app.state.open_store()
     try:
         migrate_store(store)
-        with bind_dataset_store(store):
-            with bound_auth_store(store):
-                yield
+        with bind_dataset_store(store), bind_catalog_store(store), bound_auth_store(store):
+            yield
     finally:
         store.close()
 

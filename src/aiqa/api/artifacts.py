@@ -208,7 +208,7 @@ def install_artifacts(application: FastAPI) -> None:
         return render_template(
             request,
             "components/evidence_viewer.html",
-            {"shell": False, "selection": selection, "actions": page.actions, "first_failure": page.first_failure},
+            {"shell": True, "project_id":str(project), "selection": selection, "actions": page.actions, "first_failure": page.first_failure, "crumbs":(('저장된 단계 증거',''),)},
         )
 
     application.add_api_route("/api/v1/worker/artifacts", post_artifact, methods=["POST"])
@@ -311,7 +311,7 @@ def _state(root: object, row: object, now: datetime) -> str:
     return "stored"
 
 
-def _viewer(connection: object, root: object, project_id: UUID, selection: EvidenceViewerSelection, now: datetime) -> _ViewerPage:
+def _viewer(connection: object, root: object, project_id: UUID, selection: EvidenceViewerSelection, now: datetime, artifact_ids: frozenset[str] | None = None) -> _ViewerPage:
     rows = connection.execute(  # type: ignore[attr-defined]
         """
         SELECT actions.action_id, actions.step_id
@@ -343,6 +343,8 @@ def _viewer(connection: object, root: object, project_id: UUID, selection: Evide
     ).fetchall()
     by_action: dict[str, dict[str, object]] = {}
     for item in files:
+        if artifact_ids is not None and str(item[2]) not in artifact_ids:
+            continue
         by_action.setdefault(str(item[0] or ""), {})[str(item[1])] = item
     check_by_action = {str(item[0]): (str(item[1]), str(item[2])) for item in checks}
     actions: list[_ActionView] = []

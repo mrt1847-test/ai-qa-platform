@@ -1,75 +1,15 @@
-{% extends "base.html" %}
-{% block title %}실행 설정{% endblock %}
+{% extends 'base.html' %}
+{% block title %}케이스 실행 설정{% endblock %}
 {% block content %}
-  <h1>실행 설정</h1>
-  <p>전역 기본 timeout 600, 행동 50, 모델 호출 80.</p>
-  <p>전역 healing 기본 OFF. 케이스 값은 전역 기본과 따로 저장된다.</p>
-  <p>실행은 여기서 시작하지 않습니다.</p>
-  <p id="settings-status"></p>
-  <form id="settings-form" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/settings">
-    <input id="settings-head" type="hidden" value="{{ head }}">
-    <label>Web URL <input name="web_url" value="{{ web_url }}"></label>
-    <label>Android package <input name="android_package" value="{{ android_package }}"></label>
-    <label>환경 <input name="environment_revision_id" value="{{ environment_revision_id }}"></label>
-    <label>데이터 <input name="data_revision_id" value="{{ data_revision_id }}"></label>
-    <label>비밀 참조 <input name="ref_id" value=""></label>
-    <label>참조 개정 <input name="ref_revision" value=""></label>
-    <label>설치 <input name="install_policy" value="{{ install_policy }}"></label>
-    <label>reset <input name="reset_policy" value="{{ reset_policy }}"></label>
-    <label>cleanup <input name="cleanup_policy" value="{{ cleanup_policy }}"></label>
-    <label>timeout <input name="timeout_seconds" value="{{ snapshot.settings.limits.timeout_seconds }}"></label>
-    <label>검증 방식 <input name="verifier_method" value="{{ verifier_method }}"></label>
-    <label>binding <input name="verifier_binding_id" value="{{ verifier_binding_id }}"></label>
-    <label>healing 허용 <input name="healing_allowed" value="{{ healing_allowed }}"></label>
-    <label>healing 범위 <input name="healing_scope" value="{{ healing_scope }}"></label>
-    <label>episode 상한 <input name="healing_max_episodes" value="{{ snapshot.settings.healing_policy.max_episodes_per_item }}"></label>
-    <label>호출 상한 <input name="healing_max_calls" value="{{ snapshot.settings.healing_policy.max_model_calls_per_item }}"></label>
-    <label>초 상한 <input name="healing_max_seconds" value="{{ snapshot.settings.healing_policy.max_seconds }}"></label>
-    <input type="submit" value="설정 저장">
-  </form>
-  <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">버전 탭</a></p>
-  <script>
-    (function () {
-      var snapshot = {{ snapshot | tojson }};
-      var form = document.getElementById("settings-form");
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        var allowed = form.healing_allowed.value === "true";
-        var body = {
-          expected_head: document.getElementById("settings-head").value || null,
-          target_kind: snapshot.settings.target_kind,
-          web_url: form.web_url.value,
-          android_package: form.android_package.value,
-          environment_revision_id: form.environment_revision_id.value,
-          data_revision_id: form.data_revision_id.value,
-          install_policy: form.install_policy.value,
-          reset_policy: form.reset_policy.value,
-          cleanup_policy: form.cleanup_policy.value,
-          timeout_seconds: Number(form.timeout_seconds.value),
-          verifier_method: form.verifier_method.value,
-          verifier_binding_id: form.verifier_binding_id.value,
-          healing_allowed: allowed,
-
-          healing_scope: form.healing_scope.value,
-          healing_max_episodes: Number(form.healing_max_episodes.value),
-          healing_max_calls: Number(form.healing_max_calls.value),
-          healing_max_seconds: Number(form.healing_max_seconds.value)
-        };
-        if (form.ref_id.value) {
-          body.secret_refs = {login: {project_id: "{{ project_id }}", ref_id: form.ref_id.value, revision: Number(form.ref_revision.value || "1")}};
-        }
-        aiqaRequest(form.getAttribute("action"), {
-          method: "POST",
-          headers: {"content-type": "application/json", "Idempotency-Key": window.crypto.randomUUID()},
-          body: JSON.stringify(body)
-        }).then(function (response) {
-          if (response.status === 201 || response.status === 200) {
-            window.location.reload();
-          } else {
-            document.getElementById("settings-status").textContent = "입력은 그대로입니다.";
-          }
-        });
-      });
-    })();
-  </script>
+<header class="page-heading"><div><p class="eyebrow">CASE / SETTINGS</p><h1>케이스 실행 설정</h1><p class="muted">저장하면 새 초안 버전이 생깁니다. 승인본과 이미 접수된 실행의 고정값은 유지됩니다.</p></div><a class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=settings">케이스로</a></header>
+<div class="editor-layout"><form id="settings-form" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/settings" novalidate><input id="settings-head" type="hidden" value="{{ head }}">
+<section class="panel"><h2>실행 대상·입력</h2>{% if snapshot.settings.target_kind == 'web' %}<label>Web 시작 URL <input name="web_url" value="{{ web_url }}" type="url"></label><input type="hidden" name="android_package" value="">{% else %}<label>Android 패키지 <input name="android_package" value="{{ android_package }}"></label><input type="hidden" name="web_url" value="">{% endif %}
+<label>고정할 환경 프로필 <select name="environment_revision_id"><option value="">환경 미지정</option>{% if environment_revision_id and not profiles|selectattr('id','equalto',environment_revision_id)|list %}<option value="{{ environment_revision_id }}" selected>현재 고정한 환경 개정 · {{ environment_revision_id[:8] }}</option>{% endif %}{% for item in profiles %}<option value="{{ item.id }}"{% if item.id == environment_revision_id %} selected{% endif %}>{{ item.name }} · v{{ item.revision }}</option>{% endfor %}</select></label>
+<label>고정할 테스트 데이터 <select name="data_revision_id"><option value="">데이터 없음</option>{% if data_revision_id and not datasets|selectattr('version_id','equalto',data_revision_id)|list %}<option selected value="{{ data_revision_id }}">현재 고정한 데이터 개정 · {{ data_revision_id[:8] }}</option>{% endif %}{% for item in datasets %}<option value="{{ item.version_id }}"{% if item.version_id == data_revision_id %} selected{% endif %}>{{ item.name }} · v{{ item.revision }}</option>{% endfor %}</select></label><p class="hint">계정 비밀 참조는 <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 편집의 비밀 참조 선택</a>에서 관리합니다. 이 화면에서는 기존 참조를 보존합니다.</p></section>
+<section class="panel"><h2>검증과 AI 호출</h2><label>검증 방식 <select name="verifier_method">{% for key,label in [('deterministic','기록 기반 결정적 검증'),('ai_visual','AI 화면 검증'),('deterministic_then_ai_unknown','결정적 검증 후 판정 불가일 때만 AI')] %}<option value="{{ key }}"{% if key == verifier_method %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label>검증 AI 연결 <select name="verifier_binding_id"><option value="">연결 없음</option>{% if verifier_binding_id and not bindings|selectattr('binding_id','equalto',verifier_binding_id)|list %}<option selected value="{{ verifier_binding_id }}">기존 고정 연결 · {{ verifier_binding_id[:8] }}</option>{% endif %}{% for item in bindings if item.role == 'verification' %}<option value="{{ item.binding_id }}"{% if item.binding_id == verifier_binding_id %} selected{% endif %}>{{ item.model }} · {{ item.endpoint }}</option>{% endfor %}</select></label><p class="hint">일반 동작은 저장된 코드·좌표를 재생합니다. AI 검증을 선택하면 해당 검증에서 호출 비용이 생길 수 있습니다.</p></section>
+<section class="panel"><h2>시간과 예외 복구</h2><label>케이스 제한 시간 (초) <input name="timeout_seconds" type="number" min="1" max="600" value="{{ snapshot.settings.get('limits',{}).get('timeout_seconds',600) }}"></label><p>전역 기본 timeout 600, 행동 50, 모델 호출 80. 케이스의 저장값을 실행 접수에서 고정합니다.</p><label class="checkbox-label"><input name="healing_allowed" type="checkbox"{% if healing_allowed == 'true' %} checked{% endif %}>이 새 후보에 셀프힐링 capability 허용</label><p>전역 healing 기본 OFF. 시범은 항상 OFF이며 허용된 capability 밖의 ON은 실행에서 거부합니다.</p><label>복구 허용 범위 <input name="healing_scope" value="{{ healing_scope }}"></label><div class="form-grid"><label>복구 episode 상한 <input name="healing_max_episodes" type="number" min="0" max="1" value="{{ snapshot.settings.get('healing_policy',{}).get('max_episodes_per_item',1) }}"></label><label>AI 호출 상한 <input name="healing_max_calls" type="number" min="0" max="2" value="{{ snapshot.settings.get('healing_policy',{}).get('max_model_calls_per_item',2) }}"></label><label>복구 시간 상한 (초) <input name="healing_max_seconds" type="number" min="0" max="30" value="{{ snapshot.settings.get('healing_policy',{}).get('max_seconds',30) }}"></label></div></section>
+<details class="panel"><summary>설치·초기화·정리 정책</summary><p>실행은 여기서 시작하지 않습니다. 기존 정책 값을 확인하고 필요한 경우 변경하세요.</p><label>설치 정책 <input name="install_policy" value="{{ install_policy }}"></label><label>초기화 정책 (reset) <input name="reset_policy" value="{{ reset_policy }}"></label><label>정리 정책 (cleanup) <input name="cleanup_policy" value="{{ cleanup_policy }}"></label></details>
+{% include 'components/form_feedback.html' %}<div class="action-bar"><input type="submit" data-save-button value="새 초안으로 설정 저장"><p id="settings-status" role="status"></p></div>
+</form><aside class="panel"><h2>저장된 정책의 출처</h2><p>이 화면: 현재 케이스 초안</p><p>프로젝트 기본 변경은 <a href="/ui/projects/{{ project_id }}/settings">프로젝트 설정</a>에서 수행합니다.</p><p>기존 승인본의 허용 범위를 자동으로 넓히지 않습니다. 바뀐 버전의 시범·사후 검토·승인을 거쳐 사용할 기본본을 결정하세요.</p><p>실제 누적 AI 비용: 계측 전</p></aside></div>
+<script id="case-settings-snapshot" type="application/json">{{ snapshot|tojson }}</script><script src="/static/case_settings.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

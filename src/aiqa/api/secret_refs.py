@@ -103,6 +103,35 @@ async def post_rotation(project_id: str, ref_id: str, request: Request) -> JSONR
     return JSONResponse(status_code=201, content=_view_json(view))
 
 
+@router.get("/projects/{project_id}/secret-refs")
+async def list_secret_choices(project_id: str, request: Request) -> JSONResponse:
+    """Return reference metadata without resolving any secret bytes."""
+    project = _project(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    store = request.app.state.open_store()
+    try:
+        migrate_store(store)
+        with bound_auth_store(store):
+            authorize_browser(request, project, "secret")
+        rows = store._connection.execute(
+            """SELECT r.ref_id,r.revision,r.name,r.availability FROM secret_refs r
+            WHERE r.project_id=? AND NOT EXISTS (
+                SELECT 1 FROM secret_refs newer WHERE newer.project_id=r.project_id
+                AND newer.ref_id=r.ref_id AND newer.revision>r.revision)
+            ORDER BY r.name,r.ref_id""", (str(project),)
+        ).fetchall()
+    except (CsrfRejected, OriginRejected):
+        return _error(403, "permission", "request was rejected", {})
+    except AuthRequired:
+        return _error(401, "unauthorized", "session is missing", {})
+    except ProjectHidden:
+        return _error(404, "not_found", "secret refs were not found", {})
+    finally:
+        store.close()
+    return JSONResponse(content={"refs": [{"project_id":str(project),"ref_id":str(row[0]),"revision":int(row[1]),"name":str(row[2]),"availability":str(row[3])} for row in rows]})
+
+
 @router.get("/projects/{project_id}/secret-refs/{ref_id}")
 async def read_secret(project_id: str, ref_id: str, request: Request) -> JSONResponse:
     parsed = _pair(project_id, ref_id)

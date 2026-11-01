@@ -432,8 +432,8 @@ def test_w11_02(tmp_path: Path) -> None:
     }
     assert page.status_code == 200
     assert 'value="1280"' in text and 'value="720"' in text
-    assert 'value="ko-KR"' in text and 'value="Asia/Seoul"' in text
-    assert 'value="portrait"' in text
+    assert 'value="ko-KR"' in text and "Asia/Seoul" in text
+    assert "세로 화면" in text
     assert "<button" not in text and "PASS" not in text
     assert observed == {
         "out_of_scope_blocked": True,

@@ -51,6 +51,7 @@
     var project=/^\/ui\/projects\/([0-9a-f-]{36})(?:\/|$)/i.exec(url.pathname);
     if (!project || url.origin!==window.location.origin) return;
     event.preventDefault();
-    sessionFor(project[1]).then(function () {window.location.assign(link.href);});
+    if(window.aiqaNavigate)window.aiqaNavigate(link.href);
+    else sessionFor(project[1]).then(function () {window.location.assign(link.href);});
   });
 })();

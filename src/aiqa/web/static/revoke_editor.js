@@ -1,0 +1,4 @@
+(function(){var form=document.getElementById('revoke-confirm');if(!form)return;
+  var current=form.dataset.approval;
+  window.aiqaForms.register(form,{saveBeforeLeave:false,read:function(){return {reason:form.elements.namedItem('reason').value,expected_current_approval_id:current};},persist:function(body,key){if(!body.reason.trim())return Promise.resolve({ok:false,status:422,json:async function(){return {error:{fields:{reason:['철회 사유를 입력하세요.']}}};}});return window.aiqaRequest('/api/v1/approvals/'+form.dataset.approval+'/revoke',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify(body)});},onSaved:function(body){if(body.fallback===false&&body.current_approval_id===null){document.getElementById('revoke-result').textContent='기본본이 비워졌습니다.';var label=document.getElementById('current-default');if(label)label.textContent='현재 기본본 없음';setTimeout(function(){document.getElementById('revoke-approval').disabled=true;},0);}}});
+})();

@@ -1,135 +1,18 @@
-{% extends "base.html" %}
-{% block title %}검토{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ case_name }} · 저장본 검토{% endblock %}
 {% block content %}
-<section id="case-review">
-  <h1>검토</h1>
-  <p>{{ notice }}</p>
-  <p>QA 판정을 바꾸지 않습니다.</p>
-  <nav aria-label="검토 단계">
-    <a href="?tab=input" data-tab-link="input">입력</a>
-    <a href="?tab=settings" data-tab-link="settings">설정</a>
-    <a href="?tab=trial" data-tab-link="trial">시범</a>
-    <a href="?tab=record" data-tab-link="record">저장 기록</a>
-    <a href="?tab=version" data-tab-link="version">버전</a>
-  </nav>
-  <p>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">새 초안</a>
-    <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review?intent=rerecord">전체 재녹화</a>
-  </p>
-  {% if intent == "rerecord" %}
-  <p>전체 재녹화는 새 녹화입니다. 이전 검토는 따라가지 않습니다.</p>
-  {% endif %}
-  {% if readiness %}
-  {% include "components/case_diff.html" %}
-  {% endif %}
-  {% if protection %}
-  <section id="review-protection" data-temporary="true" data-event-count="{{ protection.event_count }}" data-expired="{{ 'true' if protection.expired else 'false' }}" data-approve="{{ 'false' if protection.expired else 'true' }}">
-    <p>보호 기한 {{ protection.expires_at }}</p>
-    <p>보호 사유 {{ protection.reason }}</p>
-    <p>이 보호는 30일 임시 보호이며 영구 pin이 아닙니다.</p>
-    {% if protection.prior_expires_at %}
-    <p data-prior-expires="{{ protection.prior_expires_at }}">이전 기한은 그대로입니다.</p>
-    {% endif %}
-    {% if protection.expired %}
-    <p>만료된 근거가 있어 승인할 수 없습니다. 새 녹화와 새 시범이 필요합니다.</p>
-    {% endif %}
-    {% if protection.rejected_retained %}
-    <p>반려 기록은 남아 있습니다.</p>
-    {% endif %}
-  </section>
-  {% endif %}
-  {% if revoke %}
-  {% include "components/revoke_confirm.html" %}
-  {% endif %}
-  {% if decision %}
-  <section id="case-decision" data-auto-retry="false" data-default="{{ decision.current_approval_id }}" data-blocked="{{ 'true' if decision.blocked else 'false' }}">
-    <p id="current-default">현재 기본본 {{ decision.current_approval_id or '없음' }}</p>
-    <p>기본본은 유지됩니다.</p>
-    {% if decision.blocked %}
-    <p>실패한 후보는 기본본을 바꾸지 않습니다.</p>
-    {% endif %}
-    {% if decision.rejected_retained %}
-    <p data-rejected-hash="{{ decision.rejected_hash }}">반려 기록은 남아 있습니다. {{ decision.rejected_reason }}</p>
-    {% endif %}
-    <label>반려 사유 <textarea id="reject-reason" name="reason"></textarea></label>
-    <button type="button" id="approve-case" data-version="{{ decision.version_id }}" data-review="{{ decision.review_id }}" data-hash="{{ decision.version_hash }}" data-evidence="{{ decision.evidence_set_hash }}">이 버전 승인 및 기본 실행본으로 사용</button>
-    <button type="button" id="reject-case">반려</button>
-    <p id="decision-conflict" hidden>기본본이 바뀌었습니다. 입력은 그대로입니다. 비교를 다시 확인하세요.</p>
-    <p id="decision-result"></p>
-  </section>
-  <script>
-    (function () {
-      var section = document.getElementById("case-decision");
-      var approve = document.getElementById("approve-case");
-      var reject = document.getElementById("reject-case");
-      var reason = document.getElementById("reject-reason");
-      var conflict = document.getElementById("decision-conflict");
-      var result = document.getElementById("decision-result");
-      if (!section || !approve || !reject || !window.aiqaRequest) return;
-      function showConflict(body) {
-        conflict.hidden = false;
-        if (body && body.current_approval_id) {
-          document.getElementById("current-default").textContent = "현재 기본본 " + body.current_approval_id;
-          section.setAttribute("data-default", body.current_approval_id);
-        }
-      }
-      approve.addEventListener("click", function () {
-        var current = section.getAttribute("data-default");
-        window.aiqaRequest("/api/v1/case-versions/" + approve.getAttribute("data-version") + "/approvals", {
-          method: "POST",
-          body: JSON.stringify({
-            review_id: approve.getAttribute("data-review"),
-            version_hash: approve.getAttribute("data-hash"),
-            evidence_set_hash: approve.getAttribute("data-evidence"),
-            expected_current_approval_id: current ? current : null,
-            reason: "이 버전을 기본 실행본으로 사용합니다."
-          })
-        }).then(function (response) {
-          return response.json().then(function (body) {
-            if (response.status === 409) showConflict(body);
-            else result.textContent = response.status === 201 ? "기본본으로 저장했습니다." : "승인되지 않았습니다.";
-          });
-        });
-      });
-      reject.addEventListener("click", function () {
-        window.aiqaRequest("/api/v1/case-versions/" + approve.getAttribute("data-version") + "/rejections", {
-          method: "POST",
-          body: JSON.stringify({
-            review_id: approve.getAttribute("data-review"),
-            version_hash: approve.getAttribute("data-hash"),
-            reason: reason.value
-          })
-        }).then(function (response) {
-          return response.json().then(function (body) {
-            if (response.status === 201) result.textContent = "반려 기록은 남아 있습니다.";
-            else if (response.status === 422) result.textContent = "반려 사유가 필요합니다.";
-            else result.textContent = "반려되지 않았습니다.";
-          });
-        });
-      });
-    })();
-  </script>
-  {% endif %}
-  {% if board %}
-  <p data-source-reviewed="{{ board.source_reviewed }}" data-source-total="{{ board.source_total }}">출처 검토 {{ board.source_reviewed }} / {{ board.source_total }}</p>
-  <p data-trial-reviewed="{{ board.trial_reviewed }}" data-trial-total="{{ board.trial_total }}">시범 검토 {{ board.trial_reviewed }} / {{ board.trial_total }}</p>
-  {% for owner in board.owners %}
-  <p data-owner-kind="{{ owner.owner_kind }}" data-owner-id="{{ owner.owner_id }}" data-reviewed="{{ owner.reviewed }}" data-total="{{ owner.total }}">{{ owner.owner_kind }} {{ owner.reviewed }} / {{ owner.total }}</p>
-  {% endfor %}
-  {% if board.next_unreviewed_entry_id %}
-  <p><a href="?entry={{ board.next_unreviewed_entry_id }}" data-next-unreviewed="{{ board.next_unreviewed_entry_id }}">다음 미검토</a></p>
-  {% endif %}
-  {% for entry in board.entries %}
-  <article data-entry="{{ entry.entry_id }}" data-action="{{ entry.action_id }}" data-owner-kind="{{ entry.owner_kind }}" data-latest="{{ entry.latest_state or 'unreviewed' }}"{% if selected and entry.entry_id != selected %} hidden{% endif %}>
-    <h2>{{ entry.owner_kind }} {{ entry.action_id }}</h2>
-    <p>{% if entry.latest_state %}최신 의견 {{ entry.latest_state }}{% else %}미검토{% endif %}</p>
-    <ol data-history="{{ entry.entry_id }}">
-      {% for opinion in entry.history %}
-      <li data-state="{{ opinion.state }}">{{ opinion.state }} {{ opinion.comment }}</li>
-      {% endfor %}
-    </ol>
-  </article>
-  {% endfor %}
-  {% endif %}
-</section>
+<section id="case-review"><header class="page-heading"><div><p class="eyebrow">CASE / REVIEW</p><h1>{{ case_name }} · 저장본 검토</h1><p class="muted">녹화와 증거는 이미 저장되어 있습니다. 검토 후 사용할 기본 실행본을 결정합니다.</p></div><a class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">케이스로</a></header><p>{{ notice }}</p><p class="hint">QA 판정을 바꾸지 않습니다.</p>
+<div class="review-workspace">
+{% if not board and decision %}<section class="panel review-start"><h2>저장된 근거로 검토 시작</h2><p>현재 후보와 같은 버전의 완료된 시범을 선택하세요. healing OFF 시범의 정확한 시도·캡처·로그를 30일 임시 보호합니다.</p><form id="review-request-form" data-version="{{ decision.version_id }}"><label>검토할 시범 <select name="trial"><option value="">시범 근거 선택</option>{% for item in review_candidates %}<option value="{{ item.trial_case_run_id }}">{{ item.trial_case_run_id[:8] }} · {{ item.result }} · {{ item.requested_at }}</option>{% endfor %}</select></label><p class="hint">검토 시작은 승인과 별도입니다. 근거의 누락·만료·버전 변경은 서버에서 다시 확인합니다.</p><input type="submit" id="request-review" data-save-button value="이 저장 근거로 검토 시작"{% if not review_candidates %} disabled{% endif %}>{% include 'components/form_feedback.html' %}</form><script id="review-candidates" type="application/json">{{ review_candidates|tojson }}</script>{% if not review_candidates %}<p>검토 가능한 저장 근거가 없습니다. 녹화·시범·증거 보관 상태를 확인하세요.</p>{% endif %}</section>{% endif %}
+<aside class="panel review-actions"><h2>검토할 단계</h2>{% if board %}<p data-source-reviewed="{{ board.source_reviewed }}" data-source-total="{{ board.source_total }}">출처 검토 {{ board.source_reviewed }} / {{ board.source_total }}</p><p data-trial-reviewed="{{ board.trial_reviewed }}" data-trial-total="{{ board.trial_total }}">시범 검토 {{ board.trial_reviewed }} / {{ board.trial_total }}</p>{% for owner in board.owners %}<p class="sr-only" data-owner-kind="{{ owner.owner_kind }}" data-owner-id="{{ owner.owner_id }}" data-reviewed="{{ owner.reviewed }}" data-total="{{ owner.total }}">{{ owner.owner_kind }} {{ owner.reviewed }} / {{ owner.total }}</p>{% endfor %}{% if board.next_unreviewed_entry_id %}<a class="secondary-link" href="?entry={{ board.next_unreviewed_entry_id }}" data-next-unreviewed="{{ board.next_unreviewed_entry_id }}">다음 미검토</a>{% endif %}<nav aria-label="저장 근거의 단계">{% for entry in board.entries %}<a class="review-step" href="?entry={{ entry.entry_id }}"{% if entry.entry_id == selected %} aria-current="step"{% endif %}><strong>{{ '녹화 원본' if entry.owner_kind == 'REC' else '시범' }} · {{ entry.action_id }}</strong><small>{{ {'before':'전 화면','after':'후 화면','log':'로그'}.get(entry.role,entry.role) }} · {{ entry.attempt_id[:8] }} · {{ {'reviewed':'검토 완료','needs_change':'수정 필요','evidence_missing':'근거 부족'}.get(entry.latest_state,'미검토') }}</small></a>{% endfor %}</nav>{% else %}<p>이 후보의 고정된 검토 근거가 없습니다.</p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/execution-setup">시범 준비로</a>{% endif %}</aside>
+<div class="review-evidence panel">{% if selection %}{% include 'components/evidence_panel.html' %}{% else %}<h2>저장된 증거를 선택하세요.</h2><p>녹화가 끝나고 기록이 저장된 뒤 검토합니다. 검토 snapshot을 만들려면 완료된 녹화와 healing OFF 시범 근거가 필요합니다.</p>{% endif %}
+{% if review_entry %}<form id="action-opinion" data-version="{{ review_entry.version_id }}" data-review="{{ review_entry.review_id }}" data-entry="{{ review_entry.entry_key }}" data-digest="{{ review_entry.evidence_digest }}"><h2>이 단계의 검토 의견</h2><label>검토 상태 <select name="state"><option value="reviewed">검토 완료</option><option value="needs_change">수정 필요</option><option value="evidence_missing">근거 부족</option></select></label><label>검토 의견 <textarea name="comment" rows="3" required></textarea></label>{% include 'components/form_feedback.html' %}<input type="submit" data-save-button value="이 단계 의견 저장"></form>{% endif %}
+{% if board %}{% for entry in board.entries %}<article data-entry="{{ entry.entry_id }}" data-action="{{ entry.action_id }}" data-owner-kind="{{ entry.owner_kind }}" data-latest="{{ entry.latest_state or 'unreviewed' }}"{% if entry.entry_id != selected %} hidden{% endif %}><details><summary>단계 의견 이력</summary><ol data-history="{{ entry.entry_id }}">{% for opinion in entry.history %}<li data-state="{{ opinion.state }}">{{ opinion.state }} {{ opinion.comment }}</li>{% endfor %}</ol></details></article>{% endfor %}{% endif %}</div>
+<aside class="review-decision">
+{% if readiness %}<details class="panel" open><summary>승인 준비·후보 차이</summary>{% include 'components/case_diff.html' %}</details>{% endif %}
+{% if protection %}<section class="panel" id="review-protection" data-temporary="true" data-event-count="{{ protection.event_count }}" data-expired="{{ 'true' if protection.expired else 'false' }}" data-approve="{{ 'false' if protection.expired else 'true' }}"><h2>검토 근거 보관</h2><p>보호 기한 {{ protection.expires_at }}</p><p>보호 사유 {{ protection.reason }}</p><p>이 보호는 30일 임시 보호이며 영구 pin이 아닙니다.</p>{% if protection.prior_expires_at %}<p data-prior-expires="{{ protection.prior_expires_at }}">이전 기한은 그대로입니다.</p>{% endif %}{% if protection.expired %}<p>만료된 근거가 있어 승인할 수 없습니다. 새 녹화와 새 시범이 필요합니다.</p>{% endif %}{% if protection.rejected_retained %}<p>반려 기록은 남아 있습니다.</p>{% endif %}</section>{% endif %}
+{% if decision %}<form class="panel" id="case-decision" data-auto-retry="false" data-default="{{ decision.current_approval_id or '' }}" data-blocked="{{ 'true' if decision.blocked else 'false' }}"><h2>사후 승인</h2><p id="current-default">현재 기본본 {{ decision.current_approval_id or '없음' }}</p><p>기본본은 유지됩니다.</p>{% if decision.blocked %}<p>실패한 후보는 기본본을 바꾸지 않습니다.</p>{% endif %}{% if decision.rejected_retained %}<p data-rejected-hash="{{ decision.rejected_hash }}">반려 기록은 남아 있습니다. {{ decision.rejected_reason }}</p>{% endif %}<label>반려 사유 <textarea id="reject-reason" name="reason" rows="3"></textarea></label><input type="button" id="approve-case" data-version="{{ decision.version_id }}" data-review="{{ decision.review_id }}" data-hash="{{ decision.version_hash }}" data-evidence="{{ decision.evidence_set_hash }}" value="이 버전 승인 및 기본 실행본으로 사용"{% if decision.blocked or not readiness or not readiness.approve_allowed or (protection and protection.expired) %} disabled{% endif %}><input type="button" class="secondary" id="reject-case" value="이 후보 반려"{% if not decision.review_id %} disabled{% endif %}><p id="decision-conflict" role="alert" hidden>기본본이 바뀌었습니다. 입력은 그대로입니다. 비교를 다시 확인하세요.</p><a id="decision-compare" href="{{ request.url.path }}" hidden>새 기본본 비교를 다시 열기</a><p id="decision-result" role="status"></p>{% include 'components/form_feedback.html' %}</form>{% endif %}
+<details class="panel"><summary>전체 재녹화 준비</summary><p>새 후보를 만들고 이전 승인본을 유지합니다. 이전 검토 의견을 새 녹화에 복사하지 않습니다.</p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/rerecord{% if decision %}?base={{ decision.version_id }}{% endif %}">기준 확인 후 전체 재녹화</a><p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">새 초안 편집</a></p></details>
+{% if revoke %}<details class="panel"><summary>현재 승인 철회</summary>{% include 'components/revoke_confirm.html' %}</details>{% endif %}
+</aside></div></section><script src="/static/case_review.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

@@ -193,9 +193,7 @@ async def post_version(project_id: str, case_id: str, request: Request) -> JSONR
 
 
 def _parse_editor_settings(payload, project):
-    if 'verifier_bindings' not in payload:
-        return parse_case_settings(payload, project)
-    bindings=payload['verifier_bindings']
+    bindings=payload.get('verifier_bindings', [{'method':payload.get('verifier_method','deterministic'),'binding_id':payload.get('verifier_binding_id',''),'allow_unknown_supplement':payload.get('allow_unknown_supplement',False)}])
     if type(bindings) is not list or not bindings or any(type(item) is not dict for item in bindings):
         raise ValueError('invalid verifier bindings')
     for binding in bindings:
@@ -205,6 +203,14 @@ def _parse_editor_settings(payload, project):
     document=dict(payload)
     target=document.pop('target_kind')
     mode=document.pop('execution_mode','recorded_replay')
+    # Preserve untouched extensions while canonicalizing the fields the server owns.
+    for name,value in parsed.document.items():
+        if name == 'verifier_bindings':
+            document[name] = bindings
+        elif name in {'limits','healing_policy'}:
+            document[name] = {**(document.get(name,{}) if type(document.get(name,{})) is dict else {}), **value}
+        else:
+            document[name] = value
     return CaseSettings(target,mode,document)
 
 
@@ -349,6 +355,7 @@ def _conflict(actor: object, case_id: UUID, payload: dict[str, object]) -> JSONR
                 "request_id": str(uuid4()),
             },
             "submitted": _public_definition(payload.get("definition")),
+            "server_snapshot": _editor_snapshot(actor, case_id),
             "server": {
                 "version_id": server["version_id"],
                 "raw_text": server["raw_text"],
@@ -603,31 +610,18 @@ async def case_list_page(project_id: str, request: Request) -> HTMLResponse:
             return _case_screen(request, project, query, (), "forbidden")
         except _CATALOG_ERRORS:
             return _case_screen(request, project, query, (), "forbidden")
-    return _case_screen(request, project, query, page.items, "empty" if page.items == () else "ready", page.next_cursor)
+    context = _case_context(request, project, query, page.items, "empty" if page.items == () else "ready", page.next_cursor)
+    context.update(total=page.total, range_start=page.start, range_end=page.end, previous_cursor=page.previous_cursor)
+    scope = {"q": query.text, "sort": query.sort, "view": query.view, "limit":query.limit,"archived":str(query.archived).lower()}
+    context["first_href"] = f"/ui/projects/{project}/cases?" + urlencode(scope)
+    context["next_href"] = context["first_href"] + "&cursor=" + (page.next_cursor or "")
+    context["previous_href"] = context["first_href"] + ("&cursor=" + page.previous_cursor if page.previous_cursor else "")
+    return render_template(request, "cases.html", context)
 
 
 @pages.get("/ui/projects/{project_id}/cases/{case_id}", response_class=HTMLResponse)
 async def case_place_page(project_id: str, case_id: str, request: Request) -> HTMLResponse:
-    project = _uuid(project_id)
-    parsed = _uuid(case_id)
-    if isinstance(project, JSONResponse) or isinstance(parsed, JSONResponse):
-        return HTMLResponse(status_code=404, content="케이스를 찾지 못했습니다.")
-    query = _case_query(project, request)
-    if isinstance(query, JSONResponse):
-        return HTMLResponse(status_code=422, content="목록 조건을 다시 확인해 주세요.")
-    with _bound(request):
-        try:
-            actor = authorize_page(request, project)
-            with bind_catalog_actor(actor):
-                page = list_cases(CaseListQuery(project_id=project, limit=100))
-        except _CATALOG_ERRORS:
-            return HTMLResponse(status_code=403, content="이 화면을 볼 권한이 없습니다.")
-    match = next((item for item in page.items if item.case_id == parsed), None)
-    if match is None:
-        return HTMLResponse(status_code=404, content="케이스를 찾지 못했습니다.")
-    context = _case_context(request, project, query, (match,), "ready", None)
-    context["step"] = "detail"
-    return render_template(request, "cases.html", context)
+    return await case_definition_page(project_id, case_id, request)
 
 
 @pages.get("/ui/projects/{project_id}/cases/{case_id}/run", response_class=HTMLResponse)
@@ -980,20 +974,27 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
     query = _case_query(project, request)
     if isinstance(query, JSONResponse):
         return HTMLResponse(status_code=422, content="목록 조건을 다시 확인해 주세요.")
-    notice = "이 화면은 승인하지 않습니다."
+    notice = "화면 방문만으로 승인하지 않습니다. 저장된 기록을 확인한 뒤 명시적으로 검토·승인합니다."
     board = None
     readiness = None
     protection = None
     decision = None
     revoke = None
+    selected = request.query_params.get('entry', '')
+    selection = None
+    review_entry = None
+    actions = ()
+    candidates = []
     with _bound(request):
         try:
             authorize_page(request, project)
             store = request.app.state.open_store()
             try:
                 with store.transaction() as connection:
+                    case_row = connection.execute('SELECT name FROM automation_cases WHERE project_id=? AND case_id=?',(str(project),str(parsed))).fetchone()
+                    if case_row is None:
+                        return HTMLResponse(status_code=404,content='케이스를 찾지 못했습니다.')
                     extra = review_notice(connection, project, parsed)
-                    board = review_board(connection, project, parsed)
                     latest = connection.execute(
                         """
                         SELECT version_id FROM case_versions
@@ -1010,6 +1011,24 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
                             version_uuid = None
                         if version_uuid is not None:
                             readiness = load_review_readiness(connection, project, version_uuid)
+                            board = review_board(connection, project, parsed, version_uuid)
+                            from aiqa.web.review_context import review_candidates
+                            candidates = review_candidates(connection, project, parsed, version_uuid)
+                    if board and board.entries:
+                        if selected and not any(entry.entry_id == selected for entry in board.entries):
+                            return HTMLResponse(status_code=404,content='이 검토에 속한 단계가 아닙니다.')
+                        selected = selected or board.next_unreviewed_entry_id or board.entries[0].entry_id
+                        entry = next(entry for entry in board.entries if entry.entry_id == selected)
+                        from aiqa.api.artifacts import EvidenceViewerSelection, _viewer
+                        from datetime import datetime, timezone
+                        selection = EvidenceViewerSelection(entry.owner_kind, entry.owner_id, entry.attempt_id, entry.action_id)
+                        pinned_artifacts = frozenset(str(row[0]) for row in connection.execute('SELECT artifact_ref_id FROM review_evidence_entries WHERE project_id=? AND entry_id IN (SELECT entry_id FROM review_evidence_entries WHERE project_id=? AND review_id=(SELECT review_id FROM review_evidence_entries WHERE project_id=? AND entry_id=?)) AND owner_kind=? AND owner_id=? AND attempt_id=? AND action_id=?',(str(project),str(project),str(project),selected,entry.owner_kind,entry.owner_id,entry.attempt_id,entry.action_id)))
+                        viewer = _viewer(connection, store.config.artifacts_dir, project, selection, datetime.now(timezone.utc), pinned_artifacts)
+                        actions = tuple(action for action in viewer.actions if action.action_id == entry.action_id)
+                        pinned = connection.execute('SELECT e.review_id,e.evidence_digest,r.case_version_id FROM review_evidence_entries e JOIN reviews r ON r.project_id=e.project_id AND r.review_id=e.review_id WHERE e.project_id=? AND e.entry_id=?',(str(project),selected)).fetchone()
+                        review_entry = {'review_id':str(pinned[0]),'entry_key':selected,'evidence_digest':str(pinned[1]),'version_id':str(pinned[2])}
+                    elif selected:
+                        return HTMLResponse(status_code=404,content='검토할 저장 근거가 없습니다.')
                     try:
                         protection = review_protection(connection, project, parsed)
                     except ValueError:
@@ -1028,7 +1047,6 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
             return _case_screen(request, project, query, (), "forbidden")
     if extra:
         notice = notice + " " + extra
-    selected = request.query_params.get("entry", "")
     return render_template(
         request,
         "case_review.html",
@@ -1040,6 +1058,9 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
             "decision": decision,
             "revoke": revoke,
             "selected": selected,
+            "case_name":str(case_row[0]),"selection":selection,"actions":actions,"review_entry":review_entry,"embedded":True,
+            "review_candidates": candidates,
+            "crumbs":((str(case_row[0]),f'/ui/projects/{project}/cases/{parsed}'),('저장본 검토','')),
             "tab": request.query_params.get("tab", "input"),
             "intent": request.query_params.get("intent", ""),
             "case_id": str(parsed),
@@ -1105,7 +1126,10 @@ async def case_definition_page(project_id: str, case_id: str, request: Request) 
     context["snapshot"] = snapshot
     context["case_id"] = str(parsed)
     context["tab"] = request.query_params.get("tab", "definition")
+    if selected and selected != board['latest_draft_version_id']:
+        context['tab'] = 'versions'
     context["board"] = board
+    context["crumbs"] = (*context["crumbs"], (board["case_name"], ""))
     return render_template(request, "case_detail.html", context)
 
 
@@ -1163,9 +1187,17 @@ async def case_settings_page(project_id: str, case_id: str, request: Request) ->
     context = _case_context(request, project, query, (), "ready", None)
     context["case_id"] = str(parsed)
     context.update(current)
+    from aiqa.api.resources import _bound as asset_bound
+    from aiqa.domain.environments import list_environment_profiles
+    from aiqa.domain.datasets import list_datasets
+    from aiqa.api.settings import _read as read_project_settings
+    with asset_bound(request):
+        context['profiles'] = list_environment_profiles(project)
+        context['datasets'] = list_datasets(project)
     with _bound(request):
         actor = authorize_page(request, project)
         context["snapshot"] = _editor_snapshot(actor, parsed)
+        context['bindings'] = read_project_settings(project)['bindings']
     return render_template(request, "case_settings.html", context)
 
 
@@ -1202,7 +1234,10 @@ async def case_settings_save(project_id: str, case_id: str, request: Request) ->
         except SettingsRejected as exc:
             return _settings_error(str(exc), exc.submitted)
         except StaleHead:
-            return _settings_error("draft head changed", _public_form(payload), 409)
+            response = _settings_error("draft head changed", _public_form(payload), 409)
+            body=json.loads(response.body)
+            body['server_snapshot']=_editor_snapshot(actor,parsed)
+            return JSONResponse(status_code=409,content=body)
         except _CATALOG_ERRORS as exc:
             return _catalog_response(exc)
     return JSONResponse(status_code=201, content=_view_json(view))
@@ -1486,7 +1521,7 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
     with _bound_store().transaction() as connection:
         case = connection.execute(
             """
-            SELECT latest_draft_version_id, current_approval_id
+            SELECT latest_draft_version_id, current_approval_id, name
             FROM automation_cases
             WHERE project_id = ? AND case_id = ?
             """,
@@ -1514,7 +1549,7 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
         ).fetchone()
         stored = connection.execute(
             """
-            SELECT version_id, definition_json, settings_json, replay_package_id
+            SELECT version_id, definition_json, settings_json, replay_package_id, revision
             FROM case_versions
             WHERE project_id = ? AND case_id = ?
             ORDER BY revision
@@ -1522,21 +1557,32 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
             (str(actor.project_scope), str(case_id)),
         ).fetchall()
         runs = connection.execute(
-            "SELECT case_run_id FROM case_runs WHERE project_id = ? AND case_id = ?",
+            """SELECT r.case_run_id,r.purpose,r.requested_at,f.core_result,j.status,t.attempt_id,
+                (SELECT a.action_id FROM actions a WHERE a.project_id=r.project_id AND a.attempt_id=t.attempt_id ORDER BY a.action_seq LIMIT 1)
+            FROM case_runs r LEFT JOIN item_finalizations f ON f.project_id=r.project_id AND f.case_run_id=r.case_run_id
+            LEFT JOIN jobs j ON j.project_id=r.project_id AND j.case_run_id=r.case_run_id
+            LEFT JOIN attempts t ON t.project_id=j.project_id AND t.job_id=j.job_id
+                AND t.generation=(SELECT MAX(t2.generation) FROM attempts t2 WHERE t2.project_id=t.project_id AND t2.job_id=t.job_id)
+            WHERE r.project_id = ? AND r.case_id = ? ORDER BY r.requested_at DESC,r.case_run_id DESC LIMIT 25""",
             (str(actor.project_scope), str(case_id)),
         ).fetchall()
         from aiqa.replay.packages import load_replay_package_view
 
         draft_id = None if case[0] is None else str(case[0])
         chosen = str(selected) if selected is not None else draft_id
+        if selected is not None and not any(str(row[0]) == str(selected) for row in stored):
+            return None
         package = None if chosen in {None, ""} else load_replay_package_view(connection, actor.project_scope, UUID(chosen))
     versions = tuple(_version_public(row) for row in stored)
     draft_row = next((item for item in versions if item["id"] == draft_id), None)
     approved_row = next((item for item in versions if item["id"] == approved_id), None)
-    selected_row = next((item for item in versions if item["id"] == chosen), draft_row)
+    selected_row = next((item for item in versions if item["id"] == chosen), None)
     package_id = None if selected_row is None else selected_row["replay_package_id"]
     return {
         "case_id": str(case_id),
+        "case_name": str(case[2]),
+        "draft_revision": None if draft_row is None else draft_row["revision"],
+        "approved_revision": None if approved_row is None else approved_row["revision"],
         "latest_draft_version_id": draft_id,
         "approved_version_id": approved_id,
         "draft_text": "" if draft_row is None else str(draft_row["raw_text"]),
@@ -1546,7 +1592,7 @@ def _case_board(actor: object, case_id: UUID, selected: UUID | None) -> dict[str
         "replay_package_id": package_id,
         "package": _package_json(package) if package is not None else _empty_package(chosen),
         "package_reason": None if package_id is not None else "패키지가 없습니다.",
-        "history": [{"case_run_id": str(row[0])} for row in runs],
+        "history": [{"case_run_id":str(row[0]),"purpose":str(row[1]),"requested_at":str(row[2]),"result":row[3],"job_status":row[4],"attempt_id":row[5],"first_action":row[6]} for row in runs],
         "revoked_approval_id": None if revoked is None else str(revoked[0]),
         "snapshot_editable": False,
         "versions": list(versions),
@@ -1599,6 +1645,7 @@ def _version_public(row: tuple[object, ...]) -> dict[str, object]:
     body = json.loads(str(row[1]))
     return {
         "id": str(row[0]),
+        "revision": None if len(row) < 5 else int(row[4]),
         "raw_text": str(body.get("raw_text", "")),
         "objective": str(body.get("objective", "")),
         "settings": str(row[2]),
@@ -2026,11 +2073,17 @@ async def get_cases(project_id: str, request: Request) -> JSONResponse:
                     "current_approval_id": None if item.current_approval_id is None else str(item.current_approval_id),
                     "lock_version": item.lock_version,
                     "tc_reference": None if item.tc_reference is None else str(item.tc_reference),
+                    "target_kind": item.target_kind,
+                    "draft_revision": item.draft_revision,
+                    "approved_revision": item.approved_revision,
+                    "latest_result": item.latest_result,
+                    "latest_run_at": item.latest_run_at,
                 }
                 for item in page.items
             ],
             "next_cursor": page.next_cursor,
             "snapshot_seq": page.snapshot_seq,
+            "total": page.total, "start": page.start, "end": page.end, "previous_cursor": page.previous_cursor,
         },
     )
 
@@ -2304,7 +2357,7 @@ def _case_context(
     next_cursor: str | None,
 ) -> dict[str, object]:
     selected = request.query_params.get("selected", "")
-    pairs = [("q", query.text), ("sort", query.sort), ("view", query.view), ("selected", selected)]
+    pairs = [("q", query.text), ("sort", query.sort), ("view", query.view), ("selected", selected),('limit',str(query.limit)),('archived',str(query.archived).lower())]
     if query.cursor:
         pairs.append(("cursor", query.cursor))
     suffix = urlencode(pairs)
@@ -2325,9 +2378,10 @@ def _case_context(
         "q": query.text,
         "sort": query.sort,
         "view": query.view,
+        "archived":query.archived,
         "selected": selected,
         "next_cursor": next_cursor or "",
-        "page_size": 25,
+        "page_size": query.limit,
         "project_id": str(project),
         "list_href_full": f"{base}?{suffix}",
         "step": "list",

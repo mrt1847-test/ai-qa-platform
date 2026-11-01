@@ -24,5 +24,5 @@
   </form>
   <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 정의</a></p>
   {% include "components/tc_import.html" %}
-  <script src="/static/step_editor.js"></script>
+  <script src="/static/step_editor.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

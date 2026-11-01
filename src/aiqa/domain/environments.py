@@ -207,3 +207,15 @@ def _bound_store() -> Store:
         return _store.get()
     except LookupError as exc:
         raise RuntimeError("environment store is not bound") from exc
+
+
+def list_environment_profiles(project_id: UUID) -> tuple[dict[str, object], ...]:
+    """Latest immutable profiles for this project only; no secret text."""
+    rows = _bound_store()._connection.execute(
+        """SELECT e.environment_id,e.name,r.revision_id,r.revision,r.body_json
+        FROM environments e JOIN environment_revisions r
+        ON r.project_id=e.project_id AND r.revision_id=e.latest_revision_id
+        WHERE e.project_id=? ORDER BY e.name,e.environment_id""",(str(project_id),)
+    ).fetchall()
+    return tuple({"environment_id":str(r[0]),"name":str(r[1]),"id":str(r[2]),
+        "revision":int(r[3]),"profile":json.loads(r[4])} for r in rows)

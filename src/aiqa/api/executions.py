@@ -112,10 +112,22 @@ async def execution_setup_page(project_id: str, case_id: str, request: Request) 
             authorize_page(request, project)
         except (AuthRequired, OriginRejected, ProjectHidden):
             return HTMLResponse(status_code=403, content="이 화면을 볼 권한이 없습니다.")
+        with store.transaction() as connection:
+            case = connection.execute('SELECT name FROM automation_cases WHERE project_id=? AND case_id=?',(str(project),str(parsed))).fetchone()
+            if case is None:
+                return HTMLResponse(status_code=404,content="케이스를 찾지 못했습니다.")
+            versions = [dict(id=row[0],revision=row[1],package_id=row[2]) for row in connection.execute('SELECT version_id,revision,replay_package_id FROM case_versions WHERE project_id=? AND case_id=? ORDER BY revision DESC',(str(project),str(parsed)))]
+        from aiqa.domain.environments import bind_environment_store, list_environment_profiles
+        from aiqa.domain.datasets import bind_dataset_store, list_datasets
+        from aiqa.worker.resources import bind_inventory_store, list_resources
+        with bind_environment_store(store), bind_dataset_store(store), bind_inventory_store(store):
+            profiles=list_environment_profiles(project)
+            datasets=list_datasets(project)
+            resources=list_resources(project)
     return render_template(
         request,
         "execution_setup.html",
-        {"project_id": str(project), "case_id": str(parsed), "shell": False},
+        {"project_id": str(project), "case_id": str(parsed), "case_name": str(case[0]), "versions": versions, "profiles": profiles, "datasets": datasets, "resources": resources, "shell": True, "crumbs": ((str(case[0]),f'/ui/projects/{project}/cases/{parsed}'),('시범 준비',''))},
     )
 
 
@@ -138,6 +150,7 @@ def _preview_json(preview: object) -> dict[str, object]:
                 "replay_package_hash": item.replay_package_hash,
                 "healing_policy_hash": item.healing_policy_hash,
                 "environment_revision_id": str(item.environment_revision_id),
+                "dataset_version_id":None if item.dataset_version_id is None else str(item.dataset_version_id),
                 "resource_id": str(item.resource_id),
                 "approval_id": None if item.approval_id is None else str(item.approval_id),
             }

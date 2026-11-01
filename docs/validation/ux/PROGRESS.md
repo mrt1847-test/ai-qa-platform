@@ -6,9 +6,9 @@ Execution: inline. Isolated runtime, no live device/model/install. Worktree writ
 
 Pre-flight: S01→E01/S03/S04/E03/A01 share form state; E01→N01/N02 owns navigation/session boundary; R01→R02/R03/D01 share resource/target; M01→M02/M03 share query/selection; N03→N04/N05/N06 share exact case/version; V01/K01 apply across screens.
 
-Ruling: keep existing stack and contracts, use local snapshot commit to separate original changes; do not merge or rewrite source master. Native validation remains separate.
+Initial ruling: keep existing stack and contracts, use local snapshot commit to separate original changes; no source-master integration before user authorization. Native validation remains separate. The later explicit merge request authorizes the integration recorded in MERGE.md.
 
-Current: UI/core implementation and expert browser evidence handed off. See README.md for29 unit outcomes and external limits. Existing W queue remains Current W31-02 and89/163; this UI work does not advance native gates. Final snapshot/commit is recorded at handoff; source master stays untouched by this branch.
+Current: user-authorized integration with master `fa856ad`; see MERGE.md for conflict decisions and fresh verification. Latest W queue is126/163 with no prepared Current. The original UI handoff was89/163 and W31-02; that historical snapshot does not override newer master work. This integration does not advance native gates. See README.md for29 UI/core outcomes and external limits.
 
 Browser R01-R04: overview→new recording→Web resource→saved profile+2-row dataset→natural text→draft v1 succeeds without TC. Preflight reports offline resource and missing authoring binding; start disabled. Web→Android clears URL, preserves natural text/data, saves v2. No model/native action triggered.
 

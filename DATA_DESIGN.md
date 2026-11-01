@@ -390,7 +390,7 @@ core leaf 완료는 실제 source/trial evidence와 같지 않으며 parent_gate
 
 CaseListRow/CursorPage의 additive projection은 최신 초안/승인 개정·대상·최신 ITEM의 item_finalizations.core_result/요청 시각과 정확한 total/start/end/previous cursor다. 조회 범위는 같은 filter/sort/project이고 row별 SQL 호출을 추가하지 않는다. jobs.status를 QA PASS로 변환하지 않는다.
 
-시범 single admission은 현재1 ITEM이다. preview hash에 dataset_version_id를 포함하고 jobs.limits.execution_snapshot에 case_version_id/manifest_hash/environment_revision_id/resource_id/dataset_version_id/approval_id를 보존한다. 패키지/복구 정책 hash와 한도는 같은 접수에서 고정한다. 재요청은 live readiness 재검사보다 durable receipt를 먼저 확인하고 다른 body는409다. 새 접수는 현재 resource 상태와 preview/pin을 다시 검사한다.
+단일 시범 UI는1 ITEM을 선택한다. 최신 master의 선택·데이터 행·대상 전개와 다중 ITEM 접수는 보존한다. preview hash에 dataset_version_id를 포함하고 각 jobs.limits.execution_snapshot에 case_version_id/manifest_hash/environment_revision_id/resource_id/dataset_version_id/approval_id를 보존한다. 패키지/복구 정책 hash와 한도는 같은 접수에서 고정한다. 재요청은 live readiness 재검사보다 durable receipt를 먼저 확인하고 다른 body는409다. 다중 ITEM 재요청도 모든 ITEM/job의 저장 receipt를 반환한다. 새 접수는 현재 resource 상태와 preview/pin을 다시 검사한다.
 
 재녹화 초안은 CaseVersion.parent_version_id/base_version_id와 저장 설정의 기준/사유/확인 메타데이터, 새 REC의 base_case_version_id를 유지한다. 기존 CaseVersion/REC/approval를 갱신하지 않는다. 저장된 검토 화면은 review_evidence_entries의 artifact ID 집합을 사용하며 다른 캡처로 대체하지 않는다.
 

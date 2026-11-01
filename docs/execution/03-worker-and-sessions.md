@@ -1,6 +1,6 @@
 # C · 세션·작업 큐·중단 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료9 / 13**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료10 / 13**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -20,7 +20,7 @@
 | [W09-01](#w09-01) | [W08-05](03-worker-and-sessions.md#w08-05) | 영구 취소 flag·늦은 응답 행동 차단 | complete |
 | [W09-02](#w09-02) | [W09-01](03-worker-and-sessions.md#w09-01) | watchdog·lease 여유·실행 한도 | complete |
 | [W09-03](#w09-03) | [W09-02](03-worker-and-sessions.md#w09-02) | Windows process tree·VM 정리와 격리 | complete |
-| [W09-04](#w09-04) | [W09-03](03-worker-and-sessions.md#w09-03), [W23-01](09-results-and-analytics.md#w23-01) | lost·취소·정리 결과와 QA 분리 | not_started |
+| [W09-04](#w09-04) | [W09-03](03-worker-and-sessions.md#w09-03), [W23-01](09-results-and-analytics.md#w23-01) | lost·취소·정리 결과와 QA 분리 | complete |
 
 <a id="w07-01"></a>
 
@@ -351,7 +351,7 @@ assert observed == {
 
 ## W09-04 — lost·취소·정리 결과와 QA 분리
 
-- [ ] **W09-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W09-04.md`(구현 때 생성).
+- [x] **W09-04 완료** — 상태: `complete`. 근거: [W09-04 인계](../validation/tasks/W09-04.md).
 - **직접 선행:** [W09-03](03-worker-and-sessions.md#w09-03), [W23-01](09-results-and-analytics.md#w23-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R11, R12, R31.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

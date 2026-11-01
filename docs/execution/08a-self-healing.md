@@ -1,6 +1,6 @@
 # H-1 · 선택 셀프힐링·제안 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료1 / 7**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료6 / 7**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -9,11 +9,11 @@
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
 | [W31-01](#w31-01) | [W19-01](07-trial-and-review.md#w19-01), [W15-03](05a-action-evidence-and-models.md#w15-03), [W13-03](05a-action-evidence-and-models.md#w13-03) | 실행별 healing 정책·ON/OFF snapshot | complete |
-| [W31-02](#w31-02) | [W31-01](08a-self-healing.md#w31-01) | 미 dispatch eligibility·episode 원자 예약 | not_started |
-| [W31-03](#w31-03) | [W31-02](08a-self-healing.md#w31-02) | typed AI target 제안·동일 대상 증명 | not_started |
-| [W31-04](#w31-04) | [W31-03](08a-self-healing.md#w31-03) | 임시 override·원래 동작 1 회·후속 QA | not_started |
-| [W31-05](#w31-05) | [W31-04](08a-self-healing.md#w31-04), [W16-08](05b-recording-workflow.md#w16-08) | 불변 repair proposal·전체 재녹화 채택 | not_started |
-| [W31-06](#w31-06) | [W31-05](08a-self-healing.md#w31-05) | healing 설정·진행·이력 UI 연결 | not_started |
+| [W31-02](#w31-02) | [W31-01](08a-self-healing.md#w31-01) | 미 dispatch eligibility·episode 원자 예약 | complete |
+| [W31-03](#w31-03) | [W31-02](08a-self-healing.md#w31-02) | typed AI target 제안·동일 대상 증명 | complete |
+| [W31-04](#w31-04) | [W31-03](08a-self-healing.md#w31-03) | 임시 override·원래 동작 1 회·후속 QA | complete |
+| [W31-05](#w31-05) | [W31-04](08a-self-healing.md#w31-04), [W16-08](05b-recording-workflow.md#w16-08) | 불변 repair proposal·전체 재녹화 채택 | complete |
+| [W31-06](#w31-06) | [W31-05](08a-self-healing.md#w31-05) | healing 설정·진행·이력 UI 연결 | complete |
 | [W31-07](#w31-07) | [W31-06](08a-self-healing.md#w31-06), [W19-04](07-trial-and-review.md#w19-04), [W29-05](06-replay-packages.md#w29-05), [W30-03](06-replay-packages.md#w30-03), [W15-04](05a-action-evidence-and-models.md#w15-04) | 양 플랫폼 실제 셀프힐링·QA 불변 통합 gate | not_started |
 
 <a id="w31-01"></a>
@@ -48,7 +48,7 @@ assert observed == {
 
 ## W31-02 — 미 dispatch eligibility·episode 원자 예약
 
-- [ ] **W31-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-02.md`(구현 때 생성).
+- [x] **W31-02 완료** — 상태: `complete`. 근거: [W31-02 인계](../validation/tasks/W31-02.md).
 - **직접 선행:** [W31-01](08a-self-healing.md#w31-01)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R11, R12, R13, R33.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -76,7 +76,7 @@ assert observed == {
 
 ## W31-03 — typed AI target 제안·동일 대상 증명
 
-- [ ] **W31-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-03.md`(구현 때 생성).
+- [x] **W31-03 완료** — 상태: `complete`. 근거: [W31-03 인계](../validation/tasks/W31-03.md).
 - **직접 선행:** [W31-02](08a-self-healing.md#w31-02)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R14, R33, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -104,7 +104,7 @@ assert observed == {
 
 ## W31-04 — 임시 override·원래 동작 1 회·후속 QA
 
-- [ ] **W31-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-04.md`(구현 때 생성).
+- [x] **W31-04 완료** — 상태: `complete`. 근거: [W31-04 인계](../validation/tasks/W31-04.md).
 - **직접 선행:** [W31-03](08a-self-healing.md#w31-03)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R06, R12, R17, R33.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -133,7 +133,7 @@ assert observed == {
 
 ## W31-05 — 불변 repair proposal·전체 재녹화 채택
 
-- [ ] **W31-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-05.md`(구현 때 생성).
+- [x] **W31-05 완료** — 상태: `complete`. 근거: [W31-05 인계](../validation/tasks/W31-05.md).
 - **직접 선행:** [W31-04](08a-self-healing.md#w31-04), [W16-08](05b-recording-workflow.md#w16-08)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C08 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R24, R33, R34, UI-11.02.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -161,7 +161,7 @@ assert observed == {
 
 ## W31-06 — healing 설정·진행·이력 UI 연결
 
-- [ ] **W31-06 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W31-06.md`(구현 때 생성).
+- [x] **W31-06 완료** — 상태: `complete`. 근거: [W31-06 인계](../validation/tasks/W31-06.md).
 - **직접 선행:** [W31-05](08a-self-healing.md#w31-05)
 - **읽기:** CONTRACTS C00 / C01 / C04 / C05 / C06 / C07 / C09 / C14 + 직접 선행 receipt의 interface/제약. 추적: R21, R27, R33, R34, UI-04.09, UI-09.02, UI-10.02, UI-11.03.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

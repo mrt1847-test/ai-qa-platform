@@ -21,7 +21,6 @@ from aiqa.api.auth import (
     bound_auth_store,
     enroll_worker,
 )
-from aiqa.store.artifacts import PROJECT_BYTE_LIMIT
 from aiqa.store.database import Store, migrate_store
 
 router = APIRouter(prefix="/api/v1")
@@ -214,16 +213,10 @@ def list_workers(project_id: UUID) -> list[dict[str, object]]:
 
 
 def storage_view(project_id: UUID) -> dict[str, object]:
-    used = 0
-    protected = 0
-    return {
-        "project_id": str(project_id),
-        "used_bytes": used,
-        "protected_bytes": protected,
-        "limit_bytes": PROJECT_BYTE_LIMIT,
-        "over_protected": protected > PROJECT_BYTE_LIMIT,
-        "deletion_scheduled": 0,
-    }
+    from aiqa.api.retention import read_storage
+
+    with _bound_store().transaction() as connection:
+        return read_storage(connection, project_id)
 
 
 def revoke_worker(project_id: UUID, worker_id: str) -> bool:

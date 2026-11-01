@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}수행 리포트{% endblock %}
+{% block content %}
+<section>
+  <h1>{{ name }}</h1>
+  <p>범위 {{ source }} · {{ purpose }}</p>
+  <p>설정 {{ settings_text }}</p>
+  <p>기간 {{ period_label }}</p>
+  {% if interim %}<p>중간 보고</p>{% endif %}
+  <p>항목 {{ n }}</p>
+  <p>완료율 {{ rates[0] if rates else "없음" }}</p>
+  <p>검증 비율 {{ rates[1] if rates else "없음" }}</p>
+  <p>전체 비율 {{ rates[2] if rates else "없음" }}</p>
+  <p>미검증 {{ unverified }}</p>
+  <ul>
+    <li>만족 {{ counts.satisfied }}</li>
+    <li>실패 {{ counts.failed }}</li>
+    <li>차단 {{ counts.blocked }}</li>
+    <li>불명 {{ counts.inconclusive }}</li>
+    <li>건너뜀 {{ counts.skipped }}</li>
+    <li>취소 {{ counts.cancelled }}</li>
+    <li>미실행 {{ counts.not_run }}</li>
+    <li>진행 {{ counts.in_progress }}</li>
+  </ul>
+  <p>확정 전 제외는 분모 밖에 있습니다. 제외 {{ exclusion_outside }}</p>
+  <p>분석 {{ analysis_count }}</p>
+  <p>이슈 {{ issue_url }}</p>
+  <p>첫 시도 {{ first_attempt_id }}</p>
+  <p>마지막 시도 {{ latest_attempt_id }}</p>
+  {% if source == "rerun" %}<p>원본과 다른 새 수행입니다.</p>{% else %}<p>이 수행의 결과입니다.</p>{% endif %}
+  <p>근거 {{ evidence_status }}</p>
+  <p>끝 구분 {{ terminal_bucket_count }}</p>
+  <p>도움 없이 만족 {{ unassisted_pass }}</p>
+  <p>치유를 사용한 만족 {{ healed_pass }}</p>
+  <p>동작 재시도 {{ action_retry }}</p>
+  <p>검증 역할은 따로 셉니다. {{ verifier_used }}</p>
+  <p>측정 {{ missing_usage_display }}</p>
+  <p>비용 {{ usage_cost }}</p>
+  <p>episode 결과 {{ episode_result }}</p>
+  <p>원래 오류는 치유 결과와 따로 남습니다.</p>
+  <p>없는 사용량은 비어 있습니다.</p>
+  <p>미사용은 불명과 다릅니다.</p>
+  <p>CSV로 내보냅니다. 원본 수행, 항목, 케이스 버전, 데이터, 환경, 빌드, 결과, 세 비율, 미검증, 원래 오류, 치유, 역할 사용량, 기준 시각, 산식, 증거 가용성이 들어갑니다.</p>
+  <p>수식 시작 문자와 앞의 제어 공백은 안전하게 바꿉니다. 한글과 줄바꿈은 유지합니다.</p>
+  <p>비밀 원문과 숨은 이유와 임의 경로는 빼니다. 권한 없는 증거는 열 수 없습니다.</p>
+  <p><a href="/ui/projects/{{ project_id }}/executions/{{ execution_id }}/report/print">인쇄 HTML</a></p>
+  <p>작업 상태 진행, 완료, 실패, 만료와 다운로드가 내보내기에 연결됩니다.</p>
+  <p><a href="/ui/projects/{{ project_id }}/reports?purpose={{ purpose_filter }}&amp;include_trial={{ include_trial }}">목록으로</a></p>
+  {% include "components/rerun.html" %}
+</section>
+{% endblock %}

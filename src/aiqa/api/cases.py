@@ -1693,7 +1693,7 @@ def load_review_readiness(connection: object, project_id: UUID, version_id: UUID
         ).fetchone()
     reasons = _readiness_reasons(connection, project_id, version_id, case_id, str(version[5]), version[6], version[7])
     copied = _review_was_copied(connection, project_id, str(version_id), base_id)
-    source_owner, trial_owner, trial_off = _owners(connection, project_id, case_id, version[6])
+    source_owner, trial_owner, trial_off = _owners(connection, project_id, case_id, version_id, version[6])
     candidate_evidence = _recording_evidence(connection, project_id, version[6])
     base_evidence = "" if base is None else _recording_evidence(connection, project_id, base[3])
     return {
@@ -1817,23 +1817,7 @@ def _readiness_reasons(
         reasons.append("lock is missing")
     if package is None or str(package[2]) == "":
         reasons.append("mapping is missing")
-    trial = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT case_runs.case_run_id, case_runs.case_version_id, case_versions.content_hash, jobs.limits
-        FROM case_runs
-        JOIN case_versions
-          ON case_versions.project_id = case_runs.project_id
-         AND case_versions.version_id = case_runs.case_version_id
-        LEFT JOIN jobs
-          ON jobs.project_id = case_runs.project_id
-         AND jobs.case_run_id = case_runs.case_run_id
-         AND jobs.purpose = 'trial'
-        WHERE case_runs.project_id = ? AND case_runs.case_id = ? AND case_runs.purpose = 'trial'
-        ORDER BY case_runs.requested_at
-        LIMIT 1
-        """,
-        (str(project_id), case_id),
-    ).fetchone()
+    trial = _readiness_trial(connection, project_id, case_id, version_id)
     if trial is None or not _trial_off(trial[3]):
         reasons.append("trial is not off")
     if trial is None or str(trial[1]) != str(version_id) or str(trial[2]) != content_hash:
@@ -1841,6 +1825,29 @@ def _readiness_reasons(
     if _unreviewed_count(connection, project_id, version_id) != 0:
         reasons.append("action review is missing")
     return reasons
+
+
+def _readiness_trial(connection: object, project_id: UUID, case_id: str, version_id: UUID):
+    """Keep readiness on the pinned review, or prefer a same-version unhealed trial."""
+    pinned = connection.execute(
+        """SELECT trial_case_run_id FROM reviews
+        WHERE project_id=? AND case_id=? AND case_version_id=?
+        ORDER BY created_commit_seq DESC LIMIT 1""",
+        (str(project_id), case_id, str(version_id)),
+    ).fetchone()
+    rows = connection.execute(
+        """SELECT r.case_run_id,r.case_version_id,v.content_hash,j.limits
+        FROM case_runs r JOIN case_versions v
+          ON v.project_id=r.project_id AND v.version_id=r.case_version_id
+        LEFT JOIN jobs j ON j.project_id=r.project_id AND j.case_run_id=r.case_run_id AND j.purpose='trial'
+        LEFT JOIN item_finalizations f ON f.project_id=r.project_id AND f.case_run_id=r.case_run_id
+        WHERE r.project_id=? AND r.case_id=? AND (r.case_version_id=? OR r.case_run_id=?) AND r.purpose='trial'
+        ORDER BY (f.case_run_id IS NOT NULL) DESC,r.requested_at DESC,r.case_run_id DESC""",
+        (str(project_id), case_id, str(version_id), '' if pinned is None or pinned[0] is None else str(pinned[0])),
+    ).fetchall()
+    if pinned is not None and pinned[0] is not None:
+        return next((row for row in rows if str(row[0]) == str(pinned[0])), None)
+    return next((row for row in rows if _trial_off(row[3])), rows[0] if rows else None)
 
 
 def _trial_off(raw: object) -> bool:
@@ -1905,7 +1912,7 @@ def _review_was_copied(connection: object, project_id: UUID, version_id: str, ba
     return row is not None and int(row[0]) > 0
 
 
-def _owners(connection: object, project_id: UUID, case_id: str, manifest_id: object) -> tuple[str, str, bool]:
+def _owners(connection: object, project_id: UUID, case_id: str, version_id: UUID, manifest_id: object) -> tuple[str, str, bool]:
     source = ""
     if manifest_id is not None:
         row = connection.execute(  # type: ignore[attr-defined]
@@ -1914,23 +1921,10 @@ def _owners(connection: object, project_id: UUID, case_id: str, manifest_id: obj
         ).fetchone()
         if row is not None:
             source = str(row[0])
-    trial = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT case_runs.case_run_id, jobs.limits
-        FROM case_runs
-        LEFT JOIN jobs
-          ON jobs.project_id = case_runs.project_id
-         AND jobs.case_run_id = case_runs.case_run_id
-         AND jobs.purpose = 'trial'
-        WHERE case_runs.project_id = ? AND case_runs.case_id = ? AND case_runs.purpose = 'trial'
-        ORDER BY case_runs.requested_at
-        LIMIT 1
-        """,
-        (str(project_id), case_id),
-    ).fetchone()
+    trial = _readiness_trial(connection, project_id, case_id, version_id)
     if trial is None:
         return source, "", False
-    return source, str(trial[0]), _trial_off(trial[1])
+    return source, str(trial[0]), _trial_off(trial[3])
 
 
 def _version_diff(actor: object, version_id: UUID, base_id: UUID) -> dict[str, object] | None:

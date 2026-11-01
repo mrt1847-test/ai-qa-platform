@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}분석{% endblock %}
+{% block content %}
+<section>
+  <h1>분석</h1>
+  <p>원래 판정 {{ original_verdict }}</p>
+  <p>원래 판정은 바꾸지 않습니다.</p>
+  <p>외부 이슈를 만들지 않습니다.</p>
+  <p>http와 https만 받습니다.</p>
+  <p>정정 의견은 새 기록으로 남습니다.</p>
+  <ul>
+    {% for item in records %}
+    <li>
+      <p>{{ item.status_label }} · {{ item.classification_label }} · {{ item.assignee }}</p>
+      <p>{{ item.comment }}</p>
+      <p>{{ item.issue_url }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

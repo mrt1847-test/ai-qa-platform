@@ -96,6 +96,17 @@ class CleanupReport:
     proof_refs: tuple[str, ...]
 
 
+def control_finish(purpose: str, finish: object) -> tuple[str | None, str]:
+    """Keep the QA verdict independent of a cleanup failure."""
+
+    from aiqa.domain.verdicts import JobFinishInput, decide_verdict
+
+    if not isinstance(finish, JobFinishInput):
+        raise ValueError("finish input is invalid")
+    verdict = decide_verdict(purpose, finish)
+    return verdict, "quarantine" if finish.cleanup_failed else "unchanged"
+
+
 def stop_runner(attempt_id: UUID, grace_seconds: int = 5) -> StopReport:
     """Wait the cancel grace, then stop the process tree recorded for this attempt."""
 

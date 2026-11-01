@@ -125,6 +125,7 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
             from aiqa.web.usage_context import usage_view
             from aiqa.domain.versions import _bound_store
             usage = usage_view(_bound_store()._connection,project)
+            space = storage
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     context = {
@@ -147,6 +148,7 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
         "workers": workers,
         "storage": storage,
         "usage":usage,
+        "space": space,
     }
     return render_template(request, "settings.html", context)
 

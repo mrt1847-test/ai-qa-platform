@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}수행 목록{% endblock %}
+{% block content %}
+  <h1>수행 목록</h1>
+  <nav aria-label="수행 상태">
+    <a href="?status=waiting">대기</a>
+    <a href="?status=running">진행</a>
+    <a href="?status=done">완료</a>
+    <a href="?status=all">전체</a>
+  </nav>
+  <form method="get">
+    <input type="hidden" name="status" value="{{ status }}">
+    <label>purpose <input name="purpose" value="{{ purpose }}"></label>
+    <label>source <input name="source" value="{{ source }}"></label>
+    <label>요청자 <input name="requester" value="{{ requester }}"></label>
+    <label>환경 <input name="env" value="{{ environment }}"></label>
+    <label>빌드 <input name="build" value="{{ build }}"></label>
+    <label>결과 <input name="result" value="{{ result }}"></label>
+    <label>시작 <input name="since" value="{{ since }}"></label>
+    <label>끝 <input name="until" value="{{ until }}"></label>
+    <label>페이지 <input name="page" value="{{ page }}"></label>
+    <button type="submit">필터</button>
+  </form>
+  {% if items %}
+  <ul>
+    {% for item in items %}
+    <li>
+      <a href="/ui/projects/{{ project_id }}/executions/{{ item.execution_id }}">{{ item.name }}</a>
+      <span>{{ item.purpose }}</span>
+      <span>{{ item.source }}</span>
+      <span>요청자 {{ item.requester }}</span>
+      <span>환경 {{ item.environment }}</span>
+      <span>빌드 {{ item.build }}</span>
+      <span>종료 {{ item.finished_count }}</span>
+      <span>성공 {{ item.pass_count }}</span>
+      <span>대기 {{ item.waiting_count }} · 진행 {{ item.running_count }} · 완료 {{ item.done_count }}</span>
+      <span>{{ item.requested_at }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>수행이 없습니다.</p>
+  {% endif %}
+  <p>페이지 {{ page }}</p>
+{% endblock %}

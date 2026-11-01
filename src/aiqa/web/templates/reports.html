@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}리포트{% endblock %}
+{% block content %}
+<section>
+  <h1>리포트</h1>
+  <p>녹화는 포함하지 않습니다.</p>
+  <p>시범은 기본에서 빠집니다.</p>
+  {% if trial_included %}<p>시범을 포함했습니다.</p>{% endif %}
+  <p>기간 {{ period_label }}</p>
+  <form method="get">
+    <label>purpose <input name="purpose" value="{{ purpose }}"></label>
+    <label>include_trial <input name="include_trial" value="{{ include_trial }}"></label>
+  </form>
+  <ul>
+    {% for item in items %}
+    <li><a href="/ui/projects/{{ project_id }}/executions/{{ item.execution_id }}/report?purpose={{ purpose }}&amp;include_trial={{ include_trial }}">{{ item.name }}</a></li>
+    {% endfor %}
+  </ul>
+  {% if items|length == 0 %}<p>조건에 맞는 수행이 없습니다.</p>{% endif %}
+</section>
+{% endblock %}

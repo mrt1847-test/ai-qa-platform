@@ -1,6 +1,6 @@
 # 작은 컨텍스트 모델을 위한 실행 작업서 v0.8
 
-기준일: **2026-11-01** · 제품 설계: **v0.6 + 보완 계약** · 현재: **완료89/163**, W00·W04·W05·W06·W08·W10 상위 완료, W01-02 외부 차단 보존.
+기준일: **2026-11-01** · 제품 설계: **v0.6 + 보완 계약** · 현재: **완료126/163**, W00·W04·W05·W06·W08·W10 상위 완료, W01-02 외부 차단 보존.
 [Current 큐](../../NEXT_ACTION.md) · [상위 진행표](../../WORK_PROGRESS.md) · [선행/차단 수정](SCHEDULING.md).
 
 **프로젝트 실행 뼈대4개를 먼저 만든다.** 기존 source 조사/부분 probe 코드는 재사용한다.
@@ -30,22 +30,22 @@
 | [A · 공개 코드·모델·연결 탐색](01-foundation-probes.md) | W01 W02 W03 | 11 | 1 |
 | [B-1 · 권한·케이스·TC·환경·data](02a-assets-and-scope.md) | W04 W05 | 10 | 10 |
 | [B-2 · 자원·REC·job·증거·장기 facts schema](02b-job-evidence-schema.md) | W06 | 10 | 10 |
-| [C · 세션·작업 큐·중단](03-worker-and-sessions.md) | W07 W08 W09 | 13 | 9 |
+| [C · 세션·작업 큐·중단](03-worker-and-sessions.md) | W07 W08 W09 | 13 | 10 |
 | [D-1 · 프로젝트·케이스·설정·선택 TC UI](04a-case-management-ui.md) | W10 | 11 | 11 |
 | [D-2 · 환경·기기·앱·data·launcher UI](04b-environments-and-launcher.md) | W11 W12 | 11 | 9 |
 | [E-1 · 행동·증거·spool·모델 계측](05a-action-evidence-and-models.md) | W13 W14 W15 | 12 | 11 |
 | [E-2 · 녹화 입력·진행·저장·재녹화](05b-recording-workflow.md) | W16 | 8 | 5 |
 | [F · 승인 package·모델 없는 재생](06-replay-packages.md) | W29 W30 | 10 | 6 |
 | [G · 시범·사후 검토·승인](07-trial-and-review.md) | W17 W18 W19 | 13 | 11 |
-| [H-1 · 선택 셀프힐링·제안](08a-self-healing.md) | W31 | 7 | 1 |
-| [H-2 · 정식·선택·묶음·취소·재실행](08b-execution-and-suites.md) | W20 W21 W22 | 13 | 0 |
-| [I · 결과·분석·내보내기](09-results-and-analytics.md) | W23 W24 W25 | 13 | 1 |
-| [J · 보관·장애·비용·최종 동선](10-retention-and-release-gates.md) | W26 W27 W32 W28 | 17 | 0 |
-| 합계 | W00–W32 | **163** | **89** |
+| [H-1 · 선택 셀프힐링·제안](08a-self-healing.md) | W31 | 7 | 6 |
+| [H-2 · 정식·선택·묶음·취소·재실행](08b-execution-and-suites.md) | W20 W21 W22 | 13 | 12 |
+| [I · 결과·분석·내보내기](09-results-and-analytics.md) | W23 W24 W25 | 13 | 13 |
+| [J · 보관·장애·비용·최종 동선](10-retention-and-release-gates.md) | W26 W27 W32 W28 | 17 | 7 |
+| 합계 | W00–W32 | **163** | **126** |
 
 첫 구현은 [W00-01](00-bootstrap.md#w00-01)→W00-02→W00-03→W00-04다.
 그 뒤 준비된 core/환경 가지를 NEXT_ACTION이 선택한다. W01-01은 이미 완료되어 반복하지 않는다.
-W01-02 VM 부재는 대기에 보존하고 W31-02부터의 healing 예약 경로를 진행한다. W29-05는 VM 선행이 끝나기 전에 Current가 되지 않는다. W29-03은 VM 선행이 끝나기 전에 Current가 되지 않는다. W16-07은 실기기와 패키지 선행이 끝나기 전에 Current가 되지 않는다. W16-02는 W15-04가 끝나기 전에 Current가 되지 않는다. W15-04는 W03-01이 끝나기 전에 Current가 되지 않는다. W09-04는 선행이 끝났고 W31-02 다음 후보다.
+W01-02 VM 부재는 대기에 보존한다. 선행이 끝난 local_python core는 남아 있지 않다. W29-05는 VM이 있어야 Current가 된다. W29-03은 VM 선행이 끝나기 전에 Current가 되지 않는다. W16-07은 실기기와 패키지 선행이 끝나기 전에 Current가 되지 않는다. W16-02는 W15-04가 끝나기 전에 Current가 되지 않는다. W15-04는 W03-01이 끝나기 전에 Current가 되지 않는다. W27-01은 W22-04와 실제 VM·기기·모델 환경이 끝나기 전에 Current가 되지 않는다. W32-02는 W22-04, W31-07, W27-03이 끝나기 전에 Current가 되지 않는다.
 실제 선행만 권위가 있으며 ID/영역 순서를 전체 직렬 gate로 쓰지 않는다.
 
 ## 3. 한 번의 입력과 실행

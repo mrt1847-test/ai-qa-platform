@@ -2353,7 +2353,7 @@
         "R12",
         "R31"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w09.py",
       "test_name": "test_w09_04",
       "test_command": "python -m pytest tests/integration/test_w09.py::test_w09_04 -q",
@@ -5926,7 +5926,7 @@
         "R13",
         "R33"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w31.py",
       "test_name": "test_w31_02",
       "test_command": "python -m pytest tests/integration/test_w31.py::test_w31_02 -q",
@@ -5979,7 +5979,7 @@
         "R33",
         "R34"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w31.py",
       "test_name": "test_w31_03",
       "test_command": "python -m pytest tests/integration/test_w31.py::test_w31_03 -q",
@@ -6033,7 +6033,7 @@
         "R17",
         "R33"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w31.py",
       "test_name": "test_w31_04",
       "test_command": "python -m pytest tests/integration/test_w31.py::test_w31_04 -q",
@@ -6089,7 +6089,7 @@
         "R34",
         "UI-11.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w31.py",
       "test_name": "test_w31_05",
       "test_command": "python -m pytest tests/acceptance/test_w31.py::test_w31_05 -q",
@@ -6149,7 +6149,7 @@
         "UI-10.02",
         "UI-11.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w31.py",
       "test_name": "test_w31_06",
       "test_command": "python -m pytest tests/acceptance/test_w31.py::test_w31_06 -q",
@@ -6264,7 +6264,7 @@
         "R28",
         "UI-09.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w20.py",
       "test_name": "test_w20_01",
       "test_command": "python -m pytest tests/acceptance/test_w20.py::test_w20_01 -q",
@@ -6315,7 +6315,7 @@
         "R12",
         "R22"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w20.py",
       "test_name": "test_w20_02",
       "test_command": "python -m pytest tests/integration/test_w20.py::test_w20_02 -q",
@@ -6366,7 +6366,7 @@
         "R31",
         "UI-09.04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w20.py",
       "test_name": "test_w20_03",
       "test_command": "python -m pytest tests/acceptance/test_w20.py::test_w20_03 -q",
@@ -6420,7 +6420,7 @@
         "UI-10.03",
         "UI-10.04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w20.py",
       "test_name": "test_w20_04",
       "test_command": "python -m pytest tests/acceptance/test_w20.py::test_w20_04 -q",
@@ -6469,7 +6469,7 @@
         "R22",
         "UI-08.01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w21.py",
       "test_name": "test_w21_01",
       "test_command": "python -m pytest tests/acceptance/test_w21.py::test_w21_01 -q",
@@ -6518,7 +6518,7 @@
         "R32",
         "UI-08.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w21.py",
       "test_name": "test_w21_02",
       "test_command": "python -m pytest tests/acceptance/test_w21.py::test_w21_02 -q",
@@ -6568,7 +6568,7 @@
         "R24",
         "UI-08.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w21.py",
       "test_name": "test_w21_03",
       "test_command": "python -m pytest tests/acceptance/test_w21.py::test_w21_03 -q",
@@ -6620,7 +6620,7 @@
         "UI-03.04",
         "UI-09.05"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w21.py",
       "test_name": "test_w21_04",
       "test_command": "python -m pytest tests/acceptance/test_w21.py::test_w21_04 -q",
@@ -6671,7 +6671,7 @@
         "R31",
         "UI-10.05"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w21.py",
       "test_name": "test_w21_05",
       "test_command": "python -m pytest tests/acceptance/test_w21.py::test_w21_05 -q",
@@ -6721,7 +6721,7 @@
         "R31",
         "UI-10.06"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w22.py",
       "test_name": "test_w22_01",
       "test_command": "python -m pytest tests/acceptance/test_w22.py::test_w22_01 -q",
@@ -6772,7 +6772,7 @@
         "R31",
         "UI-10.07"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w22.py",
       "test_name": "test_w22_02",
       "test_command": "python -m pytest tests/acceptance/test_w22.py::test_w22_02 -q",
@@ -6825,7 +6825,7 @@
         "UI-11.04",
         "UI-12.01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w22.py",
       "test_name": "test_w22_03",
       "test_command": "python -m pytest tests/acceptance/test_w22.py::test_w22_03 -q",
@@ -6983,7 +6983,7 @@
         "R31",
         "UI-11.05"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w23.py",
       "test_name": "test_w23_02",
       "test_command": "python -m pytest tests/acceptance/test_w23.py::test_w23_02 -q",
@@ -7037,7 +7037,7 @@
         "R32",
         "UI-11.06"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w23.py",
       "test_name": "test_w23_03",
       "test_command": "python -m pytest tests/acceptance/test_w23.py::test_w23_03 -q",
@@ -7096,7 +7096,7 @@
         "UI-12.02",
         "UI-12.03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w23.py",
       "test_name": "test_w23_04",
       "test_command": "python -m pytest tests/acceptance/test_w23.py::test_w23_04 -q",
@@ -7152,7 +7152,7 @@
         "R35",
         "UI-12.04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w23.py",
       "test_name": "test_w23_05",
       "test_command": "python -m pytest tests/acceptance/test_w23.py::test_w23_05 -q",
@@ -7204,7 +7204,7 @@
         "R31",
         "R32"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w24.py",
       "test_name": "test_w24_01",
       "test_command": "python -m pytest tests/integration/test_w24.py::test_w24_01 -q",
@@ -7254,7 +7254,7 @@
         "R32",
         "R35"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w24.py",
       "test_name": "test_w24_02",
       "test_command": "python -m pytest tests/integration/test_w24.py::test_w24_02 -q",
@@ -7307,7 +7307,7 @@
         "R35",
         "UI-12.05"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w24.py",
       "test_name": "test_w24_03",
       "test_command": "python -m pytest tests/acceptance/test_w24.py::test_w24_03 -q",
@@ -7361,7 +7361,7 @@
         "UI-13.01",
         "UI-13.02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w24.py",
       "test_name": "test_w24_04",
       "test_command": "python -m pytest tests/acceptance/test_w24.py::test_w24_04 -q",
@@ -7413,7 +7413,7 @@
         "R31",
         "R32"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w24.py",
       "test_name": "test_w24_05",
       "test_command": "python -m pytest tests/integration/test_w24.py::test_w24_05 -q",
@@ -7464,7 +7464,7 @@
         "R14",
         "R31"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w25.py",
       "test_name": "test_w25_01",
       "test_command": "python -m pytest tests/integration/test_w25.py::test_w25_01 -q",
@@ -7515,7 +7515,7 @@
         "R31",
         "UI-12.06"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w25.py",
       "test_name": "test_w25_02",
       "test_command": "python -m pytest tests/acceptance/test_w25.py::test_w25_02 -q",
@@ -7568,7 +7568,7 @@
         "R31",
         "UI-12.07"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/acceptance/test_w25.py",
       "test_name": "test_w25_03",
       "test_command": "python -m pytest tests/acceptance/test_w25.py::test_w25_03 -q",
@@ -7620,7 +7620,7 @@
         "R15",
         "R31"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w26.py",
       "test_name": "test_w26_01",
       "test_command": "python -m pytest tests/integration/test_w26.py::test_w26_01 -q",
@@ -7674,7 +7674,7 @@
         "R15",
         "R34"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w26.py",
       "test_name": "test_w26_02",
       "test_command": "python -m pytest tests/integration/test_w26.py::test_w26_02 -q",
@@ -7730,7 +7730,7 @@
         "UI-15.06",
         "UI-07.10"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w26.py",
       "test_name": "test_w26_03",
       "test_command": "python -m pytest tests/integration/test_w26.py::test_w26_03 -q",
@@ -7786,7 +7786,7 @@
         "R15",
         "UI-15.07"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w26.py",
       "test_name": "test_w26_04",
       "test_command": "python -m pytest tests/integration/test_w26.py::test_w26_04 -q",
@@ -7845,7 +7845,7 @@
         "R26",
         "UI-15.08"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w26.py",
       "test_name": "test_w26_05",
       "test_command": "python -m pytest tests/integration/test_w26.py::test_w26_05 -q",
@@ -8066,7 +8066,7 @@
         "R16",
         "R32"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w27.py",
       "test_name": "test_w27_04",
       "test_command": "python -m pytest tests/integration/test_w27.py::test_w27_04 -q",
@@ -8121,7 +8121,7 @@
         "R13",
         "R35"
       ],
-      "status": "not_started",
+      "status": "complete",
       "test_file": "tests/integration/test_w32.py",
       "test_name": "test_w32_01",
       "test_command": "python -m pytest tests/integration/test_w32.py::test_w32_01 -q",

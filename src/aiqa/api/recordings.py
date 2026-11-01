@@ -19,6 +19,7 @@ from aiqa.api.auth import (
 )
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.recording.manifests import FinishConflict, RecordingFinishInput
+from aiqa.healing.proposals import ProposalRejected, adopt_repair_proposal
 from aiqa.recording.service import (
     HashMismatch,
     PreflightRejected,
@@ -407,6 +408,14 @@ def install_recordings(application: FastAPI) -> None:
             )
         except (TypeError, ValueError):
             return _error(422, "validation", "invalid rerecording", {})
+        proposal_id = None
+        raw_proposal = payload.get("repair_proposal_id")
+        if raw_proposal not in {None, ""}:
+            if payload.get("confirm_diff") is not True:
+                return _error(422, "validation", "diff must be confirmed", {})
+            proposal_id = _parse_uuid(str(raw_proposal))
+            if proposal_id is None:
+                return _error(422, "validation", "invalid rerecording", {})
         store = request.app.state.open_store()
         try:
             migrate_store(store)
@@ -423,7 +432,12 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(401, "unauthorized", "session is missing", {})
                 try:
                     with store.transaction() as connection:
-                        receipt = start_rerecording(connection, actor, project_id, spec, request_key)
+                        if proposal_id is None:
+                            receipt = start_rerecording(connection, actor, project_id, spec, request_key)
+                        else:
+                            receipt = adopt_repair_proposal(
+                                connection, actor, project_id, parsed, proposal_id, spec, request_key
+                            )
                         stored = connection.execute(
                             """
                             SELECT case_id, base_case_version_id FROM recordings
@@ -436,6 +450,8 @@ def install_recordings(application: FastAPI) -> None:
                 except (HashMismatch, ResourceBusy):
                     return _error(409, "conflict", "rerecording was rejected", {})
                 except PreflightRejected as exc:
+                    return _error(422, "validation", exc.reason, {})
+                except ProposalRejected as exc:
                     return _error(422, "validation", exc.reason, {})
         finally:
             store.close()

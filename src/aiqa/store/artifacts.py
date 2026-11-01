@@ -5,17 +5,18 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import UUID, uuid4
+from aiqa.store.retention import FILE_WINDOW, UtcInstant
 from aiqa.worker.files import file_lock
 
 _MEDIA = {".png": "image/png", ".log": "text/plain"}
 _MAX_BYTES = 5_000_000
 APK_BYTE_LIMIT = 500 * 1024 * 1024
 PROJECT_BYTE_LIMIT = 20 * 1024 * 1024 * 1024
-ARTIFACT_RETENTION = timedelta(days=30)
+ARTIFACT_RETENTION = FILE_WINDOW
 
 
 class ArtifactRejected(ValueError):
@@ -360,3 +361,169 @@ def _hostile(filename: str) -> bool:
     if ".." in filename or filename.startswith(("/", "\\")) or "\\" in filename or ":" in filename:
         return True
     return False
+
+
+class ProtectionConflict(ValueError):
+    """The same pin command does not match the stored receipt."""
+
+
+@dataclass(frozen=True, slots=True)
+class GcClaim:
+    claim_id: UUID
+    artifact_id: UUID
+    state: str
+
+
+def append_typed_pin(connection: object, project_id: UUID, artifact_id: UUID, kind: str, now: datetime) -> UUID:
+    """Append one manual, backup, or build pin. A delete-pending artifact stays unapproved."""
+
+    if kind not in {"manual", "backup", "build"}:
+        raise ArtifactRejected("pin kind belongs to its own lifetime")
+    _require_artifact(connection, project_id, artifact_id)
+    if _pending(connection, project_id, artifact_id):
+        raise ArtifactRejected("delete pending blocks a new pin")
+    protection_id = uuid4()
+    parent = uuid4()
+    if kind == "manual":
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO manual_retention_requests (project_id, request_id, created_at) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), now.isoformat()),
+        )
+        columns = (str(parent), None, None)
+    elif kind == "backup":
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO backup_receipts (project_id, receipt_id, created_at) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), now.isoformat()),
+        )
+        columns = (None, None, str(parent))
+    else:
+        connection.execute(  # type: ignore[attr-defined]
+            "INSERT INTO app_builds (project_id, build_id, content_hash) VALUES (?, ?, ?)",
+            (str(project_id), str(parent), "sha256:build"),
+        )
+        columns = (None, str(parent), None)
+    _insert_pin(connection, project_id, protection_id, artifact_id, kind, columns)
+    return protection_id
+
+
+def protect_for_approval(connection: object, project_id: UUID, artifact_id: UUID) -> UUID:
+    """Append an approval pin when the artifact is not already claimed for deletion."""
+
+    _require_artifact(connection, project_id, artifact_id)
+    if _pending(connection, project_id, artifact_id):
+        raise ArtifactRejected("delete pending blocks approval")
+    protection_id = uuid4()
+    _insert_pin(connection, project_id, protection_id, artifact_id, "approval", (None, None, None))
+    return protection_id
+
+
+def release_manual_pin(connection: object, project_id: UUID, protection_id: UUID, now: datetime) -> None:
+    """Release one manual pin. Approval, review, backup, and build pins stay."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT kind FROM artifact_protections
+        WHERE project_id = ? AND protection_id = ?
+        """,
+        (str(project_id), str(protection_id)),
+    ).fetchone()
+    if row is None:
+        raise ArtifactRejected("pin is missing")
+    if str(row[0]) != "manual":
+        raise ArtifactRejected("manual release cannot drop another pin")
+    existing = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM protection_releases WHERE project_id = ? AND protection_id = ?",
+        (str(project_id), str(protection_id)),
+    ).fetchone()
+    if existing is not None:
+        raise ProtectionConflict("pin is already released")
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO protection_releases (project_id, release_id, protection_id, released_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        (str(project_id), str(uuid4()), str(protection_id), now.isoformat()),
+    )
+
+
+def claim_gc_artifact(connection: object, project_id: UUID, now: UtcInstant) -> GcClaim | None:
+    """Claim one unprotected ready artifact. Provenance rows stay."""
+
+    clock = now.value
+    if clock.tzinfo is None or clock.utcoffset() is None:
+        raise ArtifactRejected("retention time needs a timezone")
+    paused = connection.execute("SELECT 1 FROM gc_pause").fetchone()  # type: ignore[attr-defined]
+    if paused is not None:
+        return None
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT artifact_id FROM artifact_objects
+        WHERE project_id = ? AND status = 'ready' AND acked = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM artifact_protections AS pins
+              WHERE pins.project_id = artifact_objects.project_id
+                AND pins.artifact_id = artifact_objects.artifact_id
+                AND NOT EXISTS (
+                    SELECT 1 FROM protection_releases AS released
+                    WHERE released.project_id = pins.project_id
+                      AND released.protection_id = pins.protection_id
+                )
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM gc_claims
+              WHERE gc_claims.project_id = artifact_objects.project_id
+                AND gc_claims.artifact_id = artifact_objects.artifact_id
+          )
+        ORDER BY artifact_id
+        LIMIT 1
+        """,
+        (str(project_id),),
+    ).fetchone()
+    if row is None:
+        return None
+    claim_id = uuid4()
+    artifact_id = UUID(str(row[0]))
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO gc_claims (project_id, claim_id, artifact_id, state, claimed_at)
+        VALUES (?, ?, ?, 'delete_pending', ?)
+        """,
+        (str(project_id), str(claim_id), str(artifact_id), clock.astimezone(timezone.utc).isoformat()),
+    )
+    return GcClaim(claim_id, artifact_id, "delete_pending")
+
+
+def _require_artifact(connection: object, project_id: UUID, artifact_id: UUID) -> None:
+    row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM artifact_refs WHERE project_id = ? AND artifact_id = ?",
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    if row is None:
+        raise ArtifactRejected("artifact is missing")
+
+
+def _pending(connection: object, project_id: UUID, artifact_id: UUID) -> bool:
+    row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT 1 FROM gc_claims WHERE project_id = ? AND artifact_id = ?",
+        (str(project_id), str(artifact_id)),
+    ).fetchone()
+    return row is not None
+
+
+def _insert_pin(
+    connection: object,
+    project_id: UUID,
+    protection_id: UUID,
+    artifact_id: UUID,
+    kind: str,
+    columns: tuple[str | None, str | None, str | None],
+) -> None:
+    manual_id, build_id, backup_id = columns
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO artifact_protections (
+            project_id, protection_id, artifact_id, kind, backup_receipt_id, build_id, manual_request_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (str(project_id), str(protection_id), str(artifact_id), kind, backup_id, build_id, manual_id),
+    )

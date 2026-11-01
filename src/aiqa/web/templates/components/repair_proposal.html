@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}불변 수정 제안{% endblock %}
+{% block content %}
+  <h1>불변 수정 제안</h1>
+  <p>제안 {{ proposal_id }}</p>
+  <p>diff {{ diff_text }}</p>
+  <p>근거 hash는 제안과 함께 고정됩니다.</p>
+  <p>확인과 사유 뒤에 새 전체 녹화로 채택합니다.</p>
+  <p>바로 코드를 고치거나 승인하지 않습니다.</p>
+  <p>일부 합치기는 없습니다.</p>
+  <p>기존 script, 기본본, 묶음, 보내기 hash는 바꾸지 않습니다.</p>
+{% endblock %}

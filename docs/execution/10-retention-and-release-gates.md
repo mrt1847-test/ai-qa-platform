@@ -1,6 +1,6 @@
 # J · 보관·장애·비용·최종 동선 · 상세 작업서 v0.8
 
-제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료0 / 17**.
+제품 설계 v0.6 + [보완 계약](CONTRACTS.md). **완료7 / 17**.
 [Current 큐](../../NEXT_ACTION.md) · [전체 색인](README.md) · [차단/선행 수정](SCHEDULING.md) · [인계](HANDOFF.md).
 
 카드 한 개와 직접 선행 근거만 읽는다. 기존 코드/complete/blocked 기록을 재사용한다.
@@ -8,16 +8,16 @@
 
 | 작업 | 직접 선행 | 결과 | 상태 |
 |---|---|---|---|
-| [W26-01](#w26-01) | [W25-03](09-results-and-analytics.md#w25-03) | detail/파일 만료·최소 facts·tombstone | not_started |
-| [W26-02](#w26-02) | [W26-01](10-retention-and-release-gates.md#w26-01) | active protection·manual pin·release·GC 경합 | not_started |
-| [W26-03](#w26-03) | [W26-02](10-retention-and-release-gates.md#w26-02) | 공간·보호/삭제예정·보관 조작 UI | not_started |
-| [W26-04](#w26-04) | [W26-03](10-retention-and-release-gates.md#w26-03) | 일관 SQLite·artifact manifest 백업 | not_started |
-| [W26-05](#w26-05) | [W26-04](10-retention-and-release-gates.md#w26-04) | 별도 경로 복원·검사·재설정 UI | not_started |
+| [W26-01](#w26-01) | [W25-03](09-results-and-analytics.md#w25-03) | detail/파일 만료·최소 facts·tombstone | complete |
+| [W26-02](#w26-02) | [W26-01](10-retention-and-release-gates.md#w26-01) | active protection·manual pin·release·GC 경합 | complete |
+| [W26-03](#w26-03) | [W26-02](10-retention-and-release-gates.md#w26-02) | 공간·보호/삭제예정·보관 조작 UI | complete |
+| [W26-04](#w26-04) | [W26-03](10-retention-and-release-gates.md#w26-03) | 일관 SQLite·artifact manifest 백업 | complete |
+| [W26-05](#w26-05) | [W26-04](10-retention-and-release-gates.md#w26-04) | 별도 경로 복원·검사·재설정 UI | complete |
 | [W27-01](#w27-01) | [W26-05](10-retention-and-release-gates.md#w26-05), [W22-04](08b-execution-and-suites.md#w22-04) | 중복·늦은 event·finish·복구 경합 matrix | not_started |
 | [W27-02](#w27-02) | [W27-01](10-retention-and-release-gates.md#w27-01) | worker/API/USB/browser/PC 장애 matrix | not_started |
 | [W27-03](#w27-03) | [W27-02](10-retention-and-release-gates.md#w27-02) | 용량·정제·파일손상·보관 장애 matrix | not_started |
-| [W27-04](#w27-04) | [W26-05](10-retention-and-release-gates.md#w26-05), [W24-05](09-results-and-analytics.md#w24-05), [W06-09](02b-job-evidence-schema.md#w06-09) | metadata 부하·query plan·문서 추적 재대조 | not_started |
-| [W32-01](#w32-01) | [W24-05](09-results-and-analytics.md#w24-05), [W15-03](05a-action-evidence-and-models.md#w15-03) | role 비용·계측 누락·표본 산식 검증 | not_started |
+| [W27-04](#w27-04) | [W26-05](10-retention-and-release-gates.md#w26-05), [W24-05](09-results-and-analytics.md#w24-05), [W06-09](02b-job-evidence-schema.md#w06-09) | metadata 부하·query plan·문서 추적 재대조 | complete |
+| [W32-01](#w32-01) | [W24-05](09-results-and-analytics.md#w24-05), [W15-03](05a-action-evidence-and-models.md#w15-03) | role 비용·계측 누락·표본 산식 검증 | complete |
 | [W32-02](#w32-02) | [W32-01](10-retention-and-release-gates.md#w32-01), [W22-04](08b-execution-and-suites.md#w22-04), [W31-07](08a-self-healing.md#w31-07), [W27-03](10-retention-and-release-gates.md#w27-03), [W27-04](10-retention-and-release-gates.md#w27-04) | 대표 30–50 TC·3 구성·실제 품질/비용 측정 | not_started |
 | [W32-03](#w32-03) | [W32-02](10-retention-and-release-gates.md#w32-02) | 월 3000 workload 추정·release_label UI | not_started |
 | [W28-01](#w28-01) | [W32-03](10-retention-and-release-gates.md#w32-03), [W03-03](01-foundation-probes.md#w03-03), [W07-04](03-worker-and-sessions.md#w07-04), [W12-03](04b-environments-and-launcher.md#w12-03), [W16-07](05b-recording-workflow.md#w16-07), [W27-03](10-retention-and-release-gates.md#w27-03), [W31-07](08a-self-healing.md#w31-07) | 전체 추적표·부분 구현·차단·후속 경계 audit | not_started |
@@ -30,7 +30,7 @@
 
 ## W26-01 — detail/파일 만료·최소 facts·tombstone
 
-- [ ] **W26-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W26-01.md`(구현 때 생성).
+- [x] **W26-01 완료** — 상태: `complete`. 근거: [W26-01 인계](../validation/tasks/W26-01.md).
 - **직접 선행:** [W25-03](09-results-and-analytics.md#w25-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C08 / C10 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R12, R15, R31.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -58,7 +58,7 @@ assert observed == {
 
 ## W26-02 — active protection·manual pin·release·GC 경합
 
-- [ ] **W26-02 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W26-02.md`(구현 때 생성).
+- [x] **W26-02 완료** — 상태: `complete`. 근거: [W26-02 인계](../validation/tasks/W26-02.md).
 - **직접 선행:** [W26-01](10-retention-and-release-gates.md#w26-01)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C08 / C10 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R12, R15, R34.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -87,7 +87,7 @@ assert observed == {
 
 ## W26-03 — 공간·보호/삭제예정·보관 조작 UI
 
-- [ ] **W26-03 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W26-03.md`(구현 때 생성).
+- [x] **W26-03 완료** — 상태: `complete`. 근거: [W26-03 인계](../validation/tasks/W26-03.md).
 - **직접 선행:** [W26-02](10-retention-and-release-gates.md#w26-02)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C08 / C10 / C11 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R15, R21, R30, UI-15.06, UI-07.10.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -115,7 +115,7 @@ assert observed == {
 
 ## W26-04 — 일관 SQLite·artifact manifest 백업
 
-- [ ] **W26-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W26-04.md`(구현 때 생성).
+- [x] **W26-04 완료** — 상태: `complete`. 근거: [W26-04 인계](../validation/tasks/W26-04.md).
 - **직접 선행:** [W26-03](10-retention-and-release-gates.md#w26-03)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C08 / C10 / C11 / C12 / C14 + 직접 선행 receipt의 interface/제약. 추적: R12, R14, R15, UI-15.07.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -145,7 +145,7 @@ assert observed == {
 
 ## W26-05 — 별도 경로 복원·검사·재설정 UI
 
-- [ ] **W26-05 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W26-05.md`(구현 때 생성).
+- [x] **W26-05 완료** — 상태: `complete`. 근거: [W26-05 인계](../validation/tasks/W26-05.md).
 - **직접 선행:** [W26-04](10-retention-and-release-gates.md#w26-04)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C08 / C10 / C11 / C12 / C14 + 직접 선행 receipt의 interface/제약. 추적: R08, R12, R14, R15, R26, UI-15.08.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -252,7 +252,7 @@ assert observed == {
 
 ## W27-04 — metadata 부하·query plan·문서 추적 재대조
 
-- [ ] **W27-04 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W27-04.md`(구현 때 생성).
+- [x] **W27-04 완료** — 상태: `complete`. 근거: [W27-04 인계](../validation/tasks/W27-04.md).
 - **직접 선행:** [W26-05](10-retention-and-release-gates.md#w26-05), [W24-05](09-results-and-analytics.md#w24-05), [W06-09](02b-job-evidence-schema.md#w06-09)
 - **읽기:** CONTRACTS C00 / C01 / C03 / C04 / C05 / C07 / C08 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R12, R15, R16, R32.
 - **검증 등급:** `core_contract`. 환경: `local_python`.
@@ -281,7 +281,7 @@ assert observed == {
 
 ## W32-01 — role 비용·계측 누락·표본 산식 검증
 
-- [ ] **W32-01 완료** — 상태: `not_started`. 근거: `docs/validation/tasks/W32-01.md`(구현 때 생성).
+- [x] **W32-01 완료** — 상태: `complete`. 근거: [W32-01 인계](../validation/tasks/W32-01.md).
 - **직접 선행:** [W24-05](09-results-and-analytics.md#w24-05), [W15-03](05a-action-evidence-and-models.md#w15-03)
 - **읽기:** CONTRACTS C00 / C01 / C06 / C09 / C10 / C14 + 직접 선행 receipt의 interface/제약. 추적: R13, R35.
 - **검증 등급:** `core_contract`. 환경: `local_python`.

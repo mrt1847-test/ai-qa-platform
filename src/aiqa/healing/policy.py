@@ -9,6 +9,18 @@ from aiqa.contracts.healing import HealingRequest, Limits, ResolvedHealingPolicy
 from aiqa.domain.hashing import canonical_hash
 
 
+def reserve_window(policy: ResolvedHealingPolicy, job_seconds: int, lease_seconds: int) -> tuple[int, int] | None:
+    """Keep the stricter call and time cap. An off policy reserves nothing."""
+
+    if policy.effective_enabled is not True:
+        return None
+    calls = min(2, int(policy.effective_limits["max_model_calls_per_item"]))
+    seconds = min(30, int(policy.effective_limits["max_seconds"]), job_seconds, lease_seconds)
+    if calls < 1 or seconds < 1:
+        return None
+    return calls, seconds
+
+
 def resolve_healing_policy(
     version: CaseVersion, request: HealingRequest, global_limits: Limits
 ) -> ResolvedHealingPolicy:

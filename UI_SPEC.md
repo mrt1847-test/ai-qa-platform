@@ -624,7 +624,7 @@ W10 이후 관리 UI는 실제 API/DB와 tests 전용 외부 관찰로 상태/�
 | GET projects/{p}/cases | 기존 items/next_cursor/snapshot_seq에 total/start/end/previous_cursor와 target·draft/approved revision·최근 QA 결과/시각 추가. body 전체 case/evidence를 내려받지 않음 |
 | 저장 상태 | 서버 ACK만 clean. dirty/saving/invalid/conflict/forbidden/unknown 구별. 응답 불명은 같은 body/key 확인 후 새 수정 저장. URL/브라우저 저장소에 입력/키를 자동 보관하지 않음 |
 | 충돌 | definition/wizard/case settings/project settings는 서버본과 실제 내 payload를 비교한 뒤 명시적으로 새 기준을 준비. 자동 재저장/승인하지 않음 |
-| 현재 시범 접수 | source=single은1 ITEM. dataset ID도 preview hash에 포함하고 environment/resource/data/version/package를 job limits의 execution_snapshot에 고정. 시범 healing OFF. 여러 ITEM을 조용히 잘라 실행하지 않음 |
+| 현재 시범 접수 | 단일 시범 UI는1 ITEM 선택. 최신 master의 선택·행·대상 전개/다중 ITEM API는 보존. dataset ID도 preview hash에 포함하고 environment/resource/data/version/package를 job limits의 execution_snapshot에 고정. 시범 healing OFF. 여러 ITEM을 조용히 잘라 실행하지 않음 |
 | 목록 선택 | 현재 페이지 선택, 이동/검색/프로젝트 변경 시 해제. 승인본 있음은 formal_runnable 보장이 아님. 일괄 복제/보관만 기존 per-item 결과로 연결 |
 | 검토 | 저장 완료 후 같은 version의 source REC+healing OFF trial ITEM을 명시 고정. 선택된 owner/attempt/action과 pinned artifact만 표시. QA 판정과 사람 결정을 분리 |
 | 재녹화 | 같은 case 새 초안. CaseVersion의 parent/base와 REC base를 유지하고 이전 승인/증거를 덮지 않음. 기대/설정 변경은 새 후보의 시범·검토 대상 |

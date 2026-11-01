@@ -250,6 +250,160 @@ def test_w09_03() -> None:
     }
 
 
+def test_w09_04(tmp_path: Path) -> None:
+    from uuid import uuid4
+
+    from aiqa.api.app import create_app
+    from aiqa.config import load_settings
+    from aiqa.domain.projects import bind_store, create_project
+    from aiqa.store.database import migrate_store
+    from aiqa.store.models import Actor, ProjectCreate
+    from aiqa.store.queue import finalize_job_control
+
+    root = tmp_path / "runtime"
+    app = create_app(load_settings({"AIQA_HOST": "127.0.0.1", "AIQA_PORT": "8000", "AIQA_RUNTIME_ROOT": str(root)}))
+    owner = Actor(uuid4(), None, True)
+    store = app.state.open_store()
+    migrate_store(store)
+    with bind_store(store):
+        project = create_project(owner, ProjectCreate("종료", "w0904", "finish", "web"))
+    store.close()
+    database = root / "db" / "aiqa.sqlite"
+    project_id = project.project_id
+    jobs = _finish_jobs(database, str(project_id), str(owner.actor_id))
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        recording = finalize_job_control(connection, _finish(project_id, jobs["recording"], "lost", False, False, False))
+        management = finalize_job_control(connection, _finish(project_id, jobs["export"], "lost", False, False, False))
+        rebuild = finalize_job_control(connection, _finish(project_id, jobs["package_rebuild"], "lost", False, True, False))
+        checked = finalize_job_control(connection, _finish(project_id, jobs["model_check"], "lost", False, False, True))
+        violation = finalize_job_control(connection, _finish(project_id, jobs["violation"], "cancelled", True, True, False))
+        uncertain = finalize_job_control(connection, _finish(project_id, jobs["crash"], "crash", False, True, True))
+        repeated = finalize_job_control(connection, _finish(project_id, jobs["violation"], "lost", False, True, True))
+        connection.commit()
+    observed = {
+        "management_verdict": management.verdict,
+        "recording_verdict": recording.verdict,
+        "violation_then_cancel": violation.verdict,
+        "uncertain_after_dispatch": uncertain.verdict,
+    }
+    assert rebuild.verdict is None and checked.verdict is None
+    assert repeated.verdict == "FAIL" and repeated.replayed is True
+    assert uncertain.cleanup_completed is False
+    with sqlite3.connect(database) as connection:
+        state = connection.execute(
+            "SELECT resource_state FROM job_finish_facts WHERE job_id = ?",
+            (jobs["crash"],),
+        ).fetchone()
+    assert state is not None and state[0] == "quarantine"
+    assert observed == {
+        "management_verdict": None,
+        "recording_verdict": None,
+        "violation_then_cancel": "FAIL",
+        "uncertain_after_dispatch": "INCONCLUSIVE",
+    }
+
+
+def _finish(project_id: UUID, job_id: str, reason: str, violation: bool, dispatched: bool, cleanup_failed: bool) -> object:
+    from aiqa.domain.verdicts import JobFinishInput
+
+    return JobFinishInput(project_id, UUID(job_id), reason, violation, dispatched, cleanup_failed)
+
+
+def _finish_jobs(database: Path, project_id: str, actor_id: str) -> dict[str, str]:
+    from uuid import uuid4
+
+    case_id = str(uuid4())
+    version_id = str(uuid4())
+    recording_id = str(uuid4())
+    stamp = "2026-11-01T00:00:00+00:00"
+    jobs = {
+        "recording": str(uuid4()),
+        "export": str(uuid4()),
+        "package_rebuild": str(uuid4()),
+        "model_check": str(uuid4()),
+        "violation": str(uuid4()),
+        "crash": str(uuid4()),
+    }
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            """
+            INSERT INTO automation_cases (
+                project_id, case_id, name, folder_id, tc_reference, next_revision,
+                latest_draft_version_id, current_approval_id, lock_version, archived_at
+            ) VALUES (?, ?, '종료', NULL, NULL, 2, NULL, NULL, 0, NULL)
+            """,
+            (project_id, case_id),
+        )
+        connection.execute(
+            """
+            INSERT INTO case_versions (
+                project_id, case_id, version_id, revision, creation_kind, parent_version_id, base_version_id,
+                is_branch, definition_json, settings_json, recorded_steps_json, content_hash, verification_digest,
+                source_manifest_id, replay_package_id, readiness_json, actor_id, reason, created_at
+            ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', '{}', '[]', 'hash', 'digest',
+                NULL, NULL, '{}', ?, 'recorded', ?)
+            """,
+            (project_id, case_id, version_id, actor_id, stamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO recordings (
+                project_id, case_id, recording_id, creation_kind, input_case_version_id, base_case_version_id,
+                parent_recording_id, source_recording_id, storage_status, stop_status, completion_status, evidence_status
+            ) VALUES (?, ?, ?, 'recorded', ?, NULL, NULL, NULL, 'stored', 'stopped', 'completed', 'complete')
+            """,
+            (project_id, case_id, recording_id, version_id),
+        )
+        connection.execute(
+            """
+            INSERT INTO jobs (
+                project_id, job_id, purpose, recording_id, case_run_id, payload_hash, source_refs, limits, status
+            ) VALUES (?, ?, 'recording', ?, NULL, 'payload', '[]', '{}', 'running')
+            """,
+            (project_id, jobs["recording"], recording_id),
+        )
+        for purpose in ("export", "package_rebuild", "model_check"):
+            connection.execute(
+                """
+                INSERT INTO jobs (
+                    project_id, job_id, purpose, recording_id, case_run_id, payload_hash, source_refs, limits, status
+                ) VALUES (?, ?, ?, NULL, NULL, 'payload', '["source"]', '{}', 'running')
+                """,
+                (project_id, jobs[purpose], purpose),
+            )
+        for name in ("violation", "crash"):
+            execution_id = str(uuid4())
+            run_id = str(uuid4())
+            connection.execute(
+                """
+                INSERT INTO executions (
+                    project_id, execution_id, name, purpose, source, suite_version_id, scope_requested_at
+                ) VALUES (?, ?, '수행', 'trial', 'single', NULL, ?)
+                """,
+                (project_id, execution_id, stamp),
+            )
+            connection.execute(
+                """
+                INSERT INTO case_runs (
+                    project_id, execution_id, case_run_id, case_id, case_version_id, purpose, requested_at
+                ) VALUES (?, ?, ?, ?, ?, 'trial', ?)
+                """,
+                (project_id, execution_id, run_id, case_id, version_id, stamp),
+            )
+            connection.execute(
+                """
+                INSERT INTO jobs (
+                    project_id, job_id, purpose, recording_id, case_run_id, payload_hash, source_refs, limits, status
+                ) VALUES (?, ?, 'trial', NULL, ?, 'payload', '[]', '{}', 'running')
+                """,
+                (project_id, jobs[name], run_id),
+            )
+        connection.commit()
+    return jobs
+
+
 def _status(connection: object, job_id: UUID) -> str:
     assert hasattr(connection, "execute")
     row = connection.execute("SELECT status FROM jobs WHERE job_id = ?", (str(job_id),)).fetchone()

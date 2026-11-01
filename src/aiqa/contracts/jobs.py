@@ -137,6 +137,7 @@ class JobSnapshot:
     runner_stopped: bool
     cleanup_completed: bool
     replayed: bool
+    verdict: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

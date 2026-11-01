@@ -112,6 +112,39 @@ def stop_local_services(request: ServiceStopRequest | LauncherConfig) -> LocalSe
     return _status(config, None, "stopped", explanation)
 
 
+def enter_maintenance(runtime_root: str) -> None:
+    """Record whole-PC maintenance and drop the recorded worker session.
+
+    This does not stop a process. The API storage service discards worker tokens.
+    """
+
+    root = Path(runtime_root)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "maintenance.json").write_text(
+        json.dumps(
+            {
+                "automatic_resume": 0,
+                "mode": "maintenance",
+                "scope": "이 PC 전체 저장소",
+                "worker_sessions": "discarded",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    lock = root / "launcher.json"
+    if not lock.is_file():
+        return
+    payload = json.loads(lock.read_text(encoding="utf-8"))
+    if type(payload) is not dict:
+        return
+    payload["worker_pid"] = 0
+    payload["state"] = "maintenance"
+    payload["explanation"] = "유지보수 모드입니다. worker 세션은 폐기되었습니다."
+    lock.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+
+
 def read_stop_notice(runtime_root: str) -> dict[str, object] | None:
     """Read the durable stop flag. This does not start or stop a process."""
 

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>인쇄 보고</title>
+<style>
+  .sheet { overflow: visible; max-height: none; }
+  table { border-collapse: collapse; width: 100%; table-layout: auto; }
+  td, th { overflow: visible; white-space: normal; word-break: break-word; }
+  @media (min-width: 1024px) { .sheet { overflow: visible; max-height: none; } }
+  @media (min-width: 1440px) { .sheet { overflow: visible; max-height: none; } }
+  @media print { .sheet { overflow: visible; max-height: none; } }
+</style>
+</head>
+<body>
+<section class="sheet">
+  <h1>인쇄 보고</h1>
+  <p>범위 {{ project_id }}</p>
+  <p>기준 {{ criteria }} · 기준 시각 {{ as_of }}</p>
+  <p>원본 {{ execution_id }}</p>
+  <p>시각 {{ as_of }}</p>
+  <p>{{ interim_label }}</p>
+  <p>조건 차이는 따로 표시합니다.</p>
+  <p>정제된 근거는 링크로만 남고 경로는 보이지 않습니다.</p>
+  <p>만료 {{ expires_label }}</p>
+  <p>localhost 주소는 공개 공유가 아닙니다.</p>
+  <p>PDF를 만들지 않습니다. 예약 발송은 없습니다.</p>
+  <p>작업 상태 진행, 완료, 실패, 만료와 다운로드가 내보내기에 연결됩니다.</p>
+  <table>
+    <tr><th>결과</th><th>내용</th></tr>
+    <tr><td>내용</td><td>{{ body }}</td></tr>
+  </table>
+</section>
+</body>
+</html>

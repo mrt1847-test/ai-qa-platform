@@ -124,6 +124,68 @@ def enqueue_job(tx: Transaction, submission: JobSubmission, key: IdempotencyKey)
     )
 
 
+def enqueue_export(
+    tx: Transaction,
+    key: IdempotencyKey,
+    execution_id: UUID,
+    manifest: dict[str, object],
+    request_hash: str,
+) -> tuple[UUID, bool]:
+    """Queue one export job. The same key and body return the original job."""
+
+    if key.operation != "export_execution" or key.key.strip() == "" or key.project_id is None:
+        raise ValueError("idempotency key does not match this export")
+    connection = tx.connection
+    existing = connection.execute(
+        """
+        SELECT body_hash, job_id FROM job_receipts
+        WHERE project_id = ? AND actor_id = ? AND operation = ? AND request_key = ?
+        """,
+        (str(key.project_id), str(key.actor_id), key.operation, key.key),
+    ).fetchone()
+    if existing is not None:
+        if str(existing[0]) != request_hash:
+            raise JobConflict("idempotency body does not match")
+        return UUID(str(existing[1])), True
+    limits = canonical_json(manifest)
+    job_id = uuid4()
+    refs = [f"execution:{execution_id}"]
+    connection.execute(
+        """
+        INSERT INTO jobs (
+            project_id, job_id, purpose, recording_id, case_run_id,
+            payload_hash, source_refs, limits, status
+        ) VALUES (?, ?, 'export', NULL, NULL, ?, ?, ?, 'queued')
+        """,
+        (
+            str(key.project_id),
+            str(job_id),
+            request_hash,
+            json.dumps(refs, ensure_ascii=False, separators=(",", ":")),
+            limits,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO job_receipts (
+            project_id, actor_id, operation, request_key, body_hash, job_id, purpose,
+            recording_id, execution_id, case_run_id, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'export', NULL, ?, NULL, 'queued', ?)
+        """,
+        (
+            str(key.project_id),
+            str(key.actor_id),
+            key.operation,
+            key.key,
+            request_hash,
+            str(job_id),
+            str(execution_id),
+            str(manifest["created_at"]),
+        ),
+    )
+    return job_id, False
+
+
 def load_job(tx: Transaction, project_id: UUID, job_id: UUID) -> JobReceipt:
     """Read one queued or later job. This does not claim it."""
 
@@ -304,7 +366,11 @@ def claim_queued_job(connection: sqlite3.Connection, worker: WorkerScope, now: d
     for project_id, job_id, purpose, case_run_id, source_refs in rows:
         if _cleanup_pending(connection, str(project_id), None if case_run_id is None else str(case_run_id)):
             continue
+        if _previous_item_blocks(connection, str(project_id), None if case_run_id is None else str(case_run_id)):
+            continue
         if _approval_blocks_claim(connection, str(project_id), str(job_id)):
+            continue
+        if _snapshot_blocks_claim(connection, str(project_id), str(job_id), str(purpose), source_refs):
             continue
         usable, physical_key_id = _device(connection, str(project_id), str(purpose), str(source_refs))
         if not usable or _active_slots(connection) >= 1:
@@ -356,12 +422,86 @@ def _active_slots(connection: sqlite3.Connection) -> int:
     return 0 if row is None else int(row[0])
 
 
+def _snapshot_blocks_claim(
+    connection: sqlite3.Connection, project_id: str, job_id: str, purpose: str, source_refs: object
+) -> bool:
+    from aiqa.domain.executions import validate_claim_snapshot
+    from aiqa.store.models import JobSpec
+
+    row = connection.execute(
+        "SELECT payload_hash, limits, recording_id, case_run_id, status FROM jobs WHERE project_id = ? AND job_id = ?",
+        (project_id, job_id),
+    ).fetchone()
+    if row is None:
+        return True
+    spec = JobSpec(
+        UUID(project_id),
+        UUID(job_id),
+        purpose,
+        None if row[2] is None else UUID(str(row[2])),
+        None if row[3] is None else UUID(str(row[3])),
+        str(row[0]),
+        "" if source_refs is None else str(source_refs),
+        str(row[1]),
+        str(row[4]),
+    )
+    return validate_claim_snapshot(spec, connection).status == "BLOCKED"
+
+
 def _approval_blocks_claim(connection: sqlite3.Connection, project_id: str, job_id: str) -> bool:
     row = connection.execute(
         "SELECT 1 FROM approval_queue_blocks WHERE project_id = ? AND job_id = ?",
         (project_id, job_id),
     ).fetchone()
     return row is not None
+
+
+def _previous_item_blocks(connection: sqlite3.Connection, project_id: str, case_run_id: str | None) -> bool:
+    """Hold the next item until the earlier item is terminal and its cleanup is clear."""
+
+    if case_run_id is None:
+        return False
+    current = connection.execute(
+        "SELECT execution_id, rowid FROM case_runs WHERE project_id = ? AND case_run_id = ?",
+        (project_id, case_run_id),
+    ).fetchone()
+    if current is None:
+        return False
+    own = connection.execute(
+        "SELECT 1 FROM item_finalizations WHERE project_id = ? AND case_run_id = ?",
+        (project_id, case_run_id),
+    ).fetchone()
+    if own is not None:
+        return True
+    earlier = connection.execute(
+        """
+        SELECT case_run_id FROM case_runs
+        WHERE project_id = ? AND execution_id = ? AND rowid < ?
+        ORDER BY rowid
+        """,
+        (project_id, str(current[0]), int(current[1])),
+    ).fetchall()
+    for (earlier_id,) in earlier:
+        final = connection.execute(
+            "SELECT 1 FROM item_finalizations WHERE project_id = ? AND case_run_id = ?",
+            (project_id, str(earlier_id)),
+        ).fetchone()
+        if final is None:
+            return True
+        quarantined = connection.execute(
+            """
+            SELECT 1
+            FROM job_finish_facts
+            JOIN jobs
+              ON jobs.project_id = job_finish_facts.project_id
+             AND jobs.job_id = job_finish_facts.job_id
+            WHERE jobs.project_id = ? AND jobs.case_run_id = ? AND job_finish_facts.resource_state = 'quarantine'
+            """,
+            (project_id, str(earlier_id)),
+        ).fetchone()
+        if quarantined is not None:
+            return True
+    return False
 
 
 def _cleanup_pending(connection: sqlite3.Connection, project_id: str, case_run_id: str | None) -> bool:
@@ -779,6 +919,74 @@ def cancel_job(
         runner_stopped=False,
         cleanup_completed=False,
         replayed=False,
+    )
+
+
+_FINISH_STATUS = {"lost": "lost", "cancelled": "cancelled", "crash": "error"}
+
+
+def finalize_job_control(connection: sqlite3.Connection, finish: object) -> JobSnapshot:
+    """Store one terminal fact. Cleanup state does not change the QA verdict."""
+
+    from aiqa.domain.verdicts import JobFinishInput
+    from aiqa.worker.runner import control_finish
+
+    if not isinstance(finish, JobFinishInput) or finish.finish_reason not in _FINISH_STATUS:
+        raise ValueError("finish input is invalid")
+    row = connection.execute(
+        "SELECT purpose, status, recording_id, case_run_id FROM jobs WHERE project_id = ? AND job_id = ?",
+        (str(finish.project_id), str(finish.job_id)),
+    ).fetchone()
+    if row is None:
+        raise JobNotFound("job was not found")
+    purpose = str(row[0])
+    verdict, resource_state = control_finish(purpose, finish)
+    status = _FINISH_STATUS[finish.finish_reason]
+    if str(row[1]) in {"queued", "preparing", "running", "cancel_requested"}:
+        connection.execute(
+            """
+            UPDATE jobs SET status = ?
+            WHERE project_id = ? AND job_id = ? AND status = ?
+            """,
+            (status, str(finish.project_id), str(finish.job_id), str(row[1])),
+        )
+    existing = connection.execute(
+        "SELECT verdict, resource_state FROM job_finish_facts WHERE project_id = ? AND job_id = ?",
+        (str(finish.project_id), str(finish.job_id)),
+    ).fetchone()
+    if existing is None:
+        connection.execute(
+            """
+            INSERT INTO job_finish_facts (
+                project_id, job_id, verdict, finish_reason, cleanup_failed, resource_state, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(finish.project_id),
+                str(finish.job_id),
+                verdict,
+                finish.finish_reason,
+                1 if finish.cleanup_failed else 0,
+                resource_state,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+    else:
+        verdict = None if existing[0] is None else str(existing[0])
+        resource_state = str(existing[1])
+    stored = connection.execute(
+        "SELECT status FROM jobs WHERE project_id = ? AND job_id = ?",
+        (str(finish.project_id), str(finish.job_id)),
+    ).fetchone()
+    return JobSnapshot(
+        project_id=finish.project_id,
+        job_id=finish.job_id,
+        status="" if stored is None else str(stored[0]),
+        cancel_requested=finish.finish_reason == "cancelled",
+        runner_stopped=True,
+        cleanup_completed=not finish.cleanup_failed,
+        replayed=existing is not None,
+        verdict=verdict,
     )
 
 

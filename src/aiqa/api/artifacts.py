@@ -27,6 +27,7 @@ from aiqa.store.artifacts import (
     expired_at,
     resolve_stored,
 )
+from aiqa.store.retention import DEBUG_WINDOW, DETAIL_WINDOW, FILE_WINDOW, SPOOL_WINDOW
 from aiqa.store.database import migrate_store
 from aiqa.store.evidence import (
     ArtifactBinding,
@@ -168,6 +169,15 @@ def install_artifacts(application: FastAPI) -> None:
             with bound_auth_store(store):
                 with store.transaction() as connection:
                     view = _retention(connection, store.config.artifacts_dir, target, datetime.now(timezone.utc))
+                    tombstone = None
+                    if view is not None:
+                        tombstone = connection.execute(
+                            """
+                            SELECT 1 FROM retention_tombstones
+                            WHERE project_id = ? AND subject_id = ?
+                            """,
+                            (str(view.project_id), str(target)),
+                        ).fetchone()
                 if view is None:
                     return _error(404, "not_found", "artifact was not found", {})
                 denied = _authorize_read(request, view.project_id)
@@ -182,6 +192,13 @@ def install_artifacts(application: FastAPI) -> None:
                 "state": view.state,
                 "substituted": False,
                 "retain_days": 30,
+                "tombstone": tombstone is not None,
+                "windows": {
+                    "detail_days": DETAIL_WINDOW.days,
+                    "file_days": FILE_WINDOW.days,
+                    "acked_spool_days": SPOOL_WINDOW.days,
+                    "debug_hours": int(DEBUG_WINDOW.total_seconds() // 3600),
+                },
             },
         )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 
@@ -160,3 +161,15 @@ class UsageLedger:
 
 def new_adjustment_id() -> UUID:
     return uuid4()
+
+
+def ledger_total_as_of(entries: tuple[tuple[int, str], ...], as_of: int) -> str | None:
+    """Sum measured amounts committed at or before as_of. A later row stays outside that export."""
+
+    if type(as_of) is not int:
+        raise ValueError("usage as_of is invalid")
+    chosen = [Decimal(amount) for seq, amount in entries if seq <= as_of]
+    if chosen == []:
+        return None
+    total = sum(chosen, Decimal("0"))
+    return f"{total.quantize(Decimal('0.01'))}"

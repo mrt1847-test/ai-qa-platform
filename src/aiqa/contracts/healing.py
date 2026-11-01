@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +44,30 @@ class ResolvedHealingPolicy:
     resolution_hash: str
     default_enabled: bool
     rejected: bool
+
+
+@dataclass(frozen=True, slots=True)
+class HealingTrigger:
+    case_run_id: UUID
+    attempt_id: UUID
+    package_id: UUID
+    request_key: str
+    reason: str
+    policy: ResolvedHealingPolicy
+    job_seconds: int
+    lease_seconds: int
+    binding_revision: str
+    product_violation: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class HealingEpisodeReceipt:
+    episode_id: UUID | None
+    case_run_id: UUID
+    reserved_calls: int
+    reserved_seconds: int
+    eligible: bool
+    replayed: bool
 
 
 @dataclass(frozen=True, slots=True)

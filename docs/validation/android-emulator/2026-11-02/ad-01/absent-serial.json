@@ -1,0 +1,8 @@
+{
+  "serial": "emulator-5998",
+  "state": "offline",
+  "reason": "device_offline",
+  "observed_at": "2026-11-02T09:21:24.016999+00:00",
+  "observation": null,
+  "scope": "explicit absent emulator serial; no fallback target; live ADB read"
+}

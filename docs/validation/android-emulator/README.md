@@ -29,3 +29,7 @@ adb -s emulator-5580 emu kill
 - AI/model 호출0. 이는 기기 제어 개발 시험이며 제품 QA 판정과 사람 승인은 수행하지 않았다.
 
 Android emulator는 Android 개발·자동화의 실제 대상이지만 USB 연결/물리 기기의 IME·제조사별 geometry·FLAG_SECURE·단절 특성 검증을 대신하지 않는다. W02/W07/W30 등의 원래 실제 수용은 보존한다. 다음은 전용 관찰을 제품 inventory와 trusted action 경로에 연결하는 AD 작업이다.
+
+## 2026-11-02 AD-01 구현
+
+개발용 spike 뒤 [읽기 관찰 제공자 AD-01](../tasks/AD-01.md)을 구현·검증했다. [최종 실제 관찰](2026-11-02/ad-01/observation.json)·[absent serial](2026-11-02/ad-01/absent-serial.json). 현재720×1600/density280/rotation0. 새 provider는 raw PNG를 메모리에만 반환하며 `sanitized=False`다. 웹 기기 선택 연결은 다음 AD-02가 소유한다. 기존2026-11-01 동작 기록과 이번 읽기 관찰 검증은 구분한다.

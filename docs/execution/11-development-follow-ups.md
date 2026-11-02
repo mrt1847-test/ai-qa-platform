@@ -14,7 +14,7 @@
 <a id="ad-01"></a>
 ## AD-01 — 명시 serial Android 관찰 제공자
 
-- 상태 not_started. 직접 선행 W07-01/W13-01 complete. 환경은 부팅된 프로젝트 전용 emulator+기존 Python이며 VM/모델 키가 필요 없다.
+- 상태 complete. 근거: [AD-01 인계](../validation/tasks/AD-01.md). 직접 선행 W07-01/W13-01 complete. 환경은 부팅된 프로젝트 전용 emulator+기존 Python이며 VM/모델 키가 필요 없다.
 - 대상: `src/aiqa/environments/usb_android.py`의 기존 gate를 보존하고 별도 `src/aiqa/environments/android_observation.py`, `tests/integration/test_android_observation.py`에 관찰 어댑터를 추가한다. 공개 Mobile-Agent 원본은 참고하고 변경하지 않는다.
 - 순서: (1) serial/AVD·상태·timeout 계약 (2) 실제 Android/API/geometry/rotation·capture 가능 상태 읽기 (3) PNG 내용/geometry 검증과 관찰 projection (4) 실제 전용 AVD와 offline/잘못된 serial·capture 실패 검사.
 - 완료: import 시 ADB 초기화0; 지정 serial만 사용; unavailable/권한/부팅 미완료를 구분; 실제 PNG와 관찰 시각·geometry가 일치. 파일 저장은 개발 증거 경로만, 제품 업로드/dispatch/AI는 이 카드 범위 밖이다.

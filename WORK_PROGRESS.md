@@ -1,6 +1,6 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
-> Android 개발/누락 UI 보완7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. W 완료126/163과 부모 gate는 보존한다. 현재 실행은 NEXT_ACTION의 AD-01이다.
+> Android 개발/누락 UI 보완7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. W 완료126/163과 부모 gate는 보존한다. 2026-11-02 AD-01 완료(별도1/7), 현재 실행은 NEXT_ACTION의 AD-02다. [관찰/검증 인계](docs/validation/tasks/AD-01.md)를 따른다.
 
 > UI 개선 및 병합 검증은 [결과](docs/validation/ux/README.md)를 참고한다. 아래 완료 수는 최신 master 작업 근거를 따르며 UI 변경으로 추가하지 않는다.
 

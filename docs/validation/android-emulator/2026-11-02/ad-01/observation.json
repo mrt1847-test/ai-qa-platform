@@ -1,0 +1,39 @@
+{
+  "serial": "emulator-5580",
+  "avd": "AIQA_API36",
+  "device_kind": "android_emulator",
+  "state": "ready",
+  "reason": "observed",
+  "android_release": "16",
+  "api_level": 36,
+  "model": "sdk_gphone64_x86_64",
+  "density": 280,
+  "geometry": {
+    "physical_width": 720,
+    "physical_height": 1600,
+    "model_width": 720,
+    "model_height": 1600,
+    "transform": "identity",
+    "rotation": 0,
+    "content_bounds": [
+      0,
+      0,
+      720,
+      1600
+    ]
+  },
+  "captured_at": "2026-11-02T09:20:05.468184+00:00",
+  "observed_at": "2026-11-02T09:20:07.814360+00:00",
+  "elapsed_seconds": 4.0,
+  "capture": {
+    "path": "observation.png",
+    "sha256": "529e44fd2987dc2ce1a0abfc2c3ab1f47c8b50c2dc601073200afd2e29312005",
+    "bytes": 326163
+  },
+  "sanitized": false,
+  "scope": "AD-01 read-only emulator observation; raw development evidence only",
+  "model_calls": 0,
+  "dispatch_calls": 0,
+  "product_uploads": 0,
+  "usb_acceptance": false
+}

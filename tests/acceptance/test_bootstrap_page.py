@@ -22,8 +22,8 @@ from aiqa.web.routes import render_bootstrap
 REPO = Path(__file__).resolve().parents[2]
 PAGE_TITLE = "AI QA 기본 실행 환경"
 CONNECTION_ERROR = "API에 연결할 수 없습니다."
-BODY_COLOR = (244, 241, 234)
-MARK_COLOR = (15, 110, 86)
+BODY_COLOR = (246, 247, 251)
+MARK_COLOR = (107, 85, 216)
 _FAKE_MARKERS = (
     "localStorage",
     "sessionStorage",
@@ -277,8 +277,8 @@ def test_w00_03(tmp_path: Path) -> None:
             and f"<title>{PAGE_TITLE}</title>" in page.text
             and css.status_code == 200
             and css.headers.get("content-type", "").startswith("text/css")
-            and "#f4f1ea" in css.text
-            and "#0f6e56" in css.text
+            and "--bg:#f6f7fb" in css.text
+            and "--brand:#6b55d8" in css.text
         ),
         "fake_business_results": _fake_count(page.text) + _fake_count(css.text),
         "browser_page_verified": browser_page_verified,

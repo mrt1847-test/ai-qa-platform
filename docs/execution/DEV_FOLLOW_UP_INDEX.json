@@ -1,6 +1,6 @@
 {
   "schema_version": "development-follow-ups-v1",
-  "date": "2026-11-01",
+  "date": "2026-11-02",
   "baseline": "3db8a58",
   "legacy_counts_unchanged": {
     "complete": 126,
@@ -14,7 +14,7 @@
         "W07-01",
         "W13-01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "environment_requirements": [
         "local_python",
         "android_emulator"

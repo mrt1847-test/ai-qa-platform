@@ -1,6 +1,10 @@
 # 뼈대 우선·차단 독립 진행 · v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 > 아래는 원래 W163개 설계의 변경 이력이다. 최신 Android 에뮬레이터 개발/누락 UI 작업은 [보완 카드](11-development-follow-ups.md)를 별도로 따르며 USB/양 플랫폼 live gate를 대신하지 않는다. 현재 완료 수와 실행 순서는 NEXT_ACTION/WORK_PROGRESS를 따른다.
+
+> 등록 실행 PC 구현 후보와 실환경 선행은 [RX 색인](../managed-pc/IMPLEMENTATION_TASKS.json)을 따른다. 현재 후보 선택은 [공통 계약 C14](CONTRACTS.md#c14--차단된-가지와-독립-구현의-진행)에 있다.
 
 기준일: 2026-10-31. [Current 큐](../../NEXT_ACTION.md) · [뼈대4개](00-bootstrap.md) · [공통 계약 C13/C14](CONTRACTS.md).
 이 개정은 문서 변경이다. 기존 probe code/완료·차단 인계는 수정하지 않았다.

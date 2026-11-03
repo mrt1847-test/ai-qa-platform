@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence, seed_inventory
+
 import sqlite3
 from pathlib import Path
 from uuid import uuid4
@@ -997,6 +999,8 @@ def _device(database: Path, project_id: str) -> str:
             "INSERT INTO resource_aliases (project_id, physical_key_id, display_name, target_kind) VALUES (?, ?, '순차 기기', 'web')",
             (project_id, key_id),
         )
+        seed_presence(connection, project_id, worker_id)
+        seed_inventory(connection, key_id)
     return key_id
 
 

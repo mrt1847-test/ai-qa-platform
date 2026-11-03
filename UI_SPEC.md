@@ -1,5 +1,7 @@
 # AI QA 플랫폼 UI 설계 v0.6
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 > 2026-11-01 샘플 기반 UI/core 보완: [29개 단위 결과·화면·남은 경계](docs/validation/ux/README.md). 초기 QA Studio 샘플의 색상·사이드바·카드·녹화 준비·3단 검토를 실제 API에 연결했다. 이 인계는 아래 플랫폼 목표 전체나 실제 장치/모델 수용을 완료했다는 뜻이 아니다.
 
 규범 개정일: **2026-10-31 (Asia/Seoul)** · 상태: UI 설계 규범, 일부 core 구현. 실제 구현/미완료 범위는 [WORK_PROGRESS](WORK_PROGRESS.md)를 따른다. 2026-11-01 [계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)는 실제 앱 라우터·편집 snapshot 보존·mutation 인증·TC 동작을 수정·검증했으며 이후 native/전체 시각·사용성 수용을 대신하지 않는다.
@@ -78,7 +80,7 @@ TC를 사용하려면 UI-16에서 별도 관리하고 케이스 metadata에 선�
 
 전역: 프로젝트 목록/전체 연결/공통 설정. 기본 프로젝트 메뉴는 **개요 / 자동화 케이스 / 테스트 묶음 / 테스트 수행 / 리포트 / 실행 환경 / 프로젝트 설정**이다. 새 녹화는 디바이스 선택으로 시작한다. 검토 대기/초안/미완성 REC는 케이스 영역의 탭이고, TC 관리는 원하면 여는 별도 선택 메뉴(UI-16)다. 기기·앱 빌드·data는 환경 탭으로 묶는다.
 
-상단은 프로젝트 전환·breadcrumb·프로젝트 검색·‘이 PC’ 연결 상태다. 데스크톱 1440px 기준으로 목록은 밀도 높은 테이블, 편집·증거는 전체 폭 작업 공간이다. 1024px에서는 보조 패널을 접되 ID·대상·버전·판정·핵심 버튼은 유지한다. 색 외 상태 문구/아이콘, 키보드 탐색·focus·읽을 수 있는 오류를 제공한다.
+상단은 프로젝트 전환·breadcrumb·프로젝트 검색·관리 서비스/실행 PC 자원 연결 상태다. 데스크톱 1440px 기준으로 목록은 밀도 높은 테이블, 편집·증거는 전체 폭 작업 공간이다. 1024px에서는 보조 패널을 접되 ID·대상·버전·판정·핵심 버튼은 유지한다. 색 외 상태 문구/아이콘, 키보드 탐색·focus·읽을 수 있는 오류를 제공한다.
 
 | 상태 | UI·조작·복원 규칙 |
 |---|---|
@@ -159,7 +161,7 @@ AI 구조화는 이 케이스 안의 제안이며 diff 확인 후 적용한다. 
 + SHOP / 새 녹화 ---------------------------------------------------+
 | 1 대상 선택 → 2 필요 정보 → 3 자연어 검증 → 4 AI 녹화             |
 +------------------------------------------------------------------+
-| 1 [Android 기기A: ready] 또는 [이 PC 테스트 Chromium] [다음]       |
+| 1 [QA PC·Android 기기A: ready] 또는 [QA PC·테스트 브라우저] [다음]       |
 | 2 앱/URL [ ] 빌드[설치앱사용] 계정ref[ ] data[ ] 초기화[없음]     |
 | 3 무엇을 검증할까요? [정상 계정으로 로그인 후 사용자명 확인...]   |
 |   [AI 구조화 제안 보기] [초안 저장] [AI 녹화 시작]                 |
@@ -171,13 +173,13 @@ AI 구조화는 이 케이스 안의 제안이며 diff 확인 후 적용한다. 
 +------------------------------------------------------------------+
 ```
 
-진입은 UI-02/03의 새 녹화 또는 기기 화면의 이 기기로 녹화다. **1단계 디바이스/테스트 브라우저 선택 → 2단계 앱·URL/빌드·계정/data·초기화/한도 설정 → 3단계 자연어 검증 내용/기대 결과 입력·AI 구조화 확인 → 4단계 AI 녹화**다. Android는 연결 기기를, Web은 해당 PC의 테스트용 Chromium/profile을 선택한다. ‘브라우저 선택’은 관리 UI 탭 선택이 아니다. Web은 이 PC의 격리 Linux VM 내 테스트 Chromium이고 VM 준비/driver/broker 상태를 함께 표시한다. 클라우드 가입은 필수가 아니다.
+진입은 UI-02/03의 새 녹화 또는 기기 화면의 이 기기로 녹화다. **1단계 디바이스/테스트 브라우저 선택 → 2단계 앱·URL/빌드·계정/data·초기화/한도 설정 → 3단계 자연어 검증 내용/기대 결과 입력·AI 구조화 확인 → 4단계 AI 녹화**다. Android는 등록 실행 PC의 emulator/연결 기기를, Web은 그 PC의 테스트 브라우저를 선택한다. 이후 추가 PC/선택 cloud preset을 같은 목록에 확장한다. 실행 PC 이름·online/offline/마지막 연결·OS/browser·해상도·지원 동작·점유/세션 상태를 표시한다. 선택 cloud 자원에는 공급자/region도 표시한다. 관리 UI 탭이나 사용자 PC의 개인 Chrome을 선택하는 기능이 아니다. 등록 실행 PC에는 운영 worker/driver를 준비하며 접속하는 PC에는 ADB/VM 설치를 요구하지 않는다. 미구현 연동은 연결 필요/미지원 사유를 표시하고 가짜 기기를 제공하지 않는다.
 
 TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가져오기를 보조 기능으로 쓸 수 있지만 건너뛰어도 동일하게 진행한다. 시작 전 케이스 초안 version과 정의/설정 digest를 저장한다. 녹화 시작 요청은 이 input_case_version_id/hash·선택 resource로 preflight 후 REC/job을 만들며 AI는 이 케이스의 내용을 사용한다.
 
 녹화 중 **각 동작 전후 PNG·실행 로그는 승인 없이 계속 저장**한다(§5). 목표 수정/승인/정식 실행 버튼은 없고 메모는 append-only다. 완료는 새 행동 중지→기록 flush/정리→보관 확정이다. 중단/단절/비정상 종료도 수집 기록을 보존한다. 저장을 버릴지 승인자에게 묻거나 반려 시 폐기하는 흐름은 없다.
 
-완료 후 raw script/plan·source manifest를 seal하고 package compile/계측 검사·artifact ready를 거쳐 새 version/package를 원자 materialize한다. 컴파일 실패도 package 없음/사유 있는 draft로 저장한다. 나중 컴파일은 package_rebuild receipt·새 version이다. 검증 정의·실행 설정·실제 절차·근거가 함께 있는 AUT draft를 자동 저장하고 UI-04의 녹화 단계 탭으로 이동한다. 검토는 완료/보관 후 UI-07에서 한다. TC 참조가 없어도 완전히 동일하다. 서버 ACK 전에는 ‘이 PC 임시 보관·서버 전송 대기’이며 저장 완료/승인 가능으로 표시하지 않는다. 녹화 중 사람이 동작을 승인해야 다음 행동/저장을 하는 구조가 아니다.
+완료 후 raw script/plan·source manifest를 seal하고 package compile/계측 검사·artifact ready를 거쳐 새 version/package를 원자 materialize한다. 컴파일 실패도 package 없음/사유 있는 draft로 저장한다. 나중 컴파일은 package_rebuild receipt·새 version이다. 검증 정의·실행 설정·실제 절차·근거가 함께 있는 AUT draft를 자동 저장하고 UI-04의 녹화 단계 탭으로 이동한다. 검토는 완료/보관 후 UI-07에서 한다. TC 참조가 없어도 완전히 동일하다. 서버 ACK 전에는 ‘서비스 worker 임시 보관·서버 전송 대기’이며 저장 완료/승인 가능으로 표시하지 않는다. 녹화 중 사람이 동작을 승인해야 다음 행동/저장을 하는 구조가 아니다.
 
 ### UI-06 케이스별 녹화 이력·미완성 기록
 
@@ -231,7 +233,7 @@ TC 선택/등록 단계는 없다. 사용자가 원하면 선택 TC 내용 가�
 | 1대상 확인 → 2환경·데이터 → 3사전 점검 → 4최종 확인            |
 | 이름[로그인 회귀] 목적[정식] 셀프힐링[OFF] 릴리스[선택]                       |
 +------------------------------------+---------------------------+
-| AUT-041v2 / 로그인 검증 / data-A       | Android: 이 PC·기기A       |
+| AUT-041v2 / 로그인 검증 / data-A       | Android: QA PC·기기A       |
 | AUT-052v1 / 로그아웃 검증 / data-B       | 요청앱v12 / 설치앱v12      |
 | 차단1: AUT-060 미승인          | 초기화 없음·시간/비용 한도 |
 | [제외 목록/사유 확인]              |                           |
@@ -314,15 +316,15 @@ UI12의 **누적 분석** 탭은 기간(KST입력→UTC [from,to), parent reques
 
 ### UI-14 실행 환경·기기·앱 빌드·데이터
 
-환경/연결/기기/앱 빌드/데이터 탭. 초기 위치는 이 PC다. installed package 기본 선택, 선택 APK 해시/버전·OS/ABI 검사·명시 설치, 권한/offline/busy/quarantine·조치, worker/browser·시각을 표시한다. 설치/초기화/logout은 영향/대상을 명시 확인하며 매 수행 재설치를 강제하지 않는다.
+환경/연결/기기/앱 빌드/데이터 탭. 초기 위치는 등록한 현재 실행 PC의 자원이다. 다른 PC/선택 cloud 자원은 후속 등록으로 확장한다. installed package 기본 선택, 선택 APK 해시/버전·OS/ABI 검사·명시 설치, 권한/offline/busy/quarantine·조치, worker/browser·시각을 표시한다. 설치/초기화/logout은 영향/대상을 명시 확인하며 매 수행 재설치를 강제하지 않는다.
 
-data는 이름/version/schema·행·케이스 연결/유효성·secret refs를 관리하고 행 값은 수행 snapshot에 고정한다. key 원문은 읽기 응답에 없다. 진단/설치는 관리 job이고 QA PASS를 만들지 않는다. 클라우드·직접 조작·pause/resume 미지원 버튼은 제공하지 않는다.
+data는 이름/version/schema·행·케이스 연결/유효성·secret refs를 관리하고 행 값은 수행 snapshot에 고정한다. key 원문은 읽기 응답에 없다. 진단/설치는 관리 job이고 QA PASS를 만들지 않는다. 등록 PC 자원 연결/선택은 기본 요구이며 실제 연동 전에는 준비 상태와 차단 사유를 표시한다. 미지원 직접 조작·pause/resume 버튼은 제공하지 않는다.
 
-Web 환경에 같은 PC의 격리 VM/Chromium·신뢰 driver/IPC·모델 broker·차단된 script credential/endpoint 상태를 표시한다. VM/driver/계측 불가면 Web package readiness를 차단하며 격리 없는 native 실행으로 조용히 대체하지 않는다. Android USB/ADB는 호스트에 유지한다.
+환경 화면은 worker/host/resource/session·last_seen/lease/expiry·지원 capability·마지막 캡처 시각·서비스 driver/broker와 정리 상태를 표시한다. 화면 미리보기와 직접 조작 지원 여부를 구분한다. 생성 code 격리/계측 불가면 package readiness를 차단한다. 취소 요청·실제 세션 종료·종료 확인 불가를 구분하고 provider credential/control URL은 노출하지 않는다. 현재 로컬 UI는 이 분리 배치 계약으로 수정할 대상이며 원격 연동 완료 근거가 아니다. 실행 PC offline에도 서버 저장본 조회/검토/승인은 유지하고, 재녹화·trial·정식/rerun은 연결 필요 이유를 표시해 차단한다.
 
 ### UI-15 프로젝트 설정·활동 이력
 
-project·폴더/태그·기본 제한/보관·실패 정책, model/key ref·비용 안내 연결 확인, worker 범위, 공간/삭제 예정, 케이스/선택 TC/묶음/검토/녹화/수행/환경 변경 이력을 제공한다. 개인형은 한 사람이 작성·승인할 수 있으나 actor/time을 남긴다. 팀 role/SSO는 후속 필요에 맞춘다. 진행 작업이 있으면 보관 전 종료/취소·정리를 안내한다.
+project·폴더/태그·기본 제한/보관·실패 정책, model/key ref·비용 안내 연결 확인, worker 범위, 공간/삭제 예정, 케이스/선택 TC/묶음/검토/녹화/수행/환경 변경 이력을 제공한다. 개인형은 한 사람이 작성·승인할 수 있으나 actor/time을 남긴다. 중앙 로그인/프로젝트 권한과 세션 보안은 MVP 필수다. SSO 고도화는 후속 필요에 맞춘다. 진행 작업이 있으면 보관 전 종료/취소·정리를 안내한다.
 
 모델 설정은 authoring/verification/healing/maintenance binding·endpoint 종류/model·OS secret 참조를 구분한다. key는 일회 입력 후 원문 재반환/브라우저 저장을 하지 않는다. 모델 테스트 호출은 별도 관리 job/비용이며 정상 replay의 필수 준비가 아니다. global 예산/권한은 case 승인 범위를 더 제한할 수 있으나 기존 version의 허용 scope를 자동 확대하지 않는다.
 
@@ -357,7 +359,7 @@ tap/click, swipe/scroll, type, long press, back/home, 앱 실행/페이지 이�
 
 정제 action record는 local journal/spool에 먼저 쓰고 server event/artifact ACK를 받는다. 전송/디스크 전에 화면/로그·입력/DOM을 마스킹한다. 비밀값 있는 원본 PNG를 임시 파일로 먼저 저장하지 않는다. 같은 seq/hash 재전송은 중복 추가하지 않는다. REC 완료 manifest는 artifact/check/hash를 연결한다. hash는 보관 변조/혼합 검출용이며 화면 정답 보장은 아니다.
 
-녹화 단계는 `created→queued→preparing→recording→stopping→storing→stored`다. 중단/오류는 termination_reason을 남기고 가능한 기록을 storing→stored로 보존한다. server 미접속은 storing·로컬 보관/전송 대기다. 녹화 저장 상태와 AUT review status는 별개다. 녹화 중 승인·자동 폐기·반려 시 삭제를 하지 않는다.
+녹화 단계는 `created→queued→preparing→recording→stopping→storing→stored`다. 중단/오류는 termination_reason을 남기고 가능한 기록을 storing→stored로 보존한다. 서비스 worker가 server에 미접속이면 storing·worker spool 보관/전송 대기다. 사용자 브라우저가 증거의 유일한 저장소가 되지 않는다. 녹화 저장 상태와 AUT review status는 별개다. 녹화 중 승인·자동 폐기·반려 시 삭제를 하지 않는다.
 
 정상 finish는 REC를 seal하고 케이스의 검증 정의/설정과 수집 절차·근거를 결합한 새 AUT draft/source manifest를 **자동 저장**한다. 저장 초안은 목록에 즉시 나타난다. 증거 누락/불완전 검증은 readiness이며 REC와 케이스 draft 보존을 막지 않는다. TC는 readiness 검사 대상이 아니다. 중단본도 보존하고 후속 새 녹화/편집으로 이어간다.
 
@@ -573,7 +575,7 @@ Idempotency-Key는 header다. preview는 자원 예약이 아니며 enqueue/clai
 8. N10 예시·진행·취소 직전 FAIL·분모0·재시작에서도 terminal7+진행=N, 세 비율/미검증 수가 일치한다.
 9. 케이스 검증 내용/녹화 절차 변경은 새 case version·trial/재승인을 요구한다. 선택 TC 변경/보관/연결 해제는 케이스 정의·기존 승인·실행을 바꾸거나 차단하지 않는다. 명시 import 수락 때만 새 케이스 버전이 된다.
 10. 분석/정정·새 재실행은 원본 verdict를 바꾸지 않는다. CSV/HTML as_of·기준/원본 ID·마스킹·만료 표시가 맞다.
-11. 탭 재접속/PC 종료·절전/worker·USB 장애와 lease/정리·quarantine을 구분한다.
+11. 사용자 탭 재접속/PC 종료와 서비스 worker/provider 장애를 구분하고 lease/정리·quarantine을 표시한다.
 12. 필터·페이지·scroll·키보드/문구·미저장/409/403/0건·전송 대기·실패 상태를 검증한다.
 
 13. 승인본에서 재녹화→중단/오류/반려에도 기존 기본본 유지, 새 승인 원자 교체·동시409·기존 suite/RUN 버전 유지·명시 철회/no fallback을 확인한다.
@@ -604,12 +606,14 @@ Idempotency-Key는 header다. preview는 자원 예약이 아니며 enqueue/clai
 
 앞선 작업에서 UI shell만 있는 탭은 실제 기능의 담당 ID/미준비 이유를 표시한다. 성공 mock으로 대체하지 않는다. [모델 인계](docs/execution/HANDOFF.md)는 해당 카드/공통 계약 절/직접 선행 근거만 전달하도록 하며 이전 대화 기억을 전제로 하지 않는다. 이 개정은 샘플 제품 코드를 수정하지 않았다.
 
-UI15 백업/복원은 **이 PC 전체 저장소**라는 범위·모든 project에 미치는 영향·진행 작업 정리를 표시한다. local_owner만 접수/조회/다운로드/활성화할 수 있고 project별 백업으로 표시하지 않는다.
+기존 개발 profile의 UI15 백업/복원은 **이 PC 전체 저장소**라는 범위·모든 project에 미치는 영향·진행 작업 정리를 표시한다. local_owner만 접수/조회/다운로드/활성화할 수 있고 project별 백업으로 표시하지 않는다.
+
+Cloud 운영 백업/복원은 서비스 운영 권한·project 범위·저장 backend의 일관성으로 별도 설계/수용한다. 기존 local_owner 구현을 공유 서비스에 그대로 노출하지 않는다.
 
 ## 11. v0.8 기본 페이지와 UI 계약·실제 수용
 
 W00-03은 제품 서버의 template/static 연결만 검증하는 기본 페이지다. 기존16화면/94개 UI 의무 묶음/21개 최종 동선을 대체하지 않는다. 이 단계에서 mock dashboard·fake device/승인/통계를 만들지 않는다.
-W10 이후 관리 UI는 실제 API/DB와 tests 전용 외부 관찰로 상태/오류/입력·조회 계약을 구현할 수 있다. VM 없는 생산 환경은 미준비/차단 이유를 표시하며 성공으로 대체하지 않는다. 실제 기기/모델 여정·치유·최종 수용은 COVERAGE의 live 담당(추가 W31-07 포함)에서 요구한다.
+W10 이후 관리 UI는 실제 API/DB와 tests 전용 외부 관찰로 상태/오류/입력·조회 계약을 구현할 수 있다. 필수 provider/격리/driver가 없는 실행 환경은 미준비/차단 이유를 표시하며 성공으로 대체하지 않는다. 실제 기기/모델 여정·치유·최종 수용은 COVERAGE의 live 담당(추가 W31-07 포함)에서 요구한다.
 외부 차단은 NEXT_ACTION 대기에 남기고 준비된 독립 core를 선택한다. 자세한 검증 등급/완료 경계는 [C14](docs/execution/CONTRACTS.md)다.
 
 

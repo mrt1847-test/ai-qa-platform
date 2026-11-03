@@ -549,6 +549,9 @@ def _upload(project_id: object, owner_id: object, filename: str, media_type: str
 
 
 def _fixture_recording_job(store, actor, worker_id, key):
+    from worker_presence_support import seed_presence, seed_inventory
+
+    now = datetime(2026, 11, 1, 1, 0, tzinfo=timezone.utc)
     """A real typed recording owner; the external device is a fixture only."""
     from aiqa.contracts.cases import CaseDefinition, CaseRevisionInput, CaseSettings, PathPolicy
     from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
@@ -562,5 +565,7 @@ def _fixture_recording_job(store, actor, worker_id, key):
     with store.transaction() as connection:
         connection.execute('INSERT INTO physical_resource_keys(physical_key_id,worker_id,native_id) VALUES(?,?,?)',(str(physical),worker_id,'fixture-'+key))
         connection.execute('INSERT INTO resource_aliases(project_id,physical_key_id,display_name,target_kind) VALUES(?,?,?,?)',(str(actor.project_scope),str(physical),'Fixture','web'))
-        receipt=enqueue_job(Transaction(connection),JobSubmission(actor.project_scope,'recording',case.case_id,version.id,(str(physical),),'{}'),IdempotencyKey(actor.actor_id,actor.project_scope,'enqueue_job',key))
+        seed_presence(connection, actor.project_scope, worker_id, now)
+        seed_inventory(connection, physical)
+        receipt=enqueue_job(Transaction(connection),JobSubmission(actor.project_scope,'recording',case.case_id,version.id,(str(physical),),'{}'),IdempotencyKey(actor.actor_id,actor.project_scope,'enqueue_job',key), now=now)
     return receipt.recording_id

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 import json
 import sqlite3
 from pathlib import Path
@@ -538,6 +540,23 @@ def _rerun_graph(database: Path, project_id: str, actor_id: str) -> dict[str, st
     with sqlite3.connect(database) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute(
+            "INSERT INTO worker_enrollments(enrollment_id,worker_id,project_id,created_at) VALUES(?,'rerun-worker',?,?)",
+            (str(uuid4()), project_id, stamp),
+        )
+        seed_presence(connection, project_id, "rerun-worker")
+        connection.execute(
+            "INSERT INTO physical_resource_keys(physical_key_id,worker_id,native_id) VALUES(?,'rerun-worker',?)",
+            (resource_id, resource_id),
+        )
+        connection.execute(
+            "INSERT INTO resource_aliases(project_id,physical_key_id,display_name,target_kind) VALUES(?,?,'Rerun Web','web')",
+            (project_id, resource_id),
+        )
+        connection.execute(
+            "INSERT INTO resource_inventory(physical_key_id,state,os_build,geometry,permissions,ime,observed_at) VALUES(?,'ready','','','[]','','2026-11-02T00:00:00+00:00')",
+            (resource_id,),
+        )
+        connection.execute(
             """
             INSERT INTO executions (project_id, execution_id, name, purpose, source, suite_version_id, scope_requested_at)
             VALUES (?, ?, '원본', 'regression', 'selection', NULL, ?)
@@ -559,7 +578,7 @@ def _rerun_graph(database: Path, project_id: str, actor_id: str) -> dict[str, st
                 project_id, case_id, version_id, revision, creation_kind, parent_version_id, base_version_id,
                 is_branch, definition_json, settings_json, recorded_steps_json, content_hash, verification_digest,
                 source_manifest_id, replay_package_id, readiness_json, actor_id, reason, created_at
-            ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', '{}', '[]', ?, 'digest-rerun',
+            ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', '{"target_kind":"web"}', '[]', ?, 'digest-rerun',
                 NULL, NULL, '{}', ?, 'recorded', ?)
             """,
             (project_id, case_id, version_id, content_hash, actor_id, stamp),

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence, seed_inventory
+
 import sqlite3
 from pathlib import Path
 from uuid import UUID
@@ -289,6 +291,10 @@ def test_w08_02(tmp_path: Path) -> None:
             """,
             (str(project_a.project_id), shared, str(project_b.project_id), shared, str(project_a.project_id), free),
         )
+        seed_presence(connection, project_a.project_id, worker_id)
+        seed_presence(connection, project_b.project_id, worker_id)
+        seed_inventory(connection, shared)
+        seed_inventory(connection, free)
         predecessor = _enqueue(
             connection,
             project_a.project_id,
@@ -846,7 +852,7 @@ async def _claim(app: object, origin: str, token: str, key: str) -> int:
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=origin) as client:
         response = await client.post(
             "/api/v1/worker/claims",
-            json={"now": "2026-11-01T01:00:00+00:00"},
+            json={"boot_id": "fixture-boot"},
             headers={"Authorization": f"Bearer {token}", "Idempotency-Key": key},
         )
     return response.status_code

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 import json
 import sqlite3
 from pathlib import Path
@@ -211,6 +213,7 @@ def _seed(
             """,
             (project_id,),
         )
+        seed_presence(connection, project_id, "worker-w2001")
         for key, native in ((resource_id, "native-ready"), (busy_id, "native-busy")):
             connection.execute(
                 "INSERT INTO physical_resource_keys (physical_key_id, worker_id, native_id) VALUES (?, 'worker-w2001', ?)",

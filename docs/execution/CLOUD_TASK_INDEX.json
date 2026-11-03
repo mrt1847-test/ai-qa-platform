@@ -1,0 +1,27 @@
+{
+  "schema_version": "cloud-transition-v1",
+  "date": "2026-11-02",
+  "spec": "docs/superpowers/specs/2026-11-02-cloud-execution-scope.md",
+  "baseline": "684daef",
+  "status": "not_started",
+  "legacy_counts_are_historical": true,
+  "tasks": [
+    {
+      "id": "CF-01",
+      "title": "클라우드 공급자 능력·엔진 연결점과 후속 세부 작업 확정",
+      "deps": [
+        "W01-01"
+      ],
+      "status": "not_started",
+      "execution_scope": "future_optional_provider",
+      "environment_requirements": [
+        "local_python",
+        "public_source_and_official_docs"
+      ],
+      "verification_scope": "source_audit_design",
+      "doc_file": "docs/superpowers/plans/2026-11-02-cloud-execution-transition.md#cf-01",
+      "evidence_path": "docs/validation/tasks/CF-01.md"
+    }
+  ],
+  "superseded_for_default_execution_by": "docs/execution/PC_EXECUTION_INDEX.json"
+}

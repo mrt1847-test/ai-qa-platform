@@ -11,6 +11,7 @@ from threading import Lock
 from uuid import UUID
 
 from aiqa.contracts.jobs import ControlDecision, LeaseView
+from aiqa.worker.presence import get_presence
 from aiqa.worker.runner import AttemptRunner, MonotonicInstant
 
 _PHASES = ("before_model", "after_model", "before_lookup", "before_dispatch")
@@ -110,20 +111,28 @@ class RunControl:
         if not decision.allowed:
             return decision
         row = self._connection.execute(
-            """SELECT leases.expires_at, leases.worker_id, attempts.attempt_id
+            """SELECT leases.expires_at, leases.worker_id, attempts.attempt_id, session.session_id
                FROM leases JOIN attempts USING (project_id, job_id, generation)
+               LEFT JOIN job_worker_sessions AS session
+                 ON session.project_id = leases.project_id AND session.job_id = leases.job_id
+                AND session.worker_id = leases.worker_id
                WHERE leases.project_id=? AND leases.job_id=? AND leases.generation=?
                  AND leases.generation=(SELECT MAX(generation) FROM attempts WHERE project_id=leases.project_id AND job_id=leases.job_id)""",
             (str(self._project_id), str(self._job_id), self._generation),
         ).fetchone()
         if row is None or str(row[1]) != self._worker_id or str(row[2]) != self.attempt_id:
             return ControlDecision(False, 'stale_generation')
+        now = self._wall_clock()
+        if row[3] is not None:
+            presence = get_presence(self._connection, row[1], now, project_id=self._project_id)
+            if presence.state != "online" or presence.session_id != row[3]:
+                return ControlDecision(False, "stale_worker_session")
         expires = datetime.fromisoformat(str(row[0]))
         if expires.tzinfo is None:
             return ControlDecision(False, 'lease_margin')
         age = self._clock() - self._clock_start
         instant = MonotonicInstant(self._runner.started_at + age)
-        remaining = (expires - self._wall_clock()).total_seconds()
+        remaining = (expires - now).total_seconds()
         lease = LeaseView(self._project_id, self._job_id, int(self._generation), str(instant.seconds + remaining), 45, 10, 2)
         return self._runner.authorize(instant, lease, 'before_dispatch' if charge else 'before_lookup')
 

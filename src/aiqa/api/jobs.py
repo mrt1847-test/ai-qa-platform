@@ -22,7 +22,7 @@ from aiqa.contracts.jobs import IdempotencyKey, JobReceipt, JobSnapshot, JobSubm
 from aiqa.domain.hashing import canonical_json
 from aiqa.store.database import migrate_store
 from aiqa.store.models import Transaction
-from aiqa.store.queue import CancelRejected, JobConflict, JobNotFound, cancel_job, enqueue_job, load_job
+from aiqa.store.queue import CancelRejected, JobConflict, JobNotFound, ResourceOffline, cancel_job, enqueue_job, load_job
 
 router = APIRouter(prefix="/api/v1")
 _HIDDEN = {"reasoning", "secret", "secret_plaintext", "secret_value"}
@@ -73,6 +73,8 @@ async def post_job(project_id: str, request: Request) -> JSONResponse:
             return _error(401, "unauthorized", "session is missing", {})
         except JobConflict:
             return _error(409, "conflict", "idempotency body does not match", {})
+        except ResourceOffline as exc:
+            return _error(422, "validation", str(exc), {})
         except ValueError:
             return _error(422, "validation", "invalid job", {})
     return _accepted(receipt)

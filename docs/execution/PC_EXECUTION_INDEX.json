@@ -1,0 +1,80 @@
+{
+  "schema_version": "managed-pc-transition-v1",
+  "date": "2026-11-03",
+  "spec": "docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md",
+  "baseline": "684daef",
+  "legacy_counts_are_historical": true,
+  "follow_up_index": "docs/managed-pc/IMPLEMENTATION_TASKS.json",
+  "tasks": [
+    {
+      "id": "PC-01",
+      "title": "저장 검토와 offline 실행 차단 공통 계약",
+      "deps": [
+        "W16-01",
+        "W17-01",
+        "W20-01",
+        "W22-03",
+        "W19-01"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/superpowers/plans/2026-11-02-managed-pc-transition.md#pc-01",
+      "evidence_path": "docs/validation/tasks/PC-01.md"
+    },
+    {
+      "id": "PC-02",
+      "title": "서버 수신 시각 기반 worker 접속 수명",
+      "deps": [
+        "PC-01",
+        "W07-01",
+        "W11-01"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/superpowers/plans/2026-11-02-managed-pc-transition.md#pc-02",
+      "evidence_path": "docs/validation/tasks/PC-02.md"
+    },
+    {
+      "id": "PC-03",
+      "title": "실행 PC 상태와 조회/실행 행동 UI",
+      "deps": [
+        "PC-02",
+        "W11-01",
+        "W20-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/superpowers/plans/2026-11-02-managed-pc-transition.md#pc-03",
+      "evidence_path": "docs/validation/tasks/PC-03.md"
+    },
+    {
+      "id": "PC-04",
+      "title": "원격 실행·독립 서버 후속 카드 확정",
+      "deps": [
+        "PC-01",
+        "W01-01"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "environment_requirements": [
+        "local_python",
+        "public_source_and_official_docs"
+      ],
+      "verification_scope": "source_audit_design",
+      "doc_file": "docs/superpowers/plans/2026-11-02-managed-pc-transition.md#pc-04",
+      "evidence_path": "docs/validation/tasks/PC-04.md"
+    }
+  ]
+}

@@ -162,35 +162,13 @@ def _version(
 
 
 def _require_resource(connection: object, project_id: UUID, resource_id: str, target: str) -> None:
-    row = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT aliases.target_kind, inventory.state
-        FROM resource_aliases AS aliases
-        LEFT JOIN resource_inventory AS inventory
-          ON inventory.physical_key_id = aliases.physical_key_id
-        WHERE aliases.project_id = ? AND aliases.physical_key_id = ?
-        """,
-        (str(project_id), resource_id),
-    ).fetchone()
-    if row is None:
-        raise PreflightRejected("resource is missing")
-    if str(row[0]) != target:
-        raise PreflightRejected("resource target does not match")
-    state = None if row[1] is None else str(row[1])
-    if state == "unauthorized":
-        raise PreflightRejected("resource permission is missing")
-    if state == "busy":
-        lease = connection.execute(  # type: ignore[attr-defined]
-            """
-            SELECT job_id FROM leases
-            WHERE project_id = ? AND physical_key_id = ?
-            ORDER BY generation DESC LIMIT 1
-            """,
-            (str(project_id), resource_id),
-        ).fetchone()
-        raise ResourceBusy("" if lease is None else str(lease[0]))
-    if state != "ready":
-        raise PreflightRejected("resource is not ready")
+    from aiqa.domain.resource_readiness import resource_readiness
+
+    readiness = resource_readiness(connection, project_id, resource_id, target)  # type: ignore[arg-type]
+    if readiness.code == "RESOURCE_BUSY":
+        raise ResourceBusy(readiness.job_id)
+    if not readiness.ready:
+        raise PreflightRejected(readiness.message)
 
 
 def _require_secrets(connection: object, project_id: UUID, refs: object) -> None:

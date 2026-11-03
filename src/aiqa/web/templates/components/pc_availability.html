@@ -1,0 +1,7 @@
+<div data-pc-availability class="hint">
+  <div role="status">
+    <p data-pc-status>{% if item is defined %}실행 PC {{ item.connection_label }} · {{ item.worker_id }}{% else %}기기를 선택하면 실행 PC 상태를 확인합니다.{% endif %}</p>
+    <p data-pc-reason>{{ item.block_reason if item is defined else '' }}</p>
+  </div>
+  <p>PC 마지막 응답 <time data-pc-last-seen{% if item is defined and item.last_seen %} datetime="{{ item.last_seen }}"{% endif %}>{{ item.last_seen or '기록 없음' if item is defined else '기기 선택 전' }}</time></p>
+</div>

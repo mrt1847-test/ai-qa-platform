@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 from pathlib import Path
 
 
@@ -189,6 +191,7 @@ def _resource(database: Path, project_id: str) -> None:
             """,
             (project_id,),
         )
+        seed_presence(connection, project_id, "worker-w1605")
         connection.execute(
             """
             INSERT INTO physical_resource_keys (physical_key_id, worker_id, native_id)
@@ -269,6 +272,7 @@ def test_w16_03(tmp_path: Path) -> None:
                 """,
                 (f"enroll-{key}", f"worker-{key}", project_id),
             )
+            seed_presence(connection, project_id, f"worker-{key}")
             connection.execute(
                 """
                 INSERT INTO physical_resource_keys (physical_key_id, worker_id, native_id)

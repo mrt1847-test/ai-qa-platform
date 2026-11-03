@@ -13,19 +13,19 @@
     <p>진단 작업 {{ item.job_id }} {{ item.status }} {% if item.ready %}proof 있음{% else %}proof 없음{% endif %}</p>
     {% endfor %}
   </details>
-  <div class="resource-grid">
+  <div class="resource-grid" data-pc-inventory="{{ project_id }}">
   {% for item in resources %}
-  <article class="panel" data-kind="{{ item.target_kind }}" data-state="{{ item.state }}">
+  <article class="panel" data-kind="{{ item.target_kind }}" data-state="{{ item.state }}" data-pc-resource="{{ item.resource_id }}">
     <h2>{{ item.display_name }}</h2>
-    <p>{{ item.kind_label }} · {{ item.state_label }}</p>
+    <p>{{ item.kind_label }} · 기기 상태 <span data-pc-device-state>{{ item.state_label }}</span></p>
+    {% include "components/pc_availability.html" %}
+    <p data-pc-diagnostics>{% if not item.can_diagnose %}기기 진단에는 실행 PC 연결이 필요합니다.{% endif %}</p>
     <p>OS {{ item.os_build }}</p>
     <p>화면 {{ item.geometry }}</p>
     <p>빌드 {{ item.os_build }}</p>
-    <p>마지막 수신 <time datetime="{{ item.observed_at }}">{{ item.observed_at }}</time></p>
     {% if item.availability == "unavailable" %}<p>사용할 수 없음</p>{% endif %}
     {% if item.run_href %}<p><a href="{{ item.run_href }}">점유 실행</a></p>{% endif %}
     {% include "components/device_preview.html" %}
-    <p class="hint">{% if item.state == 'offline' %}기기를 연결하고 이 PC의 작업자를 실행한 뒤 관찰을 갱신하세요. 초안 준비는 가능합니다.{% elif item.state == 'unauthorized' %}Android USB 디버깅 권한을 기기에서 허용한 뒤 다시 확인하세요.{% elif item.state == 'busy' %}현재 점유 작업이 끝난 뒤 시작할 수 있습니다. 자동으로 대기 접수하지 않습니다.{% elif item.state == 'quarantine' %}진단에서 격리 사유와 복구 조건을 확인하세요.{% elif item.state == 'ready' %}현재 관찰에서 사용 가능합니다. 실제 시작 시 다시 확인합니다.{% else %}이 PC의 연결과 작업자 진단을 확인하세요.{% endif %}</p>
     <p><a class="secondary-link" href="/ui/projects/{{ project_id }}/recordings/new?resource_id={{ item.resource_id }}">이 기기로 녹화 준비</a></p>
   </article>
   {% endfor %}

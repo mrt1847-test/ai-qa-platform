@@ -1,5 +1,6 @@
 """Shared pytest settings. The aiqa package comes from the editable install."""
 
+from worker_presence_support import seed_presence, seed_inventory
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
@@ -35,9 +36,11 @@ def review_recording(tmp_path):
     physical = uuid4()
     con.execute('INSERT INTO physical_resource_keys (physical_key_id,worker_id,native_id) VALUES (?,?,?)', (str(physical), 'review-worker', 'fixture-device'))
     con.execute('INSERT INTO resource_aliases (project_id,physical_key_id,display_name,target_kind) VALUES (?,?,?,?)', (str(project.project_id), str(physical), 'Fixture', 'web'))
-    with store.transaction() as tx:
-        receipt = enqueue_job(Transaction(tx), JobSubmission(project.project_id, 'recording', case.case_id, version.id, (str(physical),), '{}'), IdempotencyKey(actor.actor_id, project.project_id, 'enqueue_job', 'review-job'))
     now = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    seed_presence(con, project.project_id, "review-worker", now)
+    seed_inventory(con, physical)
+    with store.transaction() as tx:
+        receipt = enqueue_job(Transaction(tx), JobSubmission(project.project_id, 'recording', case.case_id, version.id, (str(physical),), '{}'), IdempotencyKey(actor.actor_id, project.project_id, 'enqueue_job', 'review-job'), now=now)
     worker = WorkerScope('review-worker', (project.project_id,), ('recording',))
     with bind_claim_store(store):
         job = claim_job(worker, now)

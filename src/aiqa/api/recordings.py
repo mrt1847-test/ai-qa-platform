@@ -46,7 +46,7 @@ from aiqa.recording.recovery import (
 )
 from aiqa.store.database import migrate_store
 from aiqa.store.models import Transaction
-from aiqa.store.queue import JobConflict, enqueue_job
+from aiqa.store.queue import JobConflict, ResourceOffline, enqueue_job
 
 
 def install_recordings(application: FastAPI) -> None:
@@ -180,6 +180,8 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(409, "conflict", "idempotency body does not match", {})
                 except PreflightRejected as exc:
                     return _error(422, "validation", exc.reason, {})
+                except ResourceOffline as exc:
+                    return _error(422, "validation", str(exc), {})
                 except ValueError:
                     return _error(422, "validation", "invalid recording", {})
         finally:
@@ -451,6 +453,8 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(409, "conflict", "rerecording was rejected", {})
                 except PreflightRejected as exc:
                     return _error(422, "validation", exc.reason, {})
+                except ResourceOffline as exc:
+                    return _error(422, "validation", str(exc), {})
                 except ProposalRejected as exc:
                     return _error(422, "validation", exc.reason, {})
         finally:

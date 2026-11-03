@@ -33,35 +33,37 @@ def bind_claim_store(store: Store) -> Iterator[None]:
         _store.reset(token)
 
 
-def claim_job(worker: WorkerScope, now: datetime) -> JobLease | None:
+def claim_job(worker: WorkerScope, now: datetime, *, boot_id: object = None) -> JobLease | None:
     """Take one queued job for this worker, or nothing when the slot or device is busy."""
 
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
-        return claim_queued_job(connection, worker, now)
+        return claim_queued_job(connection, worker, now, boot_id=boot_id)
 
 
 def renew_lease(
-    worker: WorkerScope, lease: LeaseToken, now: datetime, model_wait: bool = False
+    worker: WorkerScope, lease: LeaseToken, now: datetime, model_wait: bool = False,
+    *, server_now: datetime | None = None,
 ) -> LeaseView:
     """Heartbeat the same generation for 45 seconds. Model wait does not stop it."""
 
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
-        return renew_lease_row(connection, worker, lease, now, model_wait)
+        return renew_lease_row(connection, worker, lease, now, model_wait, server_now=server_now)
 
 
 def acknowledge_attempt(
-    lease: LeaseToken, runner_nonce: UUID, worker: WorkerScope, now: datetime
+    lease: LeaseToken, runner_nonce: UUID, worker: WorkerScope, now: datetime,
+    *, server_now: datetime | None = None,
 ) -> AttemptReceipt:
     """Confirm the claimed attempt. The same nonce returns that attempt."""
 
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
-        receipt = acknowledge_runner(connection, worker, lease, runner_nonce, now)
+        receipt = acknowledge_runner(connection, worker, lease, runner_nonce, now, server_now=server_now)
         connection.execute(
             """
             INSERT OR IGNORE INTO runner_hosts (project_id, attempt_id, boot_id)

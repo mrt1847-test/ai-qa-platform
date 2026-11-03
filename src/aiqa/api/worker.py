@@ -21,6 +21,7 @@ from aiqa.store.database import migrate_store
 from aiqa.store.evidence import EventConflict
 from aiqa.store.models import EventEnvelope
 from aiqa.store.queue import LeaseDenied, RunnerConflict, StaleGeneration
+from aiqa.worker.presence import HEARTBEAT_SECONDS, OFFLINE_AFTER, PresenceDenied, report_presence
 from aiqa.worker.service import acknowledge_attempt, bind_claim_store, claim_job, ingest_events, renew_lease
 
 
@@ -41,7 +42,7 @@ def install_worker(application: FastAPI) -> None:
         if isinstance(payload, JSONResponse):
             return payload
         try:
-            now = _instant(payload.get("now"))
+            _instant(payload.get("now"))
         except ValueError:
             return _error(422, "validation", "invalid claim", {})
         token = header.removeprefix("Bearer ").strip()
@@ -49,7 +50,7 @@ def install_worker(application: FastAPI) -> None:
             try:
                 worker = worker_scope_from_token(token)
                 with bind_claim_store(store):
-                    lease = claim_job(worker, now)
+                    lease = claim_job(worker, _server_now(), boot_id=payload.get("boot_id") or "")
             except AuthRequired:
                 return _error(401, "unauthorized", "worker token is missing", {})
             except WorkerDenied:
@@ -70,6 +71,38 @@ def install_worker(application: FastAPI) -> None:
                 "attempt_id": str(lease.attempt_id),
             },
         )
+
+    async def post_heartbeat(request: Request) -> Response:
+        header = request.headers.get("authorization", "")
+        if not header.startswith("Bearer "):
+            return _error(401, "unauthorized", "worker token is missing", {})
+        payload = await _body(request)
+        if isinstance(payload, JSONResponse):
+            return payload
+        with _bound(request) as store:
+            try:
+                worker = worker_scope_from_token(header.removeprefix("Bearer ").strip())
+                expected = {
+                    "worker_id": worker.worker_id,
+                    "project_id": str(worker.permitted_projects[0]),
+                    "purpose": worker.permitted_purposes[0],
+                }
+                if any(key in payload and payload[key] != value for key, value in expected.items()):
+                    raise PresenceDenied
+                with store.transaction() as connection:
+                    presence = report_presence(connection, worker, payload.get("boot_id"), _server_now())
+            except AuthRequired:
+                return _error(401, "unauthorized", "worker token is missing", {})
+            except PresenceDenied:
+                return _error(403, "permission", "worker cannot report presence", {})
+            except ValueError:
+                return _error(422, "validation", "invalid heartbeat", {})
+        return JSONResponse({
+            "state": presence.state,
+            "last_seen": presence.last_seen.isoformat(),
+            "heartbeat_seconds": HEARTBEAT_SECONDS,
+            "offline_after_seconds": int(OFFLINE_AFTER.total_seconds()),
+        })
 
     async def post_renewal(request: Request) -> Response:
         return await _lease_call(request, renew=True)
@@ -124,6 +157,7 @@ def install_worker(application: FastAPI) -> None:
         )
 
     application.add_api_route("/api/v1/worker/claims", post_claim, methods=["POST"])
+    application.add_api_route("/api/v1/worker/heartbeats", post_heartbeat, methods=["POST"])
     application.add_api_route("/api/v1/worker/lease-renewals", post_renewal, methods=["POST"])
     application.add_api_route("/api/v1/worker/attempt-acks", post_ack, methods=["POST"])
     application.add_api_route("/api/v1/worker/events", post_events, methods=["POST"])
@@ -196,10 +230,10 @@ async def _lease_call(request: Request, renew: bool) -> Response:
             worker = worker_scope_from_token(token)
             with bind_claim_store(store):
                 if renew:
-                    view = renew_lease(worker, lease, now, model_wait)
+                    view = renew_lease(worker, lease, now, model_wait, server_now=_server_now())
                 else:
                     assert nonce is not None
-                    receipt = acknowledge_attempt(lease, nonce, worker, now)
+                    receipt = acknowledge_attempt(lease, nonce, worker, now, server_now=_server_now())
         except AuthRequired:
             return _error(401, "unauthorized", "worker token is missing", {})
         except LeaseDenied:
@@ -241,6 +275,10 @@ def _generation(value: object) -> int:
     if type(value) is not int or value < 1:
         raise ValueError("generation is invalid")
     return value
+
+
+def _server_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _instant(value: object) -> datetime:

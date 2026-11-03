@@ -1,5 +1,7 @@
 # 실행 공통 계약 · 제품 설계 v0.6 / 작업계획 v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 규범 기준일: 2026-10-31. **구현·검증할 계약**이며 이 문서만으로 DTO/API/DB/VM/시험 전체가 완료됐다는 뜻은 아니다. 실제 완료 범위는 WORK_PROGRESS와 인계를 따른다. 2026-11-01 보완: [계약 수정 결과](../validation/reviews/2026-11-01-remediation-result.md).
 [읽는 순서](README.md) · [인계 양식](HANDOFF.md) · [검토·보완 기록](REVIEW.md).
 작업자는 담당 카드에 지정된 절과 선행 작업의 인계 기록을 읽는다. 이전 채팅은 필수 입력이 아니다.
@@ -7,10 +9,10 @@
 ## C00 · 실행 범위와 공통 완료 규칙
 
 - 최초 설계 개정은 문서 작업이었다. 구현 요청 뒤 상세 작업 ID와 실제 인계로 진행한다. 현재 core 구현과 검토 보완의 증거는 WORK_PROGRESS를 따르며, 설치·모델/기기 실행·배포까지 완료됐다고 추정하지 않는다.
-- 파일 경로는 저장소 root 기준이다. 제품 Python은 `src/aiqa/`, 시험은 `tests/`, 런타임 데이터는 비동기화 `%LOCALAPPDATA%/AIQA/`에 둔다.
+- 파일 경로는 저장소 root 기준이다. 제품 Python은 `src/aiqa/`, 시험은 `tests/`, 운영 런타임 DB/증거/키는 서비스가 소유한다. `%LOCALAPPDATA%/AIQA/`는 로컬 개발 profile이다.
 - 큰 `contracts.py` 대신 `src/aiqa/contracts/{common,cases,recordings,jobs,resources,actions,evidence,models,checks,replay,reviews,healing,reports,benchmarks}.py`로 나눈다. `__init__.py`는 필요 시 재노출만 한다. root 계획의 과거 contracts.py 표기를 이 책임 경계로 구체화한다.
-- API만 SQLite에 접근한다. worker/VM은 인증 HTTP·정제 spool을 쓰고 DB 파일을 열지 않는다. API 단일 프로세스 writer, 긴 모델/파일 작업 중 DB transaction을 잡지 않는다.
-- Web은 CUAWright authoring + 같은 PC의 격리 VM/신뢰 driver가 수행하는 승인 code replay다. Android는 Mobile-Agent authoring + host ADB action replay다. 두 플랫폼 모두 MVP다.
+- API만 관리 DB에 접근한다. worker/격리 실행기는 인증 HTTP·정제 spool을 쓴다. 초기 hosted profile은 관리 호스트의 SQLite와 API 단일 writer를 계획한다. 긴 모델/파일 작업 중 DB transaction을 잡지 않는다.
+- Web은 CUAWright authoring과 신뢰 driver의 승인 code replay다. Android는 Mobile-Agent authoring과 Android adapter의 저장 action replay다. [구현 경계](../managed-pc/RUNTIME_BOUNDARIES.md)에 고정 엔진 hook, AD-01 관찰 재사용과 실제 검증 카드를 지정한다. 두 플랫폼 모두 MVP다.
 - TC는 선택이다. 케이스가 검증 정의/설정/녹화 절차/증거를 소유한다. 녹화 중 승인0, 미승인/실패/중단 기록도 먼저 저장한다.
 - 일반 replay actor0, 검증 AI는 명시 check에만, healing은 기본OFF다. 실제 검증 실패와 원본·기본 실행본을 AI가 자동 변경하지 않는다.
 - 상세 작업은 선행 근거 확인 → 지정 부정 시험/검증 → 해당 범위 구현 → 검사/화면/실제 환경 확인 → diff 검토 → 근거/인계 갱신 순서로 수행한다. 단순 CSS·문구는 필요한 화면 확인으로 검증한다.
@@ -38,7 +40,7 @@ Reason = {code, field_or_owner?, message, action_href?}
 
 API prefix는 `/api/v1`이다. 각 route의 project는 path/owner에서 서버가 확인한다.
 browser session/actor/project scope + mutation CSRF/Origin과 worker token/purpose/generation은 별도다.
-개인 모드도 인증 없는 mutation을 열지 않는다. 로컬 launcher가 일회용 nonce를 fragment로 전달하고 동일 Origin session bootstrap POST에서 소비하는 방식을 W04-03의 구현 선택으로 고정한다. nonce는 URL query/접근 로그/localStorage에 남기지 않고 60초 만료·1회 사용이다. worker enrollment는 인증된 browser 조작으로 별도 token을 발급한다. SSO/팀 인증은 후속이다.
+개인 모드도 인증 없는 mutation을 열지 않는다. 로컬 launcher가 일회용 nonce를 fragment로 전달하고 동일 Origin session bootstrap POST에서 소비하는 방식을 W04-03의 구현 선택으로 고정한다. nonce는 URL query/접근 로그/localStorage에 남기지 않고 60초 만료·1회 사용이다. worker enrollment는 인증된 browser 조작으로 별도 token을 발급한다. 이는 로컬 개발 인증 구현의 범위다. 중앙 서비스 로그인·프로젝트 권한·HTTPS·세션 만료/폐기는 cloud MVP 수용 대상이며, 로컬 nonce/is_local_owner를 인터넷 인증으로 재사용하지 않는다. SSO 방식은 별도 결정한다.
 
 - 장기 작업은202 `{job_id, recording_id?, execution_id?, status_href}`, 동기 신규 저장201, 수정/동일 receipt 재전송200을 사용한다. 최초 응답은 원래 receipt와 함께 보존한다.
 - schema/field422, revision·key/body·hash 충돌409, 권한403, 타 소속/존재 은닉404, 미인증401, 저장 공간 부족507, upload 크기413, 증거 파일 만료410이다. 응답에 stacktrace/secret을 넣지 않는다.
@@ -49,6 +51,8 @@ browser session/actor/project scope + mutation CSRF/Origin과 worker token/purpo
 - URL에는 filter/sort/page/선택 ID만, sessionStorage에는 비밀 없는 scroll/열 설정만 저장한다. secret/편집 buffer/실제 모델 key를 browser 저장소에 두지 않는다. 탭 재접속은 GET으로 복원하고 mutation을 다시 보내지 않는다.
 - 1440px 기본/1024px 보조 패널 접기·keyboard/focus·색 외 상태 문구를 제공한다. 조작은 실제 API에 연결되거나 명시적 비활성 사유가 있어야 한다. 미구현을 성공 mock으로 채우지 않는다.
 - 요청 거부 HTTP 오류와 claim 후 확정 ITEM의 BLOCKED/FAIL 등을 구별한다. preview 거부를 실제 검증 실패로 집계하지 않는다.
+
+실행 PC 접속 상태는 저장본 승인/반려의 선행이 아니다. 서버 commit/ACK된 ready 증거와 기존 필수 OFF trial·검토/hash/보관 조건으로 판정한다. 새 녹화/재녹화·trial/정식/rerun은 접수·claim/dispatch에서 현재 자원/worker 상태를 다시 검사하고 offline 자동 예약을 만들지 않는다. PC-01은 명시 inventory/quarantine admission, PC-02가 서버 수신 heartbeat/자동 단절 감지·claim을 소유한다.
 
 ## C02 · 케이스·정의·버전·선택 TC
 
@@ -294,7 +298,7 @@ ResolvedHealingPolicy = {requested_enabled, effective_enabled, approved_policy_h
 - core facts/approval/lineage/manifest/hash/ledger는 project 보관 중 장기, detail90일/PNG log30일/ACK spool7일/정제 debug24시간이다. provenance와 active pin은 별개다.
 - 유효 과거 승인도 package/source/trial required pin이며 default 교체로 해제하지 않는다. review30일 연장 가능·철회90일 유예다. GC는 무보호 ready만 claim→delete_pending→파일삭제→tombstone이다.
 - 전체 파일20GB(project 합산 파일 저장소)/REC·ITEM500MB 제안이다. 보호 파일을 몰래 지우지 않고 새 행동 중지/부분 저장한다. archive는 이력을 지우지 않는다. 파괴적 이력 purge UI는 MVP 밖이며 별도 요구/영향 승인으로 다룬다.
-- 백업은 local_owner 전용 ‘이 PC 전체 저장소’ 작업이다. project URL은 요청 이력 namespace이며 project-only 백업을 의미하지 않는다. API 소유 storage service가 SQLite online snapshot+project별 commit cursor map+ready artifact manifest/hash+GC 임시 중지/보호를 만든다. worker는 목적/만료/manifest로 제한된 HTTP bytes 복사만 하고 SQLite를 열지 않는다. 비공개 backup receipt/파일은 일반 project artifact 조회로 노출하지 않고 owner 전용 endpoint로 받는다. 누락은 incomplete·OS secret 평문 복사 금지다.
+- 기존 개발 profile의 백업은 local_owner 전용 ‘이 PC 전체 저장소’ 작업이다. project URL은 요청 이력 namespace이며 project-only 백업을 의미하지 않는다. API 소유 storage service가 SQLite online snapshot+project별 commit cursor map+ready artifact manifest/hash+GC 임시 중지/보호를 만든다. worker는 목적/만료/manifest로 제한된 HTTP bytes 복사만 하고 SQLite를 열지 않는다. 비공개 backup receipt/파일은 일반 project artifact 조회로 노출하지 않고 owner 전용 endpoint로 받는다. 누락은 incomplete·OS secret 평문 복사 금지다.
 - 복원은 local_owner 전용·PC 전체 영향이다. 별도 경로에서 schema/FK/integrity/hash/누락 검증→모든 project 진행 작업 정리→API storage 유지보수 모드의 명시 활성화다. 옛 queued/running 재투입0·lease/token/session 폐기·resource quarantine→probe·key 재설정, 과거 QA 불변이다.
 
 ## C11 · 추가 route와 UI 책임 경계
@@ -375,7 +379,7 @@ GET /static/app.css -> CSS
 
 ## C14 · 차단된 가지와 독립 구현의 진행
 
-Current/우선순위는 NEXT_ACTION, 직접 선행·환경 요구·검증 등급은 TASK_INDEX가 소유한다.
+Current/우선순위는 NEXT_ACTION이 소유한다. 기존 W는 TASK_INDEX, AD/UX는 DEV_FOLLOW_UP_INDEX, 초기 PC 전환은 PC_EXECUTION_INDEX, 실행 구현·수용 RX는 [IMPLEMENTATION_TASKS](../managed-pc/IMPLEMENTATION_TASKS.json)가 직접 선행·환경·등급을 소유한다. 기존 W 완료 수는 local baseline 이력이다. [RX 매핑](../managed-pc/RUNTIME_BOUNDARIES.md)과 AD-02~04의 development_only 범위를 적용한다.
 과거 A→B 전체 직렬 gate 대신 **실제 interface/fact를 소비하는 선행**으로 좁힌다.
 VM/key/device 부족은 그 환경을 쓰는 가지와 최종 수용만 막는다.
 
@@ -384,7 +388,7 @@ VM/key/device 부족은 그 환경을 쓰는 가지와 최종 수용만 막는�
 1. 현재 작업의 code/검증 결과를 기록한다. 환경·권한·quota 등 외부 조건 때문에 진행 못 하면 blocked와 원인/재개 조건/근거를 남긴다.
 2. blocked를 complete로 바꾸거나 의존 작업을 임의로 열지 않는다. 후보는 미완료·blocked 아님·직접 선행 전부 complete+실제 인계 존재인 작업이다.
 3. `environment_requirements`에 알려진 unavailable 조건이 있으면 준비 후보에서 제외한다. unknown은 가벼운 사전 확인으로만 판별하고 같은 알려진 부재 검사를 반복하지 않는다.
-4. Next 중 준비된 작업을 먼저 고른다. 없으면 TASK_INDEX를 로컬 코드로 필터해 bootstrap→core→환경 준비된 integration 순으로 후보 요약만 조회한다. JSON 전체/과거 audit를 context에 출력하지 않는다.
+4. Next 중 준비된 작업을 먼저 고른다. 없으면 W·AD/UX·PC·RX 색인을 ID로 합쳐 등록 PC 목표의 후보를 필터한다. managed_execution_mvp/product_shared를 먼저 고르고 development_only는 명시 요청이 있을 때만 고른다. RX에 대응되는 과거 local gate는 기본 후보로 중복 선택하지 않는다. bootstrap→core→환경 준비된 integration 순으로 후보 요약만 조회한다.
 5. 선택한 ID/이유를 Current에 올리고 차단 항목은 외부 대기 절에 남긴다. 이전 Current가 차단되어 있어도 독립 후보로 넘어간다.
 6. 독립 후보도 없으면 조건/준비 결과를 보고한다. 실패한 task의 진짜 선행을 삭제하거나 fake PASS를 만들어 진행하지 않는다.
 7. 알려진 환경 변경/사용자 제공/새 evidence가 생겼을 때 해당 blocked 가지를 재평가한다. 환경 설정을 몰래 변경·구매·권한 확대해 해소하지 않는다.
@@ -393,7 +397,7 @@ VM/key/device 부족은 그 환경을 쓰는 가지와 최종 수용만 막는�
 
 - `bootstrap`: 최소 Python/app/page/process의 실제 실행. VM/key/device가 필요 없다.
 - `core_contract`: 실제 API/SQLite/파일/브라우저/host process로 계약·상태·불변성/오류를 검사한다. 외부 관찰/모델 응답은 tests 전용 fixture/transport/provider를 써서 경계 조건을 재현할 수 있다.
-- `source_audit`: pinned source/위치/hash/라이선스 근거. 실제 엔진 실행과 구별한다.
+- `source_audit` / `source_audit_design`: pinned source/위치/hash/라이선스·공식 공급자 능력/연결점·설계 산출물 근거. 실제 엔진/provider 세션 실행과 구별한다.
 - `live_integration / tool_integration / integration_gate`: 해당 VM/USB/provider/도구의 실제 evidence가 필수다. 없는 환경은 blocked이며 contract fixture가 대체하지 않는다.
 - `final_gate`: 모든 관련 실제 검증과 UI/DB/QA/비용·격리가 충족된 최종 수용이다.
 

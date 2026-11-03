@@ -294,6 +294,19 @@ async def _diagnose(app: object, project_id: object, token: str):
         )
         client.cookies.set("aiqa_session", booted.cookies["aiqa_session"])
         headers = {"Origin": origin, "X-CSRF-Token": booted.json()["csrf_token"], "Idempotency-Key": "w1107-probe"}
+        offline = await client.post(
+            f"/api/v1/resources/{resource_id}/probes",
+            params={"project_id": str(project_id)},
+            json={"provider": "fixture", "proof": None},
+            headers=headers,
+        )
+        assert offline.status_code == 422 and "offline" in offline.json()["error"]["message"]
+        heartbeat = await client.post(
+            "/api/v1/worker/heartbeats",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"boot_id": "diagnostics-fixture"},
+        )
+        assert heartbeat.status_code == 200, heartbeat.text
         probe = await client.post(
             f"/api/v1/resources/{resource_id}/probes",
             params={"project_id": str(project_id)},

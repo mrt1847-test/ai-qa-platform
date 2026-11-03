@@ -1,18 +1,19 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
-> Android 개발/누락 UI 보완7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. W 완료126/163과 부모 gate는 보존한다. 2026-11-02 AD-01 완료(별도1/7), 현재 실행은 NEXT_ACTION의 AD-02다. [관찰/검증 인계](docs/validation/tasks/AD-01.md)를 따른다.
+> **등록 PC 전환:** [PC-01](docs/validation/tasks/PC-01.md)·[PC-02](docs/validation/tasks/PC-02.md)·[PC-03](docs/validation/tasks/PC-03.md)의 core와 [PC-04](docs/validation/tasks/PC-04.md)의 소스 조사·설계를 완료했다(전환 4/4). [등록 PC 구현과 실환경 수용](docs/managed-pc/IMPLEMENTATION_TASKS.json)은 별도 0/31이며 [NEXT_ACTION](NEXT_ACTION.md)에서 현재 작업을 확인한다.
+> Android 개발/누락 UI 보완 7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. AD-01 완료(1/7)와 기존 W 완료 126/163을 보존한다. AD-02~04의 실제 등록 PC 적용은 [RX 매핑](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 있고 UX는 공유 제품 보완이다.
 
 > UI 개선 및 병합 검증은 [결과](docs/validation/ux/README.md)를 참고한다. 아래 완료 수는 최신 master 작업 근거를 따르며 UI 변경으로 추가하지 않는다.
 
-기준일: **2026-11-01 (Asia/Seoul)** · 제품 설계 v0.6+보완 · **완료126/163**, 상위6/33 W.
+기준일: **2026-11-02 (Asia/Seoul)** · 기존 local baseline **완료126/163**, 상위6/33 W. 이 수는 cloud MVP 진행률이 아니다. [확정 배치](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)·[PC 작업 계획](docs/superpowers/plans/2026-11-02-managed-pc-transition.md)에 따라 전환하며 cloud 실제 수용은 미검증이다.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**
 [최소 기반4개](docs/execution/00-bootstrap.md)를 먼저 만들고 환경에 막히지 않는 독립 core 경로로 진행한다.
-상세 작업은163개/15영역이며 문서 작성으로 완료를 추가하지 않는다.
+기존 상세 작업은 163개/15영역이다. 초기 전환은 [PC_EXECUTION_INDEX](docs/execution/PC_EXECUTION_INDEX.json)의 별도 4개, 원격 실행 구현·수용은 [RX 색인](docs/managed-pc/IMPLEMENTATION_TASKS.json)의 별도 31개로 추적한다.
 
 [전체 실행 안내](docs/execution/README.md) · [공통 계약 C13/C14](docs/execution/CONTRACTS.md) · [선행/차단 수정](docs/execution/SCHEDULING.md) · [UI 추적](docs/execution/UI_COVERAGE.md) · [요구 추적](docs/execution/COVERAGE.md)
 
-2026-11-01 검토 후 [R01~R20/V01 보완](docs/validation/reviews/2026-11-01-remediation-result.md)을 구현·검증했다. 기존53개 완료의 결함 수정이며 새 완료 수를 추가하지 않았다. 준비된 Current는 없고 실제 VM/기기/모델/최종 수용 gate는 그대로다.
+2026-11-01 검토 후 [R01~R20/V01 보완](docs/validation/reviews/2026-11-01-remediation-result.md)을 구현·검증했다. 기존 53개 완료의 결함 수정이다. 과거 VM/기기/모델 수용 gate를 보존한다.
 
 ## 1. 현재 상태
 
@@ -76,7 +77,7 @@ W06-10→W06-02, W23-01→W09-04, source→package→finish 통합의 진짜 직
 - 총 slot1/기기당1, heartbeat10초/lease45초/watchdog30초/행동 전 여유10초. 취소 유예5초/정리30초 내 ready 또는 quarantine.
 - 런타임 DB/파일은 비동기화 `%LOCALAPPDATA%/AIQA/`. API 단일 writer·worker HTTP/spool, 개인 모드 API는127.0.0.1. 관리 탭과 runner 수명을 분리한다.
 - 장기 최소 facts·승인/lineage·commit cursor를 상세 payload90일/PNG·정제로그30일과 분리한다. 유효한 과거 승인 근거도 보호하고 철회 뒤90일 유예한다.
-- Web·직접 연결 Android 둘 다 완료해야 MVP다. 클라우드·수동 화면 제어·영상·중간 재개·일반 Skill Factory 추천/자가 코드 변경은 후속이다. 승인 Web code/Android action replay·bounded healing은 이33개에 포함한다.
+- 최신 MVP는 독립 관리/저장 서버와 등록 실행 PC의 Web·Android 및 전원 종료 중 저장본 조회/승인 수용이 필요하다. [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md)에 기존 W/AD에서 재사용할 범위를 기록했다. 수동 화면 제어·영상·중간 재개·일반 Skill Factory 추천/자가 코드 변경은 후속이다. 승인 replay·bounded healing 정책은 유지한다.
 
 - 기본 `recorded_replay`는 일반 actor0, verifier는 명시 check에만 호출한다. 결정적 검사/OFF는 모델 키 없이 허용한다. 승인 근거 trial은 healing OFF다.
 - healing 기본OFF·승인 capability 범위 안에서 접수 ON/OFF snapshot, 미dispatch lookup 실패/결정적 동일 target만 치유한다. ITEM당episode1/모델 합계2회(전송retry포함)/30초 제안, 전체 job/lease/예산 우선.
@@ -423,6 +424,6 @@ fixture 데이터/가짜 성공을 생산 경로에 넣지 않는다. 기존 실
 
 ## 9. MVP 이후 범위
 
-중앙/여러 PC·cloud·팀 인증, 일반 Skill Factory/자가 코드 수정, 영상/trace/logcat·수동제어·pause/partial merge,
+중앙 관리/cloud 접속·인증은 현재 전환 범위다. 이후 확장은 대규모 운영·SSO 고도화, 일반 Skill Factory/자가 코드 수정, 영상/trace/logcat·수동제어·pause/partial merge,
 선택 API/DB oracle, 예약/CI/외부 알림/TC CSV/PDF, 파괴적 history purge는 기존 후속 범위다.
 Web/Android replay·명시 verifier·bounded healing·사후 승인·CSV/인쇄HTML의 필수 실제 검증은 유지한다.

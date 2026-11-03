@@ -1,5 +1,7 @@
 # 작은 컨텍스트 모델을 위한 실행 작업서 v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 > 2026-11-01 후속: 기존 W 색인의 준비 후보 없음과 제품 개발 종료는 다르다. 실제 Android 에뮬레이터를 사용하는 [개발/UI 보완7개](11-development-follow-ups.md)와 [별도 색인](DEV_FOLLOW_UP_INDEX.json)을 추가했다. 현재 순서는 NEXT_ACTION만 따른다.
 
 기준일: **2026-11-01** · 제품 설계: **v0.6 + 보완 계약** · 현재: **완료126/163**, W00·W04·W05·W06·W08·W10 상위 완료, W01-02 외부 차단 보존.
@@ -16,7 +18,11 @@
 | 담당 영역 카드 | 매 작업 | 파일·선행·scope·검증·완료 |
 | [CONTRACTS](CONTRACTS.md) | 카드 지정 절만 | C00–C14, C13뼈대/C14차단·검증 등급 |
 | [HANDOFF](HANDOFF.md) | 인계 형식이 필요할 때 | 실제 결과/미완료/재개 기록 |
-| [TASK_INDEX](TASK_INDEX.json) | 후보/상태 조회 | 직접 선행·환경·검증 등급·부모 gate |
+| [TASK_INDEX](TASK_INDEX.json) | 기존 W 이력 조회 | local baseline 직접 선행·환경·검증 등급·부모 gate |
+| [PC_EXECUTION_INDEX](PC_EXECUTION_INDEX.json) | 현재 배치 전환 후보/상태 | 중앙 관리/저장과 등록 실행 PC의 분리 |
+| [IMPLEMENTATION_TASKS](../managed-pc/IMPLEMENTATION_TASKS.json) | RX 구현·실환경 수용 상태와 직접 선행 | [실행 경계와 기존 카드 매핑](../managed-pc/RUNTIME_BOUNDARIES.md) |
+| [CLOUD_TASK_INDEX](CLOUD_TASK_INDEX.json) | 선택 provider 조사 | 현재 PC 실행의 필수 선행 아님 |
+| [DEV_FOLLOW_UP_INDEX](DEV_FOLLOW_UP_INDEX.json) | AD/UX 후보/상태 | development_only / product_shared 구분 |
 | [WORK_PROGRESS](../../WORK_PROGRESS.md) | 진행 갱신 | 33W/영역별 요약·상위 통합 검수 |
 | [UI_COVERAGE](UI_COVERAGE.md) / [COVERAGE](COVERAGE.md) | 구현/영역 검수 | UI94/요구R35/규범53개 담당 |
 | [SCHEDULING](SCHEDULING.md) | 순서·차단 확인 | 뼈대 추가/의존 수정·기존 근거 보존 |
@@ -45,7 +51,9 @@
 | [J · 보관·장애·비용·최종 동선](10-retention-and-release-gates.md) | W26 W27 W32 W28 | 17 | 7 |
 | 합계 | W00–W32 | **163** | **126** |
 
-첫 구현은 [W00-01](00-bootstrap.md#w00-01)→W00-02→W00-03→W00-04다.
+**이하 순서는 기존 local baseline의 이력/의존이다. 현재는 NEXT_ACTION의 PC-01부터 중앙 관리/등록 PC 전환을 진행하고 기존 W의 재사용/적응 범위를 확정한다.**
+
+기존 첫 구현은 [W00-01](00-bootstrap.md#w00-01)→W00-02→W00-03→W00-04다.
 그 뒤 준비된 core/환경 가지를 NEXT_ACTION이 선택한다. W01-01은 이미 완료되어 반복하지 않는다.
 W01-02 VM 부재는 대기에 보존한다. 선행이 끝난 local_python core는 남아 있지 않다. W29-05는 VM이 있어야 Current가 된다. W29-03은 VM 선행이 끝나기 전에 Current가 되지 않는다. W16-07은 실기기와 패키지 선행이 끝나기 전에 Current가 되지 않는다. W16-02는 W15-04가 끝나기 전에 Current가 되지 않는다. W15-04는 W03-01이 끝나기 전에 Current가 되지 않는다. W27-01은 W22-04와 실제 VM·기기·모델 환경이 끝나기 전에 Current가 되지 않는다. W32-02는 W22-04, W31-07, W27-03이 끝나기 전에 Current가 되지 않는다.
 실제 선행만 권위가 있으며 ID/영역 순서를 전체 직렬 gate로 쓰지 않는다.

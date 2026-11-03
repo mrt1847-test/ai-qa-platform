@@ -1,9 +1,12 @@
 # UI 조작·상태 누락 점검표 v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 > 샘플 기반 UI의 실제 반영·시험은 [2026-11-01 UI 인계](../validation/ux/README.md)에서 확인한다. 아래 W 추적 상태와 실제 native/독립 사용자 수용을 대체하지 않는다.
 
 [UI 원본 규범](../../UI_SPEC.md) · [작업 색인](README.md) · [요구/시나리오](COVERAGE.md).
 **기본15화면 + 선택TC1화면**, 공통6묶음 + 화면88묶음 = **94개 의무 묶음**이다.
+이 94개는 기존 local baseline이다. 등록 PC·자원 상태는 PC-03, 중앙 로그인과 프로젝트 권한은 [RX-17](../managed-pc/SERVER_TASKS.md#rx-17), PC 등록/폐기는 [RX-28](../managed-pc/SERVER_TASKS.md#rx-28), 다른 PC의 저장본 승인과 실행 차단은 [RX-25](../managed-pc/ACCEPTANCE_TASKS.md#rx-25)에서 검증한다.
 묶음 안에 나열한 버튼/필드/상태를 전부 구현·검증해야 해당 행이 완료다. 화면 이름만 존재한다고 통과하지 않는다.
 
 ## 공통 적용 규칙

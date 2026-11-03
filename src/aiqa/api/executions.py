@@ -29,6 +29,7 @@ from aiqa.domain.executions import (
     enqueue_execution,
     preview_execution,
     preview_rerun,
+    rerun_targets,
     skip_case_run,
 )
 from aiqa.store.database import migrate_store
@@ -492,8 +493,6 @@ def execution_page_fields(
         connection_label = "연결이 끊겼습니다"
     elif link == "restored":
         connection_label = "다시 연결되었습니다"
-    elif any(item["resource"] != "자원 없음" for item in items):
-        connection_label = "연결됨"
     else:
         connection_label = "연결 확인"
     known = {str(item["case_run_id"]) for item in items}
@@ -559,6 +558,7 @@ def lineage_fields(connection: object, project_id: UUID, execution_id: UUID) -> 
     root = limits.get("root_execution_id")
     reason = limits.get("rerun_reason")
     return {
+        "rerun_targets": rerun_targets(connection, project_id, execution_id),
         "original_execution_id": original if type(original) is str else "",
         "root_execution_id": root if type(root) is str else "",
         "rerun_reason": reason if type(reason) is str else "",

@@ -1,5 +1,7 @@
 # AI QA 플랫폼 Implementation Plan v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 개정일: **2026-10-31**. [v0.3 계획](docs/history/v0.3/IMPLEMENTATION_PLAN.md)과 [v0.4 계획](docs/history/v0.4/IMPLEMENTATION_PLAN.md)은 보관했다.
 
 **Current/실행 우선순위는 [NEXT_ACTION.md](NEXT_ACTION.md), 전체 진행률은 [WORK_PROGRESS.md](WORK_PROGRESS.md)가 담당한다.** 이 문서의 T0–T14는 상세 설계/인터페이스 추적 단위이며, 실제 진행은33개 상위 W 아래163개 상세 작업으로 기록한다. [영역별 실행 작업서](docs/execution/README.md)의 카드 한 개와 직접 선행을 사용한다. 모의 프런트의 완료와 제품 구현 완료는 구분한다.
@@ -10,15 +12,15 @@
 
 **Goal:** 웹 UI에서 검증 정의/실행 설정/녹화 기록을 한 자동화 케이스로 관리하고, 각 녹화 동작의 화면/로그를 승인 없이 먼저 저장한 뒤 녹화 완료 후 사람이 검토·승인하여 단일/선택/묶음 수행과 리포트로 연결한다.
 
-**Architecture:** Web은 CUAWright authoring→승인 code package replay, Android는 Mobile-Agent authoring→플랫폼 structured action replay다. Web code/Chromium은 같은 PC의 격리 Linux VM·신뢰 driver/IPC 경계, USB/ADB는 호스트 worker가 관리한다. 영구 job queue는 REC/관리 작업과 정식 ITEM을 분리하고, 실행 부모 RUN과 exact case definition/settings/procedure/data/environment snapshot을 저장한다. 승인과 저장을 분리하고 원본 QA를 분석/재실행으로 덮지 않는다.
+**Architecture:** Web은 CUAWright authoring→승인 code package replay, Android는 Mobile-Agent authoring→플랫폼 structured action replay다. Web code는 서비스 측에서 격리하고 신뢰 driver/IPC가 등록 PC browser를 제어한다. Android는 서비스 worker의 공급자 adapter로 등록 PC Android를 제어한다. 세션/protocol 호환성은 PC-04에서 확인한다. 영구 job queue는 REC/관리 작업과 정식 ITEM을 분리하고, 실행 부모 RUN과 exact case definition/settings/procedure/data/environment snapshot을 저장한다. 승인과 저장을 분리하고 원본 QA를 분석/재실행으로 덮지 않는다.
 
-**Tech Stack:** Python 3.11 잠정, FastAPI/Jinja2/HTMX, SQLAlchemy/Alembic/SQLite, 로컬 artifact, worker/runner, Playwright Chromium/ADB, 호환성 검증할 API 모델.
+**Tech Stack:** Python 3.11 잠정, FastAPI/Jinja2/HTMX, SQLAlchemy/Alembic과 기존 SQLite/local artifact 개발 baseline, 운영 DB/storage/secret/auth backend 미정, 서비스 worker/runner·cloud adapter, 호환성 검증할 API 모델.
 
 **Spec:** [실행·재생·셀프힐링 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md), [DESIGN.md](DESIGN.md), UI/API 요약은 [UI_SPEC.md](UI_SPEC.md), 상세 DB·transaction·수명/분석 규범은 [DATA_DESIGN.md](DATA_DESIGN.md), upstream은 [RESEARCH.md](RESEARCH.md). 아래 파일/함수는 신규 플랫폼 제안이며 upstream API가 아니다.
 
 ## Global Constraints
 
-- Web·직접 연결 Android 둘 다 실제 웹 UI로 제공한다. CLI/API demo만으로 합격 불가.
+- 등록 실행 PC의 Web·Android를 웹 UI로 제공한다. 접속 PC 설치는 요구하지 않으며 서버 저장본 승인은 실행 PC online 여부와 무관하다. CLI/API demo만으로 합격 불가.
 - 케이스 version이 검증 정의/설정/녹화 절차·근거를 함께 소유한다. REC/RUN/ITEM은 해당 케이스의 기록이고 TC는 선택 metadata 참조다.
 - TC 0개·tc_reference=null에서도 디바이스→정보/자연어 검증→AI 녹화→저장→완료후 승인→정식 실행이 가능해야 한다. TC 등록·연결·버전 일치 gate 금지.
 - **녹화 중 승인은 없다. 미승인/중단/미완성도 저장하고 완료·보관 확정 후 저장본을 검토·승인한다.**
@@ -27,8 +29,8 @@
 - 숨겨진 사고·비밀값 원문은 기록하지 않는다. 마스킹을 디스크/전송 전에 적용한다.
 - 기본 한도는 job/ITEM 600초·action50·model call80·action retry1·model retry2·USD2.00 제안. 전체 attempt 자동 retry0.
 - heartbeat10초/server lease45초/worker watchdog30초/행동 전 여유10초. 총 실행 slot1·기기당1개.
-- runtime DB/증거는 비동기화 `%LOCALAPPDATA%/AIQA/`, API는127.0.0.1. UI/테스트 browser와 process 수명을 분리한다.
-- 기록된 code/action replay·선택 verifier·bounded healing은 MVP다. 수동 녹화/영상/pause·원격/cloud·일반 Skill Factory 추천/자가 코드 변경은 후속. 로컬 실행과 모델 API 배치를 혼동하지 않는다.
+- runtime DB/증거/키는 서비스 측에서 관리한다. 기존 `%LOCALAPPDATA%/AIQA/`·127.0.0.1은 개발 profile이다. 중앙 인증/TLS/저장 backend는 별도 구현·수용 전이며 현재 loopback 제한을 임의 해제하지 않는다.
+- 기록된 code/action replay·선택 verifier·bounded healing은 MVP다. 초기 실행 자원은 현재 PC다. 관리/저장 서버는 분리하며 상용 cloud 실행은 선택 후속이다. 수동 녹화/영상/pause·일반 Skill Factory 추천/자가 코드 변경은 후속이다. 실행 자원 비용과 모델 API 비용을 구분한다.
 
 - 재녹화는 기존 승인본을 유지한 새 전체 녹화다. approved/default/pin/audit는 원자 확정, 기존 suite/RUN은 exact 이전본 유지·교체 명시, revoke는 별도/no fallback이다.
 - 최소 결과/승인/lineage·commit cursor/usage ledger는 장기 보존하고 상세 payload90일/PNG30일과 분리한다. provenance와 artifact 보호는 별도 테이블이다.
@@ -64,7 +66,8 @@
 | 재생 package gate | T12 | T2/T4/T5의 source 보존 | Web 격리/신뢰 driver·승인 script·Android plan·동작 actor0/OFF trial |
 | bounded healing | T13 | T6/T12·승인 capability | ON/OFF·typed override·미dispatch·원본 불변/수정제안 |
 | 비용 gate | T14 | T8/T12/T13 | 대표30–50 TC 표본·월3,000 TC 조건부 추정 |
-| P7 후속 | T11 | 별도 요청 | cloud/일반 추천·고급 녹화는 새 ADR·실측 gate |
+| 배치 전환 | PC-04 | 최신 지시 | 중앙 관리·실행 PC 규범/계획을 먼저 따르고 기존 W를 재사용·수정·개발 전용·cloud 수용으로 매핑 |
+| P7 후속 | T11 | 별도 요청 | 일반 추천·고급 녹화는 새 ADR·실측 gate |
 
 P0는 플랫폼별 engineer2일의 탐색 한도를 제안한다. 실제 성공/일정을 보장하지 않는다. CUAWright Web authoring/계측·격리/direct replay 또는 Android 변환 gate 실패 시 엔진/배치를 재결정한다. replay를 없애거나 격리 없는 실행으로 자동 축소하지 않는다. Android만 성공해도 최종 범위를 축소하지 않는다.
 
@@ -250,7 +253,7 @@ docs/validation/                      # 실제 측정/시나리오 근거
 
 - [ ] 입력/부분 package0·ready1개·hash 비순환·compiler 실패 보존·package_rebuild/new version·중복 materialization을 먼저 시험한다. package_rebuild purpose/schema·동일 case source ref·관리 job owner null/QA null·worker slot만 사용·physical session/기기/브라우저/모델 제어 권한 없음도 검증한다.
 - [ ] CUAWright source script/trace→승인 IPC script/lock/mapping을 만들고 source/hash/변환 lineage를 보존한다. raw Playwright/CDP·임의 LLM/helper·직접 network/action 우회를 거부한다. 별도 권한/네트워크의 신뢰 driver가 browser와 전후 capture·lease를 독점한다.
-- [ ] 같은 PC Linux VM의 폐기 디스크/계정/egress·secret 무주입·취소/정리를 확인한다. 임시 폴더/Job Object/정적 검사만으로 격리 성공 처리하지 않는다.
+- [ ] 서비스 측 격리 환경의 폐기 디스크/계정/egress·secret 무주입·취소/정리를 확인한다. 기존 같은 PC VM 검증은 local 제공자 이력이다. 임시 폴더/Job Object/정적 검사만으로 격리 성공 처리하지 않는다.
 - [ ] Android recorder output→stable step/target/좌표/condition plan을 신뢰 ADB runner로 재생한다. 원본 Mobile-Agent model loop를 호출하지 않으며 rotation/해상도/미지원 상태 불일치를 차단한다.
 - [ ] `python -m pytest tests/integration/test_replay_packages.py tests/integration/test_replay_isolation.py -q`와 실제 양 플랫폼의 모델 key 제거·endpoint 차단·결정적 검사/OFF trial을 확인한다. actor/verifier/healer0회·각 실제 action 증거가 필수다. W16/승인 회귀 시험도 재실행한다.
 
@@ -277,9 +280,9 @@ docs/validation/                      # 실제 측정/시나리오 근거
 - [ ] 월1회3,000 TC×1data×1환경을 기준으로 모델 비용 p50/p95·role 호출·정상/치유 PASS·거짓PASS/미검증·시간·저장량을 추정하고 표본/조건/미계측 범위를 표시한다. 가상 가격을 보장값으로 고정하지 않는다.
 - [ ] `python -m pytest tests/integration/test_cost_accounting.py -q`와 실제 표본 보고를 확인한다. 비용이 낮아도 거짓PASS/증거/격리 기준을 완화하지 않는다.
 
-## T11: 후속 ADR·확장 — 별도 요청 후
+## T11: 배치 전환과 후속 확장
 
-중앙 관리/PostgreSQL/TLS·여러 worker·remote browser/device farm은 환경 capability·실제 ADB/제어API·가속·sessionTTL/release/고아·과금/사내망을 실측한다. Appium 지원만으로 Mobile-Agent 호환을 주장하지 않는다.
+현재 배치 전환은 PC-01→PC-02의 admission/접속 수명부터 수행한다. PC-04는 독립 관리 서버 인증/TLS·운영 DB/artifact/secret·원격 worker와 등록 PC driver/격리/가속/수명/증거 업로드를 작은 후속 카드로 확정한다. 상용 remote browser/device farm은 선택 후속이며 도입 시 제어API·TTL/release/고아·요금/사내망을 별도로 실측한다. Appium 지원만으로 Mobile-Agent 호환을 주장하지 않는다.
 
 수동 조작 녹화·영상·pause/resume·부분 step 병합·일반 Skill Factory 추천/자가 코드 변경은 후속이다. 승인 code/action replay·검증/치유 분리·격리/모델0회 gate는 T12–T14의 MVP 범위다. 기본 AI 녹화 기록 저장과 혼동하지 않는다. 예약/CI/알림·TC CSV 가져오기·PDF 자동 생성은 후속이다.
 

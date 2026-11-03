@@ -56,6 +56,7 @@ class WorkerScope:
     worker_id: str
     permitted_projects: tuple[UUID, ...]
     permitted_purposes: tuple[str, ...]
+    token_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

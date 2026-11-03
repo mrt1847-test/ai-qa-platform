@@ -1,6 +1,6 @@
 # AI QA
 
-로컬 AI QA 플랫폼의 최소 실행 안내입니다. 여기서는 Python 패키지를 설치하고 API 프로세스를 켜고 끄는 방법만 다룹니다. VM, USB 기기, 모델 키, DB, 일상 launcher는 이 안내의 범위가 아닙니다.
+AI QA 플랫폼의 로컬 개발 실행 안내입니다. 서비스 목표는 [중앙 관리/저장과 등록 실행 PC의 분리](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이며, 현재 loopback 앱은 중앙 운영 서비스/클라우드 연동 완료 상태가 아닙니다. 여기서는 Python 패키지를 설치하고 API 프로세스를 켜고 끄는 방법만 다룹니다. VM, USB 기기, 모델 키, DB, 일상 launcher는 이 안내의 범위가 아닙니다.
 
 ## 환경
 
@@ -48,4 +48,4 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest tests/unit/test_bootstrap.py tests/integration/test_bootstrap_http.py tests/acceptance/test_bootstrap_page.py tests/acceptance/test_bootstrap_startup.py tests/integration/test_w01.py::test_w01_01 -q
 ```
 
-이 검사가 통과해도 VM, USB, 모델 검증이 끝난 것은 아닙니다. `W01-02`는 같은 PC의 Linux VM에서 script/driver 경계를 확인하기 전에는 blocked 입니다. 그 시험을 지우거나 skip하거나 성공으로 바꿔 전체 suite를 녹색으로 만들지 않습니다.
+이 검사가 통과해도 VM, USB, 모델 검증이 끝난 것은 아닙니다. `W01-02`는 기존 로컬 제공자의 script/driver 격리 검증 전까지 blocked로 보존합니다. 사용자 PC의 VM 준비는 cloud 서비스 사용의 선행이 아니며, cloud 배치는 서비스 측 별도 격리/연동 수용이 필요합니다. 그 시험을 지우거나 skip하거나 성공으로 바꿔 전체 suite를 녹색으로 만들지 않습니다.

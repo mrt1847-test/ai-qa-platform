@@ -12,6 +12,7 @@ from aiqa.contracts.cases import CaseDefinition, CaseVersion, PathPolicy
 from aiqa.contracts.healing import ApprovedHealingPolicy, HealingRequest, Limits
 from aiqa.contracts.jobs import IdempotencyKey
 from aiqa.domain.hashing import canonical_hash, canonical_json
+from aiqa.domain.resource_readiness import resource_readiness
 from aiqa.healing.policy import resolve_healing_policy
 from aiqa.domain.projects import next_commit_seq
 from aiqa.store.models import Actor, Transaction
@@ -409,7 +410,7 @@ def preview_rerun(
         environment = override if override != "" else _limit_text(row[5], "environment_revision_id")
         resource = _limit_text(row[5], "resource_id")
         approval = _limit_text(row[5], "approval_id")
-        item_blockers = _rerun_blockers(tx, project_id, UUID(str(row[1])), UUID(str(row[2])), str(row[3]), environment, approval)
+        item_blockers = _rerun_blockers(tx, project_id, UUID(str(row[1])), UUID(str(row[2])), str(row[3]), environment, approval, resource)
         blockers.extend(item_blockers)
         if environment == "" or resource == "":
             continue
@@ -451,6 +452,28 @@ def preview_rerun(
         return stamped
     _insert_rerun(tx, actor, execution_id, str(original[0]), reason.strip(), chosen, stamped, changed, body_hash, key)
     return stamped
+
+
+def rerun_targets(connection, project_id: UUID, execution_id: UUID) -> list[dict[str, object]]:
+    """Expose the stored resource IDs for the rerun form's connection check."""
+    execution = connection.execute(
+        "SELECT purpose FROM executions WHERE project_id = ? AND execution_id = ?",
+        (str(project_id), str(execution_id)),
+    ).fetchone()
+    if execution is None or execution[0] == "trial":
+        return []
+    try:
+        rows = _rerun_choices(Transaction(connection), project_id, execution_id, "all", None)
+    except ExecutionRejected:
+        return []
+    return [
+        {
+            "case_run_id": str(row[0]),
+            "resource_id": _limit_text(row[5], "resource_id"),
+            "failed": row[6] == "FAIL",
+        }
+        for row in rows
+    ]
 
 
 def _rerun_choices(
@@ -499,6 +522,7 @@ def _rerun_blockers(
     content_hash: str,
     environment: str,
     approval: str,
+    resource_id: str,
 ) -> tuple[ExecutionBlocker, ...]:
     found: list[ExecutionBlocker] = []
     if environment == "" or tx.connection.execute(
@@ -508,6 +532,14 @@ def _rerun_blockers(
         found.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "environment is missing"))
     _, approval_blockers = _formal_approval(tx, project_id, case_id, version_id, content_hash, approval or None, approval)
     found.extend(approval_blockers)
+    version = tx.connection.execute(
+        "SELECT settings_json FROM case_versions WHERE project_id = ? AND case_id = ? AND version_id = ?",
+        (str(project_id), str(case_id), str(version_id)),
+    ).fetchone()
+    settings = {} if version is None else json.loads(str(version[0]))
+    readiness = resource_readiness(tx.connection, project_id, resource_id, str(settings.get("target_kind", "")))
+    if not readiness.ready:
+        found.append(ExecutionBlocker(readiness.code, readiness.message))
     return tuple(found)
 
 
@@ -1153,14 +1185,9 @@ def _one_item(
         (str(project_id), str(environment_id)),
     ).fetchone() is None:
         blockers.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "environment is missing"))
-    resource = tx.connection.execute(
-        "SELECT r.target_kind,i.state FROM resource_aliases r LEFT JOIN resource_inventory i ON i.physical_key_id=r.physical_key_id WHERE r.project_id = ? AND r.physical_key_id = ?",
-        (str(project_id), str(resource_id)),
-    ).fetchone()
-    if resource is None or resource[1] != 'ready' or resource[0] != json.loads(str(row[2])).get('target_kind'):
-        blockers.append(ExecutionBlocker("RESOURCE_UNAVAILABLE", "resource is not ready for this target"))
-    if resource is not None and resource[1] == 'busy':
-        blockers.append(ExecutionBlocker("RESOURCE_BUSY", "resource is busy"))
+    readiness = resource_readiness(tx.connection, project_id, str(resource_id), str(json.loads(str(row[2])).get("target_kind", "")))
+    if not readiness.ready:
+        blockers.append(ExecutionBlocker(readiness.code, readiness.message))
     if dataset_id is not None and tx.connection.execute(
         "SELECT 1 FROM dataset_versions WHERE project_id = ? AND version_id = ?",
         (str(project_id), str(dataset_id)),

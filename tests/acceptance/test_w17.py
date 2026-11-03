@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 import json
 import sqlite3
 from pathlib import Path
@@ -233,6 +235,7 @@ def _packages(
             """,
             (project_id, environment_id),
         )
+        seed_presence(connection, project_id, "worker-w1701")
         connection.execute("INSERT INTO resource_inventory(physical_key_id,state,os_build,geometry,permissions,ime,observed_at) VALUES(?,'ready','','','[]','','2026-11-01')",(resource_id,))
         connection.execute(
             """

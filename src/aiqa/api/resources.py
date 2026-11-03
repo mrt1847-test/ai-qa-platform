@@ -49,7 +49,7 @@ from aiqa.contracts.resources import InventoryReport
 from aiqa.store.database import migrate_store
 from aiqa.store.models import JobRef
 from aiqa.web.routes import UiQueryState, render_template
-from aiqa.store.queue import JobConflict
+from aiqa.store.queue import JobConflict, ResourceOffline
 from aiqa.worker.resources import (
     DiagnosticBlocked,
     InventoryDenied,
@@ -160,11 +160,11 @@ async def get_resources(project_id: str, request: Request) -> JSONResponse:
         return _error(404, "not_found", "resource was not found", {})
     with _bound(request):
         try:
-            authorize_browser(request, project, "resources")
+            authorize_page(request, project)
             items = list_resources(project)
         except _ERRORS as exc:
             return _auth_response(exc)
-    return JSONResponse(status_code=200, content={"resources": items})
+    return JSONResponse(status_code=200, content={"resources": items}, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/resources/{resource_id}/preview")
@@ -177,7 +177,7 @@ async def get_preview(resource_id: str, request: Request) -> JSONResponse:
         return project
     with _bound(request):
         try:
-            authorize_browser(request, project, "resource_preview")
+            authorize_page(request, project)
             view = preview_resource(project, parsed)
         except PreviewDenied as exc:
             status = 404 if "not found" in str(exc) else 403
@@ -272,7 +272,7 @@ async def recording_wizard_page(project_id: str, request: Request) -> HTMLRespon
         target = "web"
     step = request.query_params.get("step", "1")
     selected = str(draft.get("resource_id", ""))
-    disconnected = any(item["resource_id"] == selected and item["state"] != "ready" for item in items)
+    disconnected = any(item["resource_id"] == selected and item["connection_state"] != "online" for item in items)
     return render_template(
         request,
         "recording_setup.html",
@@ -417,6 +417,8 @@ async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResp
             )
         except DiagnosticBlocked:
             return _error(422, "validation", "diagnostic was blocked", {})
+        except ResourceOffline as exc:
+            return _error(422, "validation", str(exc), {})
         except PreviewDenied:
             return _error(404, "not_found", "resource was not found", {})
         except JobConflict:

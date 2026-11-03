@@ -1,5 +1,7 @@
 # 기술 조사 — Web·Android AI QA 플랫폼
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 공개 코드 조사일: **2026-10-30**, UI 개정일: **2026-10-31 (Asia/Seoul)**. 문서 v0.6. 실행 정책 개정/일부 고정 소스 재확인: 2026-10-31. 상태: 공개 소스 정적 검토 완료, 실행 검증 전. 중심 설계는 [DESIGN.md](DESIGN.md), 화면 명세는 [UI_SPEC.md](UI_SPEC.md), 후속 작업은 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)를 따른다.
 
 현행 제품 결정은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md)의 **CUAWright Web authoring/승인 code replay + Mobile-Agent Android authoring/플랫폼 action replay**, 선택 verifier·기본OFF bounded healing이다. [v0.5 조사](docs/history/v0.5/RESEARCH.md)의 A안/매 실행 AI 기본은 이전 결정이다. 아래 upstream 사실과 플랫폼 추가 개발을 구분한다.
@@ -211,7 +213,7 @@ FastAPI는 관리 API와 서버 렌더링 진입점으로 선택한다. 긴 실�
 
 2026-10-30 추가 확인한 공식 1차 자료: [Android apkanalyzer](https://developer.android.com/tools/apkanalyzer)는 SDK Command-Line Tools에 포함되며 앱 ID·버전·manifest 최소 SDK·파일 정보를 조회할 수 있다. [Android ADB](https://developer.android.com/tools/adb)는 호스트 client/server와 기기 daemon 구조, USB debugging 승인과 앱 설치 명령을 설명한다. 따라서 브라우저 프런트엔드가 ADB를 직접 실행하는 설계로 연결하지 않는다. 관리 API→인증 worker→지정 기기 제어 경계를 사용한다.
 
-앱 분석 도구/서명 검사 도구의 실제 Windows 경로·버전, QA APK의 minSdk/ABI·설치/업데이트 동작은 실행하지 않아 미확인이다. APK 파일 업로드/검사·설치, SDK 설치·기기 조작·모델 API 호출은 이번 개정에서 수행하지 않았다. 로컬 브라우저·USB 실행에 클라우드 실행 공급자 가입을 필수로 만들지 않으며 모델 API 접근권과 구분한다.
+앱 분석 도구/서명 검사 도구의 실제 Windows 경로·버전, QA APK의 minSdk/ABI·설치/업데이트 동작은 실행하지 않아 미확인이다. APK 파일 업로드/검사·설치, SDK 설치·기기 조작·모델 API 호출은 이번 개정에서 수행하지 않았다. 이 절의 로컬 브라우저·USB 가정은 이전 조사 범위다. 최신 목표는 cloud browser/device farm이며 공급자 자격과 모델 API 접근권은 서비스 측에서 따로 관리한다. 실제 호환성/공급자 능력은 CF-01에서 공식 자료와 고정 source로 다시 확인한다.
 
 ## 9. v0.3 UI·녹화 보관 요구 검토 — 이전 결정 기록
 
@@ -254,7 +256,7 @@ v0.3은 기존 SHA의 source 검토를 재사용하며 새 HEAD/모델 호환성
 |---|---|
 | Mobile-Agent Android 원본은 매 loop capture→모델→action dispatch | 그대로 재실행하면 actor 호출이 반복되므로 recorder로 사용하고 deterministic action runner를 별도 개발 |
 | CUAWright execute.py는 Python skill 직접 실행, route.py는 추천/실패 시 agent 경로 | exact 승인 package를 직접 지정. script 안의 hidden model 호출·fallback을 차단해야 actor0이라고 표시 가능 |
-| CUAWright base.yaml은 local_workspace·shell /bin/bash·browser_mode local | 같은 PC 격리 Linux VM/Chromium을 제안. Windows/VM·driver 수명/cancel·실제 캡처는 미검증 |
+| CUAWright base.yaml은 local_workspace·shell /bin/bash·browser_mode local | 이전 로컬 배치 제안의 근거. 최신 cloud 배치에서는 실제 browser/context hook과 원격 protocol·서비스 측 격리/driver 수명/cancel·캡처를 CF-01에서 다시 대조 |
 | code 생성/skill result shape가 실제 검증 정답을 보장하지 않음 | 코드 실행 완료와 QA PASS 분리·현재 oracle/근거·OFF clean trial·사후 사람 승인 필요 |
 
 이번에 고정 SHA의 관련 코드를 재확인했다. [Mobile-Agent Android loop](https://github.com/X-PLUG/MobileAgent/blob/81fa28b564ef7a695521500bc15a0e1324b2b394/Mobile-Agent-v3.5/mobile_use/run_gui_owl_1_5_for_mobile.py#L169-L213), [CUAWright 직접 실행](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/extensions/skill-factory/src/cuawright/webwright/skill_factory/execute.py), [route/fallback](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/extensions/skill-factory/src/cuawright/webwright/skill_factory/route.py#L137-L160), [base 설정](https://github.com/microsoft/CUAWright/blob/35dbcf389ce2d9a77eb22f539c79a1274ea53559/src/cuawright/webwright/config/base.yaml). HEAD/새 release·실행 성공을 검증한 것은 아니다.

@@ -1,5 +1,7 @@
 # Web·Android AI QA 플랫폼 설계
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 문서 버전: **0.6** · 규범 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 규범, 일부 core 구현**. 실제 진행은 [WORK_PROGRESS](WORK_PROGRESS.md), 2026-11-01 구현 대조·보완은 [수정 결과](docs/validation/reviews/2026-11-01-remediation-result.md)를 따른다. 모든 설계 기능이 구현·실환경 수용됐다는 뜻은 아니다.
 
 읽는 순서: [기술 조사](RESEARCH.md) → 이 문서 → [화면 명세·와이어프레임](UI_SPEC.md) → [데이터·승인·재녹화 상세](DATA_DESIGN.md) → [단계별 구현 계획](IMPLEMENTATION_PLAN.md).
@@ -22,18 +24,18 @@ v0.6은 **AI 녹화 → 저장된 code/action replay → 필요한 검증 AI →
 
 | 구분 | 내용 |
 |---|---|
-| 요청에서 확정 | 실제 웹 관리 UI, 로컬 브라우저와 직접 연결 Android, 자연어 작성, 실행 증거, 사람 검토·승인, 승인 버전 회귀 묶음, 결과 분석, 영구 저장 |
-| 임시 가정 | 개인/소규모 QA 팀, Windows PC 한 대와 USB Android 한 대, 같은 PC의 격리 Linux VM 내 Chromium과 호스트 USB Android, 녹화/선택 검증·치유 외부 모델 API 우선, 단계별 PNG 미리보기 |
+| 요청에서 확정 | 실제 웹 관리 UI, 등록 실행 PC의 테스트 브라우저·Android(후속 cloud adapter 선택), 자연어 작성, 실행 증거, 사람 검토·승인, 승인 버전 회귀 묶음, 결과 분석, 영구 저장 |
+| 임시 가정 | 개인/소규모 QA 팀, 독립 관리 서비스와 초기 현재 PC의 운영 worker, 이후 여러 PC/선택 cloud 자원으로 확장, 녹화/선택 검증·치유 외부 모델 API 우선, 단계별 PNG 미리보기 |
 | 제안하는 제한 | 초기 동시 실행은 Web 1개 또는 Android 1개로 총 1개. 두 플랫폼 모두 제품 기능으로 완성해야 출시 가능 |
 | 모델 임시 선택 | Android는 API로 접근 가능한 GUI-Owl-1.5 Instruct 계열을 우선 검증. Web authoring은 CUAWright 지원 프로토콜, verifier/healer는 별도 binding의 호환성을 시험 후 선택. 구체 제공자/모델은 미확정 |
 | 버전 기준 | MobileAgent `81fa28b564ef7a695521500bc15a0e1324b2b394`·CUAWright `35dbcf389ce2d9a77eb22f539c79a1274ea53559`; 상세는 RESEARCH |
-| 운영 저장 위치 | 코드 문서는 이 저장소. 실행 DB/증거/비밀값은 동기화되지 않는 `%LOCALAPPDATA%/AIQA/` 아래 별도 위치. 현재 OneDrive 저장소에 runtime DB를 만들지 않음 |
+| 운영 저장 위치 | 코드 문서는 이 저장소. 실행 DB/증거/비밀값은 서비스 측에서 영구 관리한다. 운영 backend는 PC-04 후속 카드에서 정한다. 기존 `%LOCALAPPDATA%/AIQA/`는 로컬 개발 profile이며 OneDrive 저장소에 runtime DB를 만들지 않음 |
 
-MVP 포함: 검증 정의/설정/녹화 절차/증거를 단일 케이스로 관리·녹화 동작별 PNG/로그를 먼저 저장하고 완료 후 승인·단독/선택 수행·리포트를 포함하며, 웹 UI에서 프로젝트·환경 관리, 기기 선택·진단, 설치된 앱 선택·선택적 APK 빌드 등록/명시 설치, 테스트 검색·분류·복제·편집·보관, 구조화 계획 수정, 시범 실행·증거 검토·승인/반려, 버전을 고정한 회귀 묶음의 순차 실행·취소·새 재실행, 결과 비교·내보내기, 모델/제한/보관 설정. Web·Android 모두 실제 직접 연결 실행으로 제공한다. 일상 운영에 CLI 입력을 요구하지 않는다.
+MVP 포함: 검증 정의/설정/녹화 절차/증거를 단일 케이스로 관리·녹화 동작별 PNG/로그를 먼저 저장하고 완료 후 승인·단독/선택 수행·리포트를 포함하며, 웹 UI에서 프로젝트·환경 관리, 기기 선택·진단, 설치된 앱 선택·선택적 APK 빌드 등록/명시 설치, 테스트 검색·분류·복제·편집·보관, 구조화 계획 수정, 시범 실행·증거 검토·승인/반려, 버전을 고정한 회귀 묶음의 순차 실행·취소·새 재실행, 결과 비교·내보내기, 모델/제한/보관 설정. Web·Android 모두 등록 실행 PC의 실제 자원으로 제공한다. 접속 PC는 설치 없이 같은 관리 사이트를 사용하며, 실행 PC offline에도 저장본 검토/승인을 유지한다. 일상 운영에 CLI 입력을 요구하지 않는다.
 
 MVP에는 승인 Web code/Android action 재생·선택 검증 AI·bounded healing을 포함한다. 월1회3,000 TC 기준은 비용/지연/저장량 산정 workload이며 입증 처리량/고정 예산이 아니다.
 
-후속: Skill Factory 자동 추천/일반화·범위가 넓은 자가 수정, **테스트 대상 사이트 안의** 고급 파일 업로드/다운로드·여러 탭 테스트, 영상/trace/logcat, API·DB oracle, 중앙 서버/여러 워커·기기, 클라우드 공급자, 여러 브라우저, 예약·CI·알림. 관리 UI의 APK 업로드와 결과 다운로드는 MVP이며 대상 사이트의 file IO와 구분한다. iOS·K8s·대규모 디바이스팜·멀티테넌트 SaaS·과금 시스템·모델 학습은 후속 검토이며 모든 앱의 무인 실행은 보장하지 않는다.
+후속: Skill Factory 자동 추천/일반화·범위가 넓은 자가 수정, **테스트 대상 사이트 안의** 고급 파일 업로드/다운로드·여러 탭 테스트, 영상/trace/logcat, API·DB oracle, 대규모 워커·기기 확장, 추가 브라우저, 예약·CI·알림. 관리 UI의 APK 업로드와 결과 다운로드는 MVP이며 대상 사이트의 file IO와 구분한다. iOS·K8s·대규모 디바이스팜·멀티테넌트 SaaS·과금 시스템·모델 학습은 후속 검토이며 모든 앱의 무인 실행은 보장하지 않는다.
 
 ## 2. 요구사항과 수용 조건
 
@@ -44,8 +46,8 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | R01 | P0 | 자산 관리 | 프로젝트/대상/환경 | URL·package allowlist와 환경 snapshot을 저장·조회 |
 | R02 | P0 | 장치 선택 | 워커·Android/브라우저 상태 | 연결/권한/점유·OS·해상도·앱 버전을 표시하고 부적합 자원 배정 차단 |
 | R03 | P0 | 자연어 작성 | 원문+구조화 계획 | 둘을 보존하고 모호한 기대 결과는 `needs_review`로 차단 |
-| R04 | P0 | Web 실제 실행 | Chromium 단일 탭 | 승인 경로로 입력·버튼·결과 확인, 실패 주입도 판정 |
-| R05 | P0 | Android 실제 실행 | USB 실기기 | 앱 실행·터치·입력·캡처·검증, 연결 해제 시험 포함 |
+| R04 | P0 | Web 실제 실행 | 등록 PC의 테스트 브라우저 단일 탭 | 승인 경로로 입력·버튼·결과 확인, 실패 주입도 판정 |
+| R05 | P0 | Android 실제 실행 | 실행 PC의 Android emulator/연결 기기 | 앱 실행·터치·입력·캡처·검증, 연결 해제 시험 포함 |
 | R06 | P0 | QA 판정 신뢰 | 단계·필수 검증·경로 | 클릭/agent done만으로 PASS 불가, oracle 위반 시 FAIL |
 | R07 | P0 | 검토 가능성 | 화면/행동/검증 타임라인 | 필수 전후 화면과 관찰·판정 근거를 step에 연결 |
 | R08 | P0 | 승인 통제 | 불변 version manifest | hash·승인자·시간·근거를 저장하고 수정 시 새 버전 |
@@ -58,7 +60,7 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | R15 | P0 | 운영 복구 | 보관/정리·비교 | 재연결 후 이벤트 복원, 보관 만료 표기, 정리 실패 기록 |
 | R16 | P0 | 유효한 MVP 검증 | 정상+오류+장애 | Web·Android 모두 §13 gate 충족, 한쪽만으로 완료 불가 |
 | R17 | P0 | 저비용 회귀 | CUAWright Web 코드·Android action 재생 | 일반 actor0회·정확한 package/hash·격리·모델 차단·현재 assertions·필요 verifier만 호출 |
-| R18 | P1 | 여러 PC 실행 | 중앙 API+local workers | outbound 연결·등록 폐기·heartbeat·배정·artifact 업로드 검증 |
+| R18 | P0 | 어느 PC에서든 사용 | 중앙 UI/API+등록 실행 PC worker | 사용자 PC 설치 없이 로그인·자원 선택·실행·증거 조회, 권한 분리·서버 측 수명/업로드 검증 |
 | R19 | P1 | 강한 oracle | 선택 API·DB 검사 | 별도 read 권한/허용 endpoint, UI 경로 대체 금지 |
 | R20 | P1 | 깊은 디버깅 | 영상/trace/logcat | 선택 수집·용량 한도·비밀값 정책 마련 |
 | R21 | P0 | UI로 일상 운영 | 목록/편집/설정/대기열 | 검색·필터·정렬·복제·보관·편집을 실제 API와 연결, 새로고침 복원 |
@@ -66,7 +68,7 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | R23 | P0 | 앱 빌드 관리 | 설치 앱 선택·선택적 APK | 해시/버전/OS/ABI 검증, 명시적 설치만 허용, 매 run 재업로드/재설치 없음 |
 | R24 | P0 | 검토 동선 완성 | 반려·차이·재승인 | 반려 사유/검토자/시간 저장, 새 revision 승인 뒤 묶음 버전 명시 교체 |
 | R25 | P0 | 실행 환경 경계 | 환경 어댑터·세션 | 관리 브라우저와 테스트 context 분리, attempt별 session 확보·정리·quarantine |
-| R26 | P0 | 탭/PC 수명 안내 | 재접속·절전/종료 감지 | 관리 탭 닫아도 실행 유지, PC 중단은 정상 완료 처리하지 않고 복구 안내 |
+| R26 | P0 | 접속/실행 수명 분리 | 재접속·서비스 worker/session 장애 감지 | 사용자 PC 종료에도 서버 작업 유지, 서비스 실행 장애는 lease/증거·정리 상태로 복구 안내 |
 | R27 | P0 | UI 동선 합격 | 기본15화면+선택TC1화면·7와이어프레임/추적 | UI에서 디바이스→정보/검증입력→녹화저장→완료후검토/승인→수행/분석, API/CLI만으로 합격 불가 |
 | R28 | P0 | 단일 케이스 관리 | 검증 정의+설정+녹화 절차+증거 | TC 0개/null 참조에서도 녹화·저장·trial·승인·정식 수행. TC 변경/보관은 케이스 차단 사유 아님 |
 | R29 | P0 | 동작별 녹화 증거 | 각 탭/swipe/입력/back 전후 PNG·로그 | action ID와 전후 캡처·실제 명령·오류/검증을 조회, 대표 화면 하나로 대체 불가 |
@@ -84,71 +86,38 @@ P0는 MVP 출시 필수, P1은 후속이다. 자세한 시험 표본과 제안 �
 | D01 | CUAWright Web authoring/replay + Mobile-Agent Android authoring/플랫폼 replay | 반복 동작 actor0, 명시 verifier·bounded healer. upstream만으로 완성되지 않으며 W01–03/W29–32 실제 gate 필요 |
 | D02 | FastAPI + Jinja2 + HTMX + 소량 JS/CSS | Python 숙련도 활용. 작성/검토/타임라인은 HTML 부분 갱신으로 충분. React/TS는 복잡한 동시 편집·클라이언트 상태가 실제 필요해질 때 검토 |
 | D03 | 별도 Python worker + 실행별 runner subprocess | 웹 요청 수명과 실행 분리, 취소·충돌 범위 제한. FastAPI BackgroundTasks를 장기 실행 큐로 쓰지 않음 |
-| D04 | SQLite + SQLAlchemy/Alembic, API만 DB 접근 | 로컬 1 API 프로세스·1 worker에서 추가 broker 최소화. 큐도 transaction으로 저장. 원격 worker는 DB 파일 공유 안 함 |
-| D05 | 로컬 파일 artifact + DB metadata/hash | PNG·로그를 DB BLOB로 크게 만들지 않음. 중앙형은 object store로 이전하되 artifact API 계약 유지 |
+| D04 | API 소유 중앙 DB + 영구 queue | 기존 SQLite/SQLAlchemy/Alembic은 개발 baseline. 운영 DB/backend·migration은 PC-04에서 확정하고 worker는 인증 API만 사용 |
+| D05 | 서비스 소유 영구 artifact + DB metadata/hash | provider 임시 URL에만 의존하지 않음. 운영 저장 backend는 미정, 기존 local 파일 adapter는 개발용으로 유지 |
 | D06 | UI 2초 HTTP polling, event cursor 조회 | 영상 요구가 없으므로 SSE/WebSocket 없이 시작. 이벤트는 먼저 DB commit. UI 연결과 실행 수명 독립 |
 | D07 | worker는 outbound 2초 polling·10초 heartbeat | 로컬/중앙 동일 프로토콜. Redis/Celery는 도입하지 않음. DB queue 처리량/lock 경합이 문제가 될 때 검토 |
-| D08 | authoring/replay/verifier/healer·환경 adapter 분리 | 환경은 같은 PC의 VM Chromium·호스트 USB/session을 관리. 생성 code 격리와 broker/계측은 MVP이며 cloud/일반 추천은 후속 |
+| D08 | authoring/replay/verifier/healer·환경 adapter 분리 | 등록 실행 PC worker가 browser/Android session을 관리. 생성 code의 서비스 측 격리와 broker/계측은 MVP, 일반 추천은 후속 |
 
-중앙형 전환 조건은 여러 PC 또는 공유 팀 운영이다. 이때 관리 DB는 PostgreSQL, TLS·팀 계정·artifact object storage를 도입한다. worker는 동일 claim/lease 프로토콜을 사용한다. SQLite는 로컬 단일 API writer에 한정하며 NAS/OneDrive/원격 파일 공유를 지원하지 않는다. 지속적 DB lock 대기 p95가 100ms를 넘거나 작업/이벤트 적체가 발생하면 먼저 batch/인덱스를 확인하고 PostgreSQL 전환을 검토한다. 이는 제안 운영 기준이며 측정값이 아니다.
+중앙 관리/저장과 등록 PC 실행의 분리는 현재 서비스 목표다. 상용 cloud provider는 후속 선택이다. 운영 DB(예: PostgreSQL)·artifact backend·secret store·인증/TLS 구성은 PC-04에서 근거를 확인해 선정하며 현재 구현됐다고 보지 않는다. worker는 동일 claim/lease 프로토콜을 사용한다. SQLite는 로컬 단일 API writer에 한정하며 NAS/OneDrive/원격 파일 공유를 지원하지 않는다. 지속적 DB lock 대기 p95가 100ms를 넘거나 작업/이벤트 적체가 발생하면 먼저 batch/인덱스를 확인하고 PostgreSQL 전환을 검토한다. 이는 제안 운영 기준이며 측정값이 아니다.
 
 기술 선택의 공식 근거: [FastAPI의 장기 작업 고려사항](https://fastapi.tiangolo.com/tutorial/background-tasks/), [HTMX](https://htmx.org/docs/), [SQLite WAL의 같은 호스트 조건](https://www.sqlite.org/wal.html), [Playwright context 격리](https://playwright.dev/python/docs/browser-contexts). 라이브러리 설치 버전은 P0 lock 단계에서 확정하며 이 문서는 설치를 수행하지 않는다.
 
-### 로컬 배치도 — MVP
+### 기본 배치 — 중앙 관리/저장과 등록 실행 PC
 
 ```mermaid
 flowchart LR
-  subgraph PC[로컬 Windows QA PC]
-    UI[관리 브라우저] --> API[FastAPI 관리 API]
-    API --> DB[(SQLite + 영구 queue)]
-    API --> FS[(정제 artifact)]
-    W[호스트 worker] -->|claim·heartbeat·event HTTP| API
-    W --> AND[신뢰 Android action runner]
-    AND --> ADB[허용 ADB 명령]
-    W --> VM[격리 로컬 Linux VM]
-    VM --> WEB[CUAWright authoring·승인 code replay·Chromium]
-    G[모델 broker·역할/한도 통제] --> MODEL[모델 API]
-    AND -->|녹화 또는 허용 검증/치유만| G
-    WEB -->|녹화 또는 허용 검증/치유만| G
-  end
-  ADB --> PHONE[USB Android]
-  WEB --> TARGET[테스트 Web]
+  U[어느 PC의 관리 브라우저] -->|HTTPS·인증| API[중앙 관리 UI·API]
+  API --> DB[(서비스 DB·영구 queue)]
+  API --> FS[(서비스 소유 정제 artifact)]
+  W[등록 실행 PC worker] -->|claim·heartbeat·event| API
+  W --> D[신뢰 driver·계측·모델 broker]
+  D --> WEB[실행 PC의 테스트 브라우저]
+  D --> AND[실행 PC의 Android 환경]
+  D --> MODEL[허용된 모델 API]
+  S[서비스 측 격리된 생성 code] -->|제한된 action IPC| D
 ```
 
-DB/파일은 API가 관리하고 worker/VM은 정제 spool→HTTP/ACK를 사용한다. 생성 script에는 모델 key/host credential·raw DB 경로를 주지 않는다. 재생 script의 LLM endpoint는 차단하고 verifier/healer는 신뢰 broker만 호출한다. 관리 UI·테스트 browser·VM/session은 별도 수명이며 합계slot1이다. VM/가상화 미확보 시 Web gate 실패로 기록하며 격리 없는 실행으로 대체하지 않는다.
+worker/provider adapter가 세션 확보·권한·제어·캡처·종료를 담당한다. 접속하는 PC의 개인 브라우저/USB/ADB는 요구하지 않는다. 등록한 실행 PC에는 worker/driver/Android 환경을 준비한다. 현재 PC에서 두 엔진의 실제 driver hook·격리·증거/업로드 연결은 미완료이며 PC-04가 작은 후속 카드로 확정한다. remote browser 접속만으로 생성 Python/bash 격리가 확보되지는 않는다.
 
-### 중앙 관리 배치도 — 후속
+### 접속과 실행 수명
 
-```mermaid
-flowchart LR
-  U[사용자 브라우저] -->|HTTPS| S[중앙 관리 API·UI]
-  S --> D[(PostgreSQL)]
-  S --> O[(Artifact object store)]
-  subgraph L1[로컬 Windows PC 1]
-    W1[인증된 worker]
-    R1[runner·Chromium·ADB]
-    W1 --> R1
-    R1 --> P1[USB Android]
-  end
-  subgraph L2[다른 QA PC]
-    W2[인증된 worker]
-    R2[runner·브라우저 또는 기기]
-    W2 --> R2
-  end
-  W1 -->|밖으로 polling·heartbeat·업로드| S
-  W2 -->|밖으로 polling·heartbeat·업로드| S
-  CW[후속 클라우드 worker·원격 환경 adapter] -.->|같은 job·event·artifact 계약| S
-```
+관리 탭·접속 전용 PC를 닫아도 서버 작업은 유지하고 다른 PC에서 같은 권한으로 조회한다. 등록 실행 PC까지 꺼지면 live 실행은 중단/불명 결과·lease 정리로 처리하되 서버 저장본 검토/승인은 유지한다. 서비스 worker/provider 장애는 lease와 불명 dispatch·cleanup/TTL로 처리하며, 처리됐을 수 있는 행동을 자동 반복하지 않는다. UI의 취소 접수와 공급자의 자원 해제 완료를 구분한다.
 
-서버가 USB 기기를 직접 제어하지 않는다. 일반 웹 호스팅은 이 UI/API를 제공할 수 있을 뿐, 로컬 장치·지속 워커·GUI 세션이 자동으로 생기지 않는다. PyAutoGUI desktop 경로는 MVP에서 쓰지 않는다. Web headless와 ADB 실기기는 Windows 화면을 마우스로 조작하지 않지만, Android는 잠금 해제·앱 화면 상태가 필요하다. headed browser는 로그인된 사용자 desktop session이 필요하며 서비스 session에서 동작한다고 가정하지 않는다.
-
-### 프로그램 시작·일상 운영·PC 수명
-
-최초 한 번의 설치·SDK/모델 키 설정·USB 권한 승인과, 프로그램 시작 절차를 일상 테스트 동작과 구분한다. MVP는 향후 제공할 로컬 시작 도구가 API와 worker를 **브라우저 탭의 자식이 아닌 지속 프로세스**로 시작하고 localhost URL·상태를 안내하는 방식으로 제안한다. 초기 준비는 기술 작업이지만 테스트 작성/편집/실행/설치 요청/검토/회귀/분석은 웹에서 처리한다. 자동 시작 Windows 서비스화는 필수가 아니며 headed session 조건도 따로 검증한다. 이번에는 시작 도구를 구현/실행하지 않는다.
-
-관리 탭을 닫아도 PC·API·worker가 실행 중이면 작업은 계속된다. 재접속 시 REC/RUN ID로 DB 기록을 복원한다. 프로그램 종료는 진행 작업과 중단 영향을 표시하고 실행 중이면 취소·정리를 먼저 요청한다. 강제 종료·PC 종료·절전에서는 실행 지속을 보장하지 않는다. 전원 이벤트와 monotonic/UTC 경과 차이를 감지하면 새 행동을 차단하고 lease/session을 재검증한다. 절전/재부팅 뒤 멈췄던 runner를 그대로 재개하지 않으며, 이전 side effect 확인·정리/quarantine·새 실행 경로를 안내한다. PC가 꺼진 동안 로컬 서버가 즉시 감지할 수 있다는 가정도 하지 않는다. 복귀한 API/worker가 journal과 만료 lease를 조정하며 job은 lost로 기록하며, 유효 violation이 없는 ITEM은 INCONCLUSIVE·REC/관리 job은 verdict=null이다.
-
-API/호스트 worker/USB ADB는 Windows native, Web 생성/재생 code와 Chromium은 같은 PC의 격리 Linux VM을 기본으로 한다. VM 제어·파일/이벤트 전달·lease/cancel·egress·자원 정리는 P0 gate로 검증한다. Windows 호스트에서 ADB가 된다는 사실만으로 WSL/컨테이너에서도 된다고 단정하지 않는다. 로컬 기기 실행과 외부 모델 추론은 서로 다른 배치 선택이다.
+DB/artifact/키는 서비스 측에 두고 worker는 인증 API·정제 spool/ACK를 사용한다. provider 제어 endpoint/token과 모델 키를 브라우저/생성 code에 전달하지 않는다. 기존 localhost launcher·SQLite·OS secret store·전용 emulator는 개발 baseline이며 중앙 운영 인증·저장·배포 완료를 뜻하지 않는다. 양 플랫폼 초기 동시 slot1 가정은 유지하되 실제 공급자 제약은 조사한다.
 
 ## 4. 컴포넌트와 데이터 흐름
 
@@ -296,13 +265,13 @@ RUN(execution)은 단일/선택/묶음 공통 부모이며 ITEM(case_run)이 개
 - worker는 받은 job/attempt/lease generation을 local journal에 먼저 기록한다. 중복 claim 응답·전달은 이미 시작한 attempt를 반환하며 runner를 추가 생성하지 않는다. runner도 attempt workspace singleton lock을 확인한다.
 - heartbeat 10초, server lease TTL 45초, worker는 마지막 갱신 응답 후 30초 이내 갱신 못 하면 새 행동 차단·runner 종료. 각 행동 전 lease가 10초 이상 남았는지 확인한다. 시간은 서버 만료값과 worker monotonic elapsed로 처리한다. 모델 응답이 늦게 도착해도 generation/취소/lease를 다시 검사한다.
 - lease 만료는 물리 작업 종료 증명이 아니다. 서버는 job을 lost로 확정하고 자원을 **quarantined**로 둔다. 새 worker가 바로 가져가지 못한다. 원 worker 또는 수동 복구가 이전 process tree 종료·기기 상태·IME·임시 파일을 확인해야 generation을 올려 해제한다. 서버 generation은 API fencing이며 외부 클릭을 되돌리지 못한다.
-- worker 단절/폐기 시 token revoke, 새 claim 차단, 로컬 watchdog 정지. 여러 worker가 같은 USB serial을 등록하면 관리자가 소유 PC를 확인하기 전 배정 금지.
+- worker 단절/폐기 시 token revoke, 새 claim 차단, 로컬 watchdog 정지. 여러 worker가 같은 provider/account/resource를 등록하면 소유·lease를 확인하기 전 배정 금지다. USB serial 규칙은 로컬 개발 adapter에만 적용한다.
 
 ### 6.3 취소·재시작·부분 실행
 
 취소 API는 queued를 즉시 cancelled로, preparing/running을 cancel_requested로 원자 변경한다. finalizing/terminal은 409와 현재 상태를 반환한다. 완료와 취소의 race는 DB 전이 transaction의 승자로 결정한다. cancel_requested 이후 모델 응답/새 행동은 폐기한다.
 
-worker는 협력 취소 신호를 보내고 5초 후에도 살아 있으면 runner와 자식 브라우저를 Windows Job Object로 종료한다. 최종 정리는 worker의 신뢰 코드가 수행한다. 취소 요청부터 새 행동 차단 목표 2초, process 종료 목표 10초, 정리 확인 목표 30초를 제안한다. 이미 전달한 ADB 명령·서버 거래는 취소로 되돌릴 수 없다. 그 경우 outcome_unknown을 기록하고 수동 검토한다.
+worker는 협력 취소 신호를 보내고 5초 후에도 살아 있으면 서비스 OS의 process 격리 수단으로 runner를 종료하고 provider release를 별도로 요청한다. Windows Job Object는 기존 개발 구현이다. 최종 정리는 worker의 신뢰 코드가 수행한다. 취소 요청부터 새 행동 차단 목표 2초, process 종료 목표 10초, 정리 확인 목표 30초를 제안한다. 이미 전달한 ADB 명령·서버 거래는 취소로 되돌릴 수 없다. 그 경우 outcome_unknown을 기록하고 수동 검토한다.
 
 API 재시작은 DB의 queued를 유지하고 active lease를 재조정한다. UI 연결은 무관하다. worker가 살아 있고 같은 generation으로 lease를 갱신하면 계속할 수 있지만 30초 watchdog이 지난 실행은 재개하지 않는다. 서버가 terminal로 만든 뒤 늦은 이벤트/결과가 오면 stale inbox에 감사용 보관하고 확정 결과에는 반영하지 않는다.
 
@@ -376,7 +345,7 @@ upstream의 직접 PNG/messages 파일 쓰기는 그대로 두지 않는다. 캡
 | 검증 | 결정적 oracle 우선·명시 AI verifier | 관찰 가능한 결정적 oracle·명시 AI verifier |
 | self_healing | 기본 OFF·typed target override·한도/정책 강제 | 기본 OFF·미dispatch 대상 재탐색만 허용 |
 | action evidence | 매 실제 하위 행동의 전후PNG/로그·mapping | 매 tap/type/swipe/back 전후PNG/로그 |
-| 실행 환경 | 격리 로컬 Linux VM+새 Chromium context | Windows 호스트+USB ADB |
+| 실행 환경 | 실행 PC code 격리+browser session | 실행 PC Android adapter/session |
 | multi_tab/file_io/rotation | MVP 미지원·필요 시 gate | MVP 회전 고정·불일치 차단 |
 
 인터페이스는 기존 EngineAdapter의 authoring 용도 외 `ReplayRunner.run`, `ReplayActionExecutor.execute`, `HealingService.propose`로 분리한다. package 생성/검사·healing structured proposal·broker 계약은 [실행 상세](docs/superpowers/specs/2026-10-31-replay-and-self-healing-design.md) §7을 따른다.
@@ -391,9 +360,9 @@ EnvironmentAdapter.prepare(session: SessionHandle, setup: SetupPolicy) -> Prepar
 EnvironmentAdapter.release(session: SessionHandle, cleanup: CleanupPolicy) -> CleanupReport
 ```
 
-모두 제안 플랫폼 계약이다. 초기 구현은 IsolatedLocalChromiumEnvironment(같은 PC VM 내 Chromium)와 UsbAndroidEnvironment다. worker가 lease를 확보한 뒤 환경을 준비하고, 신뢰 driver에만 browser/ADB 제어 handle을 전달하고 생성 script는 제한 IPC/관찰만 사용한다. 에이전트는 직접 기기를 재배정하거나 context lifetime을 우회하지 않는다. 기존 CUAWright의 local_launch/context 생성·종료는 이 경계 아래에서 연결하고 중복 browser 생성을 방지한다. USB 환경은 연결·잠금·package·IME·앱 설치 정책을 준비하며, 녹화의 행동 제안은 authoring adapter, 재생 행동은 recorded plan, 예외 target 후보는 bounded healer가 담당하며 실제 dispatch는 신뢰 executor가 통제한다.
+모두 제안 플랫폼 계약이다. 목표 구현은 등록 PC browser/Android adapter이며 상용 cloud adapter는 선택 후속이다. IsolatedLocalChromiumEnvironment·UsbAndroidEnvironment는 기존 local 설계/개발 자산이다. worker가 lease를 확보한 뒤 환경을 준비하고, 신뢰 driver에만 browser/ADB 제어 handle을 전달하고 생성 script는 제한 IPC/관찰만 사용한다. 에이전트는 직접 기기를 재배정하거나 context lifetime을 우회하지 않는다. CUAWright의 browser/context 생성·종료 hook을 이 경계 아래 공급자 session으로 연결 가능한지 PC-04에서 대조하고 중복 생성을 방지한다. 실행 PC의 Android 환경은 연결·잠금·package·IME·앱 설치 정책을 준비하며, 녹화의 행동 제안은 authoring adapter, 재생 행동은 recorded plan, 예외 target 후보는 bounded healer가 담당하며 실제 dispatch는 신뢰 executor가 통제한다.
 
-session ID는 attempt별로 발급하고 `allocated/prepared/releasing/released/quarantined` 상태·시각·해제 결과를 attempt의 session snapshot에 저장한다. 로컬 물리 기기는 지속 존재하지만 독점 제어 session은 attempt 수명과 같다. 새 Web context는 매 attempt 생성·종료한다. 모델 호출만 하는 structure/model_check와 저장 APK metadata 검사 app_inspect 작업은 physical session이 없다. live USB/화면 관찰은 읽기 전용 resource_probe session을 확보한다. `release`는 중복 호출에 안전하고 증명 못 한 자원은 quarantine한다. UI는 세션 정보를 조회할 뿐 직접 제어 handle을 받지 않는다.
+session ID는 attempt별로 발급하고 `allocated/prepared/releasing/released/quarantined` 상태·시각·해제 결과를 attempt의 session snapshot에 저장한다. 공급자 자원과 독점 제어 session을 구분하고 attempt에 session을 귀속한다. 자원·context 확보/해제는 실제 공급자 프로토콜로 확인한다. 모델 호출만 하는 structure/model_check와 저장 APK metadata 검사 app_inspect 작업은 physical session이 없다. 실제 자원/화면 관찰은 읽기 전용 resource_probe session을 확보한다. `release`는 중복 호출에 안전하고 증명 못 한 자원은 quarantine한다. UI는 세션 정보를 조회할 뿐 직접 제어 handle을 받지 않는다.
 
 공통화 범위는 worker/resource/environment/session ID, capability 이름, lease generation, 작업·event·artifact contract와 lifecycle이다. 좌표/recorded locator·ADB serial·remote CDP·공급자 session token은 구별한다. screenshot 미리보기는 권한 확인된 artifact 조회 채널이고 실제 제어는 worker↔환경 채널이다. 화면을 보인다고 직접 원격 조작을 제공하는 것은 아니다.
 
@@ -475,7 +444,7 @@ event ingest transaction이 commit된 뒤 UI가 조회한다. screenshot은 cont
 
 모델 API 비용, 브라우저/기기 점유 시간, artifact bytes·보관 비용은 따로 집계한다. 로컬 점유 시간을 근거 없이 달러로 환산하지 않는다. 외부 호스팅 API는 provider 정책·과금·rate limit에 의존한다. 자체 모델 서버는 GPU·운영·모델 라이선스·배포 비용을 별도 검토해야 하며 필요한 GPU 사양이나 성공률은 모델/입력/동시성 측정 전 확정하지 않는다.
 
-후속 remote session에는 provider/price revision·준비/실행/유휴/해제요청/실제해제 시각·청구단위·해제 지연 비용을 별도로 기록할 수 있게 session snapshot 경계를 둔다. 초기 로컬 session의 공급자 과금액은 null/해당 없음이며 0원 공급자 청구서를 만들어 표시하지 않는다. 클라우드 가입 없이 로컬 Web·USB MVP를 사용할 수 있어야 한다. 외부 모델 API 이용 조건은 별개다.
+Cloud session에는 provider/price revision·준비/실행/유휴/해제요청/실제해제 시각·청구단위·해제 지연 비용을 별도로 기록할 수 있게 session snapshot 경계를 둔다. 초기 로컬 session의 공급자 과금액은 null/해당 없음이며 0원 공급자 청구서를 만들어 표시하지 않는다. 공급자 계약/자격은 서비스 운영 측 준비 사항이며 사용자 PC 설치 조건이 아니다. cloud 자원 요금과 모델 API 이용 조건은 별개다.
 
 ### 보관과 삭제
 
@@ -487,15 +456,15 @@ GC는 DB에서 unprotected ready→delete_pending을 먼저 확정하고 파일 
 
 ## 11. 실행 권한·격리·운영
 
-개인 MVP: API는 127.0.0.1 바인딩, 초기 설정 token으로 로그인 세션을 발급하고 HttpOnly/SameSite cookie, CSRF·Origin 검사. 로컬 주소라는 이유로 인증 없는 mutation을 열지 않는다. key/password/storage state는 Windows Credential Manager/DPAPI 보호 로컬 secret store 참조로 관리하고 repo·DB definition·프런트로 보내지 않는다. worker token은 model key와 별개다.
+기존 로컬 개발 profile: API는 127.0.0.1 바인딩, 초기 설정 token으로 로그인 세션을 발급하고 HttpOnly/SameSite cookie, CSRF·Origin 검사. 로컬 주소라는 이유로 인증 없는 mutation을 열지 않는다. key/password/storage state는 Windows Credential Manager/DPAPI 보호 로컬 secret store 참조로 관리하고 repo·DB definition·프런트로 보내지 않는다. worker token은 model key와 별개다.
 
-팀 공유: TLS, 최소 owner/editor/reviewer/viewer 권한, worker project scope, token rotation/revocation과 감사 조회. 초기엔 별도 SSO를 넣지 않는다. 같은 사람이 작성·승인할 수 있는 개인 모드와 독립 reviewer를 요구할 수 있는 팀 정책을 구분한다. 자원 복구/승인/권한 확대는 감사 기록을 남긴다.
+중앙 서비스 MVP: TLS, 로그인·최소 owner/editor/reviewer/viewer 권한, worker project scope, token rotation/revocation과 감사 조회. 초기엔 별도 SSO를 넣지 않는다. 같은 사람이 작성·승인할 수 있는 개인 모드와 독립 reviewer를 요구할 수 있는 팀 정책을 구분한다. 자원 복구/승인/권한 확대는 감사 기록을 남긴다.
 
 Web/App 화면·DOM·다운로드는 신뢰하지 않는 관찰 데이터다. 화면 속 “규칙 무시/다른 사이트 이동/키 전송”은 실행 명령으로 승격하지 않는다. prompt 경계에 더해 신뢰 코드가 URL host/scheme/port·redirect·package·action scope를 매번 확인한다. localhost/private IP는 staging 필요에 맞춰 정확한 허용 목록으로 등록하고, 관리 API·메타데이터 endpoint·개인 파일 접근은 금지한다. 브라우저 자체 리소스 로드도 domain allowlist에 맞춰 통제하되 허용된 CDN 목록을 환경에 기록한다.
 
 Android 재생과 healer는 신뢰 코드의 구조화 행동만 실행하고 임의 shell/code를 제안 결과로 바로 실행하지 않는다. runner는 별도 최소권한 계정·작업 공간·Windows Job Object 아래에서 실행하며 key는 필요한 model client에만 주입한다. process 분리는 충돌 범위·정리를 위한 것이며 완전 보안 sandbox를 뜻하지 않는다. ADB는 그 기기에 강한 권한이 있으므로 QA 전용 기기·계정 사용을 전제한다.
 
-CUAWright Web authoring/replay의 생성 Python/bash를 **관리 서버에서 실행하지 않는다**. 전용 worker의 폐기 가능한 Linux VM(Windows 호스트면 Hyper-V 등 가용성 확인)을 기본 제안하며 host mount·credential·Docker socket 없이 제한 사용자·CPU/RAM/시간 quota·egress proxy allowlist·run별 디스크로 격리한다. 모델 API 호출은 host의 제한 gateway를 거치고 script에는 key를 주지 않는다. 임시 폴더나 `exec`의 globals 제한만으로 격리했다고 표현하지 않는다. native live 경로도 임의 Python이므로 같은 격리 요구를 갖는다. 격리·direct replay·계측은 v0.6 MVP 필수이며 미확보 시 Web 구현 가능 gate를 통과시키지 않는다.
+CUAWright Web authoring/replay의 생성 Python/bash를 **관리 서버에서 실행하지 않는다**. 서비스 전용 worker의 격리 환경을 사용하며(구체 backend는 PC-04 후속 카드에서 결정), host mount·credential·Docker socket 없이 제한 사용자·CPU/RAM/시간 quota·egress proxy allowlist·run별 디스크로 격리한다. 모델 API 호출은 host의 제한 gateway를 거치고 script에는 key를 주지 않는다. 임시 폴더나 `exec`의 globals 제한만으로 격리했다고 표현하지 않는다. native live 경로도 임의 Python이므로 같은 격리 요구를 갖는다. 격리·direct replay·계측은 v0.6 MVP 필수이며 미확보 시 Web 구현 가능 gate를 통과시키지 않는다.
 
 주문·송금·삭제는 승인된 테스트 환경/계정/금액·행동 범위에서만 가능하다. 원문 자연어만으로 권한을 확대하지 않는다. 위험 동작 전에 manifest의 사전 승인 범위를 확인하고 범위 밖이면 BLOCKED다. 회사 화면을 외부 API로 보낼 권한이 확인되지 않았으므로 운영 데이터 전송은 막고 합성 데이터 환경으로 기술 검증한다. 이 선택은 §14의 사용자 결정에 따라 변경될 수 있다.
 
@@ -516,13 +485,13 @@ CUAWright Web authoring/replay의 생성 Python/bash를 **관리 서버에서 �
 1. **웹 관리 UI를 통해** Web staging 상품 검색→지정 장바구니 버튼→상품 코드·수량 검증과 Android QA 메모 앱 입력→지정 저장 버튼→목록/상세 값 검증을 각각 디바이스/브라우저 선택→케이스 검증 정의 입력→AI 녹화/동작별 저장→완료/저장본 조회→시범·사후 검토/승인→회귀 묶음 실행으로 연결한다. 실제 앱/package는 P0 전에 선정하고 UI/데이터 정책을 승인한다. API/CLI 시험은 보조이며 UI 합격을 대체하지 않는다.
 2. 정상 흐름은 플랫폼별 20회 독립 reset 실행. 첫 attempt PASS ≥18/20, 허용 retry 포함 PASS ≥19/20을 초기 운영 gate로 제안한다. 전체 run/unknown/blocked도 보고하며 이 표본을 일반 성공률로 광고하지 않는다. 20회는 수동 검토 가능한 초기 smoke 규모이지 통계적 보증이 아니다.
 3. 플랫폼별 예상값 불일치·필수 요소 부재·timeout을 각 5회, 총 15회 주입. 실제 제품 조건 위반은 모두 FAIL, 거짓 PASS=0. 정상·오류 전부 사람 oracle과 대조해 false pass/false fail/unknown/blocked를 기록한다. oracle 근거가 불충분하면 출시 gate 미충족이다.
-4. 취소(행동 전/모델 대기/행동 후), USB 해제, browser/worker 강제 종료, API 재시작, 업로드 재연결, 중복 요청·event, 늦은 finish를 각각 해당 플랫폼에서 최소 3회. 두 개의 동시 기기 소유·중복 외부 행동·확정 결과 덮어쓰기·secret 유출은 0건이어야 한다. 자원은 30초 내 ready 또는 명시 quarantine이어야 하며 자동 ready만을 합격으로 보지 않는다.
+4. 취소(행동 전/모델 대기/행동 후), provider 연결 단절/session 만료·종료 실패, browser/worker 강제 종료, API 재시작, 업로드 재연결, 중복 요청·event, 늦은 finish를 각각 해당 플랫폼에서 최소 3회. 두 개의 동시 기기 소유·중복 외부 행동·확정 결과 덮어쓰기·secret 유출은 0건이어야 한다. 자원은 30초 내 ready 또는 명시 quarantine이어야 하며 자동 ready만을 합격으로 보지 않는다.
 5. UI 위치·문구 일부 변경 각 5회. 허용 재탐색은 원래 버튼 의미/검증 목적을 유지해야 한다. 지정 버튼을 제거했을 때 다른 경로로 성공 처리하는 경우는 0건이어야 한다.
 6. 매 run에 정의/engine/patch/model/prompt/lock/device/app 버전, 필수 PNG/check 근거, 모든 호출 건수·계측 누락 상태를 확인한다. 승인 revision 변경은 거부되고 UI refresh·재로그인 후 복원되어야 한다.
 7. run 시간 p50/p95·token/추정 비용·점유 시간·artifact 크기를 기록한다. 첫 통합 결과로 예산·timeout 기본값을 조정하되 성공률 수치를 유리하게 만들기 위해 assertion을 완화하지 않는다. 비용 상한 정책을 실제 provider usage와 대조하고 누락 시 null을 검증한다.
 8. UI_SPEC의 핵심 동선과 기본15개 화면(선택 TC1개는 별도)에서 검색/필터/정렬/페이지, 편집·단계 순서·복제·보관, 미저장/409, 반려→새 revision→trial→재승인→묶음 version 교체, 결과 비교·export를 실제 API와 연결해 관찰한다. 설치 앱 선택과 APK 등록/해시·ABI 불일치 차단/명시 설치를 시험하고, 기존 앱 사용 시 재업로드·재설치가 없는지 확인한다.
 9. Web/Android 혼합 2개 이상 묶음을 각 실패 정책으로 실행해 순차·고정 버전·child 상세·전체 집계를 검증한다. 첫 child 실패/차단/취소·미실행·기기 quarantine, 중복 시작/서버 재시작/실패 항목 새 실행이 과거 parent 결과를 덮지 않아야 한다. 각 조합 최소 3회를 제안한다.
-10. 관리 탭을 닫았다 다시 열어도 PC의 API/worker가 실행 중이면 동일 run이 진행/복원되는지 양 플랫폼 각 3회 확인한다. PC 절전/강제 종료 복귀는 중단·lost/정리/quarantine으로 안내하고 PASS/자동 중간 재개로 바꾸지 않아야 한다. 실제 전원 시험은 안전한 합성 대상에서 수행하며 PC가 꺼진 동안 로컬 즉시 감지를 요구하지 않는다. 클라우드 실측은 후속 연동 gate이며 MVP 시험이 아니다.
+10. 사용자 탭/PC를 닫은 뒤 다른 PC에서 동일 권한으로 접속해 같은 server job·저장 증거가 진행/복원되는지 양 플랫폼 각3회 확인한다. 서비스 worker 강제 종료/provider session 만료·release 응답 유실은 lost/정리대기/quarantine과 비용 상태로 안내하고 PASS/자동 동작 반복으로 바꾸지 않는다. 실행 PC 전원을 끈 동안 다른 PC의 서버 저장본 조회/승인과 새 live 작업 거부, 중앙 인증/권한은 MVP gate다.
 
 11. REC의 tap/swipe/type/back 각각 전후 PNG/로그를 승인 없이 저장하고 녹화 완료/중단 뒤 저장본을 조회·검토한다. 녹화 중 승인0·미승인 저장 성공·필수 evidence/action review 누락 승인0을 확인한다. 통합 케이스·TC 없음/null 참조·단독/선택 수행·7결과/진행 분모·CSV/HTML·분석/재실행 원본 보호도 UI_SPEC §9로 검증한다.
 
@@ -580,11 +549,11 @@ v0.6은 replay/선택 AI 검증/bounded healing과 DB/수명 상세 규범을 �
 
 UI94개 조작은 [UI 추적](docs/execution/UI_COVERAGE.md), P0 32개/P1 3개·UI21/DATA22/실행10 검증은 [요구 추적](docs/execution/COVERAGE.md)에 담당을 연결했다. 담당 배정은 실제 검증 통과를 뜻하지 않는다.
 
-백업은 local_owner 전용 **이 PC 전체 저장소** 대상이며 project URL은 요청 이력 namespace다. API 저장 계층이 DB snapshot/project별 commit cursor map을 만들고 worker는 범위가 고정된 HTTP bytes만 복사한다. 일반 project 권한/일반 artifact 조회로 전체 DB를 노출하지 않는다. 복원도 모든 project의 진행 작업을 정리한 뒤 API 유지보수 모드에서 명시 활성화한다. CONTRACTS C10–C12/W26-04·05를 따른다.
+기존 개발 백업은 local_owner 전용 **이 PC 전체 저장소** 대상이며 project URL은 요청 이력 namespace다. API 저장 계층이 DB snapshot/project별 commit cursor map을 만들고 worker는 범위가 고정된 HTTP bytes만 복사한다. 일반 project 권한/일반 artifact 조회로 전체 DB를 노출하지 않는다. 복원도 모든 project의 진행 작업을 정리한 뒤 API 유지보수 모드에서 명시 활성화한다. CONTRACTS C10–C12/W26-04·05를 따른다.
 
 ## 17. v0.8 최소 실행 기반·독립 구현과 실제 수용
 
-먼저 [W00-01–04](docs/execution/00-bootstrap.md)로 Python package/최소 lock/시험·단일 FastAPI factory·비밀 없는 GET liveness·Jinja2 기본 페이지/static·실제 HTTP 시작/종료 기반을 만든다. 현재 probe/src/tests가 있으므로 재사용하고 기존 W01-01 완료/W01-02 VM 차단을 보존한다.
+기존 로컬 기반의 시작 순서는 [W00-01–04](docs/execution/00-bootstrap.md)로 Python package/최소 lock/시험·단일 FastAPI factory·비밀 없는 GET liveness·Jinja2 기본 페이지/static·실제 HTTP 시작/종료 기반을 만든다. 현재 probe/src/tests가 있으므로 재사용하고 기존 W01-01 완료/W01-02 VM 차단을 보존한다.
 
 VM·key·USB 미준비는 해당 native 가지/최종 gate를 막지만 DB/queue/관리 UI/원자 저장/집계 같은 독립 core 구현을 전체 차단하지 않는다. [C13/C14](docs/execution/CONTRACTS.md)와 [선행 수정](docs/execution/SCHEDULING.md)은 이 구현 보완의 규범이다.
 core는 실제 backend/DB/파일/브라우저에서 명시 test-only 외부 입력으로 검사할 수 있으며 생산 경로에는 fake adapter/관측/PASS를 넣지 않는다. 없는 capability는 명시 unavailable/BLOCKED/unknown이다.

@@ -1,8 +1,12 @@
 # 환경 대기와 분리한 개발 보완
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 2026-11-01 · [검토 근거](../validation/reviews/2026-11-01-next-action-review.md) · [보완 색인](DEV_FOLLOW_UP_INDEX.json) · [실행 큐](../../NEXT_ACTION.md).
 
 원래 W163개의 계약/완료126개/실제 수용을 보존한다. 아래7개는 기존 API/core 근거를 재사용해 확인된 구현·연결 부족분을 보완하는 별도 목록이다. 새로 완료한 W로 계산하지 않는다. Current는 NEXT_ACTION 하나가 정한다.
+
+AD-01 완료는 개발 이력으로 유지한다. AD-02~04는 development_only이며 [등록 PC 적용 카드](../managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 inventory·행동·worker 소비를 연결한다. UX-01~03은 product_shared다.
 
 ## 공통
 

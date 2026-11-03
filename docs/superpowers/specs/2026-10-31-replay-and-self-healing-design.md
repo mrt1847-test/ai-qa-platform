@@ -1,5 +1,7 @@
 # 재생 우선 실행·선택 AI 검증·셀프힐링 설계 v0.6
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 기준일: **2026-10-31 (Asia/Seoul)** · 상태: 문서 설계, 제품 미구현·실기기/모델/비용 미측정.
 
 기준 문서: [DESIGN](../../../DESIGN.md), [DATA_DESIGN](../../../DATA_DESIGN.md), [UI_SPEC](../../../UI_SPEC.md), [작업 진행도](../../../WORK_PROGRESS.md). 사용자가 확정한 실행 방향을 반영하며 v0.5의 매 실행 AI 재탐색 기본값을 대체한다.
@@ -42,17 +44,17 @@ Mobile-Agent v3.5(고정 SHA `81fa28b564ef7a695521500bc15a0e1324b2b394`)는 녹�
 
 target binding 우선순위는 검증된 resource-id/텍스트/영역 기반 관찰 → 현재 화면과 연결한 결정적 locator → 조건을 고정한 좌표다. 각 binding에 target 의미·관찰 방법·expected screen/element 조건을 저장한다. 좌표를 쓸 때 원본/모델/터치 크기·transform·rotation/content bounds를 고정하고 불일치 시 임의 축척/이전 좌표로 탭하지 않는다. UI hierarchy를 읽을 수 없는 화면의 좌표 재생은 같은 화면 조건을 확인할 수 있는 케이스로 제한한다. OCR/시각 추론에 모델을 쓰면 해당 model call로 계측한다.
 
-## 3. 소스 관리·로컬 실행·키 경계
+## 3. 소스 관리·서비스 실행·키 경계
 
 두 upstream은 버전 고정한 `third_party/mobile_agent/`, `third_party/cuawright/`와 `patches/`로 우리 코드와 구분해 관리하는 것을 제안한다. source manifest에 원본 URL/SHA·필요 subtree·LICENSE/NOTICE·patch/lock hash를 남긴다. 별도 공개 GitHub fork는 필수가 아니다. Python/Chromium/ADB/가상화 등 실행 의존성 준비는 소스 포함과 별도이며 아직 설치하지 않는다.
 
-로컬 Windows API/worker와 USB Android를 유지한다. **생성 Python/bash의 authoring 및 Web replay는 같은 PC의 격리된 로컬 Linux VM**에서 실행하는 구성을 기준으로 한다. Chromium도 VM 안의 `local_launch`/새 context를 사용한다. 클라우드 브라우저는 필수가 아니다. VM 작업의 lease/cancel/deadline·event/spool/파일 수명은 호스트 worker가 관리하는 동일 job 계약으로 연결한다. Android USB/ADB는 Windows 호스트에서 계속 제어한다. 동시 slot은 두 경로 합계1이다.
+최신 배치는 독립 중앙 관리/저장 서버와 등록 실행 PC worker다. 초기에는 현재 PC의 테스트 브라우저·Android emulator/연결 기기를 사용하고 이후 여러 PC/선택 cloud adapter로 확장한다. 생성 code는 실행 PC에서 격리하고 신뢰 driver만 제어 handle을 소유한다. 접속 PC에는 worker/ADB/VM을 요구하지 않으며 등록 실행 PC에는 필요 환경을 준비한다. 실제 두 엔진 hook·격리·정제/ACK 연결은 PC-04에서 후속 카드로 확정한다. lease/cancel/deadline·event/spool/정리와 초기 합계slot1을 유지한다.
 
-VM은 폐기 가능한 작업 디스크·제한 계정·CPU/RAM/시간 한도·대상 egress allowlist를 사용하고 host 파일/credential/Docker socket을 공유하지 않는다. Job Object/임시 디렉터리/AST 검사만으로 생성 코드를 격리했다고 표현하지 않는다. 가상화·VM/worker 제어가 불가능하면 W01/W03에서 Web gate 실패로 기록하고 배치를 수정한다. 자동으로 격리 없는 native 실행으로 낮추지 않는다.
+VM은 폐기 가능한 작업 디스크·제한 계정·CPU/RAM/시간 한도·대상 egress allowlist를 사용하고 host 파일/credential/Docker socket을 공유하지 않는다. Job Object/임시 디렉터리/AST 검사만으로 생성 코드를 격리했다고 표현하지 않는다. 서비스 측 격리/worker 제어가 불가능하면 해당 실행 backend gate 실패로 기록하고 배치를 수정한다. 기존 W01/W03 로컬 gate는 이력으로 보존한다. 자동으로 격리 없는 native 실행으로 낮추지 않는다.
 
 **같은 VM에 둔 것만으로 action 경계가 강제되는 것은 아니다.** 승인 코드는 제한된 `qa_runtime` IPC client를 호출하는 형태로 변환하고, Playwright/browser/CDP handle은 별도 신뢰 driver가 독점한다. 생성 script와 driver는 서로 다른 OS 권한·네트워크 공간에 두고 script의 browser endpoint 탐색/접속·프로세스 메모리/credential 읽기·대상 사이트 직접 요청을 막는다. script에는 job/step별 제한 IPC만 열고 driver가 package mapping/권한/lease·전후 capture를 검사한다. 모델 호출 broker는 driver의 승인된 check/episode 이벤트만 수락한다. authoring에서도 관찰/행동은 이 driver 경계를 거치며 자유로운 raw Playwright 제어 산출물을 그대로 승인하지 않는다. 이 제어 경계를 구현하지 못하면 capture 강제 gate 실패다.
 
-모델 키는 설정 UI의 일회 입력→로컬 API→OS 보호 secret store로 저장하고 DB/manifest에는 참조만 둔다. authoring/verifier/healer는 각각 역할과 모델 binding이 있다. 재생 VM/script에는 모델 키나 upstream credential 파일을 주입하지 않고 모델 endpoint 접근을 차단한다. 명시 verifier/healer 요청은 신뢰 broker가 목적·job·check/healing ID·한도를 검증해 모델 호출을 대행한다. 생성 코드가 임의로 broker를 호출하거나 새 검증을 만들 수 없다. 녹화 agent의 모델 호출도 gateway를 거쳐 전부 계측한다.
+모델 키는 설정 UI의 일회 입력→중앙 인증 API→서버 secret store로 저장하고(기존 OS store는 개발 profile), DB/manifest에는 참조만 둔다. authoring/verifier/healer는 각각 역할과 모델 binding이 있다. 재생 VM/script에는 모델 키나 upstream credential 파일을 주입하지 않고 모델 endpoint 접근을 차단한다. 명시 verifier/healer 요청은 신뢰 broker가 목적·job·check/healing ID·한도를 검증해 모델 호출을 대행한다. 생성 코드가 임의로 broker를 호출하거나 새 검증을 만들 수 없다. 녹화 agent의 모델 호출도 gateway를 거쳐 전부 계측한다.
 
 ## 4. 저장·검토할 replay package
 

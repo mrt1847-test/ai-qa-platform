@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 import json
 import sqlite3
 from pathlib import Path
@@ -260,6 +262,7 @@ def _graph(database: Path, project_id: str, case_id: str, actor_id: str) -> dict
         connection.execute(
             "INSERT INTO physical_resource_keys (physical_key_id, worker_id, native_id) VALUES ('key-w3105', 'worker-w3105', 'native-w3105')"
         )
+        seed_presence(connection, project_id, "worker-w3105")
         connection.execute(
             "INSERT INTO resource_aliases (project_id, physical_key_id, display_name, target_kind) VALUES (?, 'key-w3105', '준비 웹', 'web')",
             (project_id,),

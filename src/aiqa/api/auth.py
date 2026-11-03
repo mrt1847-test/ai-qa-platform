@@ -245,7 +245,7 @@ def worker_scope_from_token(token: str) -> WorkerScope:
     with _bound_store().transaction() as connection:
         row = connection.execute(
             """
-            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose
+            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose, worker_tokens.token_id
             FROM worker_tokens
             JOIN worker_enrollments
               ON worker_enrollments.enrollment_id = worker_tokens.enrollment_id
@@ -259,6 +259,7 @@ def worker_scope_from_token(token: str) -> WorkerScope:
         worker_id=str(row[0]),
         permitted_projects=(UUID(str(row[1])),),
         permitted_purposes=(str(row[2]),),
+        token_id=str(row[3]),
     )
 
 

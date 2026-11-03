@@ -1,5 +1,9 @@
 # 요구·데이터·검증 추적표 v0.8
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](../superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
+아래 담당/완료는 기존 local baseline을 추적한다. 중앙 인증/저장, 양 플랫폼 실행, 전원 단절, 경합 및 비용 수용은 [RX 색인](../managed-pc/IMPLEMENTATION_TASKS.json)에 별도로 추적한다.
+
 [Current](../../NEXT_ACTION.md) · [최소 기반](00-bootstrap.md) · [차단·선행 수정](SCHEDULING.md) · [UI94](UI_COVERAGE.md).
 담당 배정은 실제 구현 PASS가 아니다. **core 계약과 native/최종 수용 담당을 함께** 대조한다.
 기존 완료1건/source 인계와 VM 차단을 보존한다.

@@ -14,25 +14,14 @@
     <select id="rerun-scope">
       <option value="failed">실패 항목</option>
       <option value="all">전체</option>
-      <option value="items">선택한 항목</option>
+      {% if case_run_id|default('') or selected_item_id|default('') %}<option value="items">선택한 항목</option>{% endif %}
     </select>
   </label>
-  <button type="button" id="start-rerun" data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}">다시 실행</button>
-  <script>
-    (function () {
-      var button = document.getElementById("start-rerun");
-      if (!button || !window.aiqaRequest) return;
-      button.addEventListener("click", function () {
-        var reason = document.getElementById("rerun-reason");
-        var scope = document.getElementById("rerun-scope");
-        window.aiqaRequest("/api/v1/executions/" + button.getAttribute("data-execution") + "/reruns?project_id=" + button.getAttribute("data-project"), {
-          method: "POST",
-          body: JSON.stringify({
-            reason: reason ? reason.value : "",
-            scope: scope ? scope.value : "failed"
-          })
-        });
-      });
-    }());
-  </script>
+  <p id="rerun-connection" role="status">실행 PC 연결을 확인하는 중입니다.</p>
+  <button type="button" id="start-rerun" aria-describedby="rerun-connection" disabled
+          data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}"
+          data-selected="{{ case_run_id|default('') or selected_item_id|default('') }}">다시 실행</button>
+  <p id="rerun-feedback" role="status"></p>
+  <script type="application/json" id="rerun-targets">{{ rerun_targets|default([])|tojson }}</script>
+  <script src="/static/rerun.js?v={{ ui_asset_version }}"></script>
 </section>

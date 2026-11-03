@@ -29,22 +29,24 @@
     var profile=profiles.find(function(item){return item.id===value('environment_revision_id');});if(profile&&profile.profile.target_kind!==kind)set('environment_revision_id','');
     var resource=chosen();if(resource&&resource.dataset.kind!==kind){resource.checked=false;step(1);note.textContent='대상 종류에 맞는 기기를 다시 선택해 주세요. 공통 검증 내용은 유지했습니다.';}
   }
+  var previewRevision=0;
   async function preview(){
+    var revision=++previewRevision;
     var resource=chosen(),label=document.getElementById('wizard-preview-name'),message=document.getElementById('wizard-preview-note'),image=document.getElementById('wizard-preview-image'),frame=document.getElementById('wizard-preview-frame'),time=document.getElementById('wizard-preview-time');
-    image.hidden=true;image.removeAttribute('src');
+    image.hidden=true;image.removeAttribute('src');time.textContent='실시간 제어 화면이 아닙니다.';
     if(!resource){label.textContent='기기 선택 전';message.textContent='기기를 선택해 주세요.';return;}
     var id=resource.value;label.textContent=resource.getAttribute('aria-label');frame.dataset.kind=resource.dataset.kind;message.textContent='최근 관찰을 확인하는 중입니다.';
     try{
       var response=await window.aiqaRequest('/api/v1/resources/'+encodeURIComponent(id)+'/preview?project_id='+form.dataset.project,{method:'GET'});var body=await response.json();
-      if(!chosen()||chosen().value!==id)return;
+      if(revision!==previewRevision)return;
       if(response.ok&&body.artifact_id&&body.reason!=='expired'&&body.reason!=='unobserved'){
         image.onerror=function(){image.hidden=true;message.textContent='관찰 화면을 불러오지 못했습니다. 새 관찰을 수집한 뒤 확인해 주세요.';};image.src='/api/v1/artifacts/'+encodeURIComponent(body.artifact_id);image.hidden=false;message.textContent='';
       }else message.textContent=body.reason==='expired'?'최근 캡처의 보관 기한이 지났습니다.':'저장된 관찰 화면이 없습니다. 연결 후 수집한 정제 캡처가 표시됩니다.';
       time.textContent=body.observed_at?'관찰 시각 '+new Date(body.observed_at).toLocaleString('ko-KR')+' · 실시간 화면 아님':'실시간 제어 화면이 아닙니다.';
-    }catch(_){message.textContent='최근 관찰을 확인하지 못했습니다. 연결 상태를 확인해 주세요.';}
+    }catch(_){if(revision===previewRevision)message.textContent='최근 관찰을 확인하지 못했습니다. 연결 상태를 확인해 주세요.';}
   }
   form.querySelectorAll('input[name="resource_id"]').forEach(function(radio){radio.addEventListener('change',function(){var previous=value('target_kind');set('target_kind',radio.dataset.kind);target(previous!==radio.dataset.kind);preview();});});
-  form.elements.namedItem('target_kind').addEventListener('change',function(){target(true);});
+  form.elements.namedItem('target_kind').addEventListener('change',function(){target(true);preview();});
   form.elements.namedItem('expected_text').addEventListener('input',function(){expectedEdited=true;});
   form.elements.namedItem('environment_revision_id').addEventListener('change',function(){
     var item=profiles.find(function(p){return p.id===value('environment_revision_id');});if(!item)return;
@@ -90,26 +92,44 @@
   form.querySelector('[data-step-previous]').addEventListener('click',function(){step(currentStep-1);});
   form.querySelector('[data-step-next]').addEventListener('click',function(){if(currentStep===1&&!chosen()){note.textContent='기기를 먼저 선택해 주세요.';return;}step(currentStep+1);});
   function startBody(){return {case_id:caseId,input_case_version_id:head,input_version_hash:versionHash,resource_id:chosen()?chosen().value:''};}
+  var sending=false;
+  var availability=window.aiqaPcAvailability && window.aiqaPcAvailability.selection(form,
+    function(){return chosen()?chosen().value:'';},function(){
+      if(startGate.pending()){start.disabled=sending||!availability.connected();return;}
+      if(!prepared)return;
+      invalidate();
+      note.textContent='기기 연결 상태가 바뀌었습니다. 준비 상태를 다시 확인하세요.';
+    },document.querySelector('.wizard-preview [data-pc-availability]'));
   document.getElementById('check-recording').addEventListener('click',async function(){
     if(!head||handle.isDirty()){note.textContent='먼저 현재 초안을 저장해 주세요.';return;}
+    if(startGate.pending())return;
     var check=this;check.disabled=true;prepared=false;start.disabled=true;
     try{
-      var response=await window.aiqaRequest(base+'/recording-previews',{method:'POST',body:JSON.stringify(startBody())});var result=await response.json();
+      if(availability)await availability.refresh();
+      if(handle.isDirty())return;
+      var payload=JSON.stringify(startBody()),revision=availability&&availability.revision();
+      var response=await window.aiqaRequest(base+'/recording-previews',{method:'POST',body:payload});var result=await response.json();
+      if(handle.isDirty()||payload!==JSON.stringify(startBody())||(availability&&revision!==availability.revision())){
+        note.textContent='검사 중 조건이 바뀌었습니다. 준비 상태를 다시 확인하세요.';return;
+      }
       var list=document.getElementById('recording-blockers');list.replaceChildren();
       if(!response.ok){note.textContent='준비 상태를 확인하지 못했습니다. 저장 버전과 연결을 다시 확인해 주세요.';return;}
       result.reasons.forEach(function(reason){var li=document.createElement('li');var a=document.createElement('a');a.textContent=reason.message;a.href=reason.href;li.appendChild(a);list.appendChild(li);});
-      prepared=result.ready;start.disabled=!prepared;note.textContent=prepared?'시작할 수 있습니다. 시작 시 다시 검사합니다.':'초안은 저장되어 있습니다. 위 항목을 준비하면 녹화를 시작할 수 있습니다.';
+      prepared=result.ready&&(!availability||availability.allowed());start.disabled=!prepared;note.textContent=prepared?'시작할 수 있습니다. 시작 시 다시 검사합니다.':'초안은 저장되어 있습니다. 위 항목을 준비하면 녹화를 시작할 수 있습니다.';
     }catch(_){note.textContent='준비 상태 응답을 받지 못했습니다. 잠시 후 다시 확인하세요.';}
     finally{check.disabled=false;}
   });
   start.addEventListener('click',async function(){
-    if(!prepared||handle.isDirty())return;start.disabled=true;
+    var retry=startGate.pending();
+    if(sending||(availability&&!(retry?availability.connected():availability.allowed()))||(!retry&&(!prepared||handle.isDirty())))return;
+    sending=true;start.disabled=true;
     if(!startGate.pending()){startPayload=startBody();lockStart(true);}
     try{
       var response=await startGate.send(startPayload);var result=await response.json();
       if(response.ok){window.location.assign('/ui/projects/'+form.dataset.project+'/recordings/'+result.recording_id);}
-      else{lockStart(false);prepared=false;note.textContent='현재 조건으로 시작하지 못했습니다. 초안은 유지됩니다. 준비 상태를 다시 확인하세요.';}
-    }catch(_){note.textContent='시작 요청 응답을 확인하지 못했습니다. 다시 누르면 같은 요청을 확인합니다.';start.disabled=false;}
+      else{lockStart(false);prepared=false;start.value='AI 녹화 시작';if(availability)availability.refresh();note.textContent='현재 조건으로 시작하지 못했습니다. 초안은 유지됩니다. 준비 상태를 다시 확인하세요.';}
+    }catch(_){note.textContent='응답을 받지 못했습니다. 연결된 상태에서 같은 요청으로 다시 접수할 수 있습니다.';start.value='같은 요청으로 다시 접수';start.disabled=!!(availability&&!availability.connected());}
+    finally{sending=false;}
   });
   if(snapshot.version_revision)document.getElementById('recording-save-summary').textContent='초안 v'+snapshot.version_revision+' 저장됨 · 승인 전';
   target(false);step(currentStep);preview();

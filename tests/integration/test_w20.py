@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from worker_presence_support import seed_presence
+
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -230,6 +232,7 @@ def _seed(database: Path, project_id: str, case_id: str, version_id: str, enviro
             "INSERT INTO worker_enrollments (enrollment_id, worker_id, project_id, created_at) VALUES ('enroll-w2002', 'worker-w2002', ?, '2026-11-01T00:00:00+00:00')",
             (project_id,),
         )
+        seed_presence(connection, project_id, "worker-w2002")
         connection.execute(
             "INSERT INTO physical_resource_keys (physical_key_id, worker_id, native_id) VALUES (?, 'worker-w2002', 'native-w2002')",
             (resource_id,),

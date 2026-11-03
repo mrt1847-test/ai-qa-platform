@@ -21,7 +21,9 @@ from aiqa.contracts.jobs import (
     require_job_purpose,
 )
 from aiqa.domain.hashing import canonical_hash, canonical_json
+from aiqa.domain.resource_readiness import resource_readiness
 from aiqa.store.models import Actor, Transaction, WorkerScope
+from aiqa.worker.presence import get_presence
 
 _OPERATION = "enqueue_job"
 
@@ -34,11 +36,17 @@ class JobNotFound(Exception):
     """The job is not in this project."""
 
 
+class ResourceOffline(ValueError):
+    """A new physical job cannot be accepted for this execution PC."""
+
+
 class CancelRejected(Exception):
     """A new cancel cannot change this job."""
 
 
-def enqueue_job(tx: Transaction, submission: JobSubmission, key: IdempotencyKey) -> JobReceipt:
+def enqueue_job(
+    tx: Transaction, submission: JobSubmission, key: IdempotencyKey, *, now: datetime | None = None,
+) -> JobReceipt:
     """Insert a purpose owner and its queued job, or return the stored receipt."""
 
     if key.project_id != submission.project_id or key.operation != _OPERATION or key.key.strip() == "":
@@ -60,6 +68,20 @@ def enqueue_job(tx: Transaction, submission: JobSubmission, key: IdempotencyKey)
         if str(existing[0]) != body_hash:
             raise JobConflict("idempotency body does not match")
         return _stored(key.project_id, existing, body_hash, True)
+    if purpose in _PHYSICAL:
+        now = now or datetime.now(timezone.utc)
+        pinned_resource = _snapshot_resource(purpose, json.loads(limits))
+        for ref in refs if pinned_resource is None else [pinned_resource]:
+            owner = connection.execute(
+                """SELECT resource.worker_id FROM resource_aliases AS alias
+                   JOIN physical_resource_keys AS resource USING (physical_key_id)
+                   WHERE alias.project_id = ? AND alias.physical_key_id = ?""",
+                (str(submission.project_id), ref),
+            ).fetchone()
+            if (owner is None and pinned_resource is not None) or (
+                owner and get_presence(connection, owner[0], now, project_id=submission.project_id).state != "online"
+            ):
+                raise ResourceOffline("execution PC is offline or unavailable")
     recording_id: UUID | None = None
     execution_id: UUID | None = None
     case_run_id: UUID | None = None
@@ -345,25 +367,31 @@ _POLL_SECONDS = 2
 _WATCHDOG_SECONDS = 30
 
 
-def claim_queued_job(connection: sqlite3.Connection, worker: WorkerScope, now: datetime) -> JobLease | None:
+def claim_queued_job(
+    connection: sqlite3.Connection, worker: WorkerScope, now: datetime, *, boot_id: object = None
+) -> JobLease | None:
     """Claim one queued job. Slot, device, and the previous item are checked together."""
 
     projects = tuple(str(project_id) for project_id in worker.permitted_projects)
     purposes = tuple(purpose for purpose in worker.permitted_purposes if purpose.strip() != "")
     if projects == () or purposes == () or _active_slots(connection) >= 1:
         return None
+    if worker.token_id is not None and connection.execute(
+        "SELECT 1 FROM worker_tokens WHERE token_id = ?", (worker.token_id,)
+    ).fetchone() is None:
+        return None
     project_marks = ", ".join("?" for _ in projects)
     purpose_marks = ", ".join("?" for _ in purposes)
     rows = connection.execute(
         f"""
-        SELECT project_id, job_id, purpose, case_run_id, source_refs
+        SELECT project_id, job_id, purpose, case_run_id, source_refs, limits
         FROM jobs
         WHERE status = 'queued' AND project_id IN ({project_marks}) AND purpose IN ({purpose_marks})
         ORDER BY rowid
         """,
         (*projects, *purposes),
     ).fetchall()
-    for project_id, job_id, purpose, case_run_id, source_refs in rows:
+    for project_id, job_id, purpose, case_run_id, source_refs, limits in rows:
         if _cleanup_pending(connection, str(project_id), None if case_run_id is None else str(case_run_id)):
             continue
         if _previous_item_blocks(connection, str(project_id), None if case_run_id is None else str(case_run_id)):
@@ -372,7 +400,10 @@ def claim_queued_job(connection: sqlite3.Connection, worker: WorkerScope, now: d
             continue
         if _snapshot_blocks_claim(connection, str(project_id), str(job_id), str(purpose), source_refs):
             continue
-        usable, physical_key_id = _device(connection, str(project_id), str(purpose), str(source_refs))
+        usable, physical_key_id = _device(
+            connection, worker.worker_id, str(project_id), str(job_id), str(purpose),
+            str(source_refs), str(limits), now, boot_id,
+        )
         if not usable or _active_slots(connection) >= 1:
             continue
         updated = connection.execute(
@@ -534,13 +565,32 @@ def _cleanup_pending(connection: sqlite3.Connection, project_id: str, case_run_i
     return False
 
 
+def _snapshot_resource(purpose: str, limits: object) -> str | None:
+    if purpose in {"trial", "regression"} and isinstance(limits, dict):
+        resource = limits.get("resource_id")
+        if isinstance(resource, str):
+            return resource
+    return None
+
+
 def _device(
-    connection: sqlite3.Connection, project_id: str, purpose: str, source_refs: str
+    connection: sqlite3.Connection, worker_id: str, project_id: str, job_id: str,
+    purpose: str, source_refs: str, limits: str, now: datetime, boot_id: object,
 ) -> tuple[bool, str | None]:
     if purpose not in _PHYSICAL:
         return True, None
+    presence = get_presence(connection, worker_id, now, project_id=project_id)
+    if presence.state != "online" or (boot_id is not None and boot_id != presence.boot_id):
+        return False, None
+    if connection.execute(
+        """SELECT 1 FROM job_worker_sessions
+           WHERE project_id = ? AND job_id = ? AND worker_id = ? AND session_id = ?""",
+        (project_id, job_id, worker_id, presence.session_id),
+    ).fetchone() is None:
+        return False, None
     try:
-        refs = json.loads(source_refs)
+        pinned_resource = _snapshot_resource(purpose, json.loads(limits))
+        refs = json.loads(source_refs) if pinned_resource is None else [pinned_resource]
     except json.JSONDecodeError:
         return False, None
     if type(refs) is not list:
@@ -550,12 +600,17 @@ def _device(
             continue
         alias = connection.execute(
             """
-            SELECT 1 FROM resource_aliases
-            WHERE project_id = ? AND physical_key_id = ?
+            SELECT alias.target_kind FROM resource_aliases AS alias
+            JOIN physical_resource_keys AS resource USING (physical_key_id)
+            WHERE alias.project_id = ? AND alias.physical_key_id = ? AND resource.worker_id = ?
             """,
-            (project_id, ref),
+            (project_id, ref, worker_id),
         ).fetchone()
         if alias is None:
+            continue
+        if purpose != "resource_probe" and not resource_readiness(
+            connection, UUID(project_id), ref, alias[0], now=now,
+        ).ready:
             continue
         busy = connection.execute(
             "SELECT COUNT(*) FROM leases WHERE physical_key_id = ?",
@@ -585,12 +640,14 @@ def renew_lease_row(
     lease: LeaseToken,
     now: datetime,
     model_wait: bool,
+    *,
+    server_now: datetime | None = None,
 ) -> LeaseView:
     """Extend one generation. Model wait keeps the same heartbeat."""
 
     if type(model_wait) is not bool:
         raise ValueError("model wait is invalid")
-    _require_open_lease(connection, worker, lease, now)
+    now = _require_open_lease(connection, worker, lease, now, server_now)
     expires_at = (now.astimezone(timezone.utc) + timedelta(seconds=_LEASE_SECONDS)).isoformat()
     connection.execute(
         """
@@ -616,10 +673,12 @@ def acknowledge_runner(
     lease: LeaseToken,
     runner_nonce: UUID,
     now: datetime,
+    *,
+    server_now: datetime | None = None,
 ) -> AttemptReceipt:
     """Confirm the claim attempt. The same nonce does not create another attempt."""
 
-    _require_open_lease(connection, worker, lease, now)
+    now = _require_open_lease(connection, worker, lease, now, server_now)
     attempt = connection.execute(
         """
         SELECT attempt_id FROM attempts
@@ -654,16 +713,20 @@ def acknowledge_runner(
 
 
 def _require_open_lease(
-    connection: sqlite3.Connection, worker: WorkerScope, lease: LeaseToken, now: datetime
-) -> None:
+    connection: sqlite3.Connection, worker: WorkerScope, lease: LeaseToken,
+    now: datetime, server_now: datetime | None,
+) -> datetime:
     if lease.project_id not in worker.permitted_projects:
         raise LeaseDenied("worker cannot use this lease")
     if type(lease.generation) is not int or lease.generation < 1:
         raise StaleGeneration("lease generation is stale")
     row = connection.execute(
         """
-        SELECT expires_at, worker_id FROM leases
-        WHERE project_id = ? AND job_id = ? AND generation = ?
+        SELECT lease.expires_at, lease.worker_id, session.session_id FROM leases AS lease
+        LEFT JOIN job_worker_sessions AS session
+          ON session.project_id = lease.project_id AND session.job_id = lease.job_id
+         AND session.worker_id = lease.worker_id
+        WHERE lease.project_id = ? AND lease.job_id = ? AND lease.generation = ?
         """,
         (str(lease.project_id), str(lease.job_id), lease.generation),
     ).fetchone()
@@ -671,9 +734,15 @@ def _require_open_lease(
         raise StaleGeneration("lease generation is stale")
     if str(row[1]) != worker.worker_id:
         raise LeaseDenied("worker cannot use this lease")
+    if row[2] is not None:
+        now = server_now or now
+        presence = get_presence(connection, worker.worker_id, now, project_id=lease.project_id)
+        if presence.state != "online" or presence.session_id != row[2]:
+            raise StaleGeneration("worker session is stale")
     expires = datetime.fromisoformat(str(row[0]))
     if expires.tzinfo is None or now.astimezone(timezone.utc) >= expires.astimezone(timezone.utc):
         raise StaleGeneration("lease generation is stale")
+    return now
 
 
 def reconcile_stored(connection: sqlite3.Connection, now: datetime, boot_id: str) -> ReconciliationReport:

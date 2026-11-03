@@ -22,7 +22,8 @@
       "doc_file": "11-development-follow-ups.md#ad-01",
       "evidence_path": "docs/validation/tasks/AD-01.md",
       "verification_scope": "live_integration",
-      "work_kind": "integration"
+      "work_kind": "integration",
+      "execution_scope": "development_only"
     },
     {
       "id": "AD-02",
@@ -39,7 +40,8 @@
       "doc_file": "11-development-follow-ups.md#ad-02",
       "evidence_path": "docs/validation/tasks/AD-02.md",
       "verification_scope": "live_integration",
-      "work_kind": "integration"
+      "work_kind": "integration",
+      "execution_scope": "development_only"
     },
     {
       "id": "AD-03",
@@ -58,7 +60,8 @@
       "doc_file": "11-development-follow-ups.md#ad-03",
       "evidence_path": "docs/validation/tasks/AD-03.md",
       "verification_scope": "live_integration",
-      "work_kind": "integration"
+      "work_kind": "integration",
+      "execution_scope": "development_only"
     },
     {
       "id": "AD-04",
@@ -76,7 +79,8 @@
       "doc_file": "11-development-follow-ups.md#ad-04",
       "evidence_path": "docs/validation/tasks/AD-04.md",
       "verification_scope": "live_integration",
-      "work_kind": "integration"
+      "work_kind": "integration",
+      "execution_scope": "development_only"
     },
     {
       "id": "UX-01",
@@ -93,7 +97,8 @@
       "doc_file": "11-development-follow-ups.md#ux-01",
       "evidence_path": "docs/validation/tasks/UX-01.md",
       "verification_scope": "core_contract",
-      "work_kind": "core_contract"
+      "work_kind": "core_contract",
+      "execution_scope": "product_shared"
     },
     {
       "id": "UX-02",
@@ -108,7 +113,8 @@
       "doc_file": "11-development-follow-ups.md#ux-02",
       "evidence_path": "docs/validation/tasks/UX-02.md",
       "verification_scope": "core_contract",
-      "work_kind": "core_contract"
+      "work_kind": "core_contract",
+      "execution_scope": "product_shared"
     },
     {
       "id": "UX-03",
@@ -125,7 +131,10 @@
       "doc_file": "11-development-follow-ups.md#ux-03",
       "evidence_path": "docs/validation/tasks/UX-03.md",
       "verification_scope": "core_contract",
-      "work_kind": "core_contract"
+      "work_kind": "core_contract",
+      "execution_scope": "product_shared"
     }
-  ]
+  ],
+  "deployment_override": "docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md",
+  "mapping_owner": "PC-04"
 }

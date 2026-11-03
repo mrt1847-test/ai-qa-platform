@@ -1,0 +1,572 @@
+{
+  "schema_version": "managed-pc-runtime-v1",
+  "date": "2026-11-03",
+  "scope": "managed_execution_mvp",
+  "schedule_owner": "NEXT_ACTION.md",
+  "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",
+  "tasks": [
+    {
+      "id": "RX-01",
+      "title": "워커 세대와 서버 부팅 분리",
+      "deps": [
+        "PC-04",
+        "PC-02"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-01",
+      "evidence_path": "docs/validation/tasks/RX-01.md"
+    },
+    {
+      "id": "RX-02",
+      "title": "워커 발급·폐기와 권한 범위",
+      "deps": [
+        "PC-04",
+        "PC-02"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-02",
+      "evidence_path": "docs/validation/tasks/RX-02.md"
+    },
+    {
+      "id": "RX-03",
+      "title": "claim 영수증과 실행 스냅샷",
+      "deps": [
+        "RX-01",
+        "RX-02"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-03",
+      "evidence_path": "docs/validation/tasks/RX-03.md"
+    },
+    {
+      "id": "RX-04",
+      "title": "outbound HTTP 클라이언트",
+      "deps": [
+        "RX-02",
+        "RX-03"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-04",
+      "evidence_path": "docs/validation/tasks/RX-04.md"
+    },
+    {
+      "id": "RX-05",
+      "title": "dispatch watchdog과 정리 확인",
+      "deps": [
+        "RX-03",
+        "RX-04"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-05",
+      "evidence_path": "docs/validation/tasks/RX-05.md"
+    },
+    {
+      "id": "RX-06",
+      "title": "정제 증거 업로드와 commit ACK",
+      "deps": [
+        "RX-03",
+        "RX-04"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-06",
+      "evidence_path": "docs/validation/tasks/RX-06.md"
+    },
+    {
+      "id": "RX-07",
+      "title": "worker 종료 결과 제출",
+      "deps": [
+        "RX-05",
+        "RX-06"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-07",
+      "evidence_path": "docs/validation/tasks/RX-07.md"
+    },
+    {
+      "id": "RX-08",
+      "title": "독립 worker 소비 프로세스",
+      "deps": [
+        "RX-05",
+        "RX-07"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/WORKER_TASKS.md#rx-08",
+      "evidence_path": "docs/validation/tasks/RX-08.md"
+    },
+    {
+      "id": "RX-09",
+      "title": "Android 워커 inventory",
+      "deps": [
+        "RX-04",
+        "AD-01",
+        "PC-03"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-09",
+      "evidence_path": "docs/validation/tasks/RX-09.md"
+    },
+    {
+      "id": "RX-10",
+      "title": "Android 결정적 입력과 전후 증거",
+      "deps": [
+        "RX-05",
+        "RX-06",
+        "RX-09"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-10",
+      "evidence_path": "docs/validation/tasks/RX-10.md"
+    },
+    {
+      "id": "RX-11",
+      "title": "관리 서버 모델 호출과 권한",
+      "deps": [
+        "RX-02",
+        "RX-03",
+        "RX-19"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-11",
+      "evidence_path": "docs/validation/tasks/RX-11.md"
+    },
+    {
+      "id": "RX-12",
+      "title": "Mobile-Agent Android 녹화 어댑터",
+      "deps": [
+        "RX-08",
+        "RX-10",
+        "RX-11"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-12",
+      "evidence_path": "docs/validation/tasks/RX-12.md"
+    },
+    {
+      "id": "RX-13",
+      "title": "Web 격리 게이트와 백엔드 계약",
+      "deps": [
+        "RX-05",
+        "RX-06"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-13",
+      "evidence_path": "docs/validation/tasks/RX-13.md"
+    },
+    {
+      "id": "RX-14",
+      "title": "Web 승인 코드의 신뢰 driver 실행",
+      "deps": [
+        "RX-08",
+        "RX-13"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-14",
+      "evidence_path": "docs/validation/tasks/RX-14.md"
+    },
+    {
+      "id": "RX-15",
+      "title": "CUAWright Web 녹화 어댑터",
+      "deps": [
+        "RX-11",
+        "RX-13",
+        "RX-14"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-15",
+      "evidence_path": "docs/validation/tasks/RX-15.md"
+    },
+    {
+      "id": "RX-16",
+      "title": "관리 서버 프로필과 HTTPS 경계",
+      "deps": [
+        "PC-04"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-16",
+      "evidence_path": "docs/validation/tasks/RX-16.md"
+    },
+    {
+      "id": "RX-17",
+      "title": "관리 서버 로그인과 프로젝트 권한",
+      "deps": [
+        "RX-16"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-17",
+      "evidence_path": "docs/validation/tasks/RX-17.md"
+    },
+    {
+      "id": "RX-18",
+      "title": "서버 영속 artifact와 조회 권한",
+      "deps": [
+        "RX-16"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-18",
+      "evidence_path": "docs/validation/tasks/RX-18.md"
+    },
+    {
+      "id": "RX-19",
+      "title": "서버 전용 비밀 해석",
+      "deps": [
+        "RX-16"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-19",
+      "evidence_path": "docs/validation/tasks/RX-19.md"
+    },
+    {
+      "id": "RX-20",
+      "title": "DB와 artifact 백업·복원",
+      "deps": [
+        "RX-17",
+        "RX-18",
+        "RX-19"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-20",
+      "evidence_path": "docs/validation/tasks/RX-20.md"
+    },
+    {
+      "id": "RX-21",
+      "title": "별도 관리 호스트 수용",
+      "deps": [
+        "RX-08",
+        "RX-20",
+        "RX-28"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "independent_server",
+        "tls_domain",
+        "oidc_tenant",
+        "second_client",
+        "deployment_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-21",
+      "evidence_path": "docs/validation/tasks/RX-21.md"
+    },
+    {
+      "id": "RX-22",
+      "title": "실제 Web 격리 공격 검증",
+      "deps": [
+        "RX-15",
+        "RX-30"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "verified_web_vm",
+        "dedicated_web_origin",
+        "native_test_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-22",
+      "evidence_path": "docs/validation/tasks/RX-22.md"
+    },
+    {
+      "id": "RX-23",
+      "title": "실제 Android 녹화와 재생",
+      "deps": [
+        "RX-12",
+        "RX-21",
+        "RX-31"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "dedicated_android",
+        "actual_model_key",
+        "native_test_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23",
+      "evidence_path": "docs/validation/tasks/RX-23.md"
+    },
+    {
+      "id": "RX-24",
+      "title": "실제 Web 녹화와 재생",
+      "deps": [
+        "RX-21",
+        "RX-22",
+        "RX-31"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "verified_web_vm",
+        "dedicated_web_origin",
+        "actual_model_key",
+        "native_test_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24",
+      "evidence_path": "docs/validation/tasks/RX-24.md"
+    },
+    {
+      "id": "RX-25",
+      "title": "전원 종료 중 다른 PC에서 검토",
+      "deps": [
+        "RX-21",
+        "RX-23",
+        "RX-24",
+        "PC-03"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "independent_server",
+        "second_client",
+        "execution_pc_power_test_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-25",
+      "evidence_path": "docs/validation/tasks/RX-25.md"
+    },
+    {
+      "id": "RX-26",
+      "title": "재연결의 미확정 행동과 늦은 ACK",
+      "deps": [
+        "RX-21",
+        "RX-23"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "independent_server",
+        "dedicated_android",
+        "fault_injection_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-26",
+      "evidence_path": "docs/validation/tasks/RX-26.md"
+    },
+    {
+      "id": "RX-27",
+      "title": "두 워커의 동일 물리 자원 경합",
+      "deps": [
+        "RX-21",
+        "RX-23"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "independent_server",
+        "two_registered_workers",
+        "shared_test_physical_scope",
+        "native_test_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-27",
+      "evidence_path": "docs/validation/tasks/RX-27.md"
+    },
+    {
+      "id": "RX-28",
+      "title": "실행 PC 등록과 폐기 화면",
+      "deps": [
+        "RX-02",
+        "RX-17",
+        "PC-03"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-28",
+      "evidence_path": "docs/validation/tasks/RX-28.md"
+    },
+    {
+      "id": "RX-29",
+      "title": "3000건 회귀 용량과 비용 계측",
+      "deps": [
+        "RX-23",
+        "RX-24"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "integration",
+      "environment_requirements": [
+        "local_python",
+        "actual_model_key",
+        "cost_sample_authorized"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-29",
+      "evidence_path": "docs/validation/tasks/RX-29.md"
+    },
+    {
+      "id": "RX-30",
+      "title": "Web 격리 VM 전송 구현",
+      "deps": [
+        "RX-13",
+        "RX-14"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-30",
+      "evidence_path": "docs/validation/tasks/RX-30.md"
+    },
+    {
+      "id": "RX-31",
+      "title": "replay 검증·실패 후 healing 연결",
+      "deps": [
+        "RX-07",
+        "RX-11"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-31",
+      "evidence_path": "docs/validation/tasks/RX-31.md"
+    }
+  ]
+}

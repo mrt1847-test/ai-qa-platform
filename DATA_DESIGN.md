@@ -1,5 +1,7 @@
 # 데이터·승인·재녹화·누적 분석 설계 v0.6
 
+> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+
 규범 개정일: **2026-10-31 (Asia/Seoul)**. 상태: 상세 설계 규범. **이 문서만으로 모든 DB·migration·제품 기능의 완료를 판단하지 않는다.** 2026-11-01 현재 일부 core가 구현됐으며 실제 범위·검증은 [진행표](WORK_PROGRESS.md)와 [계약 보완 결과](docs/validation/reviews/2026-11-01-remediation-result.md)를 따른다.
 
 [DESIGN.md](DESIGN.md)는 전체 아키텍처, [UI_SPEC.md](UI_SPEC.md)는 화면/동선, [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)는 후속 작업이다. 이 문서는 세 문서의 **저장·무결성·승인/재녹화 transaction·분석/보관 계약**을 구체화한다. 물리 저장소를 나누어도 사용자의 기본 관리 단위는 검증 정의·설정·녹화 절차·증거를 함께 가진 케이스 하나다. TC는 계속 선택 사항이다.
@@ -21,12 +23,18 @@ v0.6은 code/action replay·선택 verifier·healing ON/OFF를 추가한다. [�
 
 ## 2. 저장소와 데이터 책임
 
-- **SQLite:** 구조화 facts·ID/FK·version/manifest hash·작업/상태·action/check·승인/분석·artifact metadata. API만 접근, worker는 HTTP/자체 spool 사용.
-- **로컬 artifact 저장소:** 정제 PNG·action log·APK·export. 생성 object key/hash로 접근하고 임의 절대경로를 API에 받지 않는다. DB에 큰 PNG BLOB를 넣지 않는다.
+- **서비스 DB(기존 SQLite는 개발 baseline):** 구조화 facts·ID/FK·version/manifest hash·작업/상태·action/check·승인/분석·artifact metadata. API만 접근, worker는 HTTP/자체 spool 사용.
+- **서비스 소유 영구 artifact 저장소(운영 backend 미정):** 정제 PNG·action log·APK·export. 생성 object key/hash로 접근하고 임의 절대경로를 API에 받지 않는다. DB에 큰 PNG BLOB를 넣지 않는다.
 - **worker spool:** 업로드 전 정제 기록·파일과 ACK journal. 서버 DB의 대체 저장소로 영구 사용하는 것은 아니다.
-- **OS secret store:** 실제 키/비밀번호/인증 state. DB/manifest는 secret reference와 필요한 revision ID만 보존한다.
+- **서버 secret store(기존 OS store는 개발용):** 실제 키/비밀번호/인증 state. DB/manifest는 secret reference와 필요한 revision ID만 보존한다.
 
-DB/파일은 비동기화 `%LOCALAPPDATA%/AIQA/`의 별도 디렉터리다. OneDrive/NAS DB 파일 공유는 지원하지 않는다. SQLite WAL·단일 API writer를 시작점으로 하고 연결마다 foreign_keys 활성화를 검증한다. 긴 모델 호출/파일 업로드 중 DB write transaction을 잡지 않는다. SQLite는 한 번에 하나의 writer이므로 claim/승인 등은 짧은 transaction과 조건부 update로 처리한다. [SQLite FK 공식 문서](https://sqlite.org/foreignkeys.html), [transaction 공식 문서](https://sqlite.org/lang_transaction.html).
+운영 DB/파일/키는 사용자 PC와 분리하여 서비스가 보관한다. backend 선정·권한·backup/restore·migration은 PC-04 후속 수용 대상이며 구현 전이다. 기존 로컬 개발 DB/파일은 비동기화 `%LOCALAPPDATA%/AIQA/`의 별도 디렉터리다. OneDrive/NAS DB 파일 공유는 지원하지 않는다. SQLite WAL·단일 API writer를 시작점으로 하고 연결마다 foreign_keys 활성화를 검증한다. 긴 모델 호출/파일 업로드 중 DB write transaction을 잡지 않는다. SQLite는 한 번에 하나의 writer이므로 claim/승인 등은 짧은 transaction과 조건부 update로 처리한다. [SQLite FK 공식 문서](https://sqlite.org/foreignkeys.html), [transaction 공식 문서](https://sqlite.org/lang_transaction.html).
+
+### 실행 host/session 추가 설계 — migration 미구현
+
+worker/host ID·server 수신 last_seen·worker boot/session generation·project/purpose·local native resource ID와 session ID(선택 provider/account/region/pool 참조)·서비스 lease·expiry/TTL·capability snapshot·획득 request correlation·cleanup/release 상태와 provider 요금 관측을 job/attempt/environment snapshot에 연결한다. 로컬 serial만으로 cloud identity를 식별하지 않는다. 생성 응답 유실은 lookup/멱등 확인 전 중복 세션을 만들지 않고, release 요청과 완료/불명을 구분한다. provider 임시 evidence URL은 서비스 정제 artifact 저장을 대체하지 않는다. 모델 usage와 자원 요금은 별도 ledger이며 unknown은0이 아니다. 구체 DTO/FK/인덱스는 공급자 확인 뒤 세부 카드에서 확정한다.
+
+실행 PC offline 자체는 승인 gate가 아니다. 서버 manifest/정제 artifact의 commit/ACK·ready·기존 OFF trial/검토/보관 조건으로 판정한다. 실행 PC spool에만 남은 자료는 서버 저장본이 아니며 승인 근거로 쓰지 않는다. 서버 DB/artifact는 실행 PC와 다른 장애 수명이어야 한다.
 
 ### 관계도
 

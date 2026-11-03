@@ -21,6 +21,7 @@ from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.store.database import Store
 from aiqa.store.models import Actor, Transaction, WorkerScope
 from aiqa.store.queue import enqueue_job
+from aiqa.worker.presence import get_presence
 
 _store: ContextVar[Store] = ContextVar("aiqa_inventory_store")
 
@@ -42,10 +43,20 @@ _KIND_LABELS = {"web": "Web", "android": "Android"}
 _STATE_LABELS = {
     "ready": "준비",
     "busy": "사용 중",
+    "cleanup_pending": "정리 확인 필요",
     "offline": "오프라인",
     "unauthorized": "권한 없음",
     "quarantine": "격리",
     "unavailable": "사용할 수 없음",
+}
+_CONNECTION_LABELS = {"online": "연결됨", "offline": "오프라인", "unknown": "연결 보고 없음"}
+_DEVICE_BLOCKS = {
+    "busy": "기기가 사용 중입니다. 점유 작업이 끝난 뒤 다시 확인하세요.",
+    "cleanup_pending": "이전 작업의 기기 정리를 확인해야 새 작업을 시작할 수 있습니다.",
+    "offline": "기기가 오프라인입니다. 실행 PC에서 기기 연결을 확인하세요.",
+    "unauthorized": "기기 제어 권한을 확인하세요.",
+    "quarantine": "기기가 격리되었습니다. 진단에서 복구 조건을 확인하세요.",
+    "unavailable": "기기 상태를 확인할 수 없습니다.",
 }
 
 
@@ -158,8 +169,9 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             """
             SELECT aliases.physical_key_id, aliases.display_name, aliases.target_kind,
                    inventory.state, inventory.os_build, inventory.geometry, inventory.observed_at,
-                   quarantine.physical_key_id
+                   quarantine.physical_key_id, physical.worker_id
             FROM resource_aliases AS aliases
+            JOIN physical_resource_keys AS physical USING (physical_key_id)
             LEFT JOIN resource_inventory AS inventory
               ON inventory.physical_key_id = aliases.physical_key_id
             LEFT JOIN resource_quarantine AS quarantine
@@ -170,10 +182,17 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             (str(project_id),),
         ).fetchall()
         listed = []
+        now = datetime.now(timezone.utc)
+        connections = {}
         for row in rows:
             resource_id = str(row[0])
             inventory_state = None if row[3] is None else str(row[3])
             state = "quarantine" if row[7] is not None else (inventory_state or "unavailable")
+            worker_id = str(row[8])
+            if worker_id not in connections:
+                connections[worker_id] = get_presence(connection, worker_id, now, project_id=project_id)
+            presence = connections[worker_id]
+            online = presence.state == "online"
             observed = "" if row[6] is None else str(row[6])
             observation = connection.execute(
                 """
@@ -185,12 +204,21 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             ).fetchone()
             lease = connection.execute(
                 """
-                SELECT job_id FROM leases
-                WHERE project_id = ? AND physical_key_id = ?
+                SELECT leases.project_id, leases.job_id, jobs.status
+                FROM leases JOIN jobs USING (project_id, job_id)
+                WHERE leases.physical_key_id = ?
                 LIMIT 1
                 """,
-                (str(project_id), resource_id),
+                (resource_id,),
             ).fetchone()
+            if state in {"ready", "busy"} and lease is not None:
+                state = "cleanup_pending" if lease[2] in {"completed", "error", "cancelled", "lost"} else "busy"
+            if online:
+                block_reason = _DEVICE_BLOCKS.get(state, "")
+            elif presence.state == "offline":
+                block_reason = "실행 PC가 오프라인입니다. 연결이 복구되면 다시 확인하세요."
+            else:
+                block_reason = "실행 PC의 연결 보고가 없습니다. 워커를 실행한 뒤 다시 확인하세요."
             reason = _preview_reason(state, observed, observation is not None)
             listed.append(
                 {
@@ -200,14 +228,21 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
                     "kind_label": _KIND_LABELS.get(str(row[2]), str(row[2])),
                     "state": state,
                     "state_label": _STATE_LABELS.get(state, state),
+                    "worker_id": worker_id,
+                    "connection_state": presence.state,
+                    "connection_label": _CONNECTION_LABELS[presence.state],
+                    "last_seen": None if presence.last_seen is None else presence.last_seen.isoformat(),
+                    "can_execute": online and state == "ready",
+                    "can_diagnose": online,
+                    "block_reason": block_reason,
                     "os_build": "" if row[4] is None else str(row[4]),
                     "geometry": "" if row[5] is None else str(row[5]),
                     "observed_at": observed,
                     "availability": "unavailable" if observation is None else "observed",
                     "reason": reason,
                     "run_href": None
-                    if lease is None
-                    else f"/ui/projects/{project_id}/environments?run={lease[0]}",
+                    if lease is None or lease[0] != str(project_id)
+                    else f"/ui/projects/{project_id}/environments?run={lease[1]}",
                 }
             )
     return tuple(listed)

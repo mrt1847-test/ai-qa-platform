@@ -162,3 +162,62 @@ def probe_web_isolation(config: VmProbeConfig) -> IsolationProbeReport:
         block_reason=block_reason,
         evidence=evidence,
     )
+
+
+def require_web_ready(proof_ready: object | None) -> bool:
+    """Web ready requires an isolation confirmation. Probe inventory alone is not enough."""
+
+    return proof_ready is not None
+
+
+def admit_recording_channel(kind: str) -> None:
+    """Recording guest may use IPC only. Shell/CDP/host reads stay closed on the host adapter."""
+
+    if kind != "ipc":
+        raise ValueError(f"recording channel refused: {kind}")
+
+
+def bind_web_vm_transport(
+    gate: object,
+    *,
+    approved_endpoints: frozenset[str] | tuple[str, ...],
+    allow_real_vm: bool = False,
+    fail_connect: bool = False,
+    limits: object | None = None,
+    bindings: object = (),
+) -> object:
+    """Attach allowlisted VM IPC transport. Actual VM image acceptance remains RX-22.
+
+    Optional local guest bindings (127.0.0.1) enable RX-35 process IPC without a real VM.
+    """
+
+    from aiqa.worker.web_isolation_backend import IsolationConfig, WebIsolationGate
+    from aiqa.worker.web_vm_transport import GuestIpcLimits, open_web_vm_transport
+
+    if not isinstance(gate, WebIsolationGate):
+        raise ValueError("web isolation gate is required")
+    if not isinstance(gate.config, IsolationConfig):
+        raise ValueError("isolation config is required")
+    resolved_limits = limits if isinstance(limits, GuestIpcLimits) else None
+    return open_web_vm_transport(
+        gate,
+        approved_endpoints=approved_endpoints,
+        allow_real_vm=allow_real_vm,
+        fail_connect=fail_connect,
+        limits=resolved_limits,
+        bindings=bindings,  # type: ignore[arg-type]
+    )
+
+
+def transport_as_cleanup_provider(transport: object) -> object:
+    """Expose close_context proof for attempt cleanup."""
+
+    class _Provider:
+        def close_context(self) -> tuple[str, ...]:
+            close = getattr(transport, "close", None)
+            if close is None:
+                return ()
+            return tuple(close())
+
+    return _Provider()
+

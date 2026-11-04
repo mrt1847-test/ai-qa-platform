@@ -11,13 +11,59 @@ from threading import Lock
 from uuid import UUID
 
 from aiqa.contracts.jobs import ControlDecision, LeaseView
-from aiqa.worker.presence import get_presence
-from aiqa.worker.runner import AttemptRunner, MonotonicInstant
+from aiqa.worker.presence import HEARTBEAT_SECONDS, get_presence
+from aiqa.worker.runner import (
+    LEASE_MARGIN_SECONDS,
+    WATCHDOG_SECONDS,
+    AttemptRunner,
+    MonotonicInstant,
+)
 
 _PHASES = ("before_model", "after_model", "before_lookup", "before_dispatch")
 _BLOCKED = frozenset({"cancel_requested", "finalizing", "completed", "error", "cancelled", "lost"})
 _ATTEMPT_CONTROLS: OrderedDict[str, tuple[AttemptRunner, float]] = OrderedDict()
 _CONTROLS_LOCK = Lock()
+LEASE_SECONDS = 45
+POLL_SECONDS = 2
+
+
+class RemoteLeaseGuard:
+    """Gate one action with the local monotonic clock and the server's remaining lease."""
+
+    heartbeat_seconds = HEARTBEAT_SECONDS
+    lease_seconds = LEASE_SECONDS
+    watchdog_seconds = WATCHDOG_SECONDS
+    action_margin_seconds = LEASE_MARGIN_SECONDS
+    poll_seconds = POLL_SECONDS
+
+    def __init__(self, runner: AttemptRunner | None = None) -> None:
+        self._runner = AttemptRunner() if runner is None else runner
+
+    def note_heartbeat(self, now: MonotonicInstant) -> None:
+        self._runner.note_heartbeat(now)
+
+    def authorize(
+        self,
+        now: MonotonicInstant,
+        server_remaining_seconds: float,
+        *,
+        phase: str = "before_dispatch",
+    ) -> ControlDecision:
+        if type(server_remaining_seconds) is not float and type(server_remaining_seconds) is not int:
+            raise ValueError("server remaining seconds are invalid")
+        remaining = float(server_remaining_seconds)
+        if remaining < self.action_margin_seconds:
+            return ControlDecision(False, "lease_margin")
+        lease = LeaseView(
+            UUID(int=0),
+            UUID(int=1),
+            1,
+            str(now.seconds + remaining),
+            self.lease_seconds,
+            self.heartbeat_seconds,
+            self.poll_seconds,
+        )
+        return self._runner.authorize(now, lease, phase)
 
 
 class RunControl:
@@ -130,6 +176,17 @@ class RunControl:
         expires = datetime.fromisoformat(str(row[0]))
         if expires.tzinfo is None:
             return ControlDecision(False, 'lease_margin')
+        receipt = self._connection.execute(
+            """
+            SELECT expires_at FROM claim_receipts
+            WHERE project_id = ? AND attempt_id = ?
+            """,
+            (str(self._project_id), self.attempt_id),
+        ).fetchone()
+        if receipt is not None:
+            receipt_expires = datetime.fromisoformat(str(receipt[0]))
+            if receipt_expires.tzinfo is None or now >= receipt_expires.astimezone(timezone.utc):
+                return ControlDecision(False, "expired_claim_receipt")
         age = self._clock() - self._clock_start
         instant = MonotonicInstant(self._runner.started_at + age)
         remaining = (expires - now).total_seconds()

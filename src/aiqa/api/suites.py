@@ -107,8 +107,16 @@ async def post_suite(project_id: str, request: Request) -> JSONResponse:
             return _error(401, "unauthorized", "session is missing", {})
         except SuiteConflict:
             return _error(409, "conflict", "idempotency body does not match", {})
-        except SuiteRejected:
-            return _error(422, "validation", "suite is not ready", {})
+        except SuiteRejected as exc:
+            message = str(exc) or "suite is not ready"
+            fields: dict[str, list[str]] = {}
+            if "name" in message:
+                fields = {"name": ["required"]}
+            elif "target" in message:
+                fields = {"target_kind": ["invalid"]}
+            elif "body" in message:
+                fields = {"description": ["invalid"], "owner_name": ["invalid"], "classification": ["invalid"]}
+            return _error(422, "validation", message, fields)
     return JSONResponse(status_code=200 if view.replayed else 201, content=_view_json(view))
 
 
@@ -239,6 +247,7 @@ async def suites_page(project_id: str, request: Request) -> HTMLResponse:
             "project_id": str(project),
             "query": request.query_params.get("q", ""),
             "suites": [_view_json(item) for item in views],
+            "crumbs": (("테스트 묶음", ""),),
         },
     )
 
@@ -253,7 +262,7 @@ async def suite_editor_page(project_id: str, suite_id: str, request: Request) ->
         try:
             actor = authorize_page(request, project)
             with store.transaction() as connection:
-                name, cases, entries, proposals = suite_editor(
+                name, version_id, cases, entries, proposals = suite_editor(
                     Transaction(connection), actor, project, parsed, str(request.query_params.get("q", ""))
                 )
         except (AuthRequired, OriginRejected, ProjectHidden, SuiteRejected):
@@ -261,7 +270,18 @@ async def suite_editor_page(project_id: str, suite_id: str, request: Request) ->
     return render_template(
         request,
         "suite_editor.html",
-        {"project_id": str(project), "suite_id": str(parsed), "name": name, "cases": cases, "entries": entries, "proposals": proposals},
+        {
+            "shell": False,
+            "project_id": str(project),
+            "suite_id": str(parsed),
+            "name": name,
+            "version_id": str(version_id),
+            "query": request.query_params.get("q", ""),
+            "cases": cases,
+            "entries": entries,
+            "proposals": proposals,
+            "crumbs": (("테스트 묶음", f"/ui/projects/{project}/suites"), ("구성", "")),
+        },
     )
 
 

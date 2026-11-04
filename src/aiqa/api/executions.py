@@ -384,7 +384,12 @@ async def executions_page(project_id: str, request: Request) -> HTMLResponse:
     return render_template(
         request,
         "executions.html",
-        {"shell": False, "project_id": str(project), **listed},
+        {
+            "shell": False,
+            "project_id": str(project),
+            "crumbs": (("테스트 수행", ""),),
+            **listed,
+        },
     )
 
 

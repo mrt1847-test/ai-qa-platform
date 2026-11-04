@@ -1,31 +1,71 @@
 {% extends "base.html" %}
 {% block title %}묶음{% endblock %}
 {% block content %}
-  <h1>묶음</h1>
-  <form method="get">
+  <h1>테스트 묶음</h1>
+  <form method="get" class="suite-search">
     <label>검색 <input name="q" value="{{ query }}"></label>
     <button type="submit">검색</button>
   </form>
   <p>빈 묶음은 저장할 수 있습니다. 구성이 0이면 실행하지 않습니다.</p>
-  {% if suites %}
-  <ul>
-    {% for suite in suites %}
-    <li>
-      <span>{{ suite.suite_id }}</span>
-      <span>{{ suite.name }}</span>
-      <span>{{ suite.description }}</span>
-      <span>{{ suite.target_kind }}</span>
-      <span>담당 {{ suite.owner_name }}</span>
-      <span>구성 {{ suite.entry_count }}</span>
-      <span>최근 수행 {{ suite.latest_run_id }}</span>
-      <span>{{ suite.updated_at }}</span>
-      <span>{{ suite.classification }}</span>
-      <span>이력 {{ suite.history|length }}</span>
-      {% if suite.archived_at %}<span>보관</span>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p>묶음이 없습니다.</p>
-  {% endif %}
+
+  <section class="panel" aria-label="묶음 생성">
+    <h2>새 묶음</h2>
+    <form id="suite-create" data-project="{{ project_id }}" data-suite-create>
+      <label>이름 <input name="name" required autocomplete="off"></label>
+      <label>설명 <textarea name="description" rows="2"></textarea></label>
+      <label>대상
+        <select name="target_kind">
+          <option value="web">web</option>
+          <option value="android">android</option>
+        </select>
+      </label>
+      <label>담당 <input name="owner_name" autocomplete="off"></label>
+      <label>분류 <input name="classification" autocomplete="off"></label>
+      <input type="submit" data-save-button value="묶음 만들기">
+      {% include "components/form_feedback.html" %}
+    </form>
+  </section>
+
+  <section aria-label="묶음 목록">
+    <h2>목록</h2>
+    <ul data-suite-list>
+      {% if suites %}
+      {% for suite in suites %}
+      <li data-suite-id="{{ suite.suite_id }}"{% if suite.archived_at %} data-archived="true"{% endif %}>
+        <a href="/ui/projects/{{ project_id }}/suites/{{ suite.suite_id }}">{{ suite.name }}</a>
+        <span>{{ suite.description }}</span>
+        <span>{{ suite.target_kind }}</span>
+        <span>담당 {{ suite.owner_name }}</span>
+        <span>구성 {{ suite.entry_count }}</span>
+        <span>분류 {{ suite.classification }}</span>
+        <span data-head-version="{{ suite.version_id }}">버전 {{ suite.version_id }}</span>
+        <span>이력 {{ suite.history|length }}</span>
+        <span>최근 수행 {{ suite.latest_run_id }}</span>
+        <span>{{ suite.updated_at }}</span>
+        {% if suite.archived_at %}<span>보관</span><span>보관됨</span>
+        {% else %}
+        <button type="button" class="secondary" data-suite-clone data-suite-id="{{ suite.suite_id }}" data-suite-name="{{ suite.name }}">복제</button>
+        <button type="button" class="secondary" data-suite-archive data-suite-id="{{ suite.suite_id }}" data-suite-name="{{ suite.name }}">보관</button>
+        {% endif %}
+      </li>
+      {% endfor %}
+      {% else %}
+      <li data-empty-suites>묶음이 없습니다.</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <dialog id="suite-confirm" data-suite-confirm>
+    <form method="dialog" id="suite-confirm-form">
+      <h2 data-confirm-title>확인</h2>
+      <p data-confirm-message></p>
+      <label data-confirm-name-wrap hidden>복제 이름 <input name="clone_name" autocomplete="off"></label>
+      <menu>
+        <button type="submit" value="cancel" class="secondary">취소</button>
+        <button type="submit" value="confirm" data-confirm-ok>확인</button>
+      </menu>
+      <p data-confirm-status role="status" aria-live="polite"></p>
+    </form>
+  </dialog>
+  <script src="/static/suites.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

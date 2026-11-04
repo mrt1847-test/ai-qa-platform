@@ -290,14 +290,37 @@ def save_suite_revision(
     current = _read(tx.connection, project_id, suite_id, False)
     if current is None:
         raise SuiteRejected("suite was not found")
+    expected = payload.get("expected_version_id")
+    if expected is not None:
+        if type(expected) is not str or current.version_id is None or expected != str(current.version_id):
+            raise SuiteConflict("suite head does not match")
     entries = _revision_entries(tx.connection, project_id, payload)
     return _store_revision(
         tx.connection, actor, project_id, suite_id, current.version_id, entries, payload, request_key, _now(), "save_suite_revision"
     )
 
 
+@dataclass(frozen=True, slots=True)
+class ApprovedCaseChoice:
+    """One approved case the editor can add as an entry."""
+
+    case_id: UUID
+    name: str
+    case_version_id: UUID
+    approval_id: str
+    target_kind: str
+
+
 def approved_case_names(tx: Transaction, actor: Actor, project_id: UUID, needle: str) -> tuple[tuple[str, str], ...]:
     """List approved cases in this project. The search does not open another project."""
+
+    return tuple((str(item.case_id), item.name) for item in approved_case_choices(tx, actor, project_id, needle))
+
+
+def approved_case_choices(
+    tx: Transaction, actor: Actor, project_id: UUID, needle: str
+) -> tuple[ApprovedCaseChoice, ...]:
+    """Approved cases with the exact version/approval the editor may pin."""
 
     _scope(actor, project_id)
     rows = tx.connection.execute(
@@ -308,21 +331,54 @@ def approved_case_names(tx: Transaction, actor: Actor, project_id: UUID, needle:
         """,
         (str(project_id),),
     ).fetchall()
-    found = [(str(row[0]), str(row[1])) for row in rows if needle.strip() == "" or needle.strip() in str(row[1])]
+    found: list[ApprovedCaseChoice] = []
+    for row in rows:
+        name = str(row[1])
+        if needle.strip() != "" and needle.strip() not in name:
+            continue
+        case_id = UUID(str(row[0]))
+        latest = _latest_approval(tx.connection, project_id, case_id)
+        if latest is None:
+            continue
+        target = tx.connection.execute(
+            """
+            SELECT settings_json FROM case_versions
+            WHERE project_id = ? AND case_id = ? AND version_id = ?
+            """,
+            (str(project_id), str(case_id), str(latest[1])),
+        ).fetchone()
+        kind = "web"
+        if target is not None and type(target[0]) is str and '"android"' in str(target[0]):
+            kind = "android"
+        found.append(
+            ApprovedCaseChoice(
+                case_id=case_id,
+                name=name,
+                case_version_id=latest[1],
+                approval_id=latest[0],
+                target_kind=kind,
+            )
+        )
     return tuple(found)
 
 
 def suite_editor(
     tx: Transaction, actor: Actor, project_id: UUID, suite_id: UUID, needle: str
-) -> tuple[str, tuple[tuple[str, str], ...], tuple[SuiteEntry, ...], tuple[UpgradeProposal, ...]]:
-    """Read the approved search, the current revision, and any newer approvals."""
+) -> tuple[str, UUID, tuple[ApprovedCaseChoice, ...], tuple[SuiteEntry, ...], tuple[UpgradeProposal, ...]]:
+    """Read the approved search, the current revision head, and any newer approvals."""
 
     view = _read(tx.connection, project_id, suite_id, False)
     if view is None or view.version_id is None:
         raise SuiteRejected("suite was not found")
     version = _read_version(tx.connection, project_id, suite_id, view.version_id, False)
     entries = () if version is None else version.entries
-    return view.name, approved_case_names(tx, actor, project_id, needle), entries, _proposals(tx.connection, project_id, entries)
+    return (
+        view.name,
+        view.version_id,
+        approved_case_choices(tx, actor, project_id, needle),
+        entries,
+        _proposals(tx.connection, project_id, entries),
+    )
 
 
 def list_upgrade_proposals(tx: Transaction, actor: Actor, project_id: UUID, suite_id: UUID) -> tuple[UpgradeProposal, ...]:

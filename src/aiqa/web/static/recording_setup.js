@@ -42,7 +42,16 @@
       if(response.ok&&body.artifact_id&&body.reason!=='expired'&&body.reason!=='unobserved'){
         image.onerror=function(){image.hidden=true;message.textContent='관찰 화면을 불러오지 못했습니다. 새 관찰을 수집한 뒤 확인해 주세요.';};image.src='/api/v1/artifacts/'+encodeURIComponent(body.artifact_id);image.hidden=false;message.textContent='';
       }else message.textContent=body.reason==='expired'?'최근 캡처의 보관 기한이 지났습니다.':'저장된 관찰 화면이 없습니다. 연결 후 수집한 정제 캡처가 표시됩니다.';
-      time.textContent=body.observed_at?'관찰 시각 '+new Date(body.observed_at).toLocaleString('ko-KR')+' · 실시간 화면 아님':'실시간 제어 화면이 아닙니다.';
+      var resourceMeta=chosen();
+      var observed=body.observed_at||(resourceMeta&&resourceMeta.dataset.observedAt)||'';
+      var heartbeat=resourceMeta&&resourceMeta.dataset.lastSeen?resourceMeta.dataset.lastSeen:'';
+      var geometry=resourceMeta&&resourceMeta.dataset.geometry?resourceMeta.dataset.geometry:'';
+      var parts=[];
+      if(observed)parts.push('관찰 '+new Date(observed).toLocaleString('ko-KR'));
+      if(heartbeat)parts.push('heartbeat '+new Date(heartbeat).toLocaleString('ko-KR'));
+      if(geometry)parts.push(geometry);
+      parts.push('실시간 화면 아님');
+      time.textContent=parts.join(' · ');
     }catch(_){if(revision===previewRevision)message.textContent='최근 관찰을 확인하지 못했습니다. 연결 상태를 확인해 주세요.';}
   }
   form.querySelectorAll('input[name="resource_id"]').forEach(function(radio){radio.addEventListener('change',function(){var previous=value('target_kind');set('target_kind',radio.dataset.kind);target(previous!==radio.dataset.kind);preview();});});

@@ -29,6 +29,19 @@ class ProjectValidationError(Exception):
         self.fields = fields
 
 
+class MembershipDenied(Exception):
+    """The actor has no active membership for the requested capability."""
+
+
+MEMBERSHIP_ROLES = frozenset({"viewer", "operator", "admin"})
+CAPABILITY_ROLES = {
+    "project_view": frozenset({"viewer", "operator", "admin"}),
+    "evidence_download": frozenset({"viewer", "operator", "admin"}),
+    "approve": frozenset({"admin"}),
+    "worker_manage": frozenset({"admin"}),
+}
+
+
 @contextmanager
 def bind_store(store: Store) -> Iterator[None]:
     token = _store.set(store)
@@ -145,6 +158,81 @@ def restore_project(actor: Actor, project_id: UUID) -> ProjectView:
     """Return an archived project to the active list and record the audit."""
 
     return _set_archive(actor, project_id, archived=False)
+
+
+def grant_membership(
+    tx: Transaction,
+    project_id: UUID,
+    actor_id: UUID,
+    role: str,
+    *,
+    now: datetime | None = None,
+) -> None:
+    if role not in MEMBERSHIP_ROLES:
+        raise ProjectValidationError({"role": ["unsupported"]})
+    moment = (now or datetime.now(timezone.utc)).isoformat()
+    tx.connection.execute(
+        """
+        INSERT INTO project_memberships (project_id, actor_id, role, created_at, revoked_at)
+        VALUES (?, ?, ?, ?, NULL)
+        ON CONFLICT(project_id, actor_id) DO UPDATE SET
+            role = excluded.role,
+            created_at = excluded.created_at,
+            revoked_at = NULL
+        """,
+        (str(project_id), str(actor_id), role, moment),
+    )
+
+
+def revoke_membership(
+    tx: Transaction,
+    project_id: UUID,
+    actor_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> None:
+    moment = (now or datetime.now(timezone.utc)).isoformat()
+    updated = tx.connection.execute(
+        """
+        UPDATE project_memberships
+        SET revoked_at = ?
+        WHERE project_id = ? AND actor_id = ? AND revoked_at IS NULL
+        """,
+        (moment, str(project_id), str(actor_id)),
+    )
+    if updated.rowcount != 1:
+        raise MembershipDenied("membership was not found")
+
+
+def active_membership_role(tx: Transaction, project_id: UUID, actor_id: UUID) -> str | None:
+    row = tx.connection.execute(
+        """
+        SELECT role FROM project_memberships
+        WHERE project_id = ? AND actor_id = ? AND revoked_at IS NULL
+        """,
+        (str(project_id), str(actor_id)),
+    ).fetchone()
+    return None if row is None else str(row[0])
+
+
+def require_project_capability(
+    tx: Transaction,
+    actor: Actor,
+    project_id: UUID,
+    capability: str,
+) -> str:
+    """Return the effective role or raise. Local owners keep full access in their scope."""
+
+    if capability not in CAPABILITY_ROLES:
+        raise MembershipDenied("capability is unknown")
+    if actor.is_local_owner and actor.project_scope == project_id:
+        return "admin"
+    if actor.is_local_owner and actor.project_scope is None:
+        return "admin"
+    role = active_membership_role(tx, project_id, actor.actor_id)
+    if role is None or role not in CAPABILITY_ROLES[capability]:
+        raise MembershipDenied(f"{capability} was denied")
+    return role
 
 
 def next_commit_seq(tx: Transaction, project_id: UUID) -> int:

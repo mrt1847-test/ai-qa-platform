@@ -11,9 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
+from aiqa.store.artifacts import content_hash
 from aiqa.store.models import Actor
 
 WORKER_OPENS_SQLITE = False
+_STORE_ID_NAME = "store.id"
 
 
 class BackupRejected(ValueError):
@@ -31,6 +33,18 @@ class BackupSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class BackupGeneration:
+    """One consistent SQLite snapshot + artifact/secret-ref manifest."""
+
+    generation_id: UUID
+    store_id: str
+    db_hash: str
+    artifact_count: int
+    missing_count: int
+    secret_ref_count: int
+
+
+@dataclass(frozen=True, slots=True)
 class BackupReceipt:
     receipt_id: UUID
     job_id: UUID
@@ -39,6 +53,8 @@ class BackupReceipt:
     state: str
     missing_count: int
     qa: None
+    generation_id: UUID | None = None
+    store_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +103,19 @@ def copy_snapshot_bytes(payload: bytes, destination: Path) -> None:
     destination.write_bytes(payload)
 
 
+def ensure_store_identity(runtime_root: Path) -> str:
+    """Stable store id for this runtime. Foreign backups cannot activate here."""
+
+    path = runtime_root / _STORE_ID_NAME
+    if path.is_file():
+        value = path.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+    value = str(uuid4())
+    path.write_text(value, encoding="utf-8")
+    return value
+
+
 def create_backup(store: object, spec: BackupSpec, now: datetime) -> BackupReceipt:
     """Snapshot the whole store after releasing the write lock. The project id is the request namespace."""
 
@@ -94,17 +123,20 @@ def create_backup(store: object, spec: BackupSpec, now: datetime) -> BackupRecei
         raise BackupRejected("local owner required")
     database_path = store.config.database_path  # type: ignore[attr-defined]
     artifacts_dir = store.config.artifacts_dir  # type: ignore[attr-defined]
-    backup_root = store.config.runtime_root / "backups"  # type: ignore[attr-defined]
+    runtime_root = store.config.runtime_root  # type: ignore[attr-defined]
+    backup_root = getattr(store.config, "backups_dir", None) or (runtime_root / "backups")
     if not database_path.is_file():
         raise BackupRejected("store is missing")
     clock = now.astimezone(timezone.utc)
     receipt_id = uuid4()
     job_id = uuid4()
+    generation_id = uuid4()
+    store_id = ensure_store_identity(runtime_root)
     pause_id = str(uuid4())
     pinned: list[str] = []
     with store.transaction() as connection:  # type: ignore[attr-defined]
         _start(connection, spec.project_id, job_id, receipt_id, pause_id, pinned, clock)
-    folder = backup_root / str(receipt_id)
+    folder = Path(backup_root) / str(receipt_id)
     folder.mkdir(parents=True, exist_ok=True)
     snapshot = folder / "snapshot.sqlite"
     digest = ""
@@ -113,15 +145,46 @@ def create_backup(store: object, spec: BackupSpec, now: datetime) -> BackupRecei
     try:
         _snapshot(database_path, snapshot)
         saved = snapshot.read_bytes()
-        digest = "sha256:" + hashlib.sha256(saved).hexdigest()
-        missing = _copy_ready(database_path, spec.project_id, artifacts_dir, folder / "files")
+        digest = content_hash(saved)
+        artifacts, missing = _copy_ready(database_path, spec.project_id, artifacts_dir, folder / "files")
+        secret_refs = _secret_refs(snapshot)
+        generation = BackupGeneration(
+            generation_id,
+            store_id,
+            digest,
+            len(artifacts),
+            missing,
+            len(secret_refs),
+        )
         manifest = {
             "cursors": _cursors(database_path),
             "missing_count": missing,
             "scope": "이 PC 전체 저장소",
             "namespace_project_id": str(spec.project_id),
+            "generation_id": str(generation.generation_id),
+            "store_id": store_id,
+            "db_hash": digest,
+            "artifacts": artifacts,
+            "secret_refs": secret_refs,
         }
-        (folder / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+        (folder / "manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+        )
+        (folder / "generation.json").write_text(
+            json.dumps(
+                {
+                    "generation_id": str(generation.generation_id),
+                    "store_id": store_id,
+                    "db_hash": digest,
+                    "artifact_count": generation.artifact_count,
+                    "missing_count": missing,
+                    "secret_ref_count": generation.secret_ref_count,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
         state = "incomplete" if missing else "complete"
     finally:
         with store.transaction() as connection:  # type: ignore[attr-defined]
@@ -141,7 +204,9 @@ def create_backup(store: object, spec: BackupSpec, now: datetime) -> BackupRecei
     if not snapshot.is_file():
         raise BackupRejected("snapshot is missing")
     saved = snapshot.read_bytes()
-    return BackupReceipt(receipt_id, job_id, len(saved), digest, state, missing, None)
+    return BackupReceipt(
+        receipt_id, job_id, len(saved), digest, state, missing, None, generation_id, store_id
+    )
 
 
 def validate_restore(store: object, spec: RestoreSpec, now: datetime) -> RestoreValidation:
@@ -150,28 +215,53 @@ def validate_restore(store: object, spec: RestoreSpec, now: datetime) -> Restore
     if not spec.actor.is_local_owner or spec.actor.project_scope not in {None, spec.project_id}:
         raise RestoreRejected("local owner required")
     database_path = store.config.database_path  # type: ignore[attr-defined]
-    backup_root = store.config.runtime_root / "backups" / str(spec.receipt_id)  # type: ignore[attr-defined]
+    runtime_root = store.config.runtime_root  # type: ignore[attr-defined]
+    backup_root = Path(getattr(store.config, "backups_dir", None) or (runtime_root / "backups")) / str(
+        spec.receipt_id
+    )
     snapshot = backup_root / "snapshot.sqlite"
     if not snapshot.is_file() or snapshot.resolve() == database_path.resolve():
-        raise RestoreRejected("snapshot is missing")
+        raise RestoreRejected("interrupted backup")
+    live_store_id = ensure_store_identity(runtime_root)
     validation_id = uuid4()
-    destination = store.config.runtime_root / "restores" / str(validation_id) / "snapshot.sqlite"  # type: ignore[attr-defined]
+    destination = runtime_root / "restores" / str(validation_id) / "snapshot.sqlite"
     if destination.resolve() == database_path.resolve():
         raise RestoreRejected("restore path overlaps the live store")
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(snapshot, destination)
     shutil.copyfile(backup_root / "manifest.json", destination.parent / "manifest.json")
-    checks = _inspect_copy(database_path, destination, destination.parent / "manifest.json")
+    if (backup_root / "generation.json").is_file():
+        shutil.copyfile(backup_root / "generation.json", destination.parent / "generation.json")
+    files_src = backup_root / "files"
+    if files_src.is_dir():
+        shutil.copytree(files_src, destination.parent / "files", dirs_exist_ok=True)
+    checks = _inspect_copy(
+        database_path,
+        destination,
+        destination.parent / "manifest.json",
+        files_root=destination.parent / "files",
+        live_store_id=live_store_id,
+    )
+    if checks.get("foreign_store"):
+        raise RestoreRejected("foreign store")
+    if checks.get("interrupted"):
+        raise RestoreRejected("interrupted backup")
     clock = now.astimezone(timezone.utc)
     with store.transaction() as connection:  # type: ignore[attr-defined]
         owned = connection.execute(
-            "SELECT content_hash FROM backup_snapshots WHERE project_id = ? AND receipt_id = ?",
+            """
+            SELECT content_hash, state, missing_count
+            FROM backup_snapshots
+            WHERE project_id = ? AND receipt_id = ?
+            """,
             (str(spec.project_id), str(spec.receipt_id)),
         ).fetchone()
         if owned is None:
             raise RestoreRejected("snapshot is missing")
-        digest = "sha256:" + hashlib.sha256(destination.read_bytes()).hexdigest()
-        hash_ok = digest == str(owned[0]) and checks["hash_readable"]
+        if str(owned[1]) != "complete" or int(owned[2]) != 0:
+            raise RestoreRejected("incomplete backup")
+        digest = content_hash(destination.read_bytes())
+        hash_ok = digest == str(owned[0]) and bool(checks["hash_readable"])
         accepted = bool(
             checks["schema_ok"]
             and checks["foreign_keys_ok"]
@@ -179,6 +269,7 @@ def validate_restore(store: object, spec: RestoreSpec, now: datetime) -> Restore
             and checks["manifest_ok"]
             and hash_ok
             and checks["missing_count"] == 0
+            and checks["artifacts_ok"]
         )
         connection.execute(
             """
@@ -252,20 +343,54 @@ def activate_restore(store: object, spec: RestoreActivation, now: datetime) -> R
     return RestoreReceipt(activation_id, spec.validation_id, 0, False, True)
 
 
-def _inspect_copy(database_path: Path, copy_path: Path, manifest_path: Path) -> dict[str, object]:
+def _inspect_copy(
+    database_path: Path,
+    copy_path: Path,
+    manifest_path: Path,
+    *,
+    files_root: Path | None = None,
+    live_store_id: str | None = None,
+) -> dict[str, object]:
     schema_ok = False
     foreign_keys_ok = False
     integrity_ok = False
     hash_readable = False
     missing_count = 1
     manifest_ok = False
+    artifacts_ok = False
+    foreign_store = False
+    interrupted = False
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         if type(manifest) is dict and manifest.get("scope") == "이 PC 전체 저장소":
             missing_count = int(manifest.get("missing_count", 1))
             manifest_ok = True
+            stamped = manifest.get("store_id")
+            if live_store_id is not None and type(stamped) is str and stamped != "" and stamped != live_store_id:
+                foreign_store = True
+            if "generation_id" in manifest and type(manifest.get("generation_id")) is not str:
+                interrupted = True
+            artifacts = manifest.get("artifacts")
+            if artifacts is None:
+                artifacts_ok = missing_count == 0
+            elif type(artifacts) is list:
+                artifacts_ok = _artifacts_match(artifacts, files_root)
+                if not artifacts_ok:
+                    missing_count = max(missing_count, 1)
+            secret_refs = manifest.get("secret_refs")
+            if secret_refs is not None and type(secret_refs) is not list:
+                manifest_ok = False
+            elif type(secret_refs) is list:
+                for item in secret_refs:
+                    if type(item) is not dict:
+                        manifest_ok = False
+                        break
+                    if any(key in item for key in ("value", "secret", "password", "api_key")):
+                        manifest_ok = False
+                        break
     except (OSError, ValueError, TypeError):
         manifest_ok = False
+        interrupted = True
     try:
         copied = sqlite3.connect(copy_path)
         live = sqlite3.connect(database_path)
@@ -290,7 +415,28 @@ def _inspect_copy(database_path: Path, copy_path: Path, manifest_path: Path) -> 
         "manifest_ok": manifest_ok,
         "hash_readable": hash_readable,
         "missing_count": missing_count,
+        "artifacts_ok": artifacts_ok,
+        "foreign_store": foreign_store,
+        "interrupted": interrupted,
     }
+
+
+def _artifacts_match(artifacts: list[object], files_root: Path | None) -> bool:
+    if files_root is None:
+        return len(artifacts) == 0
+    for item in artifacts:
+        if type(item) is not dict:
+            return False
+        key = item.get("object_key")
+        digest = item.get("content_hash")
+        if type(key) is not str or type(digest) is not str:
+            return False
+        path = files_root / key
+        if not path.is_file():
+            return False
+        if content_hash(path.read_bytes()) != digest:
+            return False
+    return True
 
 
 def _schema_rows(connection: sqlite3.Connection) -> list[tuple[object, ...]]:
@@ -334,6 +480,7 @@ def _clear_progress(connection: sqlite3.Connection, clock: datetime) -> None:
         )
     connection.execute("DELETE FROM leases")
     connection.execute("DELETE FROM worker_tokens")
+    connection.execute("DELETE FROM worker_presence")
     for row in connection.execute("SELECT physical_key_id FROM physical_resource_keys").fetchall():
         connection.execute(
             """
@@ -439,23 +586,53 @@ def _snapshot(database_path: Path, destination: Path) -> None:
         source.close()
 
 
-def _copy_ready(database_path: Path, project_id: UUID, artifacts_dir: Path, folder: Path) -> int:
+def _copy_ready(
+    database_path: Path, project_id: UUID, artifacts_dir: Path, folder: Path
+) -> tuple[list[dict[str, str]], int]:
     missing = 0
+    artifacts: list[dict[str, str]] = []
     source = sqlite3.connect(database_path)
     try:
         rows = source.execute(
-            "SELECT object_key FROM artifact_objects WHERE project_id = ? AND status = 'ready'",
+            """
+            SELECT object_key, content_hash
+            FROM artifact_objects
+            WHERE project_id = ? AND status = 'ready'
+            """,
             (str(project_id),),
         ).fetchall()
     finally:
         source.close()
     for row in rows:
-        path = artifacts_dir / str(row[0])
+        key = str(row[0])
+        digest = str(row[1])
+        path = artifacts_dir / key
         if not path.is_file():
             missing += 1
             continue
-        copy_snapshot_bytes(path.read_bytes(), folder / str(row[0]))
-    return missing
+        body = path.read_bytes()
+        if content_hash(body) != digest:
+            missing += 1
+            continue
+        copy_snapshot_bytes(body, folder / key)
+        artifacts.append({"object_key": key, "content_hash": digest})
+    return artifacts, missing
+
+
+def _secret_refs(snapshot: Path) -> list[dict[str, object]]:
+    """Refs only. Plaintext never enters the backup generation."""
+
+    from aiqa.security.secrets import backup_secret_manifest
+
+    connection = sqlite3.connect(snapshot)
+    try:
+        projects = [UUID(str(row[0])) for row in connection.execute("SELECT project_id FROM projects").fetchall()]
+        refs: list[dict[str, object]] = []
+        for project_id in projects:
+            refs.extend(list(backup_secret_manifest(connection, project_id)))
+        return refs
+    finally:
+        connection.close()
 
 
 def _cursors(database_path: Path) -> dict[str, int]:

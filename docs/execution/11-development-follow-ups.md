@@ -48,17 +48,17 @@ AD-01 완료는 개발 이력으로 유지한다. AD-02~04는 development_only�
 <a id="ux-01"></a>
 ## UX-01 — 실제 있는 화면으로 탐색 복원
 
-- 상태 not_started. 선행 W20-04/W21-01/W23-04. 대상 `web/context.py`, 공통 navigation, 관련 페이지 shell·접근성 시험.
-- 기존 묶음/수행/리포트 GET route로 메뉴를 연결하고 해당 section·breadcrumb·프로젝트 권한·빈 상태·키보드 진입을 검증한다. 페이지 조회로 실행/설치를 만들지 않는다. 준비 안 된 실행 접수는 기존 서버 gate를 유지한다. API·DB 재구현 없이 실제 브라우저로 세 경로에 도달하면 완료다.
+- 상태 complete. 선행 W20-04/W21-01/W23-04. 대상 `web/context.py`, 공통 navigation, 관련 페이지 shell·접근성 시험. 인계 [UX-01](../validation/tasks/UX-01.md).
+- [x] 기존 묶음/수행/리포트 GET route로 메뉴를 연결하고 해당 section·breadcrumb·프로젝트 권한·빈 상태·키보드 진입을 검증한다. 페이지 조회로 실행/설치를 만들지 않는다. 준비 안 된 실행 접수는 기존 서버 gate를 유지한다. API·DB 재구현 없이 실제 브라우저로 세 경로에 도달하면 완료다.
 
 <a id="ux-02"></a>
 ## UX-02 — 묶음 생성·복제·보관 UI
 
-- 상태 not_started. 선행 UX-01. 대상 suites template·새 controller·공통 form/command·브라우저 회귀.
-- 기존 API로 이름/설명/대상/담당/분류 입력→생성 ACK→목록, 복제/보관 명시 확인과 receipt, 422/409/응답 유실·입력 보존을 각각 구현한다. 실제 UI 조작으로 DB를 조회해 검증한다. 기존 suite revision과 수행을 변경하지 않는다. 생성·복제·보관 각 흐름을 구별해 인계한다.
+- 상태 complete. 선행 UX-01. 대상 suites template·새 controller·공통 form/command·브라우저 회귀. 인계 [UX-02](../validation/tasks/UX-02.md).
+- [x] 기존 API로 이름/설명/대상/담당/분류 입력→생성 ACK→목록, 복제/보관 명시 확인과 receipt, 422/409/응답 유실·입력 보존을 각각 구현한다. 실제 UI 조작으로 DB를 조회해 검증한다. 기존 suite revision과 수행을 변경하지 않는다. 생성·복제·보관 각 흐름을 구별해 인계한다.
 
 <a id="ux-03"></a>
 ## UX-03 — 묶음 entry 편집 UI
 
-- 상태 not_started. 선행 UX-02/W21-02/W21-03. 기존 suite domain/API를 소비하며 `suite_editor.html`·controller·관련 브라우저 시험을 보완한다.
-- (1) 승인 케이스 검색과 entry 추가/삭제 (2) 순서·exact version/approval·data/env/reset/실패 정책 (3) 새 revision 저장과 409/미저장 보호 (4) 새 승인 제안의 선택 수락/거부를 하위 재개 지점으로 수행한다. 각 하위 흐름의 UI 조작·DB 불변 근거가 모두 있어야 완료다. API 호출 뒤 읽기 문구만 확인해서 완료하지 않는다.
+- 상태 complete. 선행 UX-02/W21-02/W21-03. 기존 suite domain/API를 소비하며 `suite_editor.html`·controller·관련 브라우저 시험을 보완한다. 인계 [UX-03](../validation/tasks/UX-03.md).
+- [x] (1) 승인 케이스 검색과 entry 추가/삭제 (2) 순서·exact version/approval·data/env/reset/실패 정책 (3) 새 revision 저장과 409/미저장 보호 (4) 새 승인 제안의 선택 수락/거부를 하위 재개 지점으로 수행한다. 각 하위 흐름의 UI 조작·DB 불변 근거가 모두 있어야 완료다. API 호출 뒤 읽기 문구만 확인해서 완료하지 않는다.

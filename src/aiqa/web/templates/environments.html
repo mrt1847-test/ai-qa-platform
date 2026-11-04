@@ -4,6 +4,42 @@
   <h1 data-tab="resources">실행 환경</h1>
   <nav class="environment-tabs" aria-label="실행 환경 탭"><a aria-current="page" href="/ui/projects/{{ project_id }}/environments">연결 기기</a><a href="/ui/projects/{{ project_id }}/environments/editor">환경 프로필</a><a href="/ui/projects/{{ project_id }}/datasets">테스트 데이터</a><a href="/ui/projects/{{ project_id }}/app-builds">앱 빌드</a></nav>
   <p>Web과 Android의 최근 관찰입니다. 이 화면은 기기를 열거나 조작하지 않습니다.</p>
+  {% if can_manage_workers %}
+  <section class="panel" data-pc-registration data-project="{{ project_id }}" aria-labelledby="pc-registration-title">
+    <h2 id="pc-registration-title">실행 PC 등록</h2>
+    <p class="hint">등록 코드를 발급해 등록된 실행 PC의 worker만 연결합니다. 접속용 브라우저 PC에 설치할 필요는 없습니다.</p>
+    <form id="pc-registration-form" novalidate>
+      <label>worker ID <input name="worker_id" type="text" autocomplete="off" required aria-required="true"></label>
+      <label>목적
+        <select name="purpose">
+          <option value="resource_probe">resource_probe</option>
+          <option value="recording">recording</option>
+          <option value="trial">trial</option>
+          <option value="regression">regression</option>
+        </select>
+      </label>
+      <div class="button-row">
+        <button type="button" data-pc-action="issue" accesskey="i">등록 코드 발급</button>
+        <button type="button" data-pc-action="copy" accesskey="c" disabled>코드 복사</button>
+        <button type="button" data-pc-action="cancel" accesskey="x" disabled>발급 취소</button>
+        <button type="button" data-pc-action="revoke" accesskey="r">worker 폐기</button>
+      </div>
+      <p data-pc-code-box hidden><label>등록 코드 <input name="issued_code" type="text" readonly aria-live="polite"></label><span data-pc-code-expiry></span></p>
+      <p data-pc-reg-status role="status"></p>
+    </form>
+    {% if registered_workers %}
+    <details><summary>등록된 worker</summary>
+      <ul data-pc-worker-list>
+        {% for row in registered_workers %}
+        <li data-worker-id="{{ row.worker_id }}">{{ row.worker_id }} · {{ row.purpose or '미교환' }}{% if row.revoked %} · 폐기됨{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+  </section>
+  {% else %}
+  <p class="hint" data-pc-registration-denied>실행 PC 등록·폐기는 프로젝트 관리자만 사용할 수 있습니다.</p>
+  {% endif %}
   <details class="panel"><summary>이 PC의 진단·연결 상태</summary>
     <h2>진단</h2>
     <p>VM, driver, IPC, broker, script의 키와 외부 전송은 막혀 있습니다.</p>
@@ -15,20 +51,21 @@
   </details>
   <div class="resource-grid" data-pc-inventory="{{ project_id }}">
   {% for item in resources %}
-  <article class="panel" data-kind="{{ item.target_kind }}" data-state="{{ item.state }}" data-pc-resource="{{ item.resource_id }}">
+  <article class="panel" data-kind="{{ item.target_kind }}" data-state="{{ item.state }}" data-pc-resource="{{ item.resource_id }}" data-pc-worker="{{ item.worker_id }}"{% if item.is_emulator %} data-device-kind="android_emulator"{% endif %}>
     <h2>{{ item.display_name }}</h2>
-    <p>{{ item.kind_label }} · 기기 상태 <span data-pc-device-state>{{ item.state_label }}</span></p>
+    <p>{{ item.kind_label }} · 기기 상태 <span data-pc-device-state>{{ item.state_label }}</span>{% if item.is_emulator %} · 에뮬레이터{% endif %}</p>
     {% include "components/pc_availability.html" %}
     <p data-pc-diagnostics>{% if not item.can_diagnose %}기기 진단에는 실행 PC 연결이 필요합니다.{% endif %}</p>
     <p>OS {{ item.os_build }}</p>
     <p>화면 {{ item.geometry }}</p>
     <p>빌드 {{ item.os_build }}</p>
     {% if item.availability == "unavailable" %}<p>사용할 수 없음</p>{% endif %}
-    {% if item.run_href %}<p><a href="{{ item.run_href }}">점유 실행</a></p>{% endif %}
+    {% if item.run_href %}<p><a href="{{ item.run_href }}" data-pc-execute {% if not item.can_execute %}aria-disabled="true" tabindex="-1"{% endif %}>점유 실행</a></p>{% endif %}
     {% include "components/device_preview.html" %}
-    <p><a class="secondary-link" href="/ui/projects/{{ project_id }}/recordings/new?resource_id={{ item.resource_id }}">이 기기로 녹화 준비</a></p>
+    <p><a class="secondary-link" href="/ui/projects/{{ project_id }}/recordings/new?resource_id={{ item.resource_id }}" data-pc-execute {% if not item.can_execute %}aria-disabled="true" tabindex="-1"{% endif %}>이 기기로 녹화 준비</a></p>
   </article>
   {% endfor %}
   </div>
   <script src="/static/device_preview.js?v={{ ui_asset_version }}"></script>
+  <script src="/static/pc_availability.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

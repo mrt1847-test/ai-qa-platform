@@ -11,6 +11,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 
+from datetime import timedelta
+
 from aiqa.api.auth import (
     AuthRequired,
     CsrfRejected,
@@ -20,6 +22,15 @@ from aiqa.api.auth import (
     authorize_browser,
     bound_auth_store,
     enroll_worker,
+)
+from aiqa.security.worker_enrollment import (
+    EnrollmentCodeRejected,
+    EnrollmentDenied,
+    actor_can_manage_workers,
+    cancel_pending_enrollment_codes,
+    exchange_enrollment_code,
+    issue_enrollment_code,
+    revoke_worker_credentials,
 )
 from aiqa.store.database import Store, migrate_store
 
@@ -134,6 +145,114 @@ async def post_enrollment(project_id: str, request: Request) -> JSONResponse:
     )
 
 
+@router.post("/projects/{project_id}/worker-enrollment-codes")
+async def post_enrollment_code(project_id: str, request: Request) -> JSONResponse:
+    if not request.headers.get("idempotency-key"):
+        return _error(422, "validation", "Idempotency-Key is required")
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    worker_id = payload.get("worker_id")
+    purpose = payload.get("purpose")
+    if type(worker_id) is not str or type(purpose) is not str:
+        return _error(422, "validation", "invalid worker")
+    ttl_seconds = payload.get("expires_in_seconds", 900)
+    if type(ttl_seconds) is not int or ttl_seconds < 1:
+        return _error(422, "validation", "invalid worker")
+    with _bound(request):
+        try:
+            actor = authorize_browser(request, project, "worker_enrollment")
+            with _bound_store().transaction() as connection:
+                issued = issue_enrollment_code(
+                    connection,
+                    actor,
+                    worker_id,
+                    purpose,
+                    ttl=timedelta(seconds=ttl_seconds),
+                )
+        except (CsrfRejected, OriginRejected):
+            return _error(403, "permission", "request was rejected")
+        except EnrollmentDenied:
+            return _error(403, "permission", "worker enrollment was rejected")
+        except (WorkerDenied, ProjectHidden):
+            return _error(404, "not_found", "worker was not found")
+        except AuthRequired:
+            return _error(401, "unauthorized", "session is missing")
+    return JSONResponse(
+        status_code=201,
+        content={
+            "worker_id": issued.worker_id,
+            "purpose": issued.purpose,
+            "expires_at": issued.expires_at,
+            "code": issued.code,
+        },
+    )
+
+
+@router.post("/projects/{project_id}/worker-enrollment-codes/cancel")
+async def post_enrollment_code_cancel(project_id: str, request: Request) -> JSONResponse:
+    if not request.headers.get("idempotency-key"):
+        return _error(422, "validation", "Idempotency-Key is required")
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    worker_id = payload.get("worker_id")
+    if type(worker_id) is not str:
+        return _error(422, "validation", "invalid worker")
+    with _bound(request):
+        try:
+            actor = authorize_browser(request, project, "worker_enrollment")
+            with _bound_store().transaction() as connection:
+                cancelled = cancel_pending_enrollment_codes(connection, actor, worker_id)
+        except (CsrfRejected, OriginRejected):
+            return _error(403, "permission", "request was rejected")
+        except EnrollmentDenied:
+            return _error(403, "permission", "worker enrollment was rejected")
+        except AuthRequired:
+            return _error(401, "unauthorized", "session is missing")
+        except ProjectHidden:
+            return _error(404, "not_found", "worker was not found")
+    return JSONResponse(
+        status_code=200,
+        content={"worker_id": worker_id, "cancelled": cancelled, "project_id": str(project)},
+    )
+
+
+@router.post("/worker/enrollments/exchange")
+async def post_enrollment_exchange(request: Request) -> JSONResponse:
+    if not request.headers.get("idempotency-key"):
+        return _error(422, "validation", "Idempotency-Key is required")
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    code = payload.get("code")
+    worker_id = payload.get("worker_id")
+    if type(code) is not str or type(worker_id) is not str:
+        return _error(422, "validation", "invalid enrollment")
+    with _bound(request):
+        try:
+            with _bound_store().transaction() as connection:
+                exchanged = exchange_enrollment_code(connection, code, worker_id)
+        except EnrollmentCodeRejected:
+            return _error(403, "permission", "enrollment code was rejected")
+    return JSONResponse(
+        status_code=201,
+        content={
+            "token": exchanged.token,
+            "worker_id": exchanged.worker_id,
+            "project_id": str(exchanged.project_id),
+            "purpose": exchanged.purpose,
+            "expires_at": exchanged.expires_at,
+        },
+    )
+
+
 @router.post("/workers/{worker_id}/revoke")
 async def post_revoke(worker_id: str, request: Request) -> JSONResponse:
     if not request.headers.get("idempotency-key"):
@@ -146,10 +265,15 @@ async def post_revoke(worker_id: str, request: Request) -> JSONResponse:
         return _error(422, "validation", "invalid worker")
     with _bound(request):
         try:
-            authorize_browser(request, project, "worker_revoke")
+            actor = authorize_browser(request, project, "worker_revoke")
+            with _bound_store().transaction() as connection:
+                if not actor_can_manage_workers(connection, actor):
+                    raise EnrollmentDenied("worker manage was denied")
             revoked = revoke_worker(project, worker_id)
         except (CsrfRejected, OriginRejected):
             return _error(403, "permission", "request was rejected")
+        except EnrollmentDenied:
+            return _error(403, "permission", "worker enrollment was rejected")
         except AuthRequired:
             return _error(401, "unauthorized", "session is missing")
         except ProjectHidden:
@@ -221,17 +345,7 @@ def storage_view(project_id: UUID) -> dict[str, object]:
 
 def revoke_worker(project_id: UUID, worker_id: str) -> bool:
     with _bound_store().transaction() as connection:
-        connection.execute(
-            """
-            DELETE FROM worker_tokens
-            WHERE enrollment_id IN (
-                SELECT enrollment_id FROM worker_enrollments
-                WHERE project_id = ? AND worker_id = ?
-            )
-            """,
-            (str(project_id), worker_id),
-        )
-    return True
+        return revoke_worker_credentials(connection, project_id, worker_id)
 
 
 def _bound_store() -> Store:

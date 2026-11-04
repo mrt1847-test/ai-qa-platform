@@ -1,6 +1,6 @@
 {
   "schema_version": "managed-pc-runtime-v1",
-  "date": "2026-11-03",
+  "date": "2026-11-04",
   "scope": "managed_execution_mvp",
   "schedule_owner": "NEXT_ACTION.md",
   "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",
@@ -12,7 +12,7 @@
         "PC-04",
         "PC-02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -29,7 +29,7 @@
         "PC-04",
         "PC-02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -46,7 +46,7 @@
         "RX-01",
         "RX-02"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -63,7 +63,7 @@
         "RX-02",
         "RX-03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -80,7 +80,7 @@
         "RX-03",
         "RX-04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -97,7 +97,7 @@
         "RX-03",
         "RX-04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -114,7 +114,7 @@
         "RX-05",
         "RX-06"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -131,7 +131,7 @@
         "RX-05",
         "RX-07"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -149,7 +149,7 @@
         "AD-01",
         "PC-03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -167,7 +167,7 @@
         "RX-06",
         "RX-09"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -185,7 +185,7 @@
         "RX-03",
         "RX-19"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -203,7 +203,7 @@
         "RX-10",
         "RX-11"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -220,7 +220,7 @@
         "RX-05",
         "RX-06"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -237,7 +237,7 @@
         "RX-08",
         "RX-13"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -255,7 +255,7 @@
         "RX-13",
         "RX-14"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -271,7 +271,7 @@
       "deps": [
         "PC-04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -287,7 +287,7 @@
       "deps": [
         "RX-16"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -303,7 +303,7 @@
       "deps": [
         "RX-16"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -319,7 +319,7 @@
       "deps": [
         "RX-16"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -337,7 +337,7 @@
         "RX-18",
         "RX-19"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -353,9 +353,11 @@
       "deps": [
         "RX-08",
         "RX-20",
-        "RX-28"
+        "RX-28",
+        "RX-37",
+        "RX-41"
       ],
-      "status": "not_started",
+      "status": "blocked",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "integration",
       "environment_requirements": [
@@ -375,9 +377,10 @@
       "title": "실제 Web 격리 공격 검증",
       "deps": [
         "RX-15",
-        "RX-30"
+        "RX-30",
+        "RX-35"
       ],
-      "status": "not_started",
+      "status": "blocked",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "integration",
       "environment_requirements": [
@@ -396,7 +399,9 @@
       "deps": [
         "RX-12",
         "RX-21",
-        "RX-31"
+        "RX-31",
+        "RX-34",
+        "RX-39"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -417,7 +422,9 @@
       "deps": [
         "RX-21",
         "RX-22",
-        "RX-31"
+        "RX-31",
+        "RX-36",
+        "RX-42"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -460,7 +467,8 @@
       "title": "재연결의 미확정 행동과 늦은 ACK",
       "deps": [
         "RX-21",
-        "RX-23"
+        "RX-23",
+        "RX-38"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -504,7 +512,7 @@
         "RX-17",
         "PC-03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -541,7 +549,7 @@
         "RX-13",
         "RX-14"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -558,7 +566,7 @@
         "RX-07",
         "RX-11"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "work_kind": "core",
       "environment_requirements": [
@@ -567,6 +575,205 @@
       "verification_scope": "core_contract",
       "doc_file": "docs/managed-pc/ENGINE_TASKS.md#rx-31",
       "evidence_path": "docs/validation/tasks/RX-31.md"
+    },
+    {
+      "id": "RX-32",
+      "title": "Android 워커 시작과 기기 목록 연결",
+      "deps": [
+        "RX-08",
+        "RX-09"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-32",
+      "evidence_path": "docs/validation/tasks/RX-32.md"
+    },
+    {
+      "id": "RX-33",
+      "title": "Android 녹화 핸들러 연결",
+      "deps": [
+        "RX-32",
+        "RX-05",
+        "RX-06",
+        "RX-07",
+        "RX-12"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-33",
+      "evidence_path": "docs/validation/tasks/RX-33.md"
+    },
+    {
+      "id": "RX-34",
+      "title": "Android 승인 계획 재생 핸들러 연결",
+      "deps": [
+        "RX-33",
+        "RX-10",
+        "RX-31"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-34",
+      "evidence_path": "docs/validation/tasks/RX-34.md"
+    },
+    {
+      "id": "RX-35",
+      "title": "Web 격리 guest IPC 실제 전송 연결",
+      "deps": [
+        "RX-13",
+        "RX-30"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-35",
+      "evidence_path": "docs/validation/tasks/RX-35.md"
+    },
+    {
+      "id": "RX-36",
+      "title": "Web 워커 녹화·재생 진입점 연결",
+      "deps": [
+        "RX-15",
+        "RX-31",
+        "RX-35"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-36",
+      "evidence_path": "docs/validation/tasks/RX-36.md"
+    },
+    {
+      "id": "RX-37",
+      "title": "관리 서버의 운영 OIDC 연결",
+      "deps": [
+        "RX-16",
+        "RX-17",
+        "RX-19"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-37",
+      "evidence_path": "docs/validation/tasks/RX-37.md"
+    },
+    {
+      "id": "RX-38",
+      "title": "원격 워커 종료·재연결 계약 보완",
+      "deps": [
+        "RX-05",
+        "RX-06",
+        "RX-07",
+        "RX-08"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-38",
+      "evidence_path": "docs/validation/tasks/RX-38.md"
+    },
+    {
+      "id": "RX-39",
+      "title": "Android 실제 워커 경로 연결",
+      "deps": [
+        "RX-32",
+        "RX-33",
+        "RX-34",
+        "RX-38",
+        "RX-40"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-39",
+      "evidence_path": "docs/validation/tasks/RX-39.md"
+    },
+    {
+      "id": "RX-40",
+      "title": "모델 응답과 시도별 예산 연결",
+      "deps": [
+        "RX-11",
+        "RX-31"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-40",
+      "evidence_path": "docs/validation/tasks/RX-40.md"
+    },
+    {
+      "id": "RX-41",
+      "title": "실제 OIDC 교환 연결",
+      "deps": [
+        "RX-37"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-41",
+      "evidence_path": "docs/validation/tasks/RX-41.md"
+    },
+    {
+      "id": "RX-42",
+      "title": "Web 실제 워커 경로 연결",
+      "deps": [
+        "RX-35",
+        "RX-36",
+        "RX-38",
+        "RX-40"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-42",
+      "evidence_path": "docs/validation/tasks/RX-42.md"
     }
   ]
 }

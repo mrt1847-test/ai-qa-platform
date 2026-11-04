@@ -18,6 +18,7 @@ from aiqa.contracts.resources import (
     resource_key,
 )
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
+from aiqa.environments.android_observation import AndroidObservationProvider, AndroidObservationResult
 from aiqa.store.database import Store
 from aiqa.store.models import Actor, Transaction, WorkerScope
 from aiqa.store.queue import enqueue_job
@@ -39,6 +40,7 @@ class DiagnosticBlocked(Exception):
 
 
 _OBSERVATION_RETENTION = timedelta(days=30)
+_INVENTORY_READY_AGE = timedelta(minutes=15)
 _KIND_LABELS = {"web": "Web", "android": "Android"}
 _STATE_LABELS = {
     "ready": "준비",
@@ -69,9 +71,129 @@ def bind_inventory_store(store: Store) -> Iterator[None]:
         _store.reset(token)
 
 
+def inventory_from_observation(
+    result: AndroidObservationResult,
+    *,
+    expected_serial: str | None = None,
+) -> InventoryReport:
+    """Map one AD-01 observation to the four inventory states. Raw pixels stay out."""
+
+    mismatched = expected_serial is not None and result.serial != expected_serial
+    if mismatched:
+        state = "offline"
+        reason = "serial_mismatch"
+    else:
+        state = _inventory_state(result.state)
+        reason = result.reason
+    geometry = ""
+    rotation = None
+    if result.geometry is not None and not mismatched:
+        rotation = int(result.geometry.rotation)
+        geometry = f"{result.geometry.physical_width}x{result.geometry.physical_height}@{rotation}"
+    os_build = ""
+    if result.android_release is not None and result.api_level is not None:
+        os_build = f"Android {result.android_release} API {result.api_level}"
+    elif result.model is not None:
+        os_build = result.model
+    if result.device_kind == "android_emulator":
+        label = result.avd_name or result.serial
+        display_name = f"{label} 에뮬레이터"
+    else:
+        display_name = result.model or result.serial
+    permissions = {
+        "device_kind": result.device_kind,
+        "reason": reason,
+        "rotation": rotation,
+        "raw_upload": 0,
+    }
+    return InventoryReport(
+        native_id=result.serial if not mismatched else (expected_serial or result.serial),
+        target_kind="android",
+        state=state,
+        os_build=os_build or "unknown",
+        geometry=geometry or "unknown",
+        permissions=json.dumps(permissions, sort_keys=True),
+        ime="unknown",
+        observed_at=result.observed_at,
+        display_name=display_name,
+        raw_handle=None,
+    )
+
+
+def report_android_observation(
+    worker: WorkerScope,
+    provider: AndroidObservationProvider,
+    *,
+    expected_serial: str | None = None,
+) -> InventoryReceipt:
+    """Publish metadata-only observation through the authenticated inventory path.
+
+    Capture pixels are not uploaded. Preview stays unobserved until a typed owner exists.
+    """
+
+    result = provider.observe(capture=False)
+    if result.observation is not None:
+        raise ValueError("raw observation bytes cannot enter inventory")
+    provider_serial = getattr(provider, "serial", None)
+    expected = expected_serial if expected_serial is not None else (
+        provider_serial if type(provider_serial) is str else result.serial
+    )
+    return report_inventory(worker, inventory_from_observation(result, expected_serial=expected))
+
+
+def android_inventory_payload(report: InventoryReport, *, project_id: str) -> dict[str, object]:
+    """HTTP body for WorkerHttpClient.report_inventory. No pixel fields."""
+
+    return {
+        "project_id": project_id,
+        "native_id": report.native_id,
+        "target_kind": report.target_kind,
+        "state": report.state,
+        "os_build": report.os_build,
+        "geometry": report.geometry,
+        "permissions": report.permissions,
+        "ime": report.ime,
+        "observed_at": report.observed_at,
+        "display_name": report.display_name,
+        "raw_handle": None,
+    }
+
+
+def assemble_android_inventory_payload(
+    provider: AndroidObservationProvider,
+    *,
+    project_id: str,
+    expected_serial: str,
+) -> dict[str, object] | None:
+    """Probe one dedicated serial into an inventory HTTP body. Ready is omitted on failure.
+
+    Raw pixels, arbitrary serial selection, and capture uploads stay closed.
+    """
+
+    if type(project_id) is not str or project_id.strip() == "":
+        return None
+    if type(expected_serial) is not str or expected_serial.strip() == "":
+        return None
+    try:
+        result = provider.observe(capture=False)
+    except Exception:
+        return None
+    if result.observation is not None:
+        return None
+    report = inventory_from_observation(result, expected_serial=expected_serial)
+    payload = android_inventory_payload(report, project_id=project_id)
+    # Refuse any accidental pixel-bearing keys before the HTTP client.
+    forbidden = {"png", "pixels", "screenshot", "observation", "image"}
+    if forbidden.intersection(payload):
+        return None
+    return payload
+
+
 def report_inventory(worker: WorkerScope, report: InventoryReport) -> InventoryReceipt:
     if report.state not in INVENTORY_STATES:
         raise ValueError("inventory state is invalid")
+    if report.raw_handle is not None:
+        raise ValueError("raw device handles are not stored in inventory")
     target_kind = require_target_kind(report.target_kind)
     if len(worker.permitted_projects) != 1:
         raise InventoryDenied("worker project is missing")
@@ -169,7 +291,7 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             """
             SELECT aliases.physical_key_id, aliases.display_name, aliases.target_kind,
                    inventory.state, inventory.os_build, inventory.geometry, inventory.observed_at,
-                   quarantine.physical_key_id, physical.worker_id
+                   quarantine.physical_key_id, physical.worker_id, inventory.permissions
             FROM resource_aliases AS aliases
             JOIN physical_resource_keys AS physical USING (physical_key_id)
             LEFT JOIN resource_inventory AS inventory
@@ -194,6 +316,8 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             presence = connections[worker_id]
             online = presence.state == "online"
             observed = "" if row[6] is None else str(row[6])
+            device_kind = _device_kind("" if row[9] is None else str(row[9]))
+            rotation = _rotation_of("" if row[9] is None else str(row[9]), "" if row[5] is None else str(row[5]))
             observation = connection.execute(
                 """
                 SELECT artifact_id, captured_at FROM resource_observations
@@ -213,8 +337,15 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             ).fetchone()
             if state in {"ready", "busy"} and lease is not None:
                 state = "cleanup_pending" if lease[2] in {"completed", "error", "cancelled", "lost"} else "busy"
+            stale_ready = state == "ready" and not _fresh_for_ready(observed, now)
+            if stale_ready:
+                state = "offline"
             if online:
-                block_reason = _DEVICE_BLOCKS.get(state, "")
+                block_reason = (
+                    "최근 기기 관찰이 오래되었습니다. 워커가 다시 보고할 때까지 대기하세요."
+                    if stale_ready
+                    else _DEVICE_BLOCKS.get(state, "")
+                )
             elif presence.state == "offline":
                 block_reason = "실행 PC가 오프라인입니다. 연결이 복구되면 다시 확인하세요."
             else:
@@ -237,9 +368,12 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
                     "block_reason": block_reason,
                     "os_build": "" if row[4] is None else str(row[4]),
                     "geometry": "" if row[5] is None else str(row[5]),
+                    "rotation": rotation,
                     "observed_at": observed,
                     "availability": "unavailable" if observation is None else "observed",
                     "reason": reason,
+                    "device_kind": device_kind,
+                    "is_emulator": device_kind == "android_emulator",
                     "run_href": None
                     if lease is None or lease[0] != str(project_id)
                     else f"/ui/projects/{project_id}/environments?run={lease[1]}",
@@ -300,6 +434,45 @@ def preview_resource(project_id: UUID, resource_id: UUID) -> ResourcePreviewView
     return ResourcePreviewView(resource_id, state or "unavailable", stamp, geometry, artifact, reason, False)
 
 
+def _inventory_state(observed: str) -> str:
+    if observed == "ready":
+        return "ready"
+    if observed == "unauthorized":
+        return "unauthorized"
+    if observed in {"offline", "booting", "unavailable", "capture_unavailable"}:
+        return "offline"
+    raise ValueError("observation state is invalid")
+
+
+def _device_kind(permissions: str) -> str:
+    if permissions.strip() == "":
+        return ""
+    try:
+        payload = json.loads(permissions)
+    except json.JSONDecodeError:
+        return ""
+    if type(payload) is not dict:
+        return ""
+    kind = payload.get("device_kind")
+    return kind if type(kind) is str else ""
+
+
+def _rotation_of(permissions: str, geometry: str) -> int | None:
+    if permissions.strip() != "":
+        try:
+            payload = json.loads(permissions)
+        except json.JSONDecodeError:
+            payload = None
+        if type(payload) is dict and type(payload.get("rotation")) is int:
+            return int(payload["rotation"])
+    if "@" in geometry:
+        try:
+            return int(geometry.rsplit("@", 1)[1])
+        except ValueError:
+            return None
+    return None
+
+
 def _preview_reason(state: str, observed_at: str, has_observation: bool) -> str:
     if state == "unauthorized":
         return "unauthorized"
@@ -317,6 +490,17 @@ def _stale(observed_at: str) -> bool:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         return True
     return datetime.now(timezone.utc) - parsed.astimezone(timezone.utc) > _OBSERVATION_RETENTION
+
+
+def _fresh_for_ready(observed_at: str, now: datetime) -> bool:
+    """Inventory ready requires a recent probe. Heartbeat alone is not enough."""
+
+    if observed_at.strip() == "":
+        return False
+    parsed = datetime.fromisoformat(observed_at)
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return False
+    return now.astimezone(timezone.utc) - parsed.astimezone(timezone.utc) <= _INVENTORY_READY_AGE
 
 
 def submit_diagnostic(

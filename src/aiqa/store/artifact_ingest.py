@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 from aiqa.store.artifacts import (
     ArtifactReceipt, ArtifactUpload, acceptable_size, content_hash,
-    expired_at, place_ready, resolve_stored, suffix_for,
+    expired_at, open_durable, publish_durable, resolve_stored, suffix_for,
 )
 from aiqa.store.queue import LeaseDenied
 from aiqa.worker.files import file_lock
@@ -152,10 +152,21 @@ def ingest_uploaded(binding, lease, upload: ArtifactUpload, *, fail_ready=False)
     if path is None:
         raise ValueError('staged object path is invalid')
     if path.exists():
-        if path.stat().st_size != len(upload.body) or content_hash(path.read_bytes()) != digest:
+        try:
+            open_durable(binding.store.config.artifacts_dir, object_key, digest)
+        except Exception as exc:
+            raise ValueError('staged object is corrupt') from exc
+        if path.stat().st_size != len(upload.body):
             raise ValueError('staged object is corrupt')
     else:
-        place_ready(binding.store.config.artifacts_dir, lease.project_id, artifact_id, suffix, upload.body)
+        publish_durable(
+            binding.store.config.artifacts_dir,
+            lease.project_id,
+            artifact_id,
+            suffix,
+            upload.body,
+            declared_hash=digest,
+        )
     if fail_ready:
         return ArtifactReceipt(artifact_id, object_key, digest, len(upload.body), False, False, 'staged')
     now = binding.now + timedelta(seconds=time.monotonic() - started)

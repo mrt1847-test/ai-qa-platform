@@ -60,6 +60,13 @@ class WorkerScope:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkerIncarnation:
+    worker_id: str
+    session_id: str
+    boot_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class JobRef:
     project_id: UUID
     purpose: str

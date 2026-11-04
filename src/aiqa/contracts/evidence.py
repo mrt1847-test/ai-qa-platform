@@ -20,6 +20,7 @@ __all__ = [
     "AckState",
     "CheckResult",
     "EventEnvelope",
+    "EvidenceCommitAck",
     "EvidenceEnvelope",
     "IngestReceipt",
     "LocalReceipt",
@@ -34,6 +35,18 @@ class IngestReceipt:
     committed_seq: int
     committed_hash: str
     stale_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceCommitAck:
+    """Wire ACK after a contiguous sanitized prefix is committed."""
+
+    attempt_id: UUID
+    contiguous_seq: int
+    prefix_hash: str
+    stale_count: int
+    late: bool
+    artifact_count: int
 
 
 @dataclass(frozen=True, slots=True)

@@ -18,8 +18,13 @@ def seed_presence(connection, project, worker, now=None):
     ).fetchone()
     if token is None:
         token = (str(uuid4()), "resource_probe")
-        connection.execute("INSERT INTO worker_tokens VALUES (?,?,?,?,?)",
-                           (token[0], enrollment, str(uuid4()), token[1], now.isoformat()))
+        connection.execute(
+            """
+            INSERT INTO worker_tokens (token_id, enrollment_id, token_hash, purpose, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (token[0], enrollment, str(uuid4()), token[1], now.isoformat()),
+        )
     report_presence(connection, WorkerScope(worker, (UUID(project),), (token[1],), token[0]), "fixture-boot", now)
 
 

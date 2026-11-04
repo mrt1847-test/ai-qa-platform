@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
@@ -20,16 +21,26 @@ from aiqa.contracts.jobs import (
     LeaseView,
     require_job_purpose,
 )
+from aiqa.contracts.worker_attempt import (
+    ClaimReceipt,
+    JobSpecSnapshot,
+    WorkerAttemptFinishInput,
+    WorkerAttemptFinishReceipt,
+)
 from aiqa.domain.hashing import canonical_hash, canonical_json
 from aiqa.domain.resource_readiness import resource_readiness
-from aiqa.store.models import Actor, Transaction, WorkerScope
-from aiqa.worker.presence import get_presence
+from aiqa.store.models import Actor, Transaction, WorkerIncarnation, WorkerScope
+from aiqa.worker.presence import get_presence, incarnation_of
 
 _OPERATION = "enqueue_job"
 
 
 class JobConflict(Exception):
     """The same idempotency key arrived with a different body."""
+
+
+class ClaimConflict(Exception):
+    """The same claim idempotency key arrived with a different body or scope."""
 
 
 class JobNotFound(Exception):
@@ -42,6 +53,14 @@ class ResourceOffline(ValueError):
 
 class CancelRejected(Exception):
     """A new cancel cannot change this job."""
+
+
+class FinishRejected(Exception):
+    """The worker finish cannot succeed under the current evidence or fence."""
+
+
+class FinishConflict(Exception):
+    """The same finish key arrived with a different body."""
 
 
 def enqueue_job(
@@ -432,6 +451,9 @@ def claim_queued_job(
             """,
             (str(project_id), str(attempt_id), str(job_id), physical_key_id),
         )
+        _pin_attempt_incarnation(
+            connection, str(project_id), str(attempt_id), worker.worker_id, now
+        )
         return JobLease(
             project_id=UUID(str(project_id)),
             job_id=UUID(str(job_id)),
@@ -442,6 +464,266 @@ def claim_queued_job(
             attempt_id=attempt_id,
         )
     return None
+
+
+def _pin_attempt_incarnation(
+    connection: sqlite3.Connection,
+    project_id: str,
+    attempt_id: str,
+    worker_id: str,
+    now: datetime,
+) -> None:
+    presence = get_presence(connection, worker_id, now, project_id=project_id)
+    incarnation = incarnation_of(worker_id, presence)
+    if incarnation is None:
+        return
+    connection.execute(
+        """
+        INSERT INTO attempt_incarnations (
+            project_id, attempt_id, worker_id, session_id, boot_id
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (project_id, attempt_id, incarnation.worker_id, incarnation.session_id, incarnation.boot_id),
+    )
+
+
+def load_attempt_incarnation(
+    connection: sqlite3.Connection, project_id: UUID | str, attempt_id: UUID | str
+) -> WorkerIncarnation | None:
+    row = connection.execute(
+        """
+        SELECT worker_id, session_id, boot_id
+        FROM attempt_incarnations
+        WHERE project_id = ? AND attempt_id = ?
+        """,
+        (str(project_id), str(attempt_id)),
+    ).fetchone()
+    if row is None:
+        return None
+    return WorkerIncarnation(str(row[0]), str(row[1]), str(row[2]))
+
+
+def claim_with_receipt(
+    connection: sqlite3.Connection,
+    worker: WorkerScope,
+    now: datetime,
+    *,
+    request_key: str,
+    boot_id: object = None,
+    project_id: object = None,
+) -> ClaimReceipt | None:
+    """Claim one job or replay the receipt for the same worker key."""
+
+    if type(request_key) is not str or request_key.strip() == "":
+        raise ValueError("claim idempotency key is required")
+    if len(worker.permitted_projects) != 1:
+        raise ClaimConflict("worker scope cannot claim")
+    scoped = worker.permitted_projects[0]
+    if project_id is not None and str(project_id) != str(scoped):
+        raise ClaimConflict("worker scope cannot claim")
+    body_hash = canonical_hash({"boot_id": "" if boot_id is None else str(boot_id)}, "canon-json-v1")
+    existing = connection.execute(
+        """
+        SELECT body_hash, job_id, attempt_id, generation, physical_key_id, expires_at,
+               session_id, boot_id, purpose, target_ref, revision_ref, policy_ref, digest
+        FROM claim_receipts
+        WHERE project_id = ? AND worker_id = ? AND request_key = ?
+        """,
+        (str(scoped), worker.worker_id, request_key),
+    ).fetchone()
+    if existing is not None:
+        if str(existing[0]) != body_hash:
+            raise ClaimConflict("idempotency body does not match")
+        physical = None if existing[4] is None else UUID(str(existing[4]))
+        snapshot = JobSpecSnapshot(
+            job_id=UUID(str(existing[1])),
+            attempt_id=UUID(str(existing[2])),
+            purpose=str(existing[8]),
+            target_ref=None if existing[9] is None else str(existing[9]),
+            revision_ref=None if existing[10] is None else str(existing[10]),
+            policy_ref=None if existing[11] is None else str(existing[11]),
+            digest=str(existing[12]),
+        )
+        return ClaimReceipt(
+            project_id=scoped,
+            job_id=UUID(str(existing[1])),
+            generation=int(existing[3]),
+            worker_id=worker.worker_id,
+            physical_key_id=physical,
+            expires_at=str(existing[5]),
+            attempt_id=UUID(str(existing[2])),
+            session_id=None if existing[6] is None else str(existing[6]),
+            boot_id=None if existing[7] is None else str(existing[7]),
+            snapshot=snapshot,
+            replayed=True,
+        )
+    lease = claim_queued_job(connection, worker, now, boot_id=boot_id)
+    if lease is None:
+        return None
+    job = connection.execute(
+        """
+        SELECT purpose, source_refs, limits, case_run_id, recording_id
+        FROM jobs WHERE project_id = ? AND job_id = ?
+        """,
+        (str(lease.project_id), str(lease.job_id)),
+    ).fetchone()
+    if job is None:
+        raise ClaimConflict("claimed job is missing")
+    purpose = str(job[0])
+    target_ref = _canonical_target_ref(connection, lease.project_id, lease.physical_key_id, str(job[1]))
+    revision_ref = _revision_ref(str(job[1]), None if job[3] is None else str(job[3]), None if job[4] is None else str(job[4]))
+    policy_ref = _policy_ref(str(job[2]))
+    snapshot = JobSpecSnapshot(
+        job_id=lease.job_id,
+        attempt_id=lease.attempt_id,
+        purpose=purpose,
+        target_ref=target_ref,
+        revision_ref=revision_ref,
+        policy_ref=policy_ref,
+        digest=canonical_hash(
+            {
+                "job_id": str(lease.job_id),
+                "attempt_id": str(lease.attempt_id),
+                "purpose": purpose,
+                "target_ref": target_ref,
+                "revision_ref": revision_ref,
+                "policy_ref": policy_ref,
+            },
+            "canon-json-v1",
+        ),
+    )
+    incarnation = load_attempt_incarnation(connection, lease.project_id, lease.attempt_id)
+    connection.execute(
+        """
+        INSERT INTO claim_receipts (
+            project_id, worker_id, request_key, body_hash, job_id, attempt_id, generation,
+            physical_key_id, expires_at, session_id, boot_id, purpose, target_ref,
+            revision_ref, policy_ref, digest, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(lease.project_id),
+            worker.worker_id,
+            request_key,
+            body_hash,
+            str(lease.job_id),
+            str(lease.attempt_id),
+            lease.generation,
+            None if lease.physical_key_id is None else str(lease.physical_key_id),
+            lease.expires_at,
+            None if incarnation is None else incarnation.session_id,
+            None if incarnation is None else incarnation.boot_id,
+            snapshot.purpose,
+            snapshot.target_ref,
+            snapshot.revision_ref,
+            snapshot.policy_ref,
+            snapshot.digest,
+            now.astimezone(timezone.utc).isoformat(),
+        ),
+    )
+    return ClaimReceipt(
+        project_id=lease.project_id,
+        job_id=lease.job_id,
+        generation=lease.generation,
+        worker_id=lease.worker_id,
+        physical_key_id=lease.physical_key_id,
+        expires_at=lease.expires_at,
+        attempt_id=lease.attempt_id,
+        session_id=None if incarnation is None else incarnation.session_id,
+        boot_id=None if incarnation is None else incarnation.boot_id,
+        snapshot=snapshot,
+        replayed=False,
+    )
+
+
+def load_claim_receipt_for_attempt(
+    connection: sqlite3.Connection, project_id: UUID | str, attempt_id: UUID | str
+) -> ClaimReceipt | None:
+    row = connection.execute(
+        """
+        SELECT project_id, job_id, generation, worker_id, physical_key_id, expires_at, attempt_id,
+               session_id, boot_id, purpose, target_ref, revision_ref, policy_ref, digest
+        FROM claim_receipts
+        WHERE project_id = ? AND attempt_id = ?
+        """,
+        (str(project_id), str(attempt_id)),
+    ).fetchone()
+    if row is None:
+        return None
+    snapshot = JobSpecSnapshot(
+        job_id=UUID(str(row[1])),
+        attempt_id=UUID(str(row[6])),
+        purpose=str(row[9]),
+        target_ref=None if row[10] is None else str(row[10]),
+        revision_ref=None if row[11] is None else str(row[11]),
+        policy_ref=None if row[12] is None else str(row[12]),
+        digest=str(row[13]),
+    )
+    return ClaimReceipt(
+        project_id=UUID(str(row[0])),
+        job_id=UUID(str(row[1])),
+        generation=int(row[2]),
+        worker_id=str(row[3]),
+        physical_key_id=None if row[4] is None else UUID(str(row[4])),
+        expires_at=str(row[5]),
+        attempt_id=UUID(str(row[6])),
+        session_id=None if row[7] is None else str(row[7]),
+        boot_id=None if row[8] is None else str(row[8]),
+        snapshot=snapshot,
+        replayed=False,
+    )
+
+
+def _canonical_target_ref(
+    connection: sqlite3.Connection,
+    project_id: UUID,
+    physical_key_id: UUID | None,
+    source_refs: str,
+) -> str | None:
+    if physical_key_id is not None:
+        return str(physical_key_id)
+    try:
+        refs = json.loads(source_refs)
+    except json.JSONDecodeError:
+        return None
+    if type(refs) is not list or refs == []:
+        return None
+    first = refs[0]
+    if type(first) is not str:
+        return None
+    alias = connection.execute(
+        """
+        SELECT physical_key_id FROM resource_aliases
+        WHERE project_id = ? AND physical_key_id = ?
+        """,
+        (str(project_id), first),
+    ).fetchone()
+    return str(alias[0]) if alias is not None else first
+
+
+def _revision_ref(source_refs: str, case_run_id: str | None, recording_id: str | None) -> str | None:
+    if case_run_id is not None:
+        return f"case_run:{case_run_id}"
+    if recording_id is not None:
+        return f"recording:{recording_id}"
+    try:
+        refs = json.loads(source_refs)
+    except json.JSONDecodeError:
+        return None
+    if type(refs) is list and refs and type(refs[0]) is str:
+        return str(refs[0])
+    return None
+
+
+def _policy_ref(limits: str) -> str | None:
+    try:
+        parsed = json.loads(limits)
+    except json.JSONDecodeError:
+        return None
+    if type(parsed) is not dict:
+        return None
+    policy = parsed.get("policy_ref")
+    return str(policy) if type(policy) is str else None
 
 
 def _active_slots(connection: sqlite3.Connection) -> int:
@@ -656,6 +938,25 @@ def renew_lease_row(
         """,
         (expires_at, str(lease.project_id), str(lease.job_id), lease.generation, worker.worker_id),
     )
+    connection.execute(
+        """
+        UPDATE claim_receipts SET expires_at = ?
+        WHERE project_id = ? AND job_id = ? AND worker_id = ?
+          AND attempt_id = (
+              SELECT attempt_id FROM attempts
+              WHERE project_id = ? AND job_id = ? AND generation = ?
+          )
+        """,
+        (
+            expires_at,
+            str(lease.project_id),
+            str(lease.job_id),
+            worker.worker_id,
+            str(lease.project_id),
+            str(lease.job_id),
+            lease.generation,
+        ),
+    )
     return LeaseView(
         project_id=lease.project_id,
         job_id=lease.job_id,
@@ -689,6 +990,14 @@ def acknowledge_runner(
     if attempt is None:
         raise StaleGeneration("lease generation is stale")
     attempt_id = str(attempt[0])
+    incarnation = load_attempt_incarnation(connection, lease.project_id, attempt_id)
+    receipt = load_claim_receipt_for_attempt(connection, lease.project_id, attempt_id)
+    if incarnation is not None and receipt is None:
+        raise StaleGeneration("claim receipt is missing")
+    if receipt is not None:
+        expires = datetime.fromisoformat(receipt.expires_at)
+        if expires.tzinfo is None or now.astimezone(timezone.utc) >= expires.astimezone(timezone.utc):
+            raise StaleGeneration("claim receipt is expired")
     existing = connection.execute(
         """
         SELECT runner_nonce FROM attempt_runners
@@ -739,10 +1048,35 @@ def _require_open_lease(
         presence = get_presence(connection, worker.worker_id, now, project_id=lease.project_id)
         if presence.state != "online" or presence.session_id != row[2]:
             raise StaleGeneration("worker session is stale")
+    now = server_now or now
+    _require_matching_incarnation(connection, worker, lease, now)
     expires = datetime.fromisoformat(str(row[0]))
     if expires.tzinfo is None or now.astimezone(timezone.utc) >= expires.astimezone(timezone.utc):
         raise StaleGeneration("lease generation is stale")
     return now
+
+
+def _require_matching_incarnation(
+    connection: sqlite3.Connection, worker: WorkerScope, lease: LeaseToken, now: datetime
+) -> None:
+    attempt = connection.execute(
+        """
+        SELECT attempt_id FROM attempts
+        WHERE project_id = ? AND job_id = ? AND generation = ?
+        """,
+        (str(lease.project_id), str(lease.job_id), lease.generation),
+    ).fetchone()
+    if attempt is None:
+        return
+    stored = load_attempt_incarnation(connection, lease.project_id, attempt[0])
+    if stored is None:
+        return
+    current = incarnation_of(
+        worker.worker_id,
+        get_presence(connection, worker.worker_id, now, project_id=lease.project_id),
+    )
+    if current != stored:
+        raise StaleGeneration("worker incarnation is stale")
 
 
 def reconcile_stored(connection: sqlite3.Connection, now: datetime, boot_id: str) -> ReconciliationReport:
@@ -804,7 +1138,7 @@ def _runner_state(
 ) -> tuple[str, str | None, int]:
     lease = connection.execute(
         """
-        SELECT generation, physical_key_id, expires_at
+        SELECT generation, physical_key_id, expires_at, worker_id
         FROM leases
         WHERE project_id = ? AND job_id = ?
         ORDER BY generation DESC
@@ -827,6 +1161,7 @@ def _runner_state(
     ).fetchone()
     acked_at = None
     host = None
+    incarnation = None
     if attempt is not None:
         runner = connection.execute(
             "SELECT acked_at FROM attempt_runners WHERE project_id = ? AND attempt_id = ?",
@@ -836,12 +1171,28 @@ def _runner_state(
             "SELECT boot_id FROM runner_hosts WHERE project_id = ? AND attempt_id = ?",
             (project_id, str(attempt[0])),
         ).fetchone()
+        incarnation = load_attempt_incarnation(connection, project_id, attempt[0])
         acked_at = None if runner is None else str(runner[0])
         host = None if host_row is None else str(host_row[0])
     watchdog = True
     if acked_at is not None:
         acked = datetime.fromisoformat(acked_at)
         watchdog = acked.tzinfo is None or now >= acked.astimezone(timezone.utc) + timedelta(seconds=_WATCHDOG_SECONDS)
+    if incarnation is not None:
+        current = incarnation_of(
+            incarnation.worker_id,
+            get_presence(connection, incarnation.worker_id, now, project_id=project_id),
+        )
+        matched = current == incarnation
+        if attempt is not None and acked_at is not None and matched and not expired and not watchdog:
+            return ("live", physical, generation)
+        if current is not None and not matched:
+            return ("restarted", physical, generation)
+        if expired:
+            return ("expired", physical, generation)
+        if acked_at is not None and watchdog:
+            return ("watchdog", physical, generation)
+        return ("dead_runner", physical, generation)
     if attempt is not None and acked_at is not None and host == boot_id and not expired and not watchdog:
         return ("live", physical, generation)
     if host is not None and host != boot_id:
@@ -1083,6 +1434,286 @@ def finish_job(connection: sqlite3.Connection, project_id: UUID, job_id: UUID) -
     return str(row[0])
 
 
+_SUCCESS_OUTCOMES = frozenset({"completed"})
+_FINISH_OUTCOMES = frozenset({"completed", "error", "interrupted", "lost", "cancelled", "crash"})
+_OUTCOME_TO_REASON = {
+    "completed": None,
+    "error": "crash",
+    "interrupted": "cancelled",
+    "lost": "lost",
+    "cancelled": "cancelled",
+    "crash": "crash",
+}
+
+
+def finish_worker_attempt(
+    connection: sqlite3.Connection,
+    worker: WorkerScope,
+    finish: WorkerAttemptFinishInput,
+    *,
+    request_key: str,
+    body_hash: str,
+    now: datetime,
+) -> WorkerAttemptFinishReceipt:
+    """Seal one attempt. Worker finish never creates an approval."""
+
+    if type(request_key) is not str or request_key.strip() == "":
+        raise ValueError("idempotency key is required")
+    if finish.outcome not in _FINISH_OUTCOMES:
+        raise ValueError("finish outcome is invalid")
+    if finish.project_id not in worker.permitted_projects:
+        raise LeaseDenied("worker cannot use this lease")
+    if type(finish.final_seq) is not int or finish.final_seq < 0:
+        raise ValueError("final seq is invalid")
+    if type(finish.last_ack_seq) is not int or finish.last_ack_seq < 0:
+        raise ValueError("last ack seq is invalid")
+    if type(finish.last_ack_hash) is not str or finish.last_ack_hash.strip() == "":
+        raise ValueError("last ack hash is invalid")
+    if type(finish.manifest_digest) is not str or finish.manifest_digest.strip() == "":
+        raise ValueError("manifest digest is invalid")
+
+    key = request_key.strip()
+    identity = (str(finish.project_id), str(finish.attempt_id), key)
+    existing = connection.execute(
+        """
+        SELECT body_hash, response_body, worker_id FROM attempt_finish_requests
+        WHERE project_id = ? AND attempt_id = ? AND request_key = ?
+        """,
+        identity,
+    ).fetchone()
+    if existing is not None:
+        if str(existing[2]) != worker.worker_id:
+            raise LeaseDenied("worker cannot use this lease")
+        if str(existing[0]) != body_hash:
+            raise FinishConflict("finish body does not match")
+        saved = json.loads(str(existing[1]))
+        return WorkerAttemptFinishReceipt(
+            UUID(str(saved["project_id"])),
+            UUID(str(saved["job_id"])),
+            UUID(str(saved["attempt_id"])),
+            str(saved["status"]),
+            str(saved["outcome"]),
+            True,
+            False,
+            None if saved.get("verdict") is None else str(saved["verdict"]),
+            str(saved["purpose"]),
+        )
+
+    job = connection.execute(
+        """
+        SELECT purpose, status, recording_id, case_run_id
+        FROM jobs
+        WHERE project_id = ? AND job_id = ?
+        """,
+        (str(finish.project_id), str(finish.job_id)),
+    ).fetchone()
+    if job is None:
+        raise JobNotFound("job was not found")
+    purpose = str(job[0])
+    recording_id = None if job[2] is None else UUID(str(job[2]))
+
+    attempt = connection.execute(
+        """
+        SELECT generation, physical_key_id FROM attempts
+        WHERE project_id = ? AND attempt_id = ? AND job_id = ?
+        """,
+        (str(finish.project_id), str(finish.attempt_id), str(finish.job_id)),
+    ).fetchone()
+    if attempt is None:
+        raise StaleGeneration("lease generation is stale")
+    if int(attempt[0]) != finish.generation:
+        raise StaleGeneration("lease generation is stale")
+    attempt_physical = None if attempt[1] is None else UUID(str(attempt[1]))
+    if finish.physical_key_id is not None and attempt_physical is not None:
+        if finish.physical_key_id != attempt_physical:
+            raise FinishRejected("physical fence does not match")
+
+    lease = connection.execute(
+        """
+        SELECT worker_id, physical_key_id, generation, expires_at
+        FROM leases
+        WHERE project_id = ? AND job_id = ? AND generation = ?
+        """,
+        (str(finish.project_id), str(finish.job_id), finish.generation),
+    ).fetchone()
+    if lease is None:
+        raise LeaseDenied("worker cannot use this lease")
+    if str(lease[0]) != worker.worker_id:
+        raise LeaseDenied("worker cannot use this lease")
+    leased_physical = None if lease[1] is None else UUID(str(lease[1]))
+    if finish.physical_key_id is not None and leased_physical != finish.physical_key_id:
+        raise FinishRejected("physical fence does not match")
+
+    claim = connection.execute(
+        """
+        SELECT digest FROM claim_receipts
+        WHERE project_id = ? AND attempt_id = ? AND worker_id = ?
+        """,
+        (str(finish.project_id), str(finish.attempt_id), worker.worker_id),
+    ).fetchone()
+    if claim is not None and str(claim[0]) != finish.manifest_digest:
+        raise FinishRejected("manifest digest does not match")
+
+    from aiqa.store.evidence import _cursor
+
+    committed_seq, committed_hash = _cursor(connection, finish.project_id, str(finish.attempt_id))
+    if finish.last_ack_seq != committed_seq or finish.last_ack_hash != committed_hash:
+        raise FinishRejected("last ACK does not match committed prefix")
+    if finish.final_seq > finish.last_ack_seq:
+        raise FinishRejected("final seq exceeds last ACK")
+
+    if finish.outcome in _SUCCESS_OUTCOMES:
+        # Success requires current generation, valid lease vs server now, and start ACK.
+        expires_at = datetime.fromisoformat(str(lease[3]))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= now.astimezone(timezone.utc):
+            raise FinishRejected("lease expired")
+        runner = connection.execute(
+            """
+            SELECT acked_at FROM attempt_runners
+            WHERE project_id = ? AND attempt_id = ?
+            """,
+            (str(finish.project_id), str(finish.attempt_id)),
+        ).fetchone()
+        if runner is None or runner[0] is None:
+            raise FinishRejected("start ACK is missing")
+        if str(job[1]) in {"cancel_requested", "cancelled"}:
+            raise FinishRejected("job was cancelled")
+        incarnation = load_attempt_incarnation(connection, finish.project_id, finish.attempt_id)
+        presence = get_presence(connection, worker.worker_id, now, project_id=finish.project_id)
+        if (
+            incarnation is not None
+            and incarnation.boot_id is not None
+            and presence.boot_id is not None
+            and str(incarnation.boot_id) != str(presence.boot_id)
+        ):
+            raise FinishRejected("boot id does not match")
+        if finish.ambiguous_dispatch:
+            raise FinishRejected("ambiguous dispatch cannot succeed")
+        if not finish.evidence_complete:
+            raise FinishRejected("evidence is incomplete")
+        if finish.final_seq > 0 and finish.last_ack_seq < 1:
+            raise FinishRejected("evidence is missing")
+
+    other = connection.execute(
+        """
+        SELECT worker_id FROM attempt_finish_requests
+        WHERE project_id = ? AND attempt_id = ? AND worker_id != ?
+        LIMIT 1
+        """,
+        (str(finish.project_id), str(finish.attempt_id), worker.worker_id),
+    ).fetchone()
+    if other is not None:
+        raise LeaseDenied("worker cannot use this lease")
+
+    verdict: str | None = None
+    if finish.outcome in _SUCCESS_OUTCOMES:
+        status = finish_job(connection, finish.project_id, finish.job_id)
+        if purpose == "recording" and recording_id is not None:
+            from aiqa.recording.manifests import RecordingFinishInput
+            from aiqa.recording.service import finish_recording
+
+            artifact_refs = finish.source_artifact_hashes
+            if artifact_refs == () and finish.last_ack_seq >= 1:
+                rows = connection.execute(
+                    """
+                    SELECT payload_hash FROM attempt_events
+                    WHERE project_id = ? AND attempt_id = ?
+                    ORDER BY local_seq
+                    """,
+                    (str(finish.project_id), str(finish.attempt_id)),
+                ).fetchall()
+                artifact_refs = tuple(str(row[0]) for row in rows)
+            actor = Actor(uuid4(), finish.project_id, True)
+            finish_recording(
+                connection,
+                actor,
+                finish.project_id,
+                RecordingFinishInput(
+                    recording_id,
+                    "completed",
+                    finish.final_seq,
+                    artifact_refs,
+                    key,
+                ),
+            )
+        elif purpose in {"trial", "regression"} and finish.required_violation:
+            from aiqa.domain.verdicts import JobFinishInput
+
+            snapshot = finalize_job_control(
+                connection,
+                JobFinishInput(
+                    finish.project_id,
+                    finish.job_id,
+                    "crash",
+                    True,
+                    True,
+                    finish.cleanup_failed,
+                ),
+            )
+            verdict = snapshot.verdict
+            status = snapshot.status
+    else:
+        reason = _OUTCOME_TO_REASON[finish.outcome]
+        assert reason is not None
+        from aiqa.domain.verdicts import JobFinishInput
+
+        snapshot = finalize_job_control(
+            connection,
+            JobFinishInput(
+                finish.project_id,
+                finish.job_id,
+                reason,
+                finish.required_violation,
+                True,
+                finish.cleanup_failed,
+            ),
+        )
+        status = snapshot.status
+        verdict = snapshot.verdict
+
+    receipt = WorkerAttemptFinishReceipt(
+        finish.project_id,
+        finish.job_id,
+        finish.attempt_id,
+        status,
+        finish.outcome,
+        False,
+        False,
+        verdict,
+        purpose,
+    )
+    body = {
+        "project_id": str(receipt.project_id),
+        "job_id": str(receipt.job_id),
+        "attempt_id": str(receipt.attempt_id),
+        "status": receipt.status,
+        "outcome": receipt.outcome,
+        "replayed": False,
+        "approved": False,
+        "verdict": receipt.verdict,
+        "purpose": receipt.purpose,
+    }
+    connection.execute(
+        """
+        INSERT INTO attempt_finish_requests (
+            project_id, attempt_id, worker_id, request_key, body_hash, response_body, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(finish.project_id),
+            str(finish.attempt_id),
+            worker.worker_id,
+            key,
+            body_hash,
+            json.dumps(body, sort_keys=True),
+            now.astimezone(timezone.utc).isoformat(),
+        ),
+    )
+    return receipt
+
+
 def _cancel_snapshot(project_id: UUID, job_id: UUID, row: object, replayed: bool) -> JobSnapshot:
     assert isinstance(row, tuple)
     return JobSnapshot(
@@ -1093,4 +1724,140 @@ def _cancel_snapshot(project_id: UUID, job_id: UUID, row: object, replayed: bool
         runner_stopped=int(row[3]) == 1,
         cleanup_completed=int(row[4]) == 1,
         replayed=replayed,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CleanupConfirmationInput:
+    project_id: UUID
+    job_id: UUID
+    attempt_id: UUID
+    generation: int
+    physical_key_id: UUID | None
+    proof_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CleanupConfirmationReceipt:
+    project_id: UUID
+    attempt_id: UUID
+    released: bool
+    quarantined: bool
+    replayed: bool
+
+
+def confirm_cleanup(
+    connection: sqlite3.Connection,
+    worker: WorkerScope,
+    confirmation: CleanupConfirmationInput,
+    now: datetime,
+) -> CleanupConfirmationReceipt:
+    """Release the lease only when attempt, generation, worker, and resource fence match."""
+
+    moment = now.astimezone(timezone.utc)
+    if confirmation.project_id not in worker.permitted_projects:
+        raise LeaseDenied("worker cannot use this lease")
+    if type(confirmation.generation) is not int or confirmation.generation < 1:
+        raise StaleGeneration("lease generation is stale")
+    existing = connection.execute(
+        """
+        SELECT released, quarantined FROM cleanup_confirmations
+        WHERE project_id = ? AND attempt_id = ?
+        """,
+        (str(confirmation.project_id), str(confirmation.attempt_id)),
+    ).fetchone()
+    if existing is not None:
+        return CleanupConfirmationReceipt(
+            confirmation.project_id,
+            confirmation.attempt_id,
+            bool(int(existing[0])),
+            bool(int(existing[1])),
+            True,
+        )
+    lease = connection.execute(
+        """
+        SELECT worker_id, physical_key_id, generation FROM leases
+        WHERE project_id = ? AND job_id = ?
+        ORDER BY generation DESC
+        LIMIT 1
+        """,
+        (str(confirmation.project_id), str(confirmation.job_id)),
+    ).fetchone()
+    if lease is None:
+        raise StaleGeneration("lease generation is stale")
+    if str(lease[0]) != worker.worker_id:
+        raise LeaseDenied("worker cannot use this lease")
+    if int(lease[2]) != confirmation.generation:
+        raise StaleGeneration("lease generation is stale")
+    attempt = connection.execute(
+        """
+        SELECT attempt_id, physical_key_id FROM attempts
+        WHERE project_id = ? AND job_id = ? AND generation = ?
+        """,
+        (str(confirmation.project_id), str(confirmation.job_id), confirmation.generation),
+    ).fetchone()
+    if attempt is None or str(attempt[0]) != str(confirmation.attempt_id):
+        raise StaleGeneration("lease generation is stale")
+    lease_physical = None if lease[1] is None else str(lease[1])
+    attempt_physical = None if attempt[1] is None else str(attempt[1])
+    confirmed_physical = None if confirmation.physical_key_id is None else str(confirmation.physical_key_id)
+    if lease_physical != attempt_physical or lease_physical != confirmed_physical:
+        raise StaleGeneration("resource fence does not match")
+    incarnation = load_attempt_incarnation(connection, confirmation.project_id, confirmation.attempt_id)
+    if incarnation is not None:
+        current = incarnation_of(
+            worker.worker_id,
+            get_presence(connection, worker.worker_id, moment, project_id=confirmation.project_id),
+        )
+        if current != incarnation:
+            raise StaleGeneration("worker incarnation is stale")
+    proofs = tuple(ref for ref in confirmation.proof_refs if type(ref) is str and ref.strip() != "")
+    quarantined = lease_physical is not None and proofs == ()
+    released = not quarantined
+    if quarantined and lease_physical is not None:
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO resource_quarantine (physical_key_id, reason, quarantined_at)
+            VALUES (?, 'dead_runner', ?)
+            """,
+            (lease_physical, moment.isoformat()),
+        )
+    connection.execute(
+        """
+        DELETE FROM leases
+        WHERE project_id = ? AND job_id = ? AND generation = ? AND worker_id = ?
+        """,
+        (
+            str(confirmation.project_id),
+            str(confirmation.job_id),
+            confirmation.generation,
+            worker.worker_id,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO cleanup_confirmations (
+            project_id, attempt_id, job_id, generation, worker_id, physical_key_id,
+            released, quarantined, proof_refs, confirmed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(confirmation.project_id),
+            str(confirmation.attempt_id),
+            str(confirmation.job_id),
+            confirmation.generation,
+            worker.worker_id,
+            lease_physical,
+            1 if released else 0,
+            1 if quarantined else 0,
+            json.dumps(list(proofs)),
+            moment.isoformat(),
+        ),
+    )
+    return CleanupConfirmationReceipt(
+        confirmation.project_id,
+        confirmation.attempt_id,
+        released,
+        quarantined,
+        False,
     )

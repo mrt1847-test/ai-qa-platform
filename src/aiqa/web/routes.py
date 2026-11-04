@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.templating import Jinja2Templates
 
 _PACKAGE = "aiqa.web"
-_UI_ASSET_VERSION = "20261103-pc03"
+_UI_ASSET_VERSION = "20261104-rx28"
 _templates: Jinja2Templates | None = None
 
 
@@ -54,6 +54,30 @@ def render_bootstrap(request: Request) -> Response:
         "health_component": payload["component"] if connected else "",
     }
     return _jinja().TemplateResponse(request, "bootstrap.html", context)
+
+
+def hosted_login_path() -> str:
+    """UI entry for hosted OIDC. Local bootstrap nonce stays on the local profile."""
+
+    return "/ui/login"
+
+
+def render_hosted_login(request: Request) -> HTMLResponse:
+    """Point operators at the OIDC start API. Does not issue a development nonce."""
+
+    settings = getattr(request.app.state, "settings", None)
+    profile = getattr(settings, "profile", "local")
+    if profile != "hosted":
+        return HTMLResponse(status_code=403, content="hosted login only")
+    return HTMLResponse(
+        content=(
+            "<!DOCTYPE html><html lang='ko'><body>"
+            "<h1>관리 서버 로그인</h1>"
+            "<p>OIDC authorization code + PKCE로 로그인합니다.</p>"
+            "<p data-oidc-start='/api/v1/auth/oidc/start'>POST /api/v1/auth/oidc/start</p>"
+            "</body></html>"
+        )
+    )
 
 
 def ensure_css_media_type() -> None:

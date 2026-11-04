@@ -11,7 +11,13 @@ from uuid import UUID
 from functools import wraps
 from aiqa.worker.files import atomic_write, file_lock
 
-from aiqa.contracts.evidence import AckState, EvidenceEnvelope, IngestReceipt, LocalReceipt
+from aiqa.contracts.evidence import (
+    AckState,
+    EvidenceCommitAck,
+    EvidenceEnvelope,
+    IngestReceipt,
+    LocalReceipt,
+)
 
 ACK_RETENTION = timedelta(days=7)
 
@@ -96,6 +102,13 @@ class EvidenceSpool:
             record["acked"] = True
         self._write_journal()
         return AckState(receipt.attempt_id, receipt.committed_seq, True, "acked")
+
+    def apply_commit_ack(self, ack: EvidenceCommitAck) -> AckState:
+        """Map wire (contiguous_seq, prefix_hash) onto the local spool ack."""
+
+        return self.acknowledge(
+            IngestReceipt(ack.attempt_id, ack.contiguous_seq, ack.prefix_hash, ack.stale_count)
+        )
 
     @_locked
     def purge(self, now: datetime) -> int:

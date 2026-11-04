@@ -220,6 +220,64 @@ class ActionExecutor:
         )
 
 
+def run_android_deterministic(
+    executor: ActionExecutor,
+    *,
+    driver,
+    preflight,
+    binding,
+    before,
+    action,
+    after=None,
+) -> object:
+    """Bridge recording executor evidence to the Android fixed-argv driver. No AI."""
+
+    if getattr(driver, "ai_calls", 0) != 0:
+        raise ValueError("replay actor AI is forbidden")
+    result = driver.run(
+        preflight=preflight,
+        binding=binding,
+        before=before,
+        action=action,
+        after=after,
+    )
+    if result.retries or result.native_calls > 1:
+        executor.post_dispatch_retries += max(0, result.native_calls - 1)
+    if result.after_ref is not None:
+        executor._immediate_after += 1
+    return result
+
+
+def run_web_deterministic(
+    executor: ActionExecutor,
+    *,
+    driver,
+    before,
+    action,
+    presented_digest: str,
+    presented_revision: str,
+    page_origin: str,
+    after=None,
+) -> object:
+    """Bridge recording executor evidence to TrustedWebDriver. Replay actor AI stays 0."""
+
+    if getattr(driver, "ai_calls", 0) != 0:
+        raise ValueError("replay actor AI is forbidden")
+    result = driver.run(
+        before=before,
+        action=action,
+        presented_digest=presented_digest,
+        presented_revision=presented_revision,
+        page_origin=page_origin,
+        after=after,
+    )
+    if result.retries or result.native_calls > 1:
+        executor.post_dispatch_retries += max(0, result.native_calls - 1)
+    if result.after_ref is not None:
+        executor._immediate_after += 1
+    return result
+
+
 def _write_sanitized(spool: Path, observation_id: str, cleaned: SanitizedCapture) -> str:
     folder = spool / "before"
     folder.mkdir(parents=True, exist_ok=True)

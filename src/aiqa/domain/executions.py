@@ -1623,3 +1623,48 @@ def _uuid(value: object, message: str) -> UUID:
         return UUID(value)
     except ValueError as exc:
         raise ExecutionRejected(message) from exc
+
+
+def finish_worker_run(
+    connection: sqlite3.Connection,
+    worker,
+    finish,
+    *,
+    request_key: str,
+    body_hash: str,
+    now: datetime,
+):
+    """Delegate worker attempt finish. Approval remains on the browser path."""
+
+    from aiqa.store.queue import finish_worker_attempt
+
+    return finish_worker_attempt(
+        connection,
+        worker,
+        finish,
+        request_key=request_key,
+        body_hash=body_hash,
+        now=now,
+    )
+
+
+def separate_verify_heal_storage(
+    *,
+    original_failure: str,
+    attempt_result: str,
+    approved_package_digest: str,
+    package_digest_after: str,
+    healer_calls: int,
+    verifier_calls: int,
+) -> dict[str, object]:
+    """Store original failure beside healing attempt without mutating the approved package."""
+
+    return {
+        "original_failure": original_failure,
+        "healing_attempt_result": attempt_result,
+        "approved_package_digest": approved_package_digest,
+        "package_digest_after": package_digest_after,
+        "approved_package_mutated": package_digest_after != approved_package_digest,
+        "healer_calls": healer_calls,
+        "verifier_calls": verifier_calls,
+    }

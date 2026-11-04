@@ -10,10 +10,21 @@ from uuid import UUID
 
 from aiqa.contracts.evidence import AckState, EvidenceEnvelope, IngestReceipt, LocalReceipt
 from aiqa.contracts.jobs import AttemptReceipt, JobLease, LeaseToken, LeaseView, ReconciliationReport
+from aiqa.contracts.worker_attempt import ClaimReceipt, WorkerAttemptFinishInput, WorkerAttemptFinishReceipt
 from aiqa.store.database import Store
 from aiqa.store.evidence import ingest_stored
 from aiqa.store.models import EventEnvelope, WorkerScope
-from aiqa.store.queue import acknowledge_runner, claim_queued_job, reconcile_stored, renew_lease_row
+from aiqa.store.queue import (
+    CleanupConfirmationInput,
+    CleanupConfirmationReceipt,
+    acknowledge_runner,
+    claim_queued_job,
+    claim_with_receipt,
+    confirm_cleanup,
+    finish_worker_attempt,
+    reconcile_stored,
+    renew_lease_row,
+)
 from aiqa.worker.spool import EvidenceSpool
 
 _store: ContextVar[Store] = ContextVar("aiqa_claim_store")
@@ -33,13 +44,29 @@ def bind_claim_store(store: Store) -> Iterator[None]:
         _store.reset(token)
 
 
-def claim_job(worker: WorkerScope, now: datetime, *, boot_id: object = None) -> JobLease | None:
+def claim_job(
+    worker: WorkerScope,
+    now: datetime,
+    *,
+    boot_id: object = None,
+    request_key: str | None = None,
+    project_id: object = None,
+) -> ClaimReceipt | JobLease | None:
     """Take one queued job for this worker, or nothing when the slot or device is busy."""
 
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
-        return claim_queued_job(connection, worker, now, boot_id=boot_id)
+        if request_key is None:
+            return claim_queued_job(connection, worker, now, boot_id=boot_id)
+        return claim_with_receipt(
+            connection,
+            worker,
+            now,
+            request_key=request_key,
+            boot_id=boot_id,
+            project_id=project_id,
+        )
 
 
 def renew_lease(
@@ -54,6 +81,42 @@ def renew_lease(
         return renew_lease_row(connection, worker, lease, now, model_wait, server_now=server_now)
 
 
+def confirm_attempt_cleanup(
+    worker: WorkerScope,
+    confirmation: CleanupConfirmationInput,
+    now: datetime,
+) -> CleanupConfirmationReceipt:
+    """Accept cleanup proof and release the matching lease fence."""
+
+    _require_now(now)
+    store = _bound_store()
+    with store.transaction() as connection:
+        return confirm_cleanup(connection, worker, confirmation, now)
+
+
+def finish_attempt(
+    worker: WorkerScope,
+    finish: WorkerAttemptFinishInput,
+    *,
+    request_key: str,
+    body_hash: str,
+    now: datetime,
+) -> WorkerAttemptFinishReceipt:
+    """Submit a terminal worker result. This path never approves."""
+
+    _require_now(now)
+    store = _bound_store()
+    with store.transaction() as connection:
+        return finish_worker_attempt(
+            connection,
+            worker,
+            finish,
+            request_key=request_key,
+            body_hash=body_hash,
+            now=now,
+        )
+
+
 def acknowledge_attempt(
     lease: LeaseToken, runner_nonce: UUID, worker: WorkerScope, now: datetime,
     *, server_now: datetime | None = None,
@@ -63,14 +126,17 @@ def acknowledge_attempt(
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
+        from aiqa.store.queue import load_attempt_incarnation
+
         receipt = acknowledge_runner(connection, worker, lease, runner_nonce, now, server_now=server_now)
-        connection.execute(
-            """
-            INSERT OR IGNORE INTO runner_hosts (project_id, attempt_id, boot_id)
-            VALUES (?, ?, ?)
-            """,
-            (str(lease.project_id), str(receipt.attempt_id), _boot_id()),
-        )
+        if load_attempt_incarnation(connection, lease.project_id, receipt.attempt_id) is None:
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO runner_hosts (project_id, attempt_id, boot_id)
+                VALUES (?, ?, ?)
+                """,
+                (str(lease.project_id), str(receipt.attempt_id), _boot_id()),
+            )
         return receipt
 
 

@@ -346,14 +346,29 @@ def _wizard_draft(project_id: UUID, case_id: str, base_version: str = '') -> dic
 
 @pages.get("/ui/projects/{project_id}/environments", response_class=HTMLResponse)
 async def environments_page(project_id: str, request: Request) -> HTMLResponse:
+    from aiqa.api.audit import bind_audit_store, list_workers
+    from aiqa.security.worker_enrollment import actor_can_manage_workers
+
     project = _uuid(project_id)
     if isinstance(project, JSONResponse):
         return HTMLResponse(status_code=404, content="자원을 찾지 못했습니다.")
+    can_manage = False
+    workers: list[dict[str, object]] = []
     with _bound(request):
         try:
-            authorize_page(request, project)
+            actor = authorize_page(request, project)
             items = list_resources(project)
             diagnostics = list_diagnostic_jobs(project)
+            store = request.app.state.open_store()
+            try:
+                migrate_store(store)
+                with bind_audit_store(store):
+                    with store.transaction() as connection:
+                        can_manage = actor_can_manage_workers(connection, actor)
+                    if can_manage:
+                        workers = list_workers(project)
+            finally:
+                store.close()
         except (OriginRejected, ProjectHidden, AuthRequired):
             return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
     return render_template(
@@ -375,6 +390,8 @@ async def environments_page(project_id: str, request: Request) -> HTMLResponse:
             "project_id": str(project),
             "resources": items,
             "diagnostics": diagnostics,
+            "can_manage_workers": can_manage,
+            "registered_workers": workers,
         },
     )
 

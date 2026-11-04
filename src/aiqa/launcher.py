@@ -31,6 +31,114 @@ class LauncherConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class HostedServerConfig:
+    """API-only hosted entry behind a reverse proxy. Workers use HTTPS, not SQLite."""
+
+    host: str
+    port: int
+    runtime_root: str
+    public_origin: str
+    trusted_proxies: tuple[str, ...]
+
+
+def worker_database_grant(settings: object) -> None:
+    """Servers never hand workers a SQLite path. Always None."""
+
+    return None
+
+
+def build_hosted_env(config: HostedServerConfig) -> dict[str, str]:
+    """Environment for the hosted API process. No bootstrap nonce is issued here."""
+
+    if config.host != "127.0.0.1":
+        raise ValueError("hosted API still binds loopback behind the proxy")
+    if not config.trusted_proxies:
+        raise ValueError("trusted_proxies is required")
+    return {
+        "AIQA_HOST": config.host,
+        "AIQA_PORT": str(config.port),
+        "AIQA_RUNTIME_ROOT": config.runtime_root,
+        "AIQA_PROFILE": "hosted",
+        "AIQA_PUBLIC_ORIGIN": config.public_origin.rstrip("/"),
+        "AIQA_TRUSTED_PROXIES": ",".join(config.trusted_proxies),
+    }
+
+
+def start_hosted_server(config: HostedServerConfig, *, spawn: bool = True) -> LocalServiceStatus:
+    """Open the hosted API entry. Does not start a co-located worker or grant DB paths."""
+
+    env = build_hosted_env(config)
+    from aiqa.config import load_settings
+
+    settings = load_settings(env)
+    if worker_database_grant(settings) is not None:
+        raise RuntimeError("worker DB grant must stay closed")
+    if not spawn:
+        return LocalServiceStatus(
+            api_instances=0,
+            worker_instances=0,
+            state="configured",
+            explanation="hosted API 설정이 준비됐습니다. reverse proxy HTTPS만 공개합니다.",
+            command=_API_COMMAND.format(port=config.port),
+            publish=False,
+            tab_close_cancels=False,
+            api_pid=0,
+            worker_pid=0,
+        )
+    api_pid = _spawn_hosted_api(config, env)
+    record = {
+        "host": config.host,
+        "port": config.port,
+        "api_pid": api_pid,
+        "worker_pid": 0,
+        "state": "running",
+        "explanation": "hosted API만 실행 중입니다. worker DB 접근은 없습니다.",
+        "command": _API_COMMAND.format(port=config.port),
+        "publish": False,
+        "vm_ready": False,
+        "profile": "hosted",
+    }
+    path = Path(config.runtime_root) / "launcher.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, sort_keys=True), encoding="utf-8")
+    return LocalServiceStatus(
+        api_instances=1 if _alive(api_pid) else 0,
+        worker_instances=0,
+        state="running",
+        explanation=str(record["explanation"]),
+        command=str(record["command"]),
+        publish=False,
+        tab_close_cancels=False,
+        api_pid=api_pid,
+        worker_pid=0,
+    )
+
+
+def _spawn_hosted_api(config: HostedServerConfig, env: dict[str, str]) -> int:
+    process_env = os.environ.copy()
+    process_env.update(env)
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "aiqa.api.app:create_app",
+            "--factory",
+            "--host",
+            config.host,
+            "--port",
+            str(config.port),
+        ],
+        env=process_env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+    return int(process.pid)
+
+
+@dataclass(frozen=True, slots=True)
 class LocalServiceStatus:
     """Process counts and the reason the last start returned."""
 
@@ -168,13 +276,13 @@ def read_local_status(runtime_root: str) -> LocalServiceStatus:
 
 
 def main(argv: list[str]) -> int:
-    """Keep a worker process until it is stopped. This does not open a device."""
+    """Run the independent worker consume loop. This does not open the server DB."""
 
     if argv[1:] != ["worker"]:
         return 2
-    while True:
-        time.sleep(3600)
-    return 0
+    from aiqa.worker.runtime import run_worker_process
+
+    return run_worker_process()
 
 
 def _require_loopback(config: LauncherConfig) -> None:

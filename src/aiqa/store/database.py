@@ -23,6 +23,7 @@ class StorageConfig:
     database_path: Path
     artifacts_dir: Path
     spool_dir: Path
+    backups_dir: Path | None = None
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> StorageConfig:
@@ -32,8 +33,9 @@ class StorageConfig:
         return cls(
             runtime_root=root,
             database_path=root / "db" / "aiqa.sqlite",
-            artifacts_dir=root / "artifacts",
+            artifacts_dir=settings.artifacts_dir,
             spool_dir=root / "spool",
+            backups_dir=settings.backups_dir,
         )
 
 

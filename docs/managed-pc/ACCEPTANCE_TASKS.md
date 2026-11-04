@@ -5,19 +5,19 @@
 <a id="rx-22"></a>
 ## RX-22 · 실제 Web 격리 공격 검증
 
-**입력** RX-15 · RX-30 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
+**입력** RX-15 · RX-30 · RX-35 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
 
 **파일** `docs/managed-pc/WEB_ISOLATION_RUNBOOK.md`, `docs/validation/tasks/RX-22.md`.
 
 - [ ] 허용된 테스트 origin만 접근하고 차단 대상은 모두 거절, 격리 종료 후 stale proof로 claim 거절.
 - [ ] 실행 호스트에서 지원 VM과 전용 브라우저를 띄우고 backend proof를 수집한다. host 파일·프로세스·metadata·관리 API·ADB·CDP 우회 시도에서 실행 경계를 확인한다.
-- [ ] `python -m pytest -q tests/integration/test_rx_13.py tests/integration/test_rx_30.py`로 core를 먼저 확인하고 실제 guest 안에서 runbook의 deny matrix를 실행한다.
+- [ ] `python -m pytest -q tests/integration/test_rx_13.py tests/integration/test_rx_30.py tests/integration/test_rx_35.py`로 core를 먼저 확인하고 실제 guest 안에서 runbook의 deny matrix를 실행한다.
 - [ ] `docs/validation/tasks/RX-22.md`에 검증 등급·명령·결과와 backend 버전·테스트 origin과 deny matrix를 남긴다.
 
 <a id="rx-23"></a>
 ## RX-23 · 실제 Android 녹화와 재생
 
-**입력** RX-12 · RX-21 · RX-31 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_23.py`, `docs/validation/tasks/RX-23.md`.
 
@@ -29,7 +29,7 @@
 <a id="rx-24"></a>
 ## RX-24 · 실제 Web 녹화와 재생
 
-**입력** RX-21 · RX-22 · RX-31 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_24.py`, `docs/validation/tasks/RX-24.md`.
 
@@ -53,7 +53,7 @@
 <a id="rx-26"></a>
 ## RX-26 · 재연결의 미확정 행동과 늦은 ACK
 
-**입력** RX-21 · RX-23 및 C00/C01/C04/C05/C08. **환경** `local_python` · `independent_server` · `dedicated_android` · `fault_injection_authorized`.
+**입력** RX-21 · RX-23 · RX-38 및 C00/C01/C04/C05/C08. **환경** `local_python` · `independent_server` · `dedicated_android` · `fault_injection_authorized`.
 
 **파일** `tests/operational/test_rx_26.py`, `docs/validation/tasks/RX-26.md`.
 

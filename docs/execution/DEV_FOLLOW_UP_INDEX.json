@@ -90,7 +90,7 @@
         "W21-01",
         "W23-04"
       ],
-      "status": "not_started",
+      "status": "complete",
       "environment_requirements": [
         "local_python"
       ],
@@ -106,7 +106,7 @@
       "deps": [
         "UX-01"
       ],
-      "status": "not_started",
+      "status": "complete",
       "environment_requirements": [
         "local_python"
       ],
@@ -124,7 +124,7 @@
         "W21-02",
         "W21-03"
       ],
-      "status": "not_started",
+      "status": "complete",
       "environment_requirements": [
         "local_python"
       ],

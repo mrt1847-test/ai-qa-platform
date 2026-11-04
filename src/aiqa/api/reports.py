@@ -697,6 +697,7 @@ async def reports_page(project_id: str, request: Request) -> HTMLResponse:
             "trial_included": request.query_params.get("include_trial", "") == "1",
             "period_label": "요청 기간",
             "items": page.items,
+            "crumbs": (("리포트", ""),),
         },
     )
 

@@ -96,6 +96,29 @@ class CleanupReport:
     proof_refs: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class SnapshotCheck:
+    supported: bool
+    reason: str
+    purpose: str
+
+
+def verify_job_snapshot(snapshot: object, prepared_adapters: frozenset[str]) -> SnapshotCheck:
+    """Accept only purposes with a prepared adapter. Unsupported targets dispatch zero actions."""
+
+    if type(snapshot) is not dict:
+        return SnapshotCheck(False, "snapshot_invalid", "")
+    purpose = snapshot.get("purpose")
+    if type(purpose) is not str or purpose.strip() == "":
+        return SnapshotCheck(False, "purpose_missing", "")
+    digest = snapshot.get("digest")
+    if type(digest) is not str or not digest.startswith("sha256:"):
+        return SnapshotCheck(False, "digest_invalid", purpose)
+    if purpose not in prepared_adapters:
+        return SnapshotCheck(False, "unsupported_target", purpose)
+    return SnapshotCheck(True, "ok", purpose)
+
+
 def control_finish(purpose: str, finish: object) -> tuple[str | None, str]:
     """Keep the QA verdict independent of a cleanup failure."""
 
@@ -114,6 +137,17 @@ def stop_runner(attempt_id: UUID, grace_seconds: int = 5) -> StopReport:
 
 
 _CLEANUP: dict[UUID, str] = {}
+
+
+def verify_and_heal_after_replay(**kwargs: object) -> object:
+    """Connect replay check evaluation and healing to the worker model-request path.
+
+    Used by Android trial/regression handlers after a sealed plan dispatch.
+    """
+
+    from aiqa.healing.service import run_replay_verify_and_heal
+
+    return run_replay_verify_and_heal(**kwargs)  # type: ignore[arg-type]
 
 
 def cleanup_attempt(

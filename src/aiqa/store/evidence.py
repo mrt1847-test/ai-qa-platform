@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID, uuid4
 
-from aiqa.contracts.evidence import IngestReceipt
+from aiqa.contracts.evidence import EvidenceCommitAck, IngestReceipt
 from aiqa.contracts.jobs import LeaseToken
 from aiqa.store.artifacts import (
     ArtifactReceipt,
@@ -29,6 +31,27 @@ from aiqa.store.models import EventEnvelope, WorkerScope
 from aiqa.store.queue import LeaseDenied, StaleGeneration
 
 _TERMINAL = frozenset({"completed", "error", "cancelled", "lost"})
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceArtifactPart:
+    filename: str
+    media_type: str
+    declared_hash: str
+    declared_length: int
+    body: bytes
+    role: str = "source"
+    owner_kind: str = "REC"
+    owner_id: UUID | None = None
+    attempt_id: UUID | None = None
+
+
+class UnsanitizedEvidence(ValueError):
+    """Refuse to accept evidence that was not sanitized."""
+
+
+class EvidenceHashRejected(ValueError):
+    """Declared content hash does not match the body."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +170,248 @@ def ingest_stored(
             raise EventConflict("event hash does not match")
     committed_seq, committed_hash = _cursor(connection, lease.project_id, attempt_id)
     return IngestReceipt(UUID(attempt_id), committed_seq, committed_hash, 0)
+
+
+def commit_sanitized_evidence(
+    binding: ArtifactBinding,
+    lease: LeaseToken,
+    *,
+    sanitized: bool,
+    events: list[EventEnvelope],
+    artifacts: list[EvidenceArtifactPart],
+    request_key: str,
+    body_fingerprint: str,
+) -> EvidenceCommitAck:
+    """Commit a contiguous sanitized event prefix and optional artifacts. Late work is recovery-only."""
+
+    if sanitized is not True:
+        raise UnsanitizedEvidence("unsanitized evidence cannot be committed")
+    if type(request_key) is not str or request_key.strip() == "":
+        raise ValueError("idempotency key is required")
+    if lease.project_id not in binding.worker.permitted_projects:
+        raise LeaseDenied("worker cannot use this lease")
+    for part in artifacts:
+        digest = content_hash(part.body)
+        if part.declared_hash != digest or part.declared_length != len(part.body):
+            raise EvidenceHashRejected("artifact hash does not match")
+        if not acceptable_size(part.declared_length, part.body):
+            raise EvidenceHashRejected("artifact size is invalid")
+
+    worker_id = binding.worker.worker_id
+    identity = (
+        str(lease.project_id),
+        str(lease.job_id),
+        lease.generation,
+        worker_id,
+        request_key.strip(),
+    )
+    with binding.store.transaction() as connection:
+        row = connection.execute(
+            """
+            SELECT body_hash, response_body FROM evidence_commit_requests
+            WHERE project_id=? AND job_id=? AND generation=? AND worker_id=? AND request_key=?
+            """,
+            identity,
+        ).fetchone()
+        if row is not None:
+            if str(row[0]) != body_fingerprint:
+                raise EventConflict("commit key already has another body")
+            if row[1]:
+                saved = json.loads(str(row[1]))
+                return EvidenceCommitAck(
+                    UUID(str(saved["attempt_id"])),
+                    int(saved["contiguous_seq"]),
+                    str(saved["prefix_hash"]),
+                    int(saved["stale_count"]),
+                    bool(saved["late"]),
+                    int(saved["artifact_count"]),
+                )
+        else:
+            connection.execute(
+                """
+                INSERT INTO evidence_commit_requests (
+                    project_id, job_id, generation, worker_id, request_key, body_hash, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (*identity, body_fingerprint, binding.now.astimezone(timezone.utc).isoformat()),
+            )
+
+        lease_row = connection.execute(
+            """
+            SELECT leases.expires_at, leases.worker_id, jobs.status, attempts.attempt_id
+            FROM leases
+            JOIN jobs
+              ON jobs.project_id = leases.project_id
+             AND jobs.job_id = leases.job_id
+            JOIN attempts
+              ON attempts.project_id = leases.project_id
+             AND attempts.job_id = leases.job_id
+             AND attempts.generation = leases.generation
+            WHERE leases.project_id = ? AND leases.job_id = ? AND leases.generation = ?
+            """,
+            (str(lease.project_id), str(lease.job_id), lease.generation),
+        ).fetchone()
+        has_lease = lease_row is not None
+        if lease_row is None:
+            attempt_row = connection.execute(
+                """
+                SELECT jobs.status, attempts.attempt_id
+                FROM jobs
+                JOIN attempts
+                  ON attempts.project_id = jobs.project_id
+                 AND attempts.job_id = jobs.job_id
+                 AND attempts.generation = ?
+                WHERE jobs.project_id = ? AND jobs.job_id = ?
+                """,
+                (lease.generation, str(lease.project_id), str(lease.job_id)),
+            ).fetchone()
+            if attempt_row is None:
+                raise StaleGeneration("lease generation is stale")
+            status = str(attempt_row[0])
+            attempt_id = str(attempt_row[1])
+            late = True
+        else:
+            if str(lease_row[1]) != worker_id:
+                raise LeaseDenied("worker cannot use this lease")
+            status = str(lease_row[2])
+            attempt_id = str(lease_row[3])
+            expires = datetime.fromisoformat(str(lease_row[0]))
+            expired = (
+                expires.tzinfo is None
+                or binding.now.astimezone(timezone.utc) >= expires.astimezone(timezone.utc)
+            )
+            late = status in _TERMINAL or expired
+
+        finish_before = connection.execute(
+            "SELECT verdict, finish_reason, resource_state FROM job_finish_facts WHERE project_id=? AND job_id=?",
+            (str(lease.project_id), str(lease.job_id)),
+        ).fetchone()
+        job_status_before = connection.execute(
+            "SELECT status FROM jobs WHERE project_id=? AND job_id=?",
+            (str(lease.project_id), str(lease.job_id)),
+        ).fetchone()
+
+        if events and has_lease:
+            receipt = ingest_stored(connection, binding.worker, lease, events, binding.now)
+        elif events and not has_lease:
+            for event in events:
+                _require_event(event, lease.project_id, attempt_id)
+                connection.execute(
+                    """
+                    INSERT INTO stale_event_inbox (
+                        project_id, inbox_id, attempt_id, job_id, generation, local_seq,
+                        payload_hash, body_hash, reason, received_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        str(lease.project_id),
+                        str(uuid4()),
+                        attempt_id,
+                        str(lease.job_id),
+                        lease.generation,
+                        event.local_seq,
+                        event.payload_hash,
+                        event.body_hash,
+                        "terminal" if status in _TERMINAL else "expired",
+                        binding.now.astimezone(timezone.utc).isoformat(),
+                    ),
+                )
+            committed_seq, committed_hash = _cursor(connection, lease.project_id, attempt_id)
+            receipt = IngestReceipt(UUID(attempt_id), committed_seq, committed_hash, len(events))
+        else:
+            committed_seq, committed_hash = _cursor(connection, lease.project_id, attempt_id)
+            receipt = IngestReceipt(UUID(attempt_id), committed_seq, committed_hash, 0)
+
+        artifact_count = 0
+        if artifacts:
+            if late:
+                for part in artifacts:
+                    digest = content_hash(part.body)
+                    connection.execute(
+                        """
+                        INSERT OR IGNORE INTO late_evidence_inbox (
+                            project_id, inbox_id, attempt_id, job_id, generation,
+                            content_hash, media_type, role, filename, reason, received_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            str(lease.project_id),
+                            str(uuid4()),
+                            attempt_id,
+                            str(lease.job_id),
+                            lease.generation,
+                            digest,
+                            part.media_type,
+                            part.role,
+                            part.filename,
+                            "terminal" if status in _TERMINAL else "expired",
+                            binding.now.astimezone(timezone.utc).isoformat(),
+                        ),
+                    )
+                    artifact_count += 1
+            else:
+                for part in artifacts:
+                    digest = content_hash(part.body)
+                    # Active sanitized bytes are staged under the attempt for RX-06 commit;
+                    # full REC ownership binding remains the dedicated artifact upload route.
+                    connection.execute(
+                        """
+                        INSERT OR IGNORE INTO late_evidence_inbox (
+                            project_id, inbox_id, attempt_id, job_id, generation,
+                            content_hash, media_type, role, filename, reason, received_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active_commit', ?)
+                        """,
+                        (
+                            str(lease.project_id),
+                            str(uuid4()),
+                            attempt_id,
+                            str(lease.job_id),
+                            lease.generation,
+                            digest,
+                            part.media_type,
+                            part.role,
+                            part.filename,
+                            binding.now.astimezone(timezone.utc).isoformat(),
+                        ),
+                    )
+                    artifact_count += 1
+
+        finish_after = connection.execute(
+            "SELECT verdict, finish_reason, resource_state FROM job_finish_facts WHERE project_id=? AND job_id=?",
+            (str(lease.project_id), str(lease.job_id)),
+        ).fetchone()
+        job_status_after = connection.execute(
+            "SELECT status FROM jobs WHERE project_id=? AND job_id=?",
+            (str(lease.project_id), str(lease.job_id)),
+        ).fetchone()
+        if finish_before != finish_after or job_status_before != job_status_after:
+            raise RuntimeError("evidence commit must not change finish or job status")
+
+        ack = EvidenceCommitAck(
+            receipt.attempt_id,
+            receipt.committed_seq,
+            receipt.committed_hash,
+            receipt.stale_count,
+            late,
+            artifact_count,
+        )
+        body = {
+            "attempt_id": str(ack.attempt_id),
+            "contiguous_seq": ack.contiguous_seq,
+            "prefix_hash": ack.prefix_hash,
+            "stale_count": ack.stale_count,
+            "late": ack.late,
+            "artifact_count": ack.artifact_count,
+        }
+        connection.execute(
+            """
+            UPDATE evidence_commit_requests
+            SET response_body=?
+            WHERE project_id=? AND job_id=? AND generation=? AND worker_id=? AND request_key=?
+            """,
+            (json.dumps(body, sort_keys=True), *identity),
+        )
+        return ack
 
 
 def _require_event(event: EventEnvelope, project_id: UUID, attempt_id: str) -> None:
@@ -285,16 +550,20 @@ def open_artifact(artifact_id: UUID) -> ArtifactStream | EvidenceUnavailable:
         return EvidenceUnavailable("missing")
     if row[7] is None:
         return EvidenceUnavailable('unverified')
-    path = resolve_stored(binding.store.config.artifacts_dir, str(row[1]))
-    if path is None or not path.is_file():
+    from aiqa.store.artifacts import ArtifactRejected, open_durable
+
+    try:
+        body = open_durable(binding.store.config.artifacts_dir, str(row[1]), str(row[2]))
+    except ArtifactRejected as exc:
+        reason = str(exc)
+        if "hash" in reason:
+            return EvidenceUnavailable("corruption")
         return EvidenceUnavailable("missing")
-    if content_hash(path.read_bytes()) != str(row[2]):
-        return EvidenceUnavailable("corruption")
     if str(row[5]) == "expired" or expired_at(str(row[6]), binding.now):
         return EvidenceUnavailable("expired")
     if str(row[3]) not in {"image/png", "text/plain"}:
         return EvidenceUnavailable("missing")
-    return ArtifactStream(path.read_bytes(), str(row[3]))
+    return ArtifactStream(body, str(row[3]))
 
 
 def _spooling_files(root: Path, ready_paths: set[Path]) -> int:

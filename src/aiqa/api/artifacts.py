@@ -18,7 +18,9 @@ from aiqa.api.auth import (
     bound_auth_store,
     worker_scope_from_token,
 )
+from aiqa.api.oidc_login import assert_route_capability
 from aiqa.contracts.jobs import LeaseToken
+from aiqa.domain.projects import MembershipDenied
 from aiqa.store.artifacts import (
     ArtifactStream,
     ArtifactUpload,
@@ -117,7 +119,7 @@ def install_artifacts(application: FastAPI) -> None:
                     project_id = artifact_project(target)
                     if project_id is None:
                         return _error(404, "not_found", "artifact was not found", {})
-                    denied = _authorize_read(request, project_id)
+                    denied = _authorize_read(request, project_id, store)
                     if denied is not None:
                         return denied
                     opened = open_artifact(target)
@@ -180,7 +182,7 @@ def install_artifacts(application: FastAPI) -> None:
                         ).fetchone()
                 if view is None:
                     return _error(404, "not_found", "artifact was not found", {})
-                denied = _authorize_read(request, view.project_id)
+                denied = _authorize_read(request, view.project_id, store)
                 if denied is not None:
                     return denied
         finally:
@@ -416,7 +418,13 @@ def _reason(state: str) -> str:
     return "파일이 없습니다."
 
 
-def _authorize_read(request: Request, project_id: UUID) -> JSONResponse | None:
+def _authorize_read(
+    request: Request,
+    project_id: UUID,
+    store: object | None = None,
+) -> JSONResponse | None:
+    """Admit download with worker scope or project evidence_download. No live worker PC required."""
+
     header = request.headers.get("authorization", "")
     if header.startswith("Bearer ") and header.removeprefix("Bearer ").strip() != "":
         try:
@@ -427,9 +435,16 @@ def _authorize_read(request: Request, project_id: UUID) -> JSONResponse | None:
             return _error(404, "not_found", "artifact was not found", {})
         return None
     try:
-        authorize_page(request, project_id)
+        actor = authorize_page(request, project_id)
     except (OriginRejected, ProjectHidden, AuthRequired):
         return _error(401, "unauthorized", "session is missing", {})
+    if store is None:
+        return None
+    try:
+        with store.transaction() as connection:  # type: ignore[attr-defined]
+            assert_route_capability(connection, actor, project_id, "evidence_download")
+    except MembershipDenied:
+        return _error(404, "not_found", "artifact was not found", {})
     return None
 
 

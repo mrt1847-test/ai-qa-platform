@@ -232,3 +232,32 @@ class AndroidObservationProvider:
             return result('ready', 'observed', geometry, density, observation)
         except _ReadFailure as exc:
             return result(exc.state, exc.reason)
+
+
+class AndroidGeometryError(ValueError):
+    """Capture geometry cannot be used for parse or rescale."""
+
+
+def require_usable_geometry(observation: Observation):
+    """Reject missing or inconsistent capture geometry before parse/rescale."""
+
+    if observation.geometry is None or not observation.capture_ok:
+        raise AndroidGeometryError("geometry is invalid")
+    geo = observation.geometry
+    if geo.physical_width < 1 or geo.physical_height < 1:
+        raise AndroidGeometryError("geometry is invalid")
+    if geo.model_width < 1 or geo.model_height < 1:
+        raise AndroidGeometryError("geometry is invalid")
+    if geo.rotation not in {0, 90, 180, 270}:
+        raise AndroidGeometryError("geometry is invalid")
+    left, top, right, bottom = geo.content_bounds
+    if (
+        left < 0
+        or top < 0
+        or right > geo.physical_width
+        or bottom > geo.physical_height
+        or left >= right
+        or top >= bottom
+    ):
+        raise AndroidGeometryError("geometry is invalid")
+    return geo

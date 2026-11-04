@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 
+from aiqa.config import PROFILE_HOSTED, PROFILE_LOCAL, AppSettings
 from aiqa.store.database import Store, migrate_store
 from aiqa.store.models import Actor, BrowserSession, JobRef, WorkerScope
 
@@ -59,6 +60,10 @@ class ProjectHidden(Exception):
 
 class WorkerDenied(Exception):
     """A worker token cannot perform this operation."""
+
+
+class ProfileRejected(Exception):
+    """The deployment profile refuses this authentication path."""
 
 
 def install_auth(application: FastAPI) -> None:
@@ -145,9 +150,10 @@ def bootstrap_browser_session(nonce: str, origin: str) -> BrowserSession:
 
 
 def authorize_page(request: Request, project_id: UUID) -> Actor:
-    """Read a loopback page session. A navigation does not send a mutation token."""
+    """Read a page session. A navigation does not send a mutation token."""
 
-    if request.url.hostname not in {"127.0.0.1", "localhost"}:
+    settings = _settings(request)
+    if settings.profile == PROFILE_LOCAL and request.url.hostname not in {"127.0.0.1", "localhost"}:
         raise OriginRejected("origin is not loopback")
     session_id = request.cookies.get("aiqa_session")
     if not session_id:
@@ -176,9 +182,10 @@ def authorize_page(request: Request, project_id: UUID) -> Actor:
 def authorize_browser(request: Request, project_id: UUID, operation: str) -> Actor:
     if type(operation) is not str or operation.strip() == "":
         raise CsrfRejected("csrf token is missing")
+    settings = _settings(request)
     origin = request.headers.get("origin")
-    if origin is None or not _loopback_origin(origin):
-        raise OriginRejected("origin is not loopback")
+    if origin is None or not _origin_allowed(origin, settings):
+        raise OriginRejected("origin was rejected")
     presented = request.headers.get("x-csrf-token")
     if presented is None or presented.strip() == "":
         raise CsrfRejected("csrf token is missing")
@@ -210,13 +217,21 @@ def authorize_browser(request: Request, project_id: UUID, operation: str) -> Act
     )
 
 
+def session_cookie_secure(settings: AppSettings) -> bool:
+    """Hosted cookies require the Secure attribute; local loopback does not."""
+
+    return settings.profile == PROFILE_HOSTED
+
+
 def authorize_worker(token: str, job: JobRef) -> WorkerScope:
     if type(token) is not str or token.strip() == "":
         raise AuthRequired("worker token is missing")
+    now = _now()
     with _bound_store().transaction() as connection:
         row = connection.execute(
             """
-            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose
+            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose,
+                   worker_tokens.expires_at
             FROM worker_tokens
             JOIN worker_enrollments
               ON worker_enrollments.enrollment_id = worker_tokens.enrollment_id
@@ -224,7 +239,7 @@ def authorize_worker(token: str, job: JobRef) -> WorkerScope:
             """,
             (_hash(token),),
         ).fetchone()
-    if row is None:
+    if row is None or _token_expired(row[3], now):
         raise AuthRequired("worker token is missing")
     project_id = UUID(str(row[1]))
     purpose = str(row[2])
@@ -242,10 +257,12 @@ def worker_scope_from_token(token: str) -> WorkerScope:
 
     if type(token) is not str or token.strip() == "":
         raise AuthRequired("worker token is missing")
+    now = _now()
     with _bound_store().transaction() as connection:
         row = connection.execute(
             """
-            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose, worker_tokens.token_id
+            SELECT worker_enrollments.worker_id, worker_enrollments.project_id, worker_tokens.purpose,
+                   worker_tokens.token_id, worker_tokens.expires_at
             FROM worker_tokens
             JOIN worker_enrollments
               ON worker_enrollments.enrollment_id = worker_tokens.enrollment_id
@@ -253,7 +270,7 @@ def worker_scope_from_token(token: str) -> WorkerScope:
             """,
             (_hash(token),),
         ).fetchone()
-    if row is None or str(row[2]) == "approval":
+    if row is None or str(row[2]) == "approval" or _token_expired(row[4], now):
         raise AuthRequired("worker token is missing")
     return WorkerScope(
         worker_id=str(row[0]),
@@ -294,27 +311,40 @@ def enroll_worker(actor: Actor, worker_id: str, purpose: str) -> str:
 @router.get("/session/csrf")
 async def get_session_csrf(request: Request) -> JSONResponse:
     """Read the existing cookie-bound token without rotating other tabs' state."""
-    origin=request.headers.get('origin')
-    if origin is None and request.headers.get('sec-fetch-site') == 'same-origin':
-        origin = str(request.base_url).rstrip('/')
-    if not origin or not _loopback_origin(origin) or origin != str(request.base_url).rstrip('/'):
-        return _error(403,'permission','origin was rejected',{})
+    settings = _settings(request)
+    origin = request.headers.get("origin")
+    if origin is None and request.headers.get("sec-fetch-site") == "same-origin":
+        origin = _expected_origin(settings, request)
+    if not origin or not _origin_allowed(origin, settings):
+        return _error(403, "permission", "origin was rejected", {})
+    if settings.profile == PROFILE_LOCAL and origin != str(request.base_url).rstrip("/"):
+        return _error(403, "permission", "origin was rejected", {})
+    if settings.profile == PROFILE_HOSTED and origin != settings.public_origin:
+        return _error(403, "permission", "origin was rejected", {})
     with _bound(request):
-        session_id=request.cookies.get('aiqa_session','')
+        session_id = request.cookies.get("aiqa_session", "")
         with _bound_store().transaction() as connection:
-            row=connection.execute('SELECT origin,project_scope,expires_at,csrf_hash FROM browser_sessions WHERE session_id=?',(session_id,)).fetchone()
+            row = connection.execute(
+                "SELECT origin,project_scope,expires_at,csrf_hash FROM browser_sessions WHERE session_id=?",
+                (session_id,),
+            ).fetchone()
             if row is None or datetime.fromisoformat(str(row[2])) <= _now():
-                return _error(401,'unauthorized','session is missing',{})
+                return _error(401, "unauthorized", "session is missing", {})
             if row[0] != origin:
-                return _error(403,'permission','origin was rejected',{})
-            token = request.cookies.get('aiqa_csrf', '')
+                return _error(403, "permission", "origin was rejected", {})
+            token = request.cookies.get("aiqa_csrf", "")
             if not token or not hmac.compare_digest(_hash(token), str(row[3])):
-                return _error(401, 'unauthorized', 'session must be bootstrapped again', {})
-    return JSONResponse(content={'csrf_token':token,'project_id':str(row[1])},headers={'Cache-Control':'no-store'})
+                return _error(401, "unauthorized", "session must be bootstrapped again", {})
+    return JSONResponse(
+        content={"csrf_token": token, "project_id": str(row[1])},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/session/nonces")
 async def post_nonce(request: Request) -> JSONResponse:
+    if _settings(request).profile == PROFILE_HOSTED:
+        return _error(403, "permission", "development nonce is blocked on hosted profile", {})
     rejected = _idempotency(request)
     if rejected is not None:
         return rejected
@@ -341,6 +371,9 @@ async def post_nonce(request: Request) -> JSONResponse:
 
 @router.post("/session/bootstrap")
 async def post_bootstrap(request: Request) -> JSONResponse:
+    settings = _settings(request)
+    if settings.profile == PROFILE_HOSTED:
+        return _error(403, "permission", "development nonce is blocked on hosted profile", {})
     if "nonce" in request.query_params:
         return _error(400, "validation", "nonce must be sent in the request body", {})
     rejected = _idempotency(request)
@@ -360,6 +393,7 @@ async def post_bootstrap(request: Request) -> JSONResponse:
             return _error(403, "permission", "origin was rejected", {})
         except NonceRejected:
             return _error(401, "unauthorized", "nonce was rejected", {})
+    secure = session_cookie_secure(settings)
     response = JSONResponse(
         status_code=201,
         content={
@@ -368,8 +402,144 @@ async def post_bootstrap(request: Request) -> JSONResponse:
             "expires_at": session.expires_at,
         },
     )
-    response.set_cookie("aiqa_session", str(session.session_id), httponly=True, samesite="strict", path="/")
-    response.set_cookie('aiqa_csrf', session.csrf_token, httponly=True, samesite='strict', path='/')
+    response.set_cookie(
+        "aiqa_session",
+        str(session.session_id),
+        httponly=True,
+        samesite="strict",
+        path="/",
+        secure=secure,
+    )
+    response.set_cookie(
+        "aiqa_csrf",
+        session.csrf_token,
+        httponly=True,
+        samesite="strict",
+        path="/",
+        secure=secure,
+    )
+    return response
+
+
+def _oidc_runtime(request: Request):
+    runtime = getattr(request.app.state, "oidc_runtime", None)
+    if runtime is not None:
+        return runtime
+    idp = getattr(request.app.state, "oidc_idp", None)
+    settings = _settings(request)
+    if idp is None or settings.public_origin is None:
+        return None
+    from aiqa.api.oidc_login import HostedOidcRuntime
+    from aiqa.security.oidc import OidcClientConfig
+
+    config = getattr(request.app.state, "oidc_config", None)
+    if config is None:
+        config = OidcClientConfig(
+            issuer=str(idp.issuer),
+            audience=str(idp.audience),
+            redirect_uri=f"{settings.public_origin}/api/v1/auth/oidc/callback",
+        )
+    return HostedOidcRuntime(
+        config=config,
+        idp=idp,
+        authorize_endpoint=f"{idp.issuer}/authorize",
+        client_secret_present=False,
+    )
+
+
+@router.post("/auth/oidc/start")
+async def post_oidc_start(request: Request) -> JSONResponse:
+    from aiqa.api.oidc_login import start_oidc_login
+    from aiqa.security.oidc import OidcRejected
+
+    settings = _settings(request)
+    if settings.profile != PROFILE_HOSTED or settings.public_origin is None:
+        return _error(403, "permission", "oidc login requires hosted profile", {})
+    rejected = _idempotency(request)
+    if rejected is not None:
+        return rejected
+    runtime = _oidc_runtime(request)
+    if runtime is None:
+        return _error(503, "unavailable", "oidc idp is not configured", {})
+    with _bound(request):
+        try:
+            with _bound_store().transaction() as connection:
+                started = start_oidc_login(
+                    connection,
+                    runtime.config,
+                    authorize_endpoint=runtime.authorize_endpoint,
+                )
+        except OidcRejected as exc:
+            return _error(401, "unauthorized", str(exc), {})
+    return JSONResponse(status_code=201, content=started)
+
+
+@router.post("/auth/oidc/callback")
+async def post_oidc_callback(request: Request) -> JSONResponse:
+    from aiqa.api.oidc_login import complete_oidc_login
+    from aiqa.domain.projects import MembershipDenied
+    from aiqa.security.oidc import OidcRejected
+
+    settings = _settings(request)
+    if settings.profile != PROFILE_HOSTED or settings.public_origin is None:
+        return _error(403, "permission", "oidc login requires hosted profile", {})
+    rejected = _idempotency(request)
+    if rejected is not None:
+        return rejected
+    payload = await _body(request)
+    if isinstance(payload, JSONResponse):
+        return payload
+    runtime = _oidc_runtime(request)
+    if runtime is None:
+        return _error(503, "unavailable", "oidc idp is not configured", {})
+    try:
+        project_id = UUID(str(payload.get("project_id")))
+    except (TypeError, ValueError):
+        return _error(404, "not_found", "project was not found", {})
+    origin = request.headers.get("origin") or settings.public_origin
+    with _bound(request):
+        store = _bound_store()
+        try:
+            with store.transaction() as connection:
+                session = complete_oidc_login(
+                    connection,
+                    runtime.config,
+                    runtime.idp,
+                    code=str(payload.get("code", "")),
+                    state=str(payload.get("state", "")),
+                    code_verifier=str(payload.get("code_verifier", "")),
+                    project_id=project_id,
+                    origin=origin,
+                )
+        except OidcRejected as exc:
+            return _error(401, "unauthorized", str(exc), {})
+        except MembershipDenied:
+            return _error(403, "permission", "project access was denied", {})
+    response = JSONResponse(
+        status_code=201,
+        content={
+            "session_id": str(session.session_id),
+            "csrf_token": session.csrf_token,
+            "expires_at": session.expires_at,
+            "actor_id": str(session.actor.actor_id),
+        },
+    )
+    response.set_cookie(
+        "aiqa_session",
+        str(session.session_id),
+        httponly=True,
+        samesite="strict",
+        path="/",
+        secure=True,
+    )
+    response.set_cookie(
+        "aiqa_csrf",
+        session.csrf_token,
+        httponly=True,
+        samesite="strict",
+        path="/",
+        secure=True,
+    )
     return response
 
 
@@ -483,6 +653,25 @@ def _idempotency(request: Request) -> JSONResponse | None:
     return None
 
 
+def _settings(request: Request) -> AppSettings:
+    settings = getattr(request.app.state, "settings", None)
+    if not isinstance(settings, AppSettings):
+        raise RuntimeError("app settings are missing")
+    return settings
+
+
+def _expected_origin(settings: AppSettings, request: Request) -> str:
+    if settings.profile == PROFILE_HOSTED and settings.public_origin is not None:
+        return settings.public_origin
+    return str(request.base_url).rstrip("/")
+
+
+def _origin_allowed(origin: str, settings: AppSettings) -> bool:
+    if settings.profile == PROFILE_HOSTED:
+        return origin == settings.public_origin
+    return _loopback_origin(origin)
+
+
 def _loopback_origin(origin: str) -> bool:
     if type(origin) is not str:
         return False
@@ -500,6 +689,12 @@ def _loopback_origin(origin: str) -> bool:
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _token_expired(expires_at: object, now: datetime) -> bool:
+    if expires_at is None:
+        return False
+    return datetime.fromisoformat(str(expires_at)) <= now
 
 
 def _now() -> datetime:

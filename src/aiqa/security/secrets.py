@@ -5,13 +5,16 @@ from __future__ import annotations
 import ctypes
 import logging
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from ctypes import wintypes
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Protocol
 from uuid import UUID, uuid4
 
+from aiqa.config import PROFILE_HOSTED, AppSettings
 from aiqa.domain.projects import next_commit_seq
 from aiqa.store.database import Store
 from aiqa.store.models import (
@@ -26,7 +29,26 @@ from aiqa.store.models import (
 
 logger = logging.getLogger("aiqa.security.secrets")
 _store: ContextVar[Store] = ContextVar("aiqa_secret_store")
+_backend: ContextVar["SecretBackend | None"] = ContextVar("aiqa_secret_backend", default=None)
+_account: ContextVar[str] = ContextVar("aiqa_secret_account", default="aiqa-local")
 _MAX_SECRET_BYTES = 4096
+_SECRET_DTO_KEYS = frozenset(
+    {
+        "value",
+        "secret",
+        "password",
+        "api_key",
+        "apikey",
+        "token",
+        "access_token",
+        "refresh_token",
+        "credential",
+        "credentials",
+        "client_secret",
+    }
+)
+LOCAL_SECRET_ACCOUNT = "aiqa-local"
+HOSTED_SECRET_ACCOUNT = "aiqa-server"
 
 
 class SecretValidationError(Exception):
@@ -43,6 +65,144 @@ class SecretUnavailable(Exception):
     """The OS secret store could not accept or return the secret."""
 
 
+class SecretBackend(Protocol):
+    """Persist secret bytes outside SQLite. Implementations must not log values."""
+
+    def write(self, target: str, value: str, *, account: str) -> None: ...
+
+    def read(self, target: str) -> str: ...
+
+    def delete(self, target: str) -> None: ...
+
+
+class MemorySecretBackend:
+    """In-process backend for contract tests. Values stay off SQLite and DTOs."""
+
+    def __init__(self) -> None:
+        self._values: dict[str, str] = {}
+
+    def write(self, target: str, value: str, *, account: str) -> None:
+        if type(target) is not str or target.strip() == "" or type(value) is not str:
+            raise SecretUnavailable("os secret store rejected the write")
+        self._values[target] = value
+
+    def read(self, target: str) -> str:
+        if target not in self._values:
+            raise OSError(1168)
+        return self._values[target]
+
+    def delete(self, target: str) -> None:
+        self._values.pop(target, None)
+
+
+class WindowsCredentialBackend:
+    """Windows Credential Manager (CredWriteW/CredReadW/CredDeleteW)."""
+
+    def write(self, target: str, value: str, *, account: str) -> None:
+        if not _write.argtypes:
+            _configure()
+        blob = ctypes.create_string_buffer(value.encode("utf-8"))
+        cred = _Credential()
+        cred.Type = _CRED_TYPE_GENERIC
+        cred.TargetName = target
+        cred.Comment = "AIQA secret ref"
+        cred.CredentialBlobSize = len(blob) - 1
+        cred.CredentialBlob = ctypes.cast(blob, ctypes.POINTER(ctypes.c_char))
+        cred.Persist = _CRED_PERSIST_LOCAL_MACHINE
+        cred.UserName = account
+        if not _write(ctypes.byref(cred), 0):
+            raise SecretUnavailable("os secret store rejected the write")
+
+    def read(self, target: str) -> str:
+        if not _read.argtypes:
+            _configure()
+        found = ctypes.POINTER(_Credential)()
+        if not _read(target, _CRED_TYPE_GENERIC, 0, ctypes.byref(found)):
+            raise OSError(ctypes.get_last_error())
+        try:
+            cred = found.contents
+            raw = ctypes.string_at(cred.CredentialBlob, cred.CredentialBlobSize)
+        finally:
+            _free(found)
+        return raw.decode("utf-8")
+
+    def delete(self, target: str) -> None:
+        if not _delete.argtypes:
+            _configure()
+        if not _delete(target, _CRED_TYPE_GENERIC, 0):
+            if ctypes.get_last_error() != _ERROR_NOT_FOUND:
+                raise SecretUnavailable("os secret store rejected the delete")
+
+
+@dataclass(frozen=True, slots=True)
+class ServerSecretResolver:
+    """Management-server resolver. Worker processes never receive this object."""
+
+    account: str
+    backend: SecretBackend
+    profile: str
+
+    def put(self, actor: Actor, secret: SecretInput) -> SecretRefView:
+        with bind_secret_runtime(self.backend, self.account):
+            return put_secret(actor, secret)
+
+    def resolve(self, ref: SecretRef, scope: RuntimeScope) -> SecretValue:
+        with bind_secret_runtime(self.backend, self.account):
+            return resolve_secret(ref, scope)
+
+    def resolve_for_server(self, ref: SecretRef, scope: RuntimeScope) -> SecretValue:
+        """Resolve under the injected service account only. Wrong account fails closed."""
+
+        if scope.project_id != ref.project_id:
+            logger.info(
+                "secret resolve denied project_id=%s ref_id=%s revision=%s",
+                scope.project_id,
+                ref.ref_id,
+                ref.revision,
+            )
+            raise SecretScopeDenied("secret ref is outside this project")
+        return self.resolve(ref, scope)
+
+    def oidc_client_secret_target(self) -> str:
+        return f"AIQA/{self.account}/oidc/client_secret"
+
+    def store_oidc_client_secret(self, value: str) -> None:
+        """Persist the hosted IdP client secret outside SQLite."""
+
+        if type(value) is not str or len(value) < 8:
+            raise SecretUnavailable("oidc client secret is invalid")
+        self.backend.write(self.oidc_client_secret_target(), value, account=self.account)
+        logger.info("oidc client secret stored account=%s", self.account)
+
+    def resolve_oidc_client_secret(self) -> str:
+        """Fail closed when the hosted OIDC client secret is missing."""
+
+        try:
+            value = self.backend.read(self.oidc_client_secret_target())
+        except OSError as exc:
+            logger.info("oidc client secret unavailable account=%s", self.account)
+            raise SecretUnavailable("oidc client secret is unavailable") from exc
+        if type(value) is not str or len(value) < 8:
+            raise SecretUnavailable("oidc client secret is unavailable")
+        return value
+
+
+def build_server_secret_resolver(
+    settings: AppSettings,
+    *,
+    backend: SecretBackend | None = None,
+) -> ServerSecretResolver:
+    """Inject the profile's service-account resolver into the API process."""
+
+    account = settings.secret_account
+    chosen = backend if backend is not None else WindowsCredentialBackend()
+    return ServerSecretResolver(account=account, backend=chosen, profile=settings.profile)
+
+
+def default_secret_account(profile: str) -> str:
+    return HOSTED_SECRET_ACCOUNT if profile == PROFILE_HOSTED else LOCAL_SECRET_ACCOUNT
+
+
 @contextmanager
 def bind_secret_store(store: Store) -> Iterator[None]:
     token = _store.set(store)
@@ -50,6 +210,19 @@ def bind_secret_store(store: Store) -> Iterator[None]:
         yield
     finally:
         _store.reset(token)
+
+
+@contextmanager
+def bind_secret_runtime(backend: SecretBackend, account: str) -> Iterator[None]:
+    if type(account) is not str or account.strip() == "":
+        raise SecretUnavailable("secret account is required")
+    backend_token = _backend.set(backend)
+    account_token = _account.set(account.strip())
+    try:
+        yield
+    finally:
+        _backend.reset(backend_token)
+        _account.reset(account_token)
 
 
 def put_secret(actor: Actor, secret: SecretInput) -> SecretRefView:
@@ -172,11 +345,55 @@ def latest_secret(project_id: UUID, ref_id: UUID) -> SecretRefView | None:
 
 
 def discard_os_secret(ref: SecretRef) -> None:
-    if not _delete.argtypes:
-        _configure()
-    if not _delete(_target(ref), _CRED_TYPE_GENERIC, 0):
-        if ctypes.get_last_error() != _ERROR_NOT_FOUND:
-            raise SecretUnavailable("os secret store rejected the delete")
+    try:
+        _active_backend().delete(_target(ref))
+    except SecretUnavailable:
+        raise
+    except OSError:
+        pass
+
+
+def scrub_worker_dto(payload: Mapping[str, object] | list[object] | object) -> object:
+    """Drop secret plaintext from worker-bound payloads. Refs and metadata stay."""
+
+    if isinstance(payload, Mapping):
+        cleaned: dict[str, object] = {}
+        for key, value in payload.items():
+            lowered = str(key).lower()
+            if lowered in _SECRET_DTO_KEYS or lowered.endswith("_secret") or lowered.endswith("_password"):
+                cleaned[str(key)] = None
+            else:
+                cleaned[str(key)] = scrub_worker_dto(value)
+        return cleaned
+    if isinstance(payload, list):
+        return [scrub_worker_dto(item) for item in payload]
+    if isinstance(payload, tuple):
+        return [scrub_worker_dto(item) for item in payload]
+    return payload
+
+
+def backup_secret_manifest(connection: object, project_id: UUID) -> tuple[dict[str, object], ...]:
+    """Refs only for backup generations. Plaintext never leaves the OS store."""
+
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT ref_id, revision, name, availability
+        FROM secret_refs
+        WHERE project_id = ?
+        ORDER BY ref_id, revision
+        """,
+        (str(project_id),),
+    ).fetchall()
+    return tuple(
+        {
+            "project_id": str(project_id),
+            "ref_id": str(row[0]),
+            "revision": int(row[1]),
+            "name": str(row[2]),
+            "availability": str(row[3]),
+        }
+        for row in rows
+    )
 
 
 def _plan(
@@ -221,7 +438,15 @@ def _now() -> str:
 
 
 def _target(ref: SecretRef) -> str:
-    return f"AIQA/secret/{ref.project_id}/{ref.ref_id}/{ref.revision}"
+    account = _account.get()
+    return f"AIQA/{account}/secret/{ref.project_id}/{ref.ref_id}/{ref.revision}"
+
+
+def _active_backend() -> SecretBackend:
+    backend = _backend.get()
+    if backend is not None:
+        return backend
+    return WindowsCredentialBackend()
 
 
 class _FileTime(ctypes.Structure):
@@ -271,30 +496,8 @@ def _configure() -> None:
 
 
 def _write_os(ref: SecretRef, value: str) -> None:
-    if not _write.argtypes:
-        _configure()
-    blob = ctypes.create_string_buffer(value.encode("utf-8"))
-    cred = _Credential()
-    cred.Type = _CRED_TYPE_GENERIC
-    cred.TargetName = _target(ref)
-    cred.Comment = "AIQA secret ref"
-    cred.CredentialBlobSize = len(blob) - 1
-    cred.CredentialBlob = ctypes.cast(blob, ctypes.POINTER(ctypes.c_char))
-    cred.Persist = _CRED_PERSIST_LOCAL_MACHINE
-    cred.UserName = "aiqa-local"
-    if not _write(ctypes.byref(cred), 0):
-        raise SecretUnavailable("os secret store rejected the write")
+    _active_backend().write(_target(ref), value, account=_account.get())
 
 
 def _read_os(ref: SecretRef) -> str:
-    if not _read.argtypes:
-        _configure()
-    found = ctypes.POINTER(_Credential)()
-    if not _read(_target(ref), _CRED_TYPE_GENERIC, 0, ctypes.byref(found)):
-        raise OSError(ctypes.get_last_error())
-    try:
-        cred = found.contents
-        raw = ctypes.string_at(cred.CredentialBlob, cred.CredentialBlobSize)
-    finally:
-        _free(found)
-    return raw.decode("utf-8")
+    return _active_backend().read(_target(ref))

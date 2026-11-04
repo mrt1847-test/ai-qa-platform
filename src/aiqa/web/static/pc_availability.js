@@ -68,7 +68,152 @@
     return { allowed: () => allowed, connected: () => connected, revision: () => revision, refresh };
   }
 
-  window.aiqaPcAvailability = { selection, watch };
+  function setExecuteEnabled(card, allowed) {
+    card.querySelectorAll('[data-pc-execute]').forEach(link => {
+      if (allowed) {
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
+        link.classList.remove('is-disabled');
+      } else {
+        link.setAttribute('aria-disabled', 'true');
+        link.setAttribute('tabindex', '-1');
+        link.classList.add('is-disabled');
+      }
+    });
+  }
+
+  function markWorkerRevoked(workerId) {
+    document.querySelectorAll('[data-pc-worker="' + workerId + '"]').forEach(card => {
+      card.dataset.state = 'unavailable';
+      const state = card.querySelector('[data-pc-device-state]');
+      if (state) state.textContent = '폐기됨';
+      const reason = card.querySelector('[data-pc-reason]');
+      if (reason) reason.textContent = '실행 PC가 폐기되었습니다. 새 등록 후 다시 연결하세요.';
+      setExecuteEnabled(card, false);
+    });
+  }
+
+  function bindRegistration(root) {
+    if (!root || !window.aiqaRequest) return;
+    const form = root.querySelector('#pc-registration-form');
+    if (!form) return;
+    const project = root.dataset.project;
+    const status = form.querySelector('[data-pc-reg-status]');
+    const codeBox = form.querySelector('[data-pc-code-box]');
+    const codeInput = form.elements.namedItem('issued_code');
+    const expiry = form.querySelector('[data-pc-code-expiry]');
+    const copyBtn = form.querySelector('[data-pc-action="copy"]');
+    const cancelBtn = form.querySelector('[data-pc-action="cancel"]');
+    const saved = { worker_id: form.elements.namedItem('worker_id').value, purpose: form.elements.namedItem('purpose').value };
+
+    function preserve() {
+      form.elements.namedItem('worker_id').value = saved.worker_id;
+      form.elements.namedItem('purpose').value = saved.purpose;
+    }
+
+    function remember() {
+      saved.worker_id = form.elements.namedItem('worker_id').value;
+      saved.purpose = form.elements.namedItem('purpose').value;
+    }
+
+    form.addEventListener('input', remember);
+    form.addEventListener('change', remember);
+
+    async function post(path, body, key) {
+      remember();
+      try {
+        const response = await window.aiqaRequest(path, {
+          method: 'POST',
+          headers: { 'Idempotency-Key': key },
+          body: JSON.stringify(body)
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          preserve();
+          const message = (payload.error && payload.error.message) || '요청이 거절되었습니다.';
+          status.textContent = message;
+          return null;
+        }
+        return payload;
+      } catch (_) {
+        preserve();
+        status.textContent = '실행 PC 또는 서버에 연결할 수 없습니다. 입력은 그대로 둡니다.';
+        return null;
+      }
+    }
+
+    form.querySelector('[data-pc-action="issue"]').addEventListener('click', async () => {
+      const workerId = form.elements.namedItem('worker_id').value.trim();
+      const purpose = form.elements.namedItem('purpose').value;
+      const body = await post(
+        '/api/v1/projects/' + encodeURIComponent(project) + '/worker-enrollment-codes',
+        { worker_id: workerId, purpose: purpose, expires_in_seconds: 900 },
+        'pc-issue-' + Date.now()
+      );
+      if (!body) return;
+      codeBox.hidden = false;
+      codeInput.value = body.code || '';
+      expiry.textContent = body.expires_at ? (' · 만료 ' + body.expires_at) : '';
+      copyBtn.disabled = !body.code;
+      cancelBtn.disabled = !body.code;
+      status.textContent = '등록 코드를 발급했습니다. 등록된 실행 PC에서만 교환하세요.';
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      if (!codeInput.value) return;
+      try {
+        await navigator.clipboard.writeText(codeInput.value);
+        status.textContent = '등록 코드를 복사했습니다.';
+      } catch (_) {
+        codeInput.select();
+        status.textContent = '복사에 실패했습니다. 코드를 직접 선택해 복사하세요.';
+        preserve();
+      }
+    });
+
+    cancelBtn.addEventListener('click', async () => {
+      const workerId = form.elements.namedItem('worker_id').value.trim();
+      const body = await post(
+        '/api/v1/projects/' + encodeURIComponent(project) + '/worker-enrollment-codes/cancel',
+        { worker_id: workerId },
+        'pc-cancel-' + Date.now()
+      );
+      if (!body) return;
+      codeInput.value = '';
+      expiry.textContent = '';
+      codeBox.hidden = true;
+      copyBtn.disabled = true;
+      cancelBtn.disabled = true;
+      status.textContent = '미교환 등록 코드를 취소했습니다.';
+    });
+
+    form.querySelector('[data-pc-action="revoke"]').addEventListener('click', async () => {
+      const workerId = form.elements.namedItem('worker_id').value.trim();
+      if (!workerId) {
+        status.textContent = '폐기할 worker ID를 입력하세요.';
+        return;
+      }
+      if (!window.confirm('worker ' + workerId + '를 폐기할까요? 직후 실행이 차단됩니다.')) {
+        preserve();
+        return;
+      }
+      const body = await post(
+        '/api/v1/workers/' + encodeURIComponent(workerId) + '/revoke',
+        { project_id: project },
+        'pc-revoke-' + Date.now()
+      );
+      if (!body) return;
+      markWorkerRevoked(workerId);
+      codeInput.value = '';
+      expiry.textContent = '';
+      codeBox.hidden = true;
+      copyBtn.disabled = true;
+      cancelBtn.disabled = true;
+      status.textContent = 'worker를 폐기했습니다. 실행 버튼이 비활성입니다.';
+    });
+  }
+
+  window.aiqaPcAvailability = { selection, watch, markWorkerRevoked };
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-pc-inventory]').forEach(grid => {
       watch(grid.dataset.pcInventory, resources => {
@@ -79,8 +224,10 @@
           card.querySelector('[data-pc-device-state]').textContent = item ? item.state_label : '확인 필요';
           card.querySelector('[data-pc-diagnostics]').textContent = item && item.can_diagnose ? '' :
             '기기 진단에는 실행 PC 연결이 필요합니다.';
+          setExecuteEnabled(card, !!(item && item.can_execute));
         });
       });
     });
+    document.querySelectorAll('[data-pc-registration]').forEach(bindRegistration);
   });
 })();

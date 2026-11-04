@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import sqlite3
 from uuid import UUID, uuid4
 
-from aiqa.store.models import WorkerScope
+from aiqa.store.models import WorkerIncarnation, WorkerScope
 
 HEARTBEAT_SECONDS = 10
 OFFLINE_AFTER = timedelta(seconds=45)
@@ -58,13 +58,15 @@ def report_presence(
         raise PresenceDenied
     project_id = worker.permitted_projects[0]
     credential = connection.execute(
-        """SELECT 1 FROM worker_tokens AS token
+        """SELECT token.expires_at FROM worker_tokens AS token
            JOIN worker_enrollments AS enrollment USING (enrollment_id)
            WHERE token.token_id = ? AND enrollment.project_id = ?
              AND enrollment.worker_id = ? AND token.purpose = ?""",
         (worker.token_id, str(project_id), worker.worker_id, worker.permitted_purposes[0]),
     ).fetchone()
     if credential is None:
+        raise PresenceDenied
+    if credential[0] is not None and datetime.fromisoformat(str(credential[0])) <= now:
         raise PresenceDenied
     if connection.execute(
         "SELECT 1 FROM worker_retired_boots WHERE project_id = ? AND worker_id = ? AND boot_id = ?",
@@ -86,3 +88,11 @@ def report_presence(
         (str(project_id), worker.worker_id, worker.token_id, boot_id, now.isoformat(), session_id),
     )
     return WorkerPresence("online", now, boot_id, session_id)
+
+
+def incarnation_of(worker_id: str, presence: WorkerPresence) -> WorkerIncarnation | None:
+    """Build the registered generation, or nothing when the worker is not online."""
+
+    if presence.state != "online" or presence.session_id is None or presence.boot_id is None:
+        return None
+    return WorkerIncarnation(worker_id, presence.session_id, presence.boot_id)

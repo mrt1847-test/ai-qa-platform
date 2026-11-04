@@ -57,6 +57,12 @@ class CompiledPackage:
     expectations: tuple[str, ...]
 
 
+def compile_allowlisted_web_source(raw_source: str, *, lock_hash: str, source: RecordingManifest) -> CompiledPackage:
+    """Compile reviewable qa_runtime source extracted by the CUAWright adapter."""
+
+    return compile_replay_package(source, CompilerRef("web-ipc-subset", lock_hash, raw_source))
+
+
 def compile_replay_package(source: RecordingManifest, compiler: CompilerRef) -> CompiledPackage:
     """Map each allowed action to qa_runtime. Unsupported syntax is rejected before any call runs."""
 

@@ -302,9 +302,21 @@ def acceptable_size(declared_length: int, body: bytes) -> bool:
     return type(declared_length) is int and 1 <= declared_length <= _MAX_BYTES and declared_length == len(body)
 
 
+@dataclass(frozen=True, slots=True)
+class DurableObject:
+    """Bytes that finished digest check, flush, rename, and sit under the API root."""
+
+    artifact_id: UUID
+    object_key: str
+    content_hash: str
+    byte_length: int
+
+
 def place_ready(root: Path, project_id: UUID, artifact_id: UUID, suffix: str, body: bytes) -> str:
     """Flush a temp file and rename it inside the same artifact directory."""
 
+    if type(suffix) is not str or suffix.strip() == "" or "partial" in suffix.lower():
+        raise ArtifactRejected("partial suffix cannot be published")
     folder = (root / str(project_id)).resolve()
     destination = (folder / f"{artifact_id}{suffix}").resolve()
     if destination.parent != folder:
@@ -332,6 +344,45 @@ def place_ready(root: Path, project_id: UUID, artifact_id: UUID, suffix: str, bo
     return f"{project_id}/{artifact_id}{suffix}"
 
 
+def publish_durable(
+    root: Path,
+    project_id: UUID,
+    artifact_id: UUID,
+    suffix: str,
+    body: bytes,
+    *,
+    declared_hash: str | None = None,
+) -> DurableObject:
+    """Verify digest, then atomically publish under the API-owned artifact root."""
+
+    digest = content_hash(body)
+    if declared_hash is not None and declared_hash != digest:
+        raise ArtifactRejected("hash mismatch")
+    object_key = place_ready(root, project_id, artifact_id, suffix, body)
+    path = resolve_stored(root, object_key)
+    if path is None or not path.is_file():
+        raise ArtifactRejected("durable object missing after rename")
+    if content_hash(path.read_bytes()) != digest:
+        raise ArtifactRejected("hash mismatch")
+    return DurableObject(artifact_id, object_key, digest, len(body))
+
+
+def open_durable(root: Path, object_key: str, expected_hash: str) -> bytes:
+    """Read one ready object. Partial, escaped, or mismatched bytes are refused."""
+
+    if _is_partial_key(object_key):
+        raise ArtifactRejected("partial object refused")
+    path = resolve_stored(root, object_key)
+    if path is None:
+        raise ArtifactRejected("object key leaves the artifact root")
+    if not path.is_file():
+        raise ArtifactRejected("artifact is missing")
+    body = path.read_bytes()
+    if content_hash(body) != expected_hash:
+        raise ArtifactRejected("hash mismatch")
+    return body
+
+
 def resolve_stored(root: Path, object_key: str) -> Path | None:
     """Return a file inside the artifact root. A client key cannot leave it."""
 
@@ -339,11 +390,21 @@ def resolve_stored(root: Path, object_key: str) -> Path | None:
         return None
     if object_key.startswith(("/", "\\")) or "\\" in object_key or ":" in object_key:
         return None
+    if _is_partial_key(object_key):
+        return None
     base = root.resolve()
     path = (base / object_key).resolve()
     if path != base and base not in path.parents:
         return None
     return path
+
+
+def _is_partial_key(object_key: str) -> bool:
+    lowered = object_key.replace("\\", "/").lower()
+    if lowered.endswith(".partial") or ".partial." in lowered:
+        return True
+    parts = lowered.split("/")
+    return "tmp" in parts
 
 
 def expired_at(stored_at: str, now: datetime) -> bool:

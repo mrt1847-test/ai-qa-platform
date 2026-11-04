@@ -222,3 +222,152 @@ def _candidate(payload: dict[str, object]) -> object:
         coordinates,
         "typed",
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SeparateVerifyHealRecord:
+    """Original failure stays distinct from any healing proposal or attempt."""
+
+    original_failure: str
+    original_check_id: str
+    proposal_admitted: bool
+    proposal_accepted: bool
+    attempt_result: str
+    healer_calls: int
+    verifier_calls: int
+    approved_package_digest: str
+    package_digest_after: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReplayVerifyHealResult:
+    check_results: tuple[object, ...]
+    record: SeparateVerifyHealRecord
+    success: bool
+
+
+def run_replay_verify_and_heal(
+    *,
+    checks: tuple[object, ...],
+    observation: object,
+    control: object,
+    broker: object,
+    transport: object,
+    healing_enabled: bool,
+    heal_budget_remaining: int,
+    approved_failure_reason: str | None,
+    healable_check_id: str | None,
+    approved_package_digest: str,
+    healing_context: object | None = None,
+    heal_observation: object | None = None,
+    worker_model_call: object | None = None,
+) -> ReplayVerifyHealResult:
+    """Run deterministic checks first, AI checks only when admitted, heal only when ON.
+
+    Healing proposals never mutate the approved package digest. Model timeout is not success.
+    """
+
+    from aiqa.contracts.checks import CheckResult, CheckSpec
+    from aiqa.domain.verdicts import FailureLatch
+    from aiqa.healing.targets import HealingContext, validate_healing_proposal
+    from aiqa.models.broker import ModelBroker, ModelTransport
+    from aiqa.validation.visual import evaluate_check_policy
+
+    if not isinstance(broker, ModelBroker) or not isinstance(transport, ModelTransport):
+        raise ValueError("broker and transport are required")
+    latch = FailureLatch()
+    results: list[CheckResult] = []
+    before = int(getattr(transport, "calls", 0))
+    for raw in checks:
+        if not isinstance(raw, CheckSpec):
+            raise ValueError("check is invalid")
+        results.append(
+            evaluate_check_policy(
+                raw,
+                observation,  # type: ignore[arg-type]
+                control,  # type: ignore[arg-type]
+                broker=broker,
+                transport=transport,
+                latch=latch,
+            )
+        )
+    verifier_calls = int(getattr(transport, "calls", 0)) - before
+
+    timed_out = any(item.reason == "timed out" for item in results)
+    violated = [item for item in results if item.status == "violated"]
+    success = not timed_out and violated == [] and all(item.status == "satisfied" for item in results)
+
+    original_failure = ""
+    original_check_id = ""
+    if violated:
+        first = violated[0]
+        original_check_id = first.check_id
+        original_failure = approved_failure_reason if approved_failure_reason else first.reason
+    elif timed_out:
+        timed = next(item for item in results if item.reason == "timed out")
+        original_check_id = timed.check_id
+        original_failure = "timed out"
+
+    healer_calls = 0
+    proposal_admitted = False
+    proposal_accepted = False
+    attempt_result = "not_run"
+    digest_after = approved_package_digest
+
+    needs_heal = violated != [] and original_failure != "timed out"
+    if needs_heal:
+        attempt_result = "rejected_policy"
+        allowed_reason = original_failure in _REASONS
+        allowed_check = healable_check_id is None or healable_check_id == original_check_id
+        if (
+            healing_enabled
+            and heal_budget_remaining >= 1
+            and allowed_reason
+            and allowed_check
+            and isinstance(healing_context, HealingContext)
+        ):
+            try:
+                if worker_model_call is not None:
+                    complete = getattr(worker_model_call, "complete_role", None)
+                    if complete is None:
+                        raise TypeError("worker model call is invalid")
+                    complete("healing", episode_id=getattr(healing_context.request, "episode_id", None))
+                    healer_calls += 1
+                proposal = HealingService(broker).propose(healing_context)
+                proposal_admitted = bool(proposal.admitted)
+                screen = heal_observation if heal_observation is not None else observation
+                decision = validate_healing_proposal(proposal, screen)  # type: ignore[arg-type]
+                proposal_accepted = bool(decision.accepted)
+                attempt_result = "accepted" if proposal_accepted else ("proposed" if proposal_admitted else "rejected_policy")
+                if worker_model_call is None and proposal_admitted:
+                    healer_calls = 1
+            except TimeoutError:
+                attempt_result = "timed_out"
+                success = False
+                if healer_calls == 0:
+                    healer_calls = 1
+            except Exception as exc:
+                from aiqa.models.broker import ModelRequestDenied
+
+                if isinstance(exc, ModelRequestDenied):
+                    attempt_result = "rejected_policy"
+                else:
+                    raise
+        # Approved package digest is never rewritten by a healing proposal.
+        digest_after = approved_package_digest
+
+    if timed_out:
+        success = False
+
+    record = SeparateVerifyHealRecord(
+        original_failure,
+        original_check_id,
+        proposal_admitted,
+        proposal_accepted,
+        attempt_result,
+        healer_calls,
+        verifier_calls,
+        approved_package_digest,
+        digest_after,
+    )
+    return ReplayVerifyHealResult(tuple(results), record, success)

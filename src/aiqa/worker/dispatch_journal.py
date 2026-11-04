@@ -82,3 +82,16 @@ class DispatchJournal:
             if str(record["action_id"]) == action_id and (attempt_id is None or record.get('attempt_id') == attempt_id):
                 found.append(str(record["state"]))
         return tuple(found)
+
+    def mark_started_only_unknown(self, attempt_id: str, action_id: str) -> str | None:
+        """Record STARTED-only interrupted work as ambiguous/unknown. No command retry."""
+
+        prior = self.states(action_id, attempt_id)
+        if prior == () or prior[-1] != "dispatch_started":
+            return None
+        self.append(attempt_id, action_id, "unknown")
+        return "unknown"
+
+    def is_ambiguous(self, attempt_id: str, action_id: str) -> bool:
+        prior = self.states(action_id, attempt_id)
+        return prior != () and prior[-1] in {"dispatch_started", "unknown"}

@@ -34,6 +34,7 @@ class HandlerResult:
     last_ack_seq: int = 0
     last_ack_hash: str = field(default_factory=_empty_ack_hash)
     evidence_events: tuple[dict[str, Any], ...] = ()
+    evidence_artifacts: tuple[dict[str, Any], ...] = ()
     source_artifact_hashes: tuple[str, ...] = ()
     review_pending: bool = False
 
@@ -196,7 +197,7 @@ class WorkerRuntime:
             payload = self._inventory_provider()
             if payload is not None:
                 if not self._config.prepared_adapters and payload.get("state") == "ready":
-                    payload = {**payload, "state": "unavailable"}
+                    payload = {**payload, "state": "offline"}
                 try:
                     inventory = self._client.report_inventory(
                         payload,
@@ -361,8 +362,25 @@ class WorkerRuntime:
 
     def _commit_evidence(self, claimed: dict[str, Any], result: HandlerResult) -> HandlerResult:
         events = list(result.evidence_events)
-        if events == []:
+        artifacts = list(result.evidence_artifacts)
+        if events == [] and artifacts == []:
             return result
+        purpose = ""
+        snapshot = claimed.get("snapshot")
+        if type(snapshot) is dict:
+            purpose = str(snapshot.get("purpose") or "")
+        requires_files = (
+            result.outcome == "completed"
+            and result.evidence_complete
+            and purpose == "recording"
+        )
+        if requires_files and artifacts == []:
+            return replace(
+                result,
+                outcome="error",
+                evidence_complete=False,
+                source_artifact_hashes=(),
+            )
         ack = self._client.commit_evidence(
             sanitized=True,
             project_id=str(claimed["project_id"]),
@@ -370,12 +388,21 @@ class WorkerRuntime:
             generation=int(claimed["generation"]),
             now=self._now().isoformat(),
             events=events,
-            artifacts=[],
+            artifacts=artifacts,
             idempotency_key=f"evidence-{claimed['attempt_id']}",
         )
-        hashes = result.source_artifact_hashes
-        if hashes == ():
-            hashes = tuple(str(event["payload_hash"]) for event in events if "payload_hash" in event)
+        ids = tuple(str(item) for item in (ack.get("artifact_ids") or []) if str(item).strip() != "")
+        if requires_files and (ids == () or int(ack.get("artifact_count") or 0) < 1):
+            return replace(
+                result,
+                outcome="error",
+                evidence_complete=False,
+                last_ack_seq=int(ack["contiguous_seq"]),
+                last_ack_hash=str(ack["prefix_hash"]),
+                source_artifact_hashes=(),
+                final_seq=max(int(result.final_seq), int(ack["contiguous_seq"])),
+            )
+        hashes = ids if ids else result.source_artifact_hashes
         return replace(
             result,
             last_ack_seq=int(ack["contiguous_seq"]),
@@ -512,8 +539,29 @@ def run_worker_process(
     from aiqa.worker.web_vm_transport import load_web_guest_entry_binding
 
     web_binding = load_web_guest_entry_binding(source)
+    resolved_handler = handler
+    model_mode = str(source.get("AIQA_WORKER_MODEL_MODE", "")).strip().lower()
+    if resolved_handler is None and binding is not None and model_mode == "fixture":
+        from aiqa.worker.android_jobs import (
+            assemble_android_worker_handlers,
+            build_fixture_android_recording_handler,
+        )
+
+        runtime_root = Path(str(source.get("AIQA_WORKER_RUNTIME_ROOT") or Path.cwd() / "worker-runtime"))
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        fixture_response = str(
+            source.get("AIQA_WORKER_FIXTURE_RESPONSE") or "swipe(360, 1200, 360, 400, 300)"
+        ).strip()
+        recording = build_fixture_android_recording_handler(
+            adb_path=Path(binding.adb_path),
+            serial=binding.serial,
+            expected_avd=binding.expected_avd,
+            runtime_root=runtime_root,
+            fixture_response=fixture_response,
+        )
+        resolved_handler = assemble_android_worker_handlers(recording=recording)
     adapters = frozenset()
-    if handler is not None:
+    if resolved_handler is not None:
         if prepared_adapters is not None:
             default = prepared_adapters
         elif binding is not None:
@@ -523,11 +571,16 @@ def run_worker_process(
         else:
             default = recording_prepared_adapters()
         adapters = default
+    cycles = max_cycles
+    if cycles is None:
+        raw_cycles = str(source.get("AIQA_WORKER_MAX_CYCLES", "")).strip()
+        if raw_cycles.isdigit():
+            cycles = int(raw_cycles)
     config = WorkerRuntimeConfig(
         boot_id=boot_id,
         prepared_adapters=adapters,
         automatic_resume=False,
-        max_cycles=max_cycles,
+        max_cycles=cycles,
     )
     provider = inventory_provider
     if provider is None and binding is not None:
@@ -536,7 +589,7 @@ def run_worker_process(
         runtime = WorkerRuntime(
             client,
             config,
-            handler or InertHandler(),
+            resolved_handler or InertHandler(),
             inventory_provider=provider,
             registered_serial=None if binding is None else binding.serial,
             approved_web_origin=None if web_binding is None else web_binding.approved_origin,

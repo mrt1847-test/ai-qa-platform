@@ -18,7 +18,7 @@
 |---|---|---|
 | RX-21 | hosted 설정·모의 IdP·임시 저장 및 복원 테스트. RX-41은 OperationalOidcClient·token endpoint fixture 완료 | 독립 호스트·접속 주소/TLS·실제 IdP·별도 접속 PC |
 | RX-22 | Windows 11 Home, 하이퍼바이저 표시 True. Hyper-V VM 관리, VMware, VirtualBox, QEMU 명령·서비스를 찾지 못함 | 지원 VM과 전용 Web 대상에서 실제 격리 거부 시험 |
-| RX-23 | 전용 AVD와 실제 ADB 스와이프·전후 증거 확인. RX-39는 로컬 ASGI·fixture로 claim→ACK→동작→증거 ACK→검토 대기 경로 완료 | 운영 서버에서 설정한 모델 키, 전용 AVD에서 등록부터 증거 ACK·검토·재생까지 검증 |
+| RX-23 | 전용 AVD와 실제 ADB 스와이프·전후 증거 확인. RX-39/43 fixture 증거 파일, RX-44 동일 PC HTTPS·실워커·AVD 녹화(fixture AI)·검토 대기 완료 | 운영 서버에서 설정한 모델 키로 등록부터 증거 ACK·검토·재생까지 검증 |
 | RX-24 | Web fixture driver·IPC·승인 digest 검사. RX-42는 fixture guest·워커 증거 ACK 경로 완료 | RX-22의 실제 격리, 전용 Web 대상과 모델 연결 |
 | RX-25 | 임시 환경에서 worker 없이 저장본 승인과 실행 차단 회귀 | 독립 호스트에서 실제 실행 PC 전원 종료 중 별도 접속 PC로 검증 |
 | RX-26 | 임시 DB에서 미확정 dispatch, 늦은 ACK·정리 fence 회귀 | RX-38 및 실제 워커 통신 단절 전후 검증 |

@@ -5,9 +5,13 @@ Importing this module does not open ADB, a model provider, or the management DB.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -105,16 +109,71 @@ def android_evidence_events(
     return tuple(events)
 
 
+def android_evidence_artifacts(
+    *,
+    attempt_id: str,
+    action_id: str,
+    before: Observation,
+    after: Observation,
+) -> tuple[dict[str, Any], ...]:
+    """Build sanitized before/after PNG and action log bodies for evidence commit."""
+
+    parts: list[dict[str, Any]] = []
+    for phase, obs in (("before", before), ("after", after)):
+        digest = "sha256:" + hashlib.sha256(obs.png).hexdigest()
+        parts.append(
+            {
+                "filename": f"{phase}.png",
+                "media_type": "image/png",
+                "declared_hash": digest,
+                "declared_length": len(obs.png),
+                "body_b64": base64.b64encode(obs.png).decode("ascii"),
+                "role": phase,
+                "owner_kind": "REC",
+                "attempt_id": attempt_id,
+                "action_id": action_id,
+            }
+        )
+    log_text = "\n".join(
+        item
+        for item in (
+            f"action_id={action_id}",
+            f"before={before.captured_at}",
+            f"after={after.captured_at}",
+            before.stdout or "",
+            after.stdout or "",
+        )
+        if item
+    )
+    log_body = log_text.encode("utf-8")
+    parts.append(
+        {
+            "filename": "action.log",
+            "media_type": "text/plain",
+            "declared_hash": "sha256:" + hashlib.sha256(log_body).hexdigest(),
+            "declared_length": len(log_body),
+            "body_b64": base64.b64encode(log_body).decode("ascii"),
+            "role": "log",
+            "owner_kind": "REC",
+            "attempt_id": attempt_id,
+            "action_id": action_id,
+        }
+    )
+    return tuple(parts)
+
+
 @dataclass
 class AndroidRecordingContext:
     """Per-attempt inputs. Authoring runs only inside the handler (after ACK)."""
 
     expected_serial: str
     fixture_response: str
-    before: Observation
-    after: Observation | None
+    before: Observation | None = None
+    after: Observation | None = None
     lease_remaining_seconds: float = 60.0
-    mono_seconds: float = 100.0
+    mono_seconds: float | None = 100.0
+    live_capture: Callable[[], Observation] | None = None
+    prepare_device: Callable[[], None] | None = None
 
 
 @dataclass
@@ -132,6 +191,7 @@ class AndroidRecordingHandler:
     evidence_commits: list[dict[str, object]] = field(default_factory=list)
     tap_count: int = 0
     authoring_calls_seen: int = 0
+    _mono_origin: float | None = field(default=None, init=False, repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         snapshot = claim.get("snapshot")
@@ -152,7 +212,14 @@ class AndroidRecordingHandler:
         except (TypeError, ValueError):
             return _fail_closed("attempt_missing")
 
-        now = MonotonicInstant(self.context.mono_seconds)
+        # Live workers use a process-relative clock so AttemptRunner limits stay meaningful.
+        if self.context.mono_seconds is None:
+            if self._mono_origin is None:
+                self._mono_origin = time.monotonic()
+            mono_value = max(0.0, time.monotonic() - self._mono_origin)
+        else:
+            mono_value = float(self.context.mono_seconds)
+        now = MonotonicInstant(mono_value)
         # Runtime heartbeats refresh the same guard; standalone tests must too.
         self.guard.note_heartbeat(now)
         decision = self.guard.authorize(
@@ -162,10 +229,6 @@ class AndroidRecordingHandler:
         )
         if not decision.allowed:
             return _fail_closed("lease_expired", evidence_complete=False)
-
-        after = self.context.after
-        if after is None or not after.capture_ok or after.png == b"":
-            return _fail_closed("after_evidence_missing", evidence_complete=False)
 
         action_id = str(snapshot.get("action_id") or f"rec-{attempt_id}")
         if self.journal.is_ambiguous(attempt_id, action_id):
@@ -184,17 +247,12 @@ class AndroidRecordingHandler:
 
         before_authoring = self.broker.authoring_calls
         try:
-            recorded = self.adapter.record_step(
-                observation=self.context.before,
-                after=after,
-                fixture_response=self.context.fixture_response,
-                broker=self.broker,
-                control=self.control,
-                driver=self.driver,
-            )
+            before, after, before_ref, after_ref = self._run_recording_step()
         except MobileAgentRejected:
             self.journal.mark_started_only_unknown(attempt_id, action_id)
             return _fail_closed("recording_rejected", evidence_complete=False, ambiguous=True)
+        except _CaptureFailed as exc:
+            return _fail_closed(exc.reason, evidence_complete=False)
 
         self.tap_count += 1
         self.authoring_calls_seen = self.broker.authoring_calls - before_authoring
@@ -209,15 +267,21 @@ class AndroidRecordingHandler:
 
         events = android_evidence_events(
             attempt_id=attempt_id,
-            before=self.context.before,
+            before=before,
             after=after,
             action_id=action_id,
+        )
+        artifacts = android_evidence_artifacts(
+            attempt_id=attempt_id,
+            action_id=action_id,
+            before=before,
+            after=after,
         )
         commit = {
             "attempt_id": attempt_id,
             "action_id": action_id,
-            "before_ref": recorded.before_ref,
-            "after_ref": recorded.after_ref,
+            "before_ref": before_ref,
+            "after_ref": after_ref,
             "sanitized": True,
             "review_pending": True,
         }
@@ -232,9 +296,61 @@ class AndroidRecordingHandler:
             last_ack_seq=0,
             last_ack_hash="",
             evidence_events=events,
-            source_artifact_hashes=tuple(str(event["payload_hash"]) for event in events),
+            evidence_artifacts=artifacts,
+            source_artifact_hashes=(),
             review_pending=True,
         )
+
+    def _run_recording_step(self) -> tuple[Observation, Observation, str | None, str | None]:
+        live = self.context.live_capture
+        if live is None:
+            before = self.context.before
+            after = self.context.after
+            if before is None or after is None or not after.capture_ok or after.png == b"":
+                raise _CaptureFailed("after_evidence_missing")
+            recorded = self.adapter.record_step(
+                observation=before,
+                after=after,
+                fixture_response=self.context.fixture_response,
+                broker=self.broker,
+                control=self.control,
+                driver=self.driver,
+            )
+            return before, after, recorded.before_ref, recorded.after_ref
+
+        if self.context.prepare_device is not None:
+            try:
+                self.context.prepare_device()
+            except Exception as exc:
+                raise _CaptureFailed("device_prepare_failed") from exc
+        try:
+            before = live()
+        except Exception as exc:
+            raise _CaptureFailed("before_capture_failed") from exc
+        if not before.capture_ok or before.png == b"":
+            raise _CaptureFailed("before_capture_failed")
+        authored = self.adapter.author(
+            broker=self.broker,
+            control=self.control,
+            fixture_response=self.context.fixture_response,
+        )
+        action = self.adapter.parse_to_typed(authored.content, before)
+        dispatch = self.adapter._dispatch(self.driver, before, before, action)
+        # Re-capture after the native action so evidence is the real device surface.
+        try:
+            after = live()
+        except Exception as exc:
+            raise _CaptureFailed("after_evidence_missing") from exc
+        if after is None or not after.capture_ok or after.png == b"":
+            raise _CaptureFailed("after_evidence_missing")
+        after_ref = self.driver._sanitize_to_spool(after, phase="after")
+        return before, after, dispatch.before_ref, after_ref
+
+
+class _CaptureFailed(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 @dataclass(frozen=True, slots=True)
@@ -433,6 +549,13 @@ class AndroidReplayHandler:
         )
 
 
+class _AllowAuthoring:
+    def checkpoint(self) -> object:
+        from aiqa.contracts.jobs import ControlDecision
+
+        return ControlDecision(True, "before_model")
+
+
 class _AllowVerify:
     def checkpoint(self) -> object:
         from aiqa.contracts.jobs import ControlDecision
@@ -495,6 +618,72 @@ def assemble_android_worker_handlers(
     if replay is None:
         return register_android_recording_handler(recording, other=other)
     return register_android_replay_handler(replay, recording=recording, other=other)
+
+
+def build_fixture_android_recording_handler(
+    *,
+    adb_path: Path,
+    serial: str,
+    expected_avd: str | None,
+    runtime_root: Path,
+    fixture_response: str,
+) -> AndroidRecordingHandler:
+    """Wire a live ADB capture path that uses only an explicit fixture model response."""
+
+    from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter, recording_broker
+    from aiqa.environments.android_observation import AndroidObservationProvider
+    import subprocess
+
+    observer = AndroidObservationProvider(adb_path, serial, expected_avd=expected_avd)
+    spool = EvidenceSpool(runtime_root / "spool")
+    journal = DispatchJournal(runtime_root / "journal.jsonl")
+    driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
+
+    def capture() -> Observation:
+        result = observer.observe(capture=True)
+        if result.observation is None or not result.observation.capture_ok:
+            raise RuntimeError(result.reason or "capture_failed")
+        return result.observation
+
+    def prepare() -> None:
+        completed = subprocess.run(
+            [
+                str(adb_path),
+                "-s",
+                serial,
+                "shell",
+                "am",
+                "start",
+                "-a",
+                "android.settings.SETTINGS",
+            ],
+            capture_output=True,
+            timeout=20,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError("settings_launch_failed")
+        time.sleep(1.5)
+
+    return AndroidRecordingHandler(
+        adapter=MobileAgentAndroidAdapter(),
+        driver=driver,
+        broker=recording_broker(),
+        control=_AllowAuthoring(),
+        guard=RemoteLeaseGuard(),
+        journal=journal,
+        spool=spool,
+        context=AndroidRecordingContext(
+            expected_serial=serial,
+            fixture_response=fixture_response,
+            before=None,
+            after=None,
+            lease_remaining_seconds=120.0,
+            mono_seconds=None,
+            live_capture=capture,
+            prepare_device=prepare,
+        ),
+    )
 
 
 def _fail_closed(

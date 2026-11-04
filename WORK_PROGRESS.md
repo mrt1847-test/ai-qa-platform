@@ -1,6 +1,6 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
-> **등록 PC 전환:** [PC-01](docs/validation/tasks/PC-01.md)·[PC-02](docs/validation/tasks/PC-02.md)·[PC-03](docs/validation/tasks/PC-03.md)의 core와 [PC-04](docs/validation/tasks/PC-04.md)의 소스 조사·설계를 완료했다(전환 4/4). [등록 PC 구현과 실환경 수용](docs/managed-pc/IMPLEMENTATION_TASKS.json)은 별도 34/42이며 [NEXT_ACTION](NEXT_ACTION.md)에서 현재 작업을 확인한다. [RX-01](docs/validation/tasks/RX-01.md)~[RX-20](docs/validation/tasks/RX-20.md)·[RX-28](docs/validation/tasks/RX-28.md)·[RX-30](docs/validation/tasks/RX-30.md)~[RX-42](docs/validation/tasks/RX-42.md) 로컬 fixture 운영 경로 완료. 실환경 수용 RX-21~27·RX-29는 외부 재개 조건을 유지한다.
+> **등록 PC 전환:** [PC-01](docs/validation/tasks/PC-01.md)·[PC-02](docs/validation/tasks/PC-02.md)·[PC-03](docs/validation/tasks/PC-03.md)의 core와 [PC-04](docs/validation/tasks/PC-04.md)의 소스 조사·설계를 완료했다(전환 4/4). [등록 PC 구현과 실환경 수용](docs/managed-pc/IMPLEMENTATION_TASKS.json)은 별도 37/45이며 [NEXT_ACTION](NEXT_ACTION.md)에서 현재 작업을 확인한다. [RX-01](docs/validation/tasks/RX-01.md)~[RX-20](docs/validation/tasks/RX-20.md)·[RX-28](docs/validation/tasks/RX-28.md)·[RX-30](docs/validation/tasks/RX-30.md)~[RX-45](docs/validation/tasks/RX-45.md) 로컬/현재 PC 배선 이력 보존. 실환경 수용 RX-21~27·RX-29는 외부 재개 조건을 유지한다.
 > Android 개발/누락 UI 보완 7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. AD-01·UX-01·UX-02·UX-03 완료(4/7)와 기존 W 완료 126/163을 보존한다. AD-02~04의 실제 등록 PC 적용은 [RX 매핑](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 있고 UX는 공유 제품 보완이다.
 
 > UI 개선 및 병합 검증은 [결과](docs/validation/ux/README.md)를 참고한다. 아래 완료 수는 최신 master 작업 근거를 따르며 UI 변경으로 추가하지 않는다.
@@ -9,7 +9,7 @@
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**
 [최소 기반4개](docs/execution/00-bootstrap.md)를 먼저 만들고 환경에 막히지 않는 독립 core 경로로 진행한다.
-기존 상세 작업은 163개/15영역이다. 초기 전환은 [PC_EXECUTION_INDEX](docs/execution/PC_EXECUTION_INDEX.json)의 별도 4개, 원격 실행 구현·수용은 [RX 색인](docs/managed-pc/IMPLEMENTATION_TASKS.json)의 별도 42개로 추적한다.
+기존 상세 작업은 163개/15영역이다. 초기 전환은 [PC_EXECUTION_INDEX](docs/execution/PC_EXECUTION_INDEX.json)의 별도 4개, 원격 실행 구현·수용은 [RX 색인](docs/managed-pc/IMPLEMENTATION_TASKS.json)의 별도 45개로 추적한다.
 
 [전체 실행 안내](docs/execution/README.md) · [공통 계약 C13/C14](docs/execution/CONTRACTS.md) · [선행/차단 수정](docs/execution/SCHEDULING.md) · [UI 추적](docs/execution/UI_COVERAGE.md) · [요구 추적](docs/execution/COVERAGE.md)
 

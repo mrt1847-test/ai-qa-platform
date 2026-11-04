@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -46,6 +46,52 @@ class OidcHostedSettings:
             raise SettingsError("AIQA_OIDC_TOKEN_ENDPOINT must be https")
 
 
+MODEL_PROVIDER_FIXTURE = "fixture"
+MODEL_PROVIDER_OPERATIONAL = "operational"
+DEFAULT_MODEL_PROVIDER_TIMEOUT_SECONDS = 10.0
+
+
+@dataclass(frozen=True, slots=True)
+class ModelProviderSettings:
+    """Approved outbound model provider surface. Keys stay in the server secret store."""
+
+    mode: str = MODEL_PROVIDER_FIXTURE
+    base_url: str | None = None
+    ca_bundle: Path | None = None
+    verify_tls: bool = True
+    timeout_seconds: float = DEFAULT_MODEL_PROVIDER_TIMEOUT_SECONDS
+    complete_path: str = "/v1/complete"
+
+    def __post_init__(self) -> None:
+        if self.mode not in {MODEL_PROVIDER_FIXTURE, MODEL_PROVIDER_OPERATIONAL}:
+            raise SettingsError(
+                f"AIQA_MODEL_PROVIDER_MODE must be fixture or operational; refused {self.mode!r}"
+            )
+        if type(self.timeout_seconds) is not float and type(self.timeout_seconds) is not int:
+            raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid")
+        if float(self.timeout_seconds) <= 0:
+            raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid")
+        if type(self.complete_path) is not str or not self.complete_path.startswith("/"):
+            raise SettingsError("AIQA_MODEL_PROVIDER_COMPLETE_PATH is invalid")
+        if self.mode == MODEL_PROVIDER_FIXTURE:
+            return
+        if type(self.base_url) is not str or self.base_url.strip() == "":
+            raise SettingsError("AIQA_MODEL_PROVIDER_BASE_URL is required for operational mode")
+        parsed = urlparse(self.base_url)
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc == ""
+            or parsed.username
+            or parsed.password
+            or parsed.path not in ("", "/")
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise SettingsError("AIQA_MODEL_PROVIDER_BASE_URL must be an https origin")
+        if self.ca_bundle is not None and not isinstance(self.ca_bundle, Path):
+            raise SettingsError("AIQA_MODEL_PROVIDER_CA_BUNDLE must be a path")
+
+
 @dataclass(frozen=True, slots=True)
 class AppSettings:
     host: str
@@ -56,6 +102,7 @@ class AppSettings:
     trusted_proxies: tuple[str, ...] = ()
     secret_account: str = LOCAL_SECRET_ACCOUNT
     oidc: OidcHostedSettings | None = None
+    model_provider: ModelProviderSettings = field(default_factory=ModelProviderSettings)
 
     @property
     def artifacts_dir(self) -> Path:
@@ -196,6 +243,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
             authorize_endpoint=str(authorize).rstrip("/"),
             token_endpoint=str(token).rstrip("/"),
         )
+    model_provider = _load_model_provider_settings(source)
     return AppSettings(
         host=host,
         port=port,
@@ -205,6 +253,55 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
         trusted_proxies=trusted_proxies,
         secret_account=secret_account,
         oidc=oidc,
+        model_provider=model_provider,
+    )
+
+
+def _load_model_provider_settings(source: Mapping[str, str]) -> ModelProviderSettings:
+    mode = MODEL_PROVIDER_FIXTURE
+    if "AIQA_MODEL_PROVIDER_MODE" in source:
+        raw_mode = source["AIQA_MODEL_PROVIDER_MODE"]
+        if type(raw_mode) is not str or raw_mode.strip() == "":
+            raise SettingsError("AIQA_MODEL_PROVIDER_MODE is empty")
+        mode = raw_mode.strip().lower()
+    base_url = None
+    if "AIQA_MODEL_PROVIDER_BASE_URL" in source:
+        raw_url = source["AIQA_MODEL_PROVIDER_BASE_URL"]
+        if type(raw_url) is not str or raw_url.strip() == "":
+            raise SettingsError("AIQA_MODEL_PROVIDER_BASE_URL is empty")
+        base_url = raw_url.rstrip("/")
+    verify = True
+    if "AIQA_MODEL_PROVIDER_VERIFY_TLS" in source:
+        flag = source["AIQA_MODEL_PROVIDER_VERIFY_TLS"].strip().lower()
+        if flag not in {"1", "0", "true", "false", "yes", "no"}:
+            raise SettingsError("AIQA_MODEL_PROVIDER_VERIFY_TLS is invalid")
+        verify = flag in {"1", "true", "yes"}
+    ca_bundle = None
+    if "AIQA_MODEL_PROVIDER_CA_BUNDLE" in source:
+        raw_ca = source["AIQA_MODEL_PROVIDER_CA_BUNDLE"]
+        if type(raw_ca) is not str or raw_ca.strip() == "":
+            raise SettingsError("AIQA_MODEL_PROVIDER_CA_BUNDLE is empty")
+        ca_bundle = Path(raw_ca)
+    timeout = DEFAULT_MODEL_PROVIDER_TIMEOUT_SECONDS
+    if "AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS" in source:
+        raw_timeout = source["AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS"]
+        try:
+            timeout = float(raw_timeout)
+        except (TypeError, ValueError) as exc:
+            raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid") from exc
+    complete_path = "/v1/complete"
+    if "AIQA_MODEL_PROVIDER_COMPLETE_PATH" in source:
+        raw_path = source["AIQA_MODEL_PROVIDER_COMPLETE_PATH"]
+        if type(raw_path) is not str or raw_path.strip() == "":
+            raise SettingsError("AIQA_MODEL_PROVIDER_COMPLETE_PATH is empty")
+        complete_path = raw_path.strip()
+    return ModelProviderSettings(
+        mode=mode,
+        base_url=base_url,
+        ca_bundle=ca_bundle,
+        verify_tls=verify,
+        timeout_seconds=timeout,
+        complete_path=complete_path,
     )
 
 

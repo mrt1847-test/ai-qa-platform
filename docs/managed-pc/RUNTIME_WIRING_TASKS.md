@@ -130,3 +130,36 @@
 - [x] 별도 fixture guest 프로세스로 실제 워커 명령의 녹화·승인본 재생 경로를 검증하고, 증명 없는 guest에서 동작 0회를 확인한다. 실제 VM의 격리 시험은 RX-22에서 수행한다.
 - [x] 실제 실행 진입점에 Web 핸들러와 guest 연결을 등록한다. 신뢰 driver와 정제 증거·서버 ACK·finish를 같은 attempt로 연결한다.
 - [x] `python -m pytest -q tests/integration/test_rx_42.py` 통과와 검증 범위를 `docs/validation/tasks/RX-42.md`에 남긴다.
+
+<a id="rx-43"></a>
+## RX-43 · Android 녹화의 실제 증거 파일 저장
+
+**입력** RX-38 · RX-39와 C00/C01/C04/C05/C06/C08. **환경** `local_python`.
+
+**파일** `src/aiqa/worker/android_jobs.py`, `src/aiqa/worker/runtime.py`, `src/aiqa/recording/service.py`, `tests/integration/test_rx_39.py`.
+
+- [x] 기존 RX-39 시험에 이벤트 외에 artifact 객체·참조·동작과 실제 다운로드 bytes를 검증한다. 누락/오염/ACK 유실에서 허위 완료 0, 늦은 재전송에서 중복 동작 0을 확인한다.
+- [x] 녹화 동작과 전후 PNG·로그를 정제해 증거 commit의 artifact 본문으로 전달한다. 서버가 동작과 실제 파일·해시를 연결하고 전후 증거가 준비된 뒤에만 완료를 기록한다.
+- [x] `python -m pytest -q tests/integration/test_rx_39.py`에서 지정 회귀를 검증한다. `docs/validation/tasks/RX-43.md`에 시험 명령과 실제 결과를 남긴다.
+
+<a id="rx-44"></a>
+## RX-44 · 현재 PC의 실제 Android 워커 검증
+
+**입력** RX-43와 C00/C01/C04/C05/C06/C08. **환경** `local_python` · `android_emulator`.
+
+**파일** `tools/validation/probe_same_pc_stage.py`, `src/aiqa/launcher.py`, `src/aiqa/worker/runtime.py`, `src/aiqa/worker/android_jobs.py`.
+
+- [x] 실제 HTTPS + ADB로 워커 등록→claim→ACK→동작→스크린샷·로그 서버 조회→검토 대기를 재현하고, 키 호출 0과 워커 종료 후 서버 응답을 확인한다.
+- [x] 명시적 로컬 검증 설정에서만 fixture 모델을 선택하고 실제 워커 실행 명령으로 전용 AVD의 설정 화면에서 동작한다. API URL·CA·기기 설정은 독립 프로세스에 전달하고, 등록 워커가 기기 목록과 녹화 권한을 각각 올바르게 사용할 수 있는지 확인한다.
+- [x] [동일 PC 검증 명령](SAME_PC_STAGE.md)을 실행한다. `docs/validation/tasks/RX-44.md`에 시험 명령과 실제 결과를 남긴다.
+
+<a id="rx-45"></a>
+## RX-45 · 운영 모델 공급자 주소 설정과 전송 검증
+
+**입력** RX-40와 C00/C01/C04/C05/C06/C08. **환경** `local_python`.
+
+**파일** `src/aiqa/config.py`, `src/aiqa/models/provider_http.py`, `src/aiqa/models/broker.py`, `src/aiqa/api/app.py`.
+
+- [x] 모의 HTTPS endpoint에서 요청·응답, 잘못된 CA/주소, 키 누락, quota와 멱등성을 검증한다. 실제 모델 호출은 승인된 RX-23/24에서 수행한다.
+- [x] 관리 서버가 승인된 공급자 주소와 secret ref를 읽어 실제 전송과 구조화 응답을 연결한다. fixture는 로컬 검증에서만 명시적으로 선택한다.
+- [x] `python -m pytest -q tests/integration/test_rx_40.py`에서 지정 회귀를 검증한다. `docs/validation/tasks/RX-45.md`에 시험 명령과 실제 결과를 남긴다.

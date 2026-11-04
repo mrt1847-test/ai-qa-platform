@@ -23,6 +23,7 @@ from aiqa.api.auth import (
     authorize_page,
     authorize_worker,
     bound_auth_store,
+    worker_scope_from_token,
 )
 from aiqa.domain.datasets import (
     DatasetNotFound,
@@ -118,7 +119,10 @@ async def post_inventory(request: Request) -> JSONResponse:
         return _error(422, "validation", "invalid inventory", {})
     with _bound(request):
         try:
-            worker = authorize_worker(token, JobRef(project_id, "resource_probe"))
+            # Inventory is shared by recording and probe workers for the enrolled project.
+            worker = worker_scope_from_token(token)
+            if project_id not in worker.permitted_projects:
+                raise InventoryDenied("worker cannot report this project")
             receipt = report_inventory(worker, report)
         except AuthRequired:
             return _error(401, "unauthorized", "worker token is missing", {})

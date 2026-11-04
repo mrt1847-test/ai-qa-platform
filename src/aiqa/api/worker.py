@@ -335,6 +335,7 @@ def install_worker(application: FastAPI) -> None:
                 "stale_count": ack.stale_count,
                 "late": ack.late,
                 "artifact_count": ack.artifact_count,
+                "artifact_ids": list(ack.artifact_ids),
             },
         )
 
@@ -555,6 +556,9 @@ def _commit_artifacts(value: object) -> list[EvidenceArtifactPart]:
             raise EvidenceHashRejected("artifact hash does not match")
         owner_id = item.get("owner_id")
         attempt_id = item.get("attempt_id")
+        action_id = item.get("action_id")
+        if action_id is not None and type(action_id) is not str:
+            raise ValueError("artifact action_id is invalid")
         parts.append(
             EvidenceArtifactPart(
                 filename,
@@ -566,6 +570,7 @@ def _commit_artifacts(value: object) -> list[EvidenceArtifactPart]:
                 str(item.get("owner_kind") or "REC"),
                 None if owner_id is None else _uuid(owner_id),
                 None if attempt_id is None else _uuid(attempt_id),
+                None if action_id is None or action_id.strip() == "" else action_id,
             )
         )
     return parts

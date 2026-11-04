@@ -18,7 +18,11 @@ from aiqa.adapters.cuawright_web import (
 from aiqa.contracts.actions import Observation
 from aiqa.contracts.evidence import EvidenceEnvelope
 from aiqa.replay.driver import ApprovedWebPackage
-from aiqa.worker.android_jobs import PurposeRoutedHandler, android_evidence_events
+from aiqa.worker.android_jobs import (
+    PurposeRoutedHandler,
+    android_evidence_artifacts,
+    android_evidence_events,
+)
 from aiqa.worker.control import RemoteLeaseGuard
 from aiqa.worker.dispatch_journal import DispatchJournal, JournalWriteError
 from aiqa.worker.isolated_web import admit_recording_channel, require_web_ready
@@ -28,8 +32,9 @@ from aiqa.worker.spool import EvidenceSpool
 from aiqa.worker.web_isolation_backend import IsolationProof, IsolationRejected, WebIsolationGate
 from aiqa.worker.web_vm_transport import LocalGuestProcess, WebVmTransport
 
-# Sanitized before/after events for WorkerRuntime server commit (same wire as Android RX-39).
+# Sanitized before/after events/files for WorkerRuntime server commit (same wire as Android).
 web_evidence_events = android_evidence_events
+web_evidence_artifacts = android_evidence_artifacts
 
 
 def resolve_web_claim_origin(
@@ -222,6 +227,12 @@ class WebRecordingHandler:
             after=after,
             action_id=action_id,
         )
+        artifacts = web_evidence_artifacts(
+            attempt_id=attempt_id,
+            action_id=action_id,
+            before=self.context.before,
+            after=after,
+        )
         return HandlerResult(
             actions=1,
             outcome="completed",
@@ -231,7 +242,8 @@ class WebRecordingHandler:
             last_ack_seq=0,
             last_ack_hash="",
             evidence_events=events,
-            source_artifact_hashes=tuple(str(event["payload_hash"]) for event in events),
+            evidence_artifacts=artifacts,
+            source_artifact_hashes=(),
             review_pending=True,
         )
 

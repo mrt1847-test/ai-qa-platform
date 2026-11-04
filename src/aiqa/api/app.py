@@ -30,7 +30,7 @@ from aiqa.api.worker import install_worker
 from aiqa.api.oidc_login import assemble_hosted_oidc_runtime
 from aiqa.config import AppSettings, SettingsError, load_settings
 from aiqa.models.broker import build_model_gateway
-from aiqa.models.provider_http import FixtureProviderHttp, ProviderHttpPort
+from aiqa.models.provider_http import ProviderHttpPort, build_provider_from_settings
 from aiqa.security.oidc import FixtureIdP
 from aiqa.security.secrets import SecretBackend, build_server_secret_resolver
 from aiqa.store.database import StorageConfig, open_store
@@ -64,10 +64,14 @@ def create_app(
     application.state.secret_resolver = build_server_secret_resolver(
         resolved, backend=secret_backend
     )
-    # Default fixture provider; operational live path is injected only when requested.
+    # Fixture by default; operational HTTPS is selected only from approved settings.
     application.state.model_gateway = build_model_gateway(
         application.state.secret_resolver,
-        provider=model_provider if model_provider is not None else FixtureProviderHttp(),
+        provider=(
+            model_provider
+            if model_provider is not None
+            else build_provider_from_settings(resolved)
+        ),
     )
     application.state.oidc_runtime = assemble_hosted_oidc_runtime(
         resolved,

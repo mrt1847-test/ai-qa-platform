@@ -4,29 +4,38 @@ Updated: **2026-11-04 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. 실제 독립 서버 배포·원격 소비 loop·전원 단절 수용은 아직 미완료다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~42 완료는 보존한다. 로컬 fixture 운영 경로(RX 배선)는 소진했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~45 완료는 보존한다. 현재 PC HTTPS/AVD 녹화와 모의 모델 공급자 전송 배선까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다.
 
 ## Current
 
-**로컬 fixture 운영 경로 소진.** 독립 후보 없음. 외부 재개 조건만 보고한다.
+로컬 `managed_execution_mvp` core 배선 후보는 소진됐다. 독립 후보(선행 complete·환경 available)가 없어 새 Current를 고르지 않는다.
 
-다음 연속 카드는 실환경 수용(RX-21~27·RX-29)이며 각각 독립 호스트·VM·AVD·모델 키·단절 권한이 필요하다. 조건을 충족하기 전에는 Current를 바꾸지 않는다.
+**재개 대기:**
+- [RX-21](docs/validation/tasks/RX-21.md) — 독립 관리 호스트·DNS/TLS·IdP·배포 권한
+- [RX-23](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23) — 직접 선행에 RX-21 포함. 전용 AVD·RX-44/45는 준비됐으나 **운영 모델 키**와 RX-21 완료가 필요
+- [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24) — 지원 Web VM·전용 대상(·모델 키)
+- RX-25~27·RX-29 — 별도 접속 PC·승인된 전원/통신 단절·추가 워커
+
+AD-02~04는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 따라 자동 선택에서 제외한다.
 
 ## Next
 
-| 순서 | ID | 목표 | 직접 선행 / 재개 조건 |
+| 순서 | ID | 목표 | 직접 선행·환경 |
 |---|---|---|---|
-| — | (외부 대기) | [로컬 점검표](docs/managed-pc/LOCAL_ACCEPTANCE_PREFLIGHT.md#수용-카드별-재개-범위) | 아래 표 |
+| — | [RX-21](docs/validation/tasks/RX-21.md) | 독립 관리 호스트 배포 | 호스트·DNS/TLS·IdP |
+| — | [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24) | Web VM 격리·수용 | 지원 VM·대상 |
+| — | [RX-23](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23) | Android 운영 키 수용 | 모델 키 |
+| — | RX-25~27·RX-29 | 전원/경합/비용 표본 | 별도 PC·승인된 단절 |
 
-실환경 RX-21~27·RX-29의 재개 조건은 아래와 [로컬 점검표](docs/managed-pc/LOCAL_ACCEPTANCE_PREFLIGHT.md#수용-카드별-재개-범위)에 기록한다. 로컬에서 확인한 범위는 실환경 수용 증거와 분리한다.
+실환경 카드의 범위는 [현재 PC 검증](docs/managed-pc/SAME_PC_STAGE.md)·[LOCAL_ACCEPTANCE_PREFLIGHT](docs/managed-pc/LOCAL_ACCEPTANCE_PREFLIGHT.md)에 구분돼 있다.
 
 ## 외부 대기와 재사용
 
 | 대상 | 상태·재개 조건 | 막히는 범위 |
 |---|---|---|
 | 독립 관리 서버 | RX-41 fixture 완료. 독립 호스트·DNS/TLS·IdP·배포 권한 확인 시 [RX-21](docs/validation/tasks/RX-21.md) | 실제 배포와 이를 사용하는 통합 |
-| Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md) 전용 AVD 확인. RX-39 fixture 경로 완료. 모델 키·시험 범위 확인 시 RX-23 | 실제 Android 녹화·재생 수용 |
-| Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42 fixture guest 경로 완료 | Web 실환경 및 양쪽 전원 종료 수용 |
+| Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md)·[RX-44](docs/validation/tasks/RX-44.md)·[RX-45](docs/validation/tasks/RX-45.md) 완료. **운영 모델 키** 확인 시 RX-23 | 운영 키를 쓰는 Android 녹화·재생 수용 |
+| Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42 fixture guest·RX-45 전송 배선 확인 | Web 실환경 및 양쪽 전원 종료 수용 |
 | 장애·경합 검증 | 다른 접속 PC, 승인된 전원/통신 단절, 추가 워커와 공유 테스트 자원 준비 시 RX-25~27 | 실제 전원 종료·불명 행동·두 워커 수용 |
 | AD-02~04 | 개발 이력으로 보존. 적용 범위는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 매핑 | 자동 선택 제외 |
 | CF-01 | `future_optional_provider`, 상용 provider 선택 조사로 이동 | 현재 PC 기반 MVP의 필수 선행 아님 |

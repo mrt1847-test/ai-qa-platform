@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from aiqa.contracts.models import MODEL_ROLES, ModelRequest, OwnedCheck, OwnedEpisode, RoleBinding
 from aiqa.models.budget import CallBudget
-from aiqa.models.provider_http import FixtureProviderHttp, ProviderHttpPort
+from aiqa.models.provider_http import FixtureProviderHttp, ProviderHttpError, ProviderHttpPort
 from aiqa.models.usage import bind_usage, record_model_usage, reset_usage
 from aiqa.security.secrets import (
     SecretScopeDenied,
@@ -211,13 +211,14 @@ def build_model_gateway(
     provider: ProviderHttpPort | None = None,
     operational: bool = False,
 ) -> "ServerModelGateway":
-    """Prefer fixture provider for hosted/local tests; operational stays off unless requested."""
+    """Prefer fixture provider; operational HTTPS stays off unless settings or injection request it."""
 
     from aiqa.models.provider_http import OperationalProviderHttp
 
     if provider is not None:
         chosen = provider
     elif operational:
+        # Legacy flag: keep disabled until an approved base URL is supplied by settings.
         chosen = OperationalProviderHttp(allow_live=False)
     else:
         chosen = FixtureProviderHttp()
@@ -412,13 +413,16 @@ class ServerModelGateway:
         except SecretUnavailable as exc:
             raise ModelRequestDenied("secret", status=503) from exc
 
-        result = self.provider.complete(
-            model=binding.model,
-            role=request.role,
-            secret=secret.value,
-            sanitized_inputs=request.sanitized_inputs,
-            token_output_limit=request.token_output_limit,
-        )
+        try:
+            result = self.provider.complete(
+                model=binding.model,
+                role=request.role,
+                secret=secret.value,
+                sanitized_inputs=request.sanitized_inputs,
+                token_output_limit=request.token_output_limit,
+            )
+        except ProviderHttpError as exc:
+            raise ModelRequestDenied(exc.reason, status=exc.status or 502) from exc
         broker.meter(model_request)
         ledger[request.role] = ledger.get(request.role, 0) + 1
         token = bind_usage(self._usage)

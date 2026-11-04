@@ -314,7 +314,7 @@ def test_rx_32_process_env_reports_inventory_without_claiming_unwired_jobs(
     assert requests[0][1]["boot_id"] == "process-boot"
     body = requests[1][1]
     assert (body["project_id"], body["native_id"], body["state"]) == (
-        project, "emulator-5580", "unavailable"
+        project, "emulator-5580", "offline"
     )
     assert body["geometry"] == "720x1600@90"
     assert fixture.capture_flags == [False]

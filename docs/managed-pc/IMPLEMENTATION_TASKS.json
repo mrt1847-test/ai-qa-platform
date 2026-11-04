@@ -401,7 +401,9 @@
         "RX-21",
         "RX-31",
         "RX-34",
-        "RX-39"
+        "RX-39",
+        "RX-44",
+        "RX-45"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -424,7 +426,8 @@
         "RX-22",
         "RX-31",
         "RX-36",
-        "RX-42"
+        "RX-42",
+        "RX-45"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -774,6 +777,56 @@
       "verification_scope": "core_contract",
       "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-42",
       "evidence_path": "docs/validation/tasks/RX-42.md"
+    },
+    {
+      "id": "RX-43",
+      "title": "Android 녹화의 실제 증거 파일 저장",
+      "deps": [
+        "RX-38",
+        "RX-39"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-43",
+      "evidence_path": "docs/validation/tasks/RX-43.md"
+    },
+    {
+      "id": "RX-44",
+      "title": "현재 PC의 실제 Android 워커 검증",
+      "deps": [
+        "RX-43"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "android_emulator"
+      ],
+      "verification_scope": "live_integration",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-44",
+      "evidence_path": "docs/validation/tasks/RX-44.md"
+    },
+    {
+      "id": "RX-45",
+      "title": "운영 모델 공급자 주소 설정과 전송 검증",
+      "deps": [
+        "RX-40"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-45",
+      "evidence_path": "docs/validation/tasks/RX-45.md"
     }
   ]
 }

@@ -17,7 +17,7 @@
 <a id="rx-23"></a>
 ## RX-23 · 실제 Android 녹화와 재생
 
-**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 · RX-44 · RX-45 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_23.py`, `docs/validation/tasks/RX-23.md`.
 
@@ -29,7 +29,7 @@
 <a id="rx-24"></a>
 ## RX-24 · 실제 Web 녹화와 재생
 
-**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 · RX-45 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_24.py`, `docs/validation/tasks/RX-24.md`.
 

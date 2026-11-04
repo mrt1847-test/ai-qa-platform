@@ -1615,16 +1615,8 @@ def finish_worker_attempt(
             from aiqa.recording.service import finish_recording
 
             artifact_refs = finish.source_artifact_hashes
-            if artifact_refs == () and finish.last_ack_seq >= 1:
-                rows = connection.execute(
-                    """
-                    SELECT payload_hash FROM attempt_events
-                    WHERE project_id = ? AND attempt_id = ?
-                    ORDER BY local_seq
-                    """,
-                    (str(finish.project_id), str(finish.attempt_id)),
-                ).fetchall()
-                artifact_refs = tuple(str(row[0]) for row in rows)
+            if artifact_refs == ():
+                raise FinishRejected("required artifact is missing")
             actor = Actor(uuid4(), finish.project_id, True)
             finish_recording(
                 connection,

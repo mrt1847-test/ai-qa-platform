@@ -255,6 +255,29 @@ def test_rx_39_register_claim_ack_action_evidence_review(tmp_path: Path, monkeyp
                 "(SELECT attempt_id FROM attempts WHERE project_id = ?)",
                 (str(project.project_id),),
             ).fetchone()
+            objects = connection.execute(
+                """
+                SELECT artifact_id, object_key, content_hash, byte_length, media_type, role, status, acked
+                FROM artifact_objects
+                WHERE project_id = ?
+                ORDER BY role, artifact_id
+                """,
+                (str(project.project_id),),
+            ).fetchall()
+            refs = connection.execute(
+                """
+                SELECT artifact_id, attempt_id, action_id FROM artifact_refs
+                WHERE project_id = ?
+                """,
+                (str(project.project_id),),
+            ).fetchall()
+            actions = connection.execute(
+                """
+                SELECT action_id, dispatch_state FROM actions
+                WHERE project_id = ?
+                """,
+                (str(project.project_id),),
+            ).fetchall()
             finish = connection.execute(
                 """
                 SELECT response_body FROM attempt_finish_requests
@@ -274,11 +297,27 @@ def test_rx_39_register_claim_ack_action_evidence_review(tmp_path: Path, monkeyp
                 "SELECT COUNT(*) FROM materialization_receipts WHERE project_id = ?",
                 (str(project.project_id),),
             ).fetchone()[0]
+            art_root = store.config.artifacts_dir
     finally:
         store.close()
 
     assert job is not None and str(job[0]) == "completed"
     assert events is not None and int(events[0]) >= 2 and int(events[1]) >= 2
+    assert len(objects) >= 3
+    roles = {str(row[5]) for row in objects}
+    assert {"before", "after", "log"} <= roles
+    for row in objects:
+        assert str(row[6]) == "ready"
+        assert int(row[7]) == 1
+        assert int(row[3]) > 0
+        path = art_root / str(row[1])
+        assert path.is_file()
+        assert path.read_bytes()
+        assert len(path.read_bytes()) == int(row[3])
+    assert len(refs) >= 3
+    assert all(row[1] and row[2] for row in refs)
+    assert len(actions) >= 1
+    assert str(actions[0][1]) == "observed"
     assert finish is not None
     body = json.loads(str(finish[0]))
     assert body["approved"] is False

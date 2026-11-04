@@ -16,6 +16,7 @@ from aiqa.contracts.jobs import LeaseToken
 from aiqa.store.artifacts import (
     ArtifactReceipt,
     ArtifactReconcileReport,
+    ArtifactRejected,
     ArtifactStream,
     ArtifactUpload,
     EvidenceUnavailable,
@@ -23,6 +24,7 @@ from aiqa.store.artifacts import (
     content_hash,
     expired_at,
     place_ready,
+    publish_durable,
     resolve_stored,
     suffix_for,
 )
@@ -44,6 +46,7 @@ class EvidenceArtifactPart:
     owner_kind: str = "REC"
     owner_id: UUID | None = None
     attempt_id: UUID | None = None
+    action_id: str | None = None
 
 
 class UnsanitizedEvidence(ValueError):
@@ -218,6 +221,7 @@ def commit_sanitized_evidence(
                 raise EventConflict("commit key already has another body")
             if row[1]:
                 saved = json.loads(str(row[1]))
+                saved_ids = saved.get("artifact_ids") or []
                 return EvidenceCommitAck(
                     UUID(str(saved["attempt_id"])),
                     int(saved["contiguous_seq"]),
@@ -225,6 +229,7 @@ def commit_sanitized_evidence(
                     int(saved["stale_count"]),
                     bool(saved["late"]),
                     int(saved["artifact_count"]),
+                    tuple(str(item) for item in saved_ids),
                 )
         else:
             connection.execute(
@@ -322,7 +327,7 @@ def commit_sanitized_evidence(
             committed_seq, committed_hash = _cursor(connection, lease.project_id, attempt_id)
             receipt = IngestReceipt(UUID(attempt_id), committed_seq, committed_hash, 0)
 
-        artifact_count = 0
+        artifact_ids: list[str] = []
         if artifacts:
             if late:
                 for part in artifacts:
@@ -348,33 +353,14 @@ def commit_sanitized_evidence(
                             binding.now.astimezone(timezone.utc).isoformat(),
                         ),
                     )
-                    artifact_count += 1
             else:
-                for part in artifacts:
-                    digest = content_hash(part.body)
-                    # Active sanitized bytes are staged under the attempt for RX-06 commit;
-                    # full REC ownership binding remains the dedicated artifact upload route.
-                    connection.execute(
-                        """
-                        INSERT OR IGNORE INTO late_evidence_inbox (
-                            project_id, inbox_id, attempt_id, job_id, generation,
-                            content_hash, media_type, role, filename, reason, received_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active_commit', ?)
-                        """,
-                        (
-                            str(lease.project_id),
-                            str(uuid4()),
-                            attempt_id,
-                            str(lease.job_id),
-                            lease.generation,
-                            digest,
-                            part.media_type,
-                            part.role,
-                            part.filename,
-                            binding.now.astimezone(timezone.utc).isoformat(),
-                        ),
-                    )
-                    artifact_count += 1
+                artifact_ids = _place_active_artifacts(
+                    connection,
+                    binding,
+                    lease,
+                    attempt_id=attempt_id,
+                    artifacts=artifacts,
+                )
 
         finish_after = connection.execute(
             "SELECT verdict, finish_reason, resource_state FROM job_finish_facts WHERE project_id=? AND job_id=?",
@@ -387,6 +373,7 @@ def commit_sanitized_evidence(
         if finish_before != finish_after or job_status_before != job_status_after:
             raise RuntimeError("evidence commit must not change finish or job status")
 
+        artifact_count = len(artifacts) if late else len(artifact_ids)
         ack = EvidenceCommitAck(
             receipt.attempt_id,
             receipt.committed_seq,
@@ -394,6 +381,7 @@ def commit_sanitized_evidence(
             receipt.stale_count,
             late,
             artifact_count,
+            tuple(artifact_ids),
         )
         body = {
             "attempt_id": str(ack.attempt_id),
@@ -402,6 +390,7 @@ def commit_sanitized_evidence(
             "stale_count": ack.stale_count,
             "late": ack.late,
             "artifact_count": ack.artifact_count,
+            "artifact_ids": list(ack.artifact_ids),
         }
         connection.execute(
             """
@@ -412,6 +401,175 @@ def commit_sanitized_evidence(
             (json.dumps(body, sort_keys=True), *identity),
         )
         return ack
+
+
+def _place_active_artifacts(
+    connection: object,
+    binding: ArtifactBinding,
+    lease: LeaseToken,
+    *,
+    attempt_id: str,
+    artifacts: list[EvidenceArtifactPart],
+) -> list[str]:
+    """Publish ready PNG/log bytes, link actions, and return durable artifact ids."""
+
+    job = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT jobs.purpose, jobs.recording_id, recordings.case_id, recordings.input_case_version_id
+        FROM jobs
+        LEFT JOIN recordings
+          ON recordings.project_id = jobs.project_id
+         AND recordings.recording_id = jobs.recording_id
+        WHERE jobs.project_id = ? AND jobs.job_id = ?
+        """,
+        (str(lease.project_id), str(lease.job_id)),
+    ).fetchone()
+    if job is None:
+        raise ValueError("job is missing")
+    purpose = str(job[0])
+    recording_id = None if job[1] is None else str(job[1])
+    case_id = None if job[2] is None else str(job[2])
+    case_version_id = None if job[3] is None else str(job[3])
+    stored_ids: list[str] = []
+    stamped = binding.now.astimezone(timezone.utc).isoformat()
+    for part in artifacts:
+        digest = content_hash(part.body)
+        if part.declared_hash != digest or part.declared_length != len(part.body):
+            raise EvidenceHashRejected("artifact hash does not match")
+        if not acceptable_size(part.declared_length, part.body):
+            raise ValueError("artifact is too large")
+        suffix = suffix_for(part.filename, part.media_type)
+        if suffix is None:
+            raise ValueError("artifact filename is invalid")
+        action_id = part.action_id
+        if action_id is not None and action_id.strip() != "":
+            if purpose != "recording" or recording_id is None or case_id is None or case_version_id is None:
+                raise ValueError("action evidence requires a recording job")
+            _ensure_recording_action(
+                connection,
+                project_id=str(lease.project_id),
+                attempt_id=attempt_id,
+                action_id=action_id,
+                case_id=case_id,
+                case_version_id=case_version_id,
+            )
+        owner_id = part.owner_id
+        if owner_id is None and recording_id is not None:
+            owner_id = UUID(recording_id)
+        if owner_id is None:
+            raise ValueError("artifact owner is required")
+        existing = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT artifact_id FROM artifact_objects
+            WHERE project_id = ? AND attempt_id = ? AND content_hash = ? AND role = ?
+              AND status = 'ready' AND acked = 1
+            LIMIT 1
+            """,
+            (str(lease.project_id), attempt_id, digest, part.role),
+        ).fetchone()
+        if existing is not None:
+            stored_ids.append(str(existing[0]))
+            continue
+        artifact_id = uuid4()
+        try:
+            durable = publish_durable(
+                binding.store.config.artifacts_dir,
+                lease.project_id,
+                artifact_id,
+                suffix,
+                part.body,
+                declared_hash=digest,
+            )
+        except ArtifactRejected as exc:
+            raise ValueError(str(exc)) from exc
+        if action_id is not None and action_id.strip() != "":
+            connection.execute(  # type: ignore[attr-defined]
+                """
+                INSERT INTO artifact_refs(project_id, artifact_id, attempt_id, action_id)
+                VALUES (?, ?, ?, ?)
+                """,
+                (str(lease.project_id), str(artifact_id), attempt_id, action_id),
+            )
+        elif recording_id is not None:
+            connection.execute(  # type: ignore[attr-defined]
+                """
+                INSERT INTO artifact_refs(project_id, artifact_id, recording_id)
+                VALUES (?, ?, ?)
+                """,
+                (str(lease.project_id), str(artifact_id), recording_id),
+            )
+        else:
+            raise ValueError("artifact must bind to an action or recording")
+        connection.execute(  # type: ignore[attr-defined]
+            """
+            INSERT INTO artifact_objects(
+                project_id, artifact_id, object_key, content_hash, byte_length,
+                media_type, owner_id, status, acked, custody, stored_at,
+                owner_kind, attempt_id, action_id, check_id, role, job_id, generation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ready', 1, 'stored', ?, ?, ?, ?, NULL, ?, ?, ?)
+            """,
+            (
+                str(lease.project_id),
+                str(artifact_id),
+                durable.object_key,
+                digest,
+                len(part.body),
+                part.media_type,
+                str(owner_id),
+                stamped,
+                part.owner_kind,
+                attempt_id,
+                action_id,
+                part.role,
+                str(lease.job_id),
+                lease.generation,
+            ),
+        )
+        stored_ids.append(str(artifact_id))
+    return stored_ids
+
+
+def _ensure_recording_action(
+    connection: object,
+    *,
+    project_id: str,
+    attempt_id: str,
+    action_id: str,
+    case_id: str,
+    case_version_id: str,
+) -> None:
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT 1 FROM actions
+        WHERE project_id = ? AND attempt_id = ? AND action_id = ?
+        """,
+        (project_id, attempt_id, action_id),
+    ).fetchone()
+    if row is not None:
+        return
+    seq_row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT COALESCE(MAX(action_seq), 0) FROM actions WHERE project_id = ? AND attempt_id = ?",
+        (project_id, attempt_id),
+    ).fetchone()
+    next_seq = 1 if seq_row is None else int(seq_row[0]) + 1
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO actions (
+            project_id, attempt_id, action_seq, step_id, action_id, proposal_hash,
+            dispatch_state, case_id, case_version_id, outcome_known
+        ) VALUES (?, ?, ?, ?, ?, ?, 'observed', ?, ?, 1)
+        """,
+        (
+            project_id,
+            attempt_id,
+            next_seq,
+            action_id,
+            action_id,
+            "sha256:" + hashlib.sha256(action_id.encode("utf-8")).hexdigest(),
+            case_id,
+            case_version_id,
+        ),
+    )
 
 
 def _require_event(event: EventEnvelope, project_id: UUID, attempt_id: str) -> None:

@@ -202,7 +202,9 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
         if request.url.path.endswith("/evidence-commits"):
             body = json.loads(request.content.decode("utf-8"))
             events = body.get("events") or []
+            artifacts = body.get("artifacts") or []
             seq = len(events)
+            ids = [str(uuid4()) for _ in artifacts]
             return httpx.Response(
                 200,
                 json={
@@ -211,7 +213,8 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
                     "prefix_hash": "sha256:" + ("ab" * 32),
                     "stale_count": 0,
                     "late": False,
-                    "artifact_count": 0,
+                    "artifact_count": len(ids),
+                    "artifact_ids": ids,
                 },
             )
         if request.url.path.endswith("/attempt-finishes"):

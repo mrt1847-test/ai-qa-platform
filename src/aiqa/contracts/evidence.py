@@ -47,6 +47,7 @@ class EvidenceCommitAck:
     stale_count: int
     late: bool
     artifact_count: int
+    artifact_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

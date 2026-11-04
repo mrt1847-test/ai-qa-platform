@@ -509,21 +509,8 @@ def _require_artifacts(connection: object, project_id: UUID, artifact_ids: tuple
             """,
             (str(project_id), artifact_id),
         ).fetchone()
-        if row is not None:
-            continue
-        # Worker evidence path (RX-39): committed attempt event payload hashes seal the draft.
-        if type(artifact_id) is str and artifact_id.startswith("sha256:"):
-            event = connection.execute(  # type: ignore[attr-defined]
-                """
-                SELECT 1 FROM attempt_events
-                WHERE project_id = ? AND payload_hash = ?
-                LIMIT 1
-                """,
-                (str(project_id), artifact_id),
-            ).fetchone()
-            if event is not None:
-                continue
-        raise PreflightRejected("required artifact is missing")
+        if row is None:
+            raise PreflightRejected("required artifact is missing")
 
 
 def _manifest_row(connection: object, project_id: UUID, manifest_id: UUID) -> RecordingManifest | None:

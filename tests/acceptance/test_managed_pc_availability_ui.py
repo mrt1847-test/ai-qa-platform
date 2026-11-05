@@ -9,7 +9,7 @@ import httpx
 from aiqa.store.models import WorkerScope
 from aiqa.store.queue import claim_queued_job
 from ux_support import session, ux_app
-from worker_presence_support import seed_inventory, seed_presence
+from worker_presence_support import seed_inventory, seed_presence, seed_resource_alias
 
 
 def test_resource_response_and_environment_show_server_connection_state(ux_app):
@@ -27,8 +27,12 @@ def test_resource_response_and_environment_show_server_connection_state(ux_app):
         for worker, (connection, state, _) in states.items():
             device = str(uuid4())
             db.execute("INSERT INTO worker_enrollments VALUES (?, ?, ?, ?)", (str(uuid4()), worker, project, now.isoformat()))
-            db.execute("INSERT INTO physical_resource_keys VALUES (?, ?, 'device')", (device, worker))
-            db.execute("INSERT INTO resource_aliases VALUES (?, ?, ?, 'web')", (project, device, worker))
+            # native_id must be unique per physical key: RX-62 leases share scope by native_id.
+            db.execute(
+                "INSERT INTO physical_resource_keys VALUES (?, ?, ?)",
+                (device, worker, f"device-{worker}"),
+            )
+            seed_resource_alias(db, project, device, display_name=worker, target_kind="web")
             seed_inventory(db, device)
             db.execute("UPDATE resource_inventory SET observed_at='2099-01-01T00:00:00Z' WHERE physical_key_id=?", (device,))
             if state == "quarantine":

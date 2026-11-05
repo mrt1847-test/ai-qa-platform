@@ -274,7 +274,11 @@ def _stored(project_id: UUID, row: object, body_hash: str, replayed: bool) -> Jo
 
 
 def _insert_recording(connection: object, submission: JobSubmission) -> UUID:
+    from aiqa.recording.intent import freeze_intent_for_version, persist_recording_intent
+
     _require_version(connection, submission)
+    if submission.case_id is None or submission.case_version_id is None:
+        raise ValueError("recording requires a case version")
     recording_id = uuid4()
     connection.execute(  # type: ignore[attr-defined]
         """
@@ -291,6 +295,18 @@ def _insert_recording(connection: object, submission: JobSubmission) -> UUID:
             str(submission.case_version_id),
             None if submission.base_case_version_id is None else str(submission.base_case_version_id),
         ),
+    )
+    intent = freeze_intent_for_version(
+        connection,  # type: ignore[arg-type]
+        project_id=submission.project_id,
+        case_id=submission.case_id,
+        case_version_id=submission.case_version_id,
+    )
+    persist_recording_intent(
+        connection,  # type: ignore[arg-type]
+        project_id=submission.project_id,
+        recording_id=recording_id,
+        intent=intent,
     )
     return recording_id
 
@@ -384,6 +400,22 @@ _LEASE_SECONDS = 45
 _HEARTBEAT_SECONDS = 10
 _POLL_SECONDS = 2
 _WATCHDOG_SECONDS = 30
+_MAX_ACTIVE_SLOTS = 1
+
+
+def configure_active_slots(limit: int) -> None:
+    """Set the server-wide concurrent active job slot budget. Default remains 1."""
+
+    global _MAX_ACTIVE_SLOTS
+    if type(limit) is not int or limit < 1:
+        raise ValueError("active slot limit must be an integer >= 1")
+    _MAX_ACTIVE_SLOTS = limit
+
+
+def active_slot_limit() -> int:
+    """Current concurrent active-job slot budget used by claim."""
+
+    return _MAX_ACTIVE_SLOTS
 
 
 def claim_queued_job(
@@ -393,7 +425,7 @@ def claim_queued_job(
 
     projects = tuple(str(project_id) for project_id in worker.permitted_projects)
     purposes = tuple(purpose for purpose in worker.permitted_purposes if purpose.strip() != "")
-    if projects == () or purposes == () or _active_slots(connection) >= 1:
+    if projects == () or purposes == () or _active_slots(connection) >= _MAX_ACTIVE_SLOTS:
         return None
     if worker.token_id is not None and connection.execute(
         "SELECT 1 FROM worker_tokens WHERE token_id = ?", (worker.token_id,)
@@ -419,11 +451,15 @@ def claim_queued_job(
             continue
         if _snapshot_blocks_claim(connection, str(project_id), str(job_id), str(purpose), source_refs):
             continue
+        if str(purpose) in _PHYSICAL:
+            _ensure_claimant_session(
+                connection, worker.worker_id, str(project_id), str(job_id), now
+            )
         usable, physical_key_id = _device(
             connection, worker.worker_id, str(project_id), str(job_id), str(purpose),
             str(source_refs), str(limits), now, boot_id,
         )
-        if not usable or _active_slots(connection) >= 1:
+        if not usable or _active_slots(connection) >= _MAX_ACTIVE_SLOTS:
             continue
         updated = connection.execute(
             """
@@ -535,14 +571,22 @@ def claim_with_receipt(
         if str(existing[0]) != body_hash:
             raise ClaimConflict("idempotency body does not match")
         physical = None if existing[4] is None else UUID(str(existing[4]))
+        purpose = str(existing[8])
+        intent_hash = _intent_hash_for_job(connection, scoped, UUID(str(existing[1])), purpose)
+        pin = _package_pin_for_job(connection, scoped, UUID(str(existing[1])), purpose)
         snapshot = JobSpecSnapshot(
             job_id=UUID(str(existing[1])),
             attempt_id=UUID(str(existing[2])),
-            purpose=str(existing[8]),
+            purpose=purpose,
             target_ref=None if existing[9] is None else str(existing[9]),
             revision_ref=None if existing[10] is None else str(existing[10]),
             policy_ref=None if existing[11] is None else str(existing[11]),
             digest=str(existing[12]),
+            intent_hash=intent_hash,
+            replay_package_id=None if pin is None else pin.package_id,
+            replay_package_hash=None if pin is None else pin.package_hash,
+            self_healing_enabled=None if pin is None else pin.self_healing_enabled,
+            approved_plan=None if pin is None else pin.approved_plan,
         )
         return ClaimReceipt(
             project_id=scoped,
@@ -573,6 +617,24 @@ def claim_with_receipt(
     target_ref = _canonical_target_ref(connection, lease.project_id, lease.physical_key_id, str(job[1]))
     revision_ref = _revision_ref(str(job[1]), None if job[3] is None else str(job[3]), None if job[4] is None else str(job[4]))
     policy_ref = _policy_ref(str(job[2]))
+    intent_hash = None
+    if purpose == "recording" and job[4] is not None:
+        intent_hash = _recording_intent_hash(connection, lease.project_id, str(job[4]))
+    pin = _package_pin_for_job(connection, lease.project_id, lease.job_id, purpose, limits=str(job[2]))
+    digest_body: dict[str, object] = {
+        "job_id": str(lease.job_id),
+        "attempt_id": str(lease.attempt_id),
+        "purpose": purpose,
+        "target_ref": target_ref,
+        "revision_ref": revision_ref,
+        "policy_ref": policy_ref,
+    }
+    if intent_hash is not None:
+        digest_body["intent_hash"] = intent_hash
+    if pin is not None:
+        digest_body["replay_package_id"] = pin.package_id
+        digest_body["replay_package_hash"] = pin.package_hash
+        digest_body["self_healing_enabled"] = pin.self_healing_enabled
     snapshot = JobSpecSnapshot(
         job_id=lease.job_id,
         attempt_id=lease.attempt_id,
@@ -580,17 +642,12 @@ def claim_with_receipt(
         target_ref=target_ref,
         revision_ref=revision_ref,
         policy_ref=policy_ref,
-        digest=canonical_hash(
-            {
-                "job_id": str(lease.job_id),
-                "attempt_id": str(lease.attempt_id),
-                "purpose": purpose,
-                "target_ref": target_ref,
-                "revision_ref": revision_ref,
-                "policy_ref": policy_ref,
-            },
-            "canon-json-v1",
-        ),
+        digest=canonical_hash(digest_body, "canon-json-v1"),
+        intent_hash=intent_hash,
+        replay_package_id=None if pin is None else pin.package_id,
+        replay_package_hash=None if pin is None else pin.package_hash,
+        self_healing_enabled=None if pin is None else pin.self_healing_enabled,
+        approved_plan=None if pin is None else pin.approved_plan,
     )
     incarnation = load_attempt_incarnation(connection, lease.project_id, lease.attempt_id)
     connection.execute(
@@ -650,14 +707,22 @@ def load_claim_receipt_for_attempt(
     ).fetchone()
     if row is None:
         return None
+    purpose = str(row[9])
+    intent_hash = _intent_hash_for_job(connection, UUID(str(row[0])), UUID(str(row[1])), purpose)
+    pin = _package_pin_for_job(connection, UUID(str(row[0])), UUID(str(row[1])), purpose)
     snapshot = JobSpecSnapshot(
         job_id=UUID(str(row[1])),
         attempt_id=UUID(str(row[6])),
-        purpose=str(row[9]),
+        purpose=purpose,
         target_ref=None if row[10] is None else str(row[10]),
         revision_ref=None if row[11] is None else str(row[11]),
         policy_ref=None if row[12] is None else str(row[12]),
         digest=str(row[13]),
+        intent_hash=intent_hash,
+        replay_package_id=None if pin is None else pin.package_id,
+        replay_package_hash=None if pin is None else pin.package_hash,
+        self_healing_enabled=None if pin is None else pin.self_healing_enabled,
+        approved_plan=None if pin is None else pin.approved_plan,
     )
     return ClaimReceipt(
         project_id=UUID(str(row[0])),
@@ -672,6 +737,72 @@ def load_claim_receipt_for_attempt(
         snapshot=snapshot,
         replayed=False,
     )
+
+
+def _package_pin_for_job(
+    connection: sqlite3.Connection,
+    project_id: UUID,
+    job_id: UUID,
+    purpose: str,
+    *,
+    limits: str | None = None,
+):
+    """Load the server-fixed package pin for trial/regression claims."""
+
+    if purpose not in {"trial", "regression"}:
+        return None
+    raw = limits
+    if raw is None:
+        row = connection.execute(
+            "SELECT limits FROM jobs WHERE project_id = ? AND job_id = ?",
+            (str(project_id), str(job_id)),
+        ).fetchone()
+        if row is None:
+            return None
+        raw = str(row[0])
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if type(parsed) is not dict:
+        return None
+    from aiqa.replay.packages import resolve_claim_package_pin
+
+    return resolve_claim_package_pin(
+        connection,
+        project_id,
+        package_id=parsed.get("replay_package_id"),
+        package_hash=parsed.get("replay_package_hash"),
+        purpose=purpose,
+        self_healing_enabled=parsed.get("self_healing_enabled"),
+    )
+
+
+def _recording_intent_hash(
+    connection: sqlite3.Connection, project_id: UUID | str, recording_id: str
+) -> str | None:
+    row = connection.execute(
+        """
+        SELECT intent_hash FROM recording_intents
+        WHERE project_id = ? AND recording_id = ?
+        """,
+        (str(project_id), recording_id),
+    ).fetchone()
+    return None if row is None else str(row[0])
+
+
+def _intent_hash_for_job(
+    connection: sqlite3.Connection, project_id: UUID, job_id: UUID, purpose: str
+) -> str | None:
+    if purpose != "recording":
+        return None
+    row = connection.execute(
+        "SELECT recording_id FROM jobs WHERE project_id = ? AND job_id = ?",
+        (str(project_id), str(job_id)),
+    ).fetchone()
+    if row is None or row[0] is None:
+        return None
+    return _recording_intent_hash(connection, project_id, str(row[0]))
 
 
 def _canonical_target_ref(
@@ -855,6 +986,58 @@ def _snapshot_resource(purpose: str, limits: object) -> str | None:
     return None
 
 
+def _ensure_claimant_session(
+    connection: sqlite3.Connection,
+    worker_id: str,
+    project_id: str,
+    job_id: str,
+    now: datetime,
+) -> None:
+    """Attach the claiming worker's live presence to the job so multi-worker claim can race."""
+
+    presence = get_presence(connection, worker_id, now, project_id=project_id)
+    if presence.state != "online" or presence.session_id is None:
+        return
+    connection.execute(
+        """
+        INSERT INTO job_worker_sessions (project_id, job_id, worker_id, session_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(project_id, job_id, worker_id) DO UPDATE SET
+            session_id = excluded.session_id
+        """,
+        (project_id, job_id, worker_id, presence.session_id),
+    )
+
+
+def physical_scope_is_leased(connection: sqlite3.Connection, physical_key_id: str) -> bool:
+    """True when this physical key or another key with the same native_id already has a lease.
+
+    Lease rows remain until cleanup confirmation, so expired generations still block reassignment.
+    """
+
+    direct = connection.execute(
+        "SELECT COUNT(*) FROM leases WHERE physical_key_id = ?",
+        (physical_key_id,),
+    ).fetchone()
+    if direct is not None and int(direct[0]) > 0:
+        return True
+    native = connection.execute(
+        "SELECT native_id FROM physical_resource_keys WHERE physical_key_id = ?",
+        (physical_key_id,),
+    ).fetchone()
+    if native is None:
+        return False
+    shared = connection.execute(
+        """
+        SELECT COUNT(*) FROM leases AS lease
+        JOIN physical_resource_keys AS keys ON keys.physical_key_id = lease.physical_key_id
+        WHERE keys.native_id = ?
+        """,
+        (str(native[0]),),
+    ).fetchone()
+    return shared is not None and int(shared[0]) > 0
+
+
 def _device(
     connection: sqlite3.Connection, worker_id: str, project_id: str, job_id: str,
     purpose: str, source_refs: str, limits: str, now: datetime, boot_id: object,
@@ -880,13 +1063,15 @@ def _device(
     for ref in refs:
         if type(ref) is not str:
             continue
+        # Project alias binds the common physical key. Claiming worker need not own the key row;
+        # presence/session still fence the claiming worker.
         alias = connection.execute(
             """
-            SELECT alias.target_kind FROM resource_aliases AS alias
+            SELECT alias.target_kind, alias.alias_id FROM resource_aliases AS alias
             JOIN physical_resource_keys AS resource USING (physical_key_id)
-            WHERE alias.project_id = ? AND alias.physical_key_id = ? AND resource.worker_id = ?
+            WHERE alias.project_id = ? AND alias.physical_key_id = ?
             """,
-            (project_id, ref, worker_id),
+            (project_id, ref),
         ).fetchone()
         if alias is None:
             continue
@@ -894,11 +1079,7 @@ def _device(
             connection, UUID(project_id), ref, alias[0], now=now,
         ).ready:
             continue
-        busy = connection.execute(
-            "SELECT COUNT(*) FROM leases WHERE physical_key_id = ?",
-            (ref,),
-        ).fetchone()
-        if busy is not None and int(busy[0]) > 0:
+        if physical_scope_is_leased(connection, ref):
             return False, None
         return True, ref
     return False, None
@@ -1628,6 +1809,7 @@ def finish_worker_attempt(
                     finish.final_seq,
                     artifact_refs,
                     key,
+                    finish.action_mapping,
                 ),
             )
         elif purpose in {"trial", "regression"} and finish.required_violation:

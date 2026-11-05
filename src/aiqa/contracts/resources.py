@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from aiqa.store.models import PhysicalResourceKey, ResourceAlias, ResourceObservation
 
@@ -19,6 +19,8 @@ __all__ = [
     "PhysicalResourceKey",
     "ResourceAlias",
     "ResourceObservation",
+    "common_physical_scope",
+    "new_resource_alias_id",
     "require_target_kind",
     "resource_key",
 ]
@@ -63,6 +65,20 @@ def resource_key(worker_id: UUID, native_id: str) -> str:
     if native_id.strip() == "":
         raise ValueError("native id is required")
     return f"{worker_id}:{native_id}"
+
+
+def common_physical_scope(native_id: str) -> str:
+    """Shared physical scope for the same serial/host across registered worker aliases."""
+
+    if type(native_id) is not str or native_id.strip() == "":
+        raise ValueError("native id is required")
+    return native_id.strip()
+
+
+def new_resource_alias_id() -> str:
+    """Project-facing alias id. Distinct from physical_key_id used for leases."""
+
+    return str(uuid4())
 
 
 def require_target_kind(kind: str) -> str:

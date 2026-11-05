@@ -15,6 +15,7 @@ import httpx
 
 DEFAULT_CODE_TTL = timedelta(seconds=120)
 DEFAULT_STATE_TTL = timedelta(seconds=600)
+DEFAULT_ID_TOKEN_TTL = timedelta(minutes=10)
 
 
 class OidcRejected(Exception):
@@ -49,6 +50,7 @@ class IdTokenClaims:
     subject: str
     audience: str
     nonce: str
+    expires_at: str | None = None
 
 
 def generate_pkce() -> PkcePair:
@@ -96,6 +98,7 @@ def validate_id_token_claims(
     *,
     config: OidcClientConfig,
     expected_nonce: str,
+    now: datetime | None = None,
 ) -> None:
     if claims.issuer != config.issuer:
         raise OidcRejected("issuer was rejected")
@@ -105,6 +108,15 @@ def validate_id_token_claims(
         raise OidcRejected("nonce was rejected")
     if type(claims.subject) is not str or claims.subject.strip() == "":
         raise OidcRejected("subject was rejected")
+    if claims.expires_at is not None:
+        try:
+            expires = datetime.fromisoformat(claims.expires_at)
+        except ValueError as exc:
+            raise OidcRejected("id_token expiry was rejected") from exc
+        if expires.tzinfo is None:
+            raise OidcRejected("id_token expiry was rejected")
+        if _utc(now) >= expires.astimezone(timezone.utc):
+            raise OidcRejected("id_token expired")
 
 
 def sign_id_token_claims(claims: IdTokenClaims, signing_key: str) -> str:
@@ -146,10 +158,18 @@ class FixtureIdP:
         code_challenge: str,
         now: datetime | None = None,
         ttl: timedelta | None = None,
+        id_token_ttl: timedelta | None = None,
     ) -> str:
         instant = _utc(now)
         code = secrets.token_urlsafe(24)
-        claims = IdTokenClaims(self.issuer, subject, self.audience, nonce)
+        token_ttl = id_token_ttl if id_token_ttl is not None else DEFAULT_ID_TOKEN_TTL
+        claims = IdTokenClaims(
+            self.issuer,
+            subject,
+            self.audience,
+            nonce,
+            (instant + token_ttl).isoformat(),
+        )
         signature = ""
         if self.require_signature or self.signing_key:
             signature = sign_id_token_claims(claims, self.signing_key)
@@ -161,6 +181,7 @@ class FixtureIdP:
             "nonce": nonce,
             "code_challenge": code_challenge,
             "expires_at": instant + (ttl if ttl is not None else DEFAULT_CODE_TTL),
+            "id_token_expires_at": claims.expires_at,
             "used": False,
             "signature": signature,
         }
@@ -195,6 +216,7 @@ class FixtureIdP:
             subject=str(row["subject"]),
             audience=self.audience,
             nonce=str(row["nonce"]),
+            expires_at=str(row["id_token_expires_at"]) if row.get("id_token_expires_at") else None,
         )
         if self.require_signature:
             signature = presented_signature if presented_signature is not None else str(row["signature"])
@@ -255,7 +277,7 @@ class OperationalOidcClient:
         now: datetime | None = None,
         presented_signature: str | None = None,
     ) -> IdTokenClaims:
-        del now  # Token expiry is enforced by the IdP response and claim checks.
+        instant = _utc(now)
         if type(code) is not str or code.strip() == "":
             raise OidcRejected("authorization code was rejected")
         if type(code_verifier) is not str or code_verifier.strip() == "":
@@ -301,11 +323,13 @@ class OperationalOidcClient:
         if type(claims_raw) is not dict or type(signature) is not str:
             raise OidcRejected("token response was rejected")
         try:
+            expires_raw = claims_raw.get("expires_at")
             claims = IdTokenClaims(
                 issuer=str(claims_raw["issuer"]),
                 subject=str(claims_raw["subject"]),
                 audience=str(claims_raw["audience"]),
                 nonce=str(claims_raw["nonce"]),
+                expires_at=str(expires_raw) if expires_raw is not None else None,
             )
         except (KeyError, TypeError) as exc:
             raise OidcRejected("token response was rejected") from exc
@@ -318,6 +342,13 @@ class OperationalOidcClient:
         if type(claims.nonce) is not str or claims.nonce.strip() == "":
             raise OidcRejected("nonce was rejected")
         verify_id_token_signature(claims, signature, self.client_secret)
+        if claims.expires_at is not None:
+            try:
+                expires = datetime.fromisoformat(claims.expires_at)
+            except ValueError as exc:
+                raise OidcRejected("id_token expiry was rejected") from exc
+            if expires.tzinfo is None or instant >= expires.astimezone(timezone.utc):
+                raise OidcRejected("id_token expired")
         return claims
 
 
@@ -343,15 +374,18 @@ def mock_https_token_handler(
         except OidcRejected as exc:
             return httpx.Response(400, json={"error": str(exc)})
         signature = sign_id_token_claims(claims, idp.signing_key)
+        claims_body: dict[str, str] = {
+            "issuer": claims.issuer,
+            "subject": claims.subject,
+            "audience": claims.audience,
+            "nonce": claims.nonce,
+        }
+        if claims.expires_at is not None:
+            claims_body["expires_at"] = claims.expires_at
         return httpx.Response(
             200,
             json={
-                "id_token_claims": {
-                    "issuer": claims.issuer,
-                    "subject": claims.subject,
-                    "audience": claims.audience,
-                    "nonce": claims.nonce,
-                },
+                "id_token_claims": claims_body,
                 "id_token_signature": signature,
             },
         )

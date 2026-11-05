@@ -54,8 +54,50 @@
       time.textContent=parts.join(' · ');
     }catch(_){if(revision===previewRevision)message.textContent='최근 관찰을 확인하지 못했습니다. 연결 상태를 확인해 주세요.';}
   }
-  form.querySelectorAll('input[name="resource_id"]').forEach(function(radio){radio.addEventListener('change',function(){var previous=value('target_kind');set('target_kind',radio.dataset.kind);target(previous!==radio.dataset.kind);preview();});});
-  form.elements.namedItem('target_kind').addEventListener('change',function(){target(true);preview();});
+  var packageSelect=document.getElementById('android-package-select');
+  var appsNote=document.getElementById('installed-apps-observed');
+  var refreshApps=document.getElementById('refresh-installed-apps');
+  function renderInstalledApps(body){
+    if(!packageSelect||!appsNote)return;
+    var current=value('android_package');
+    packageSelect.replaceChildren();
+    var blank=document.createElement('option');blank.value='';blank.textContent=body&&body.apps&&body.apps.length?'앱을 선택':'조회 후 선택';packageSelect.appendChild(blank);
+    (body&&body.apps||[]).forEach(function(app){
+      var option=document.createElement('option');
+      option.value=app.package;
+      var meta=[app.version_name,app.api_level!=null?'API '+app.api_level:'',app.abi,app.content_hash==='unknown'?'hash unknown':''].filter(Boolean).join(' · ');
+      option.textContent=meta?app.package+' ('+meta+')':app.package;
+      if(app.package===current)option.selected=true;
+      packageSelect.appendChild(option);
+    });
+    if(body&&body.observed_at){
+      var when=new Date(body.observed_at);appsNote.textContent='관찰 '+((isNaN(when.getTime())?body.observed_at:when.toLocaleString('ko-KR')))+' · 상태 '+(body.state||'unknown')+' · 설치/초기화 '+(body.install_calls||0)+'/'+(body.reset_calls||0);
+    }else appsNote.textContent='저장된 설치 앱 관찰이 없습니다. lease가 있는 Android에서 조회하세요.';
+  }
+  async function loadInstalledApps(){
+    var resource=chosen();if(!resource||resource.dataset.kind!=='android'){renderInstalledApps(null);return;}
+    try{
+      var response=await window.aiqaRequest('/api/v1/resources/'+encodeURIComponent(resource.value)+'/installed-apps?project_id='+form.dataset.project,{method:'GET'});
+      renderInstalledApps(await response.json());
+    }catch(_){appsNote.textContent='설치 앱 관찰을 불러오지 못했습니다.';}
+  }
+  if(packageSelect)packageSelect.addEventListener('change',function(){if(packageSelect.value)set('android_package',packageSelect.value);invalidate();});
+  if(refreshApps)refreshApps.addEventListener('click',async function(){
+    var resource=chosen();
+    if(!resource||resource.dataset.kind!=='android'){appsNote.textContent='Android 기기를 먼저 선택해 주세요.';return;}
+    refreshApps.disabled=true;appsNote.textContent='설치 앱을 조회하는 중입니다.';
+    try{
+      var key=(crypto.randomUUID&&crypto.randomUUID())||('apps-'+Date.now());
+      var probed=await window.aiqaRequest('/api/v1/resources/'+encodeURIComponent(resource.value)+'/probes?project_id='+form.dataset.project,{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify({provider:'fixture',kind:'installed_apps',proof:null})});
+      var body=await probed.json();
+      if(!probed.ok){appsNote.textContent=(body.error&&body.error.message)||'설치 앱 조회가 거절되었습니다. lease와 연결을 확인해 주세요.';return;}
+      if(body.observation)renderInstalledApps(body.observation);else await loadInstalledApps();
+      invalidate();
+    }catch(_){appsNote.textContent='설치 앱 조회 응답을 받지 못했습니다.';}
+    finally{refreshApps.disabled=false;}
+  });
+  form.querySelectorAll('input[name="resource_id"]').forEach(function(radio){radio.addEventListener('change',function(){var previous=value('target_kind');set('target_kind',radio.dataset.kind);target(previous!==radio.dataset.kind);preview();loadInstalledApps();});});
+  form.elements.namedItem('target_kind').addEventListener('change',function(){target(true);preview();loadInstalledApps();});
   form.elements.namedItem('expected_text').addEventListener('input',function(){expectedEdited=true;});
   form.elements.namedItem('environment_revision_id').addEventListener('change',function(){
     var item=profiles.find(function(p){return p.id===value('environment_revision_id');});if(!item)return;
@@ -141,5 +183,5 @@
     finally{sending=false;}
   });
   if(snapshot.version_revision)document.getElementById('recording-save-summary').textContent='초안 v'+snapshot.version_revision+' 저장됨 · 승인 전';
-  target(false);step(currentStep);preview();
+  target(false);step(currentStep);preview();loadInstalledApps();
 })();

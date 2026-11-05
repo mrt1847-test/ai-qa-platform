@@ -56,6 +56,7 @@ from aiqa.worker.resources import (
     InventoryDenied,
     PreviewDenied,
     bind_inventory_store,
+    latest_installed_apps,
     list_diagnostic_jobs,
     list_resources,
     preview_resource,
@@ -410,6 +411,38 @@ async def post_recovery(resource_id: str, request: Request) -> JSONResponse:
     return await _diagnostic(resource_id, "recovery", request)
 
 
+@router.get("/resources/{resource_id}/installed-apps")
+async def get_installed_apps(resource_id: str, request: Request) -> JSONResponse:
+    parsed = _uuid(resource_id)
+    project = _project_query(request)
+    if isinstance(parsed, JSONResponse) or isinstance(project, JSONResponse):
+        return _error(404, "not_found", "resource was not found", {})
+    with _bound(request):
+        try:
+            authorize_page(request, project)
+            listed = list_resources(project)
+            if not any(item["resource_id"] == str(parsed) for item in listed):
+                return _error(404, "not_found", "resource was not found", {})
+            observation = latest_installed_apps(project, parsed)
+        except (OriginRejected, ProjectHidden, AuthRequired) as exc:
+            return _auth_response(exc)
+    if observation is None:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "resource_id": str(parsed),
+                "apps": [],
+                "observed_at": "",
+                "state": "unobserved",
+                "reason": "unobserved",
+                "install_calls": 0,
+                "reset_calls": 0,
+                "qa": None,
+            },
+        )
+    return JSONResponse(status_code=200, content=observation)
+
+
 async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResponse:
     if not request.headers.get("idempotency-key"):
         return _error(422, "validation", "Idempotency-Key is required", {})
@@ -424,6 +457,11 @@ async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResp
     proof = payload.get("proof")
     if type(provider) is not str or (proof is not None and type(proof) is not str):
         return _error(422, "validation", "invalid diagnostic", {})
+    if kind == "probe":
+        requested = payload.get("kind", "probe")
+        if type(requested) is not str or requested not in {"probe", "installed_apps"}:
+            return _error(422, "validation", "invalid diagnostic", {})
+        kind = requested
     with _bound(request):
         try:
             actor = authorize_browser(request, project, "resource_diagnostic")
@@ -436,6 +474,9 @@ async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResp
                 proof,
                 request.headers.get("idempotency-key", ""),
             )
+            observation = None
+            if kind == "installed_apps":
+                observation = latest_installed_apps(project, parsed)
         except DiagnosticBlocked:
             return _error(422, "validation", "diagnostic was blocked", {})
         except ResourceOffline as exc:
@@ -446,17 +487,18 @@ async def _diagnostic(resource_id: str, kind: str, request: Request) -> JSONResp
             return _error(409, "conflict", "idempotency body does not match", {})
         except _ERRORS as exc:
             return _auth_response(exc)
-    return JSONResponse(
-        status_code=201,
-        content={
-            "job_id": str(receipt.job_id),
-            "purpose": receipt.purpose,
-            "status": receipt.status,
-            "replayed": receipt.replayed,
-            "qa": None,
-            "ready": ready,
-        },
-    )
+    content: dict[str, object] = {
+        "job_id": str(receipt.job_id),
+        "purpose": receipt.purpose,
+        "status": receipt.status,
+        "replayed": receipt.replayed,
+        "qa": None,
+        "ready": ready,
+        "kind": kind,
+    }
+    if observation is not None:
+        content["observation"] = observation
+    return JSONResponse(status_code=201, content=content)
 
 
 @pages.get("/ui/projects/{project_id}/environments/editor", response_class=HTMLResponse)

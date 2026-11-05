@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import secrets
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
+from html import escape
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.routing import APIRouter
 
 from aiqa.config import PROFILE_HOSTED, PROFILE_LOCAL, AppSettings
@@ -461,6 +463,20 @@ async def post_oidc_start(request: Request) -> JSONResponse:
     runtime = _oidc_runtime(request)
     if runtime is None:
         return _error(503, "unavailable", "oidc idp is not configured", {})
+    project_id: UUID | None = None
+    raw = await request.body()
+    if raw:
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except Exception:
+            return _error(422, "validation", "body must be JSON", {"body": ["invalid"]})
+        if type(payload) is not dict:
+            return _error(422, "validation", "body must be an object", {"body": ["invalid"]})
+        if payload.get("project_id") is not None:
+            try:
+                project_id = UUID(str(payload.get("project_id")))
+            except (TypeError, ValueError):
+                return _error(422, "validation", "project_id was rejected", {"project_id": ["invalid"]})
     with _bound(request):
         try:
             with _bound_store().transaction() as connection:
@@ -468,10 +484,67 @@ async def post_oidc_start(request: Request) -> JSONResponse:
                     connection,
                     runtime.config,
                     authorize_endpoint=runtime.authorize_endpoint,
+                    project_id=project_id,
                 )
         except OidcRejected as exc:
             return _error(401, "unauthorized", str(exc), {})
     return JSONResponse(status_code=201, content=started)
+
+
+@router.get("/auth/oidc/callback")
+async def get_oidc_callback(request: Request) -> Response:
+    """Registered redirect URI callback: IdP returns code/state via query string."""
+
+    from aiqa.api.oidc_login import complete_oidc_login
+    from aiqa.domain.projects import MembershipDenied
+    from aiqa.security.oidc import OidcRejected
+
+    settings = _settings(request)
+    if settings.profile != PROFILE_HOSTED or settings.public_origin is None:
+        return HTMLResponse(status_code=403, content="hosted login only")
+    runtime = _oidc_runtime(request)
+    if runtime is None:
+        return HTMLResponse(status_code=503, content="oidc idp is not configured")
+    code = str(request.query_params.get("code") or "")
+    state = str(request.query_params.get("state") or "")
+    origin = request.headers.get("origin") or settings.public_origin
+    with _bound(request):
+        store = _bound_store()
+        try:
+            with store.transaction() as connection:
+                session = complete_oidc_login(
+                    connection,
+                    runtime.config,
+                    runtime.idp,
+                    code=code,
+                    state=state,
+                    code_verifier=None,
+                    project_id=None,
+                    origin=origin,
+                )
+        except OidcRejected as exc:
+            return HTMLResponse(
+                status_code=401,
+                content=(
+                    "<!DOCTYPE html><html lang='ko'><body>"
+                    "<h1 data-oidc-error='unauthorized'>로그인 거절</h1>"
+                    f"<p>{escape(str(exc))}</p>"
+                    "</body></html>"
+                ),
+            )
+        except MembershipDenied:
+            return HTMLResponse(
+                status_code=403,
+                content=(
+                    "<!DOCTYPE html><html lang='ko'><body>"
+                    "<h1 data-oidc-error='permission'>프로젝트 접근 거절</h1>"
+                    "</body></html>"
+                ),
+            )
+    target = f"/ui/projects/{session.actor.project_scope}"
+    response = RedirectResponse(url=target, status_code=303)
+    _set_session_cookies(response, session)
+    return response
 
 
 @router.post("/auth/oidc/callback")
@@ -492,11 +565,17 @@ async def post_oidc_callback(request: Request) -> JSONResponse:
     runtime = _oidc_runtime(request)
     if runtime is None:
         return _error(503, "unavailable", "oidc idp is not configured", {})
-    try:
-        project_id = UUID(str(payload.get("project_id")))
-    except (TypeError, ValueError):
-        return _error(404, "not_found", "project was not found", {})
+    project_id: UUID | None
+    if payload.get("project_id") in (None, ""):
+        project_id = None
+    else:
+        try:
+            project_id = UUID(str(payload.get("project_id")))
+        except (TypeError, ValueError):
+            return _error(404, "not_found", "project was not found", {})
     origin = request.headers.get("origin") or settings.public_origin
+    verifier_raw = payload.get("code_verifier")
+    code_verifier = None if verifier_raw in (None, "") else str(verifier_raw)
     with _bound(request):
         store = _bound_store()
         try:
@@ -507,7 +586,7 @@ async def post_oidc_callback(request: Request) -> JSONResponse:
                     runtime.idp,
                     code=str(payload.get("code", "")),
                     state=str(payload.get("state", "")),
-                    code_verifier=str(payload.get("code_verifier", "")),
+                    code_verifier=code_verifier,
                     project_id=project_id,
                     origin=origin,
                 )
@@ -524,6 +603,11 @@ async def post_oidc_callback(request: Request) -> JSONResponse:
             "actor_id": str(session.actor.actor_id),
         },
     )
+    _set_session_cookies(response, session)
+    return response
+
+
+def _set_session_cookies(response: Response, session: BrowserSession) -> None:
     response.set_cookie(
         "aiqa_session",
         str(session.session_id),
@@ -540,7 +624,6 @@ async def post_oidc_callback(request: Request) -> JSONResponse:
         path="/",
         secure=True,
     )
-    return response
 
 
 @router.post("/workers/enrollments")

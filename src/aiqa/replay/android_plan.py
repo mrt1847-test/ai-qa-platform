@@ -19,9 +19,10 @@ _LOCK = "android-plan-lock"
 _ACTIONS = frozenset({"tap", "swipe", "key", "text", "back"})
 _TEXT_SAFE = re.compile(r"^[A-Za-z0-9._:@%+\-/=]*$")
 _ACTION_LINE = re.compile(
-    r"^(?:Action:\s*)?(?P<name>click|tap|swipe|type|text|back|key|system_button|shell|adb|open_app)\s*\((?P<args>.*)\)\s*$",
+    r"^(?:Action:\s*)?(?P<name>click|tap|swipe|type|text|back|key|system_button|shell|adb|open_app|finish|done|terminate|stop|end)\s*\((?P<args>.*)\)\s*$",
     re.IGNORECASE | re.DOTALL,
 )
+_FINISH_NAMES = frozenset({"finish", "done", "terminate", "stop", "end"})
 
 
 class PlanRejected(Exception):
@@ -167,6 +168,10 @@ def parse_mobile_agent_action(response: str) -> ParsedUpstreamAction:
         if len(args) != 1 or type(args[0]) is not int:
             raise PlanRejected("keycode is invalid")
         return ParsedUpstreamAction("key", keycode=int(args[0]))
+    if name in _FINISH_NAMES:
+        if args:
+            raise PlanRejected("action is unsupported")
+        return ParsedUpstreamAction("finish")
     raise PlanRejected("action is unsupported")
 
 
@@ -205,6 +210,8 @@ def typed_from_upstream(
 ) -> TypedAndroidAction:
     """Rescale parsed model action into a typed Android driver action."""
 
+    if parsed.kind == "finish":
+        return TypedAndroidAction("finish")
     if geometry.rotation not in {0, 90, 180, 270}:
         raise PlanRejected("rotation is invalid")
     if parsed.kind == "tap":
@@ -299,6 +306,26 @@ def _text_arg(args: list[object]) -> str:
     return str(args[0])
 
 
+def android_trace_ready(mapping: str) -> bool:
+    """True when the sealed mapping carries a compile-ready Android action trace."""
+
+    if type(mapping) is not str or mapping.strip() in {"", "{}"}:
+        return False
+    try:
+        parsed = json.loads(mapping)
+    except json.JSONDecodeError:
+        return False
+    if type(parsed) is not dict or type(parsed.get("events")) is not list:
+        return False
+    return android_trace_reasons(parsed["events"]) == ()
+
+
+def android_mapping_digest(mapping: str) -> str:
+    """Hash the sealed Android action mapping used as the package raw source."""
+
+    return hashlib.sha256(mapping.encode("utf-8")).hexdigest()
+
+
 def compile_android_plan(source: RecordingManifest) -> CompiledPackage:
     """Keep tap, type, swipe, and back. Drop model prompts and refuse a secret literal."""
 
@@ -312,7 +339,7 @@ def compile_android_plan(source: RecordingManifest) -> CompiledPackage:
     reasons = android_trace_reasons(events)
     if reasons:
         raise PlanRejected(reasons[0])
-    raw_hash = hashlib.sha256(source.action_mapping.encode("utf-8")).hexdigest()
+    raw_hash = android_mapping_digest(source.action_mapping)
     if raw_hash not in _source_hashes(source):
         raise PlanRejected("source does not match")
     planned = tuple(_step(item) for item in events if type(item) is dict and item.get("kind") != "model")
@@ -335,6 +362,25 @@ def compile_android_plan(source: RecordingManifest) -> CompiledPackage:
     if not checked.ready:
         raise PlanRejected(checked.reasons[0] if checked.reasons else "package is not ready")
     return CompiledPackage(body, checked.body_hash, (), compiled, ())
+
+
+def build_android_package_from_manifest(
+    source: RecordingManifest,
+    *,
+    ready_artifact_ids: tuple[str, ...] = (),
+) -> CompiledPackage:
+    """Compile one sealed Android recording manifest into an immutable replay package body."""
+
+    compiled = compile_android_plan(source)
+    if ready_artifact_ids == ():
+        return compiled
+    return CompiledPackage(
+        compiled.body,
+        compiled.body_hash,
+        ready_artifact_ids,
+        compiled.steps,
+        compiled.expectations,
+    )
 
 
 def _step(item: dict[str, object]) -> AndroidPlanStep:

@@ -381,16 +381,16 @@ GET /static/app.css -> CSS
 
 Current/우선순위는 NEXT_ACTION이 소유한다. 기존 W는 TASK_INDEX, AD/UX는 DEV_FOLLOW_UP_INDEX, 초기 PC 전환은 PC_EXECUTION_INDEX, 실행 구현·수용 RX는 [IMPLEMENTATION_TASKS](../managed-pc/IMPLEMENTATION_TASKS.json)가 직접 선행·환경·등급을 소유한다. 기존 W 완료 수는 local baseline 이력이다. [RX 매핑](../managed-pc/RUNTIME_BOUNDARIES.md)과 AD-02~04의 development_only 범위를 적용한다.
 과거 A→B 전체 직렬 gate 대신 **실제 interface/fact를 소비하는 선행**으로 좁힌다.
-VM/key/device 부족은 그 환경을 쓰는 가지와 최종 수용만 막는다.
+VM/key/device 부족은 그 환경을 쓰는 실환경 수용만 막는다. RX의 feature_implementation에는 운영 환경이나 release_acceptance를 직접 또는 간접 선행으로 두지 않는다. 구현의 로컬 계약이 통과하면 인계를 남기고 소비 카드로 이동한다. 운영 환경에서의 결과와 출시 완료는 release_acceptance에 기록한다.
 
 ### 선택·전환
 
 1. 현재 작업의 code/검증 결과를 기록한다. 환경·권한·quota 등 외부 조건 때문에 진행 못 하면 blocked와 원인/재개 조건/근거를 남긴다.
 2. blocked를 complete로 바꾸거나 의존 작업을 임의로 열지 않는다. 후보는 미완료·blocked 아님·직접 선행 전부 complete+실제 인계 존재인 작업이다.
 3. `environment_requirements`에 알려진 unavailable 조건이 있으면 준비 후보에서 제외한다. unknown은 가벼운 사전 확인으로만 판별하고 같은 알려진 부재 검사를 반복하지 않는다.
-4. Next 중 준비된 작업을 먼저 고른다. 없으면 W·AD/UX·PC·RX 색인을 ID로 합쳐 등록 PC 목표의 후보를 필터한다. managed_execution_mvp/product_shared를 먼저 고르고 development_only는 명시 요청이 있을 때만 고른다. RX에 대응되는 과거 local gate는 기본 후보로 중복 선택하지 않는다. bootstrap→core→환경 준비된 integration 순으로 후보 요약만 조회한다.
+4. Next 중 준비된 작업을 먼저 고른다. 없으면 W·AD/UX·PC·RX 색인을 ID로 합쳐 등록 PC 목표의 후보를 필터한다. 준비된 feature_implementation을 먼저 고른다. release_acceptance는 환경이 준비되고 구현 후보가 없거나 사용자가 그 수용을 지시한 경우에 선택한다. development_only는 명시 요청 시에 고른다. RX에 대응되는 과거 local gate는 기본 후보로 중복 선택하지 않는다. bootstrap→core→환경 준비된 integration 순으로 후보 요약만 조회한다.
 5. 선택한 ID/이유를 Current에 올리고 차단 항목은 외부 대기 절에 남긴다. 이전 Current가 차단되어 있어도 독립 후보로 넘어간다.
-6. 독립 후보도 없으면 조건/준비 결과를 보고한다. 실패한 task의 진짜 선행을 삭제하거나 fake PASS를 만들어 진행하지 않는다.
+6. 독립 후보도 없으면 완료 인계의 일반 진입점과 코드 경로를 대조한다. 제품 기본 경로의 fixture 선택·미등록 handler·실행 포트 없는 성공·근거 없는 완료는 구현 결함으로 기록해 보완한다. 실제 기능 공백이 없을 때 조건/준비 결과를 보고한다. 실패한 task의 진짜 선행을 삭제하거나 fake PASS를 만들어 진행하지 않는다.
 7. 알려진 환경 변경/사용자 제공/새 evidence가 생겼을 때 해당 blocked 가지를 재평가한다. 환경 설정을 몰래 변경·구매·권한 확대해 해소하지 않는다.
 
 ### 검증 등급과 완료 의미

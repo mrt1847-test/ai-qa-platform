@@ -142,7 +142,8 @@ _CLEANUP: dict[UUID, str] = {}
 def verify_and_heal_after_replay(**kwargs: object) -> object:
     """Connect replay check evaluation and healing to the worker model-request path.
 
-    Used by Android trial/regression handlers after a sealed plan dispatch.
+    Shared by Android and Web trial/regression handlers after a sealed plan dispatch.
+    Deterministic Check runs first; healing stays OFF unless explicitly enabled with budget.
     """
 
     from aiqa.healing.service import run_replay_verify_and_heal

@@ -253,6 +253,14 @@ class ServerModelGateway:
                 "maintenance": 0,
             }
 
+    def ensure_policy(self, policy: AttemptModelPolicy) -> None:
+        """Register once. Later recording/replay attempts keep the first sealed policy."""
+
+        key = (policy.project_id, policy.item_id)
+        if key in self._policies:
+            return
+        self.register_policy(policy)
+
     def handle(
         self,
         worker: WorkerScope,
@@ -484,6 +492,32 @@ class ServerModelGateway:
         assert cleaned.get("secret") is None
         assert cleaned.get("api_key") is None
         return receipt
+
+
+def recording_authoring_policy(
+    project_id: UUID,
+    item_id: str,
+    secret_ref: SecretRef,
+    *,
+    model: str = "ops-author",
+    max_calls: int = 2,
+    generation: int = 1,
+) -> AttemptModelPolicy:
+    """Default recording policy: authoring only, secret ref resolved on the server."""
+
+    return AttemptModelPolicy(
+        project_id=project_id,
+        item_id=item_id,
+        purpose="recording",
+        healing_enabled=False,
+        max_calls=max_calls,
+        budget="2.00",
+        bindings=(RoleBinding("authoring", 1, model, str(secret_ref.ref_id)),),
+        checks=(),
+        episodes=(),
+        secret_refs={"authoring": secret_ref},
+        generation=generation,
+    )
 
 
 class WorkerModelCallBridge:

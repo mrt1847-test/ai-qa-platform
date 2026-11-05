@@ -1,42 +1,39 @@
 # Next Actions
 
-Updated: **2026-11-04 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
+Updated: **2026-11-05 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
 
-실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. 실제 독립 서버 배포·원격 소비 loop·전원 단절 수용은 아직 미완료다.
+실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. 실제 독립 서버 배포·전원 단절 수용과 [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md)은 남아 있다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~45 완료는 보존한다. 현재 PC HTTPS/AVD 녹화와 모의 모델 공급자 전송 배선까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~66 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
 
 ## Current
 
-로컬 `managed_execution_mvp` core 배선 후보는 소진됐다. 독립 후보(선행 complete·환경 available)가 없어 새 Current를 고르지 않는다.
+**RX-67 — 행동별 서버 증거 ACK와 실시간 타임라인.** 상태 `not_started`. (선행 RX-48·RX-49·RX-43)
 
-**재개 대기:**
-- [RX-21](docs/validation/tasks/RX-21.md) — 독립 관리 호스트·DNS/TLS·IdP·배포 권한
-- [RX-23](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23) — 직접 선행에 RX-21 포함. 전용 AVD·RX-44/45는 준비됐으나 **운영 모델 키**와 RX-21 완료가 필요
-- [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24) — 지원 Web VM·전용 대상(·모델 키)
-- RX-25~27·RX-29 — 별도 접속 PC·승인된 전원/통신 단절·추가 워커
-
-AD-02~04는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 따라 자동 선택에서 제외한다.
+- [RX-67 카드](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-67)와 RX-48·49·43 인계를 읽는다. 스텝마다 서버 commit/ACK가 진행 중 타임라인에 반영되는지 로컬 fixture로 확인한다.
+- 핸들러가 끝까지 메모리에만 모으지 않고, 실패·취소 후에도 이미 ACK된 증거를 보존한다.
 
 ## Next
 
-| 순서 | ID | 목표 | 직접 선행·환경 |
+| 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| — | [RX-21](docs/validation/tasks/RX-21.md) | 독립 관리 호스트 배포 | 호스트·DNS/TLS·IdP |
-| — | [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24) | Web VM 격리·수용 | 지원 VM·대상 |
-| — | [RX-23](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23) | Android 운영 키 수용 | 모델 키 |
-| — | RX-25~27·RX-29 | 전원/경합/비용 표본 | 별도 PC·승인된 단절 |
+| 1 | [RX-68](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-68) | 앱 조회/설치를 일반 워커 경로에 연결 | RX-56/57/62 |
+| 2 | [RX-69](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-69) | 자연어 구조화를 설정된 모델로 연결 | RX-55/45 |
+| 3 | [RX-70](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-70) | Web 신뢰 driver의 실제 실행 포트 | RX-60/61 |
+| 4 | [RX-71](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-71) | 현재 PC 브라우저에서 녹화→승인→회귀 | RX-63~69 |
 
-실환경 카드의 범위는 [현재 PC 검증](docs/managed-pc/SAME_PC_STAGE.md)·[LOCAL_ACCEPTANCE_PREFLIGHT](docs/managed-pc/LOCAL_ACCEPTANCE_PREFLIGHT.md)에 구분돼 있다.
+RX-63~70은 로컬에서 독립적으로 개발할 수 있다. RX-71의 기기·모델은 테스트 경계에서 대체할 수 있으나 일반 브라우저/API·작업 큐·worker와 증거 저장은 같은 흐름으로 확인한다. RX-21~27은 실환경 수용 대기로 유지하고 RX-29 계측은 최종 기능 수용 뒤에 진행한다.
 
 ## 외부 대기와 재사용
 
+아래 조건은 실환경 수용을 여는 조건이다. 같은 기능의 로컬 구현과 독립 카드는 계속 진행한다.
+
 | 대상 | 상태·재개 조건 | 막히는 범위 |
 |---|---|---|
-| 독립 관리 서버 | RX-41 fixture 완료. 독립 호스트·DNS/TLS·IdP·배포 권한 확인 시 [RX-21](docs/validation/tasks/RX-21.md) | 실제 배포와 이를 사용하는 통합 |
-| Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md)·[RX-44](docs/validation/tasks/RX-44.md)·[RX-45](docs/validation/tasks/RX-45.md) 완료. **운영 모델 키** 확인 시 RX-23 | 운영 키를 쓰는 Android 녹화·재생 수용 |
-| Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42 fixture guest·RX-45 전송 배선 확인 | Web 실환경 및 양쪽 전원 종료 수용 |
-| 장애·경합 검증 | 다른 접속 PC, 승인된 전원/통신 단절, 추가 워커와 공유 테스트 자원 준비 시 RX-25~27 | 실제 전원 종료·불명 행동·두 워커 수용 |
+| 독립 관리 서버 | RX-41·RX-59 fixture 완료. 독립 호스트·DNS/TLS·IdP·배포 권한 확인 시 [RX-21](docs/validation/tasks/RX-21.md) | 실제 배포와 이를 사용하는 통합 |
+| Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md)·[RX-44](docs/validation/tasks/RX-44.md)·[RX-45](docs/validation/tasks/RX-45.md)·[RX-46](docs/validation/tasks/RX-46.md) 완료. **운영 모델 키**·독립 호스트 확인 시 RX-23 | 운영 키를 쓰는 Android 녹화·재생 최종 수용 |
+| Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42·RX-60·RX-61 fixture 완료 | Web 실환경 및 양쪽 전원 종료 수용 |
+| 장애·경합 검증 | 다른 접속 PC, 승인된 전원/통신 단절, 추가 워커와 공유 테스트 자원 준비 시 RX-25~27. RX-62 fixture 완료 | 실제 전원 종료·불명 행동·두 워커 수용 |
 | AD-02~04 | 개발 이력으로 보존. 적용 범위는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 매핑 | 자동 선택 제외 |
 | CF-01 | `future_optional_provider`, 상용 provider 선택 조사로 이동 | 현재 PC 기반 MVP의 필수 선행 아님 |
 | 민감 증거 | 정제 coverage/권한/서버 ACK 없으면 실제 전송·승인 근거 준비 미완료 | 해당 실제 경로만. fixture로 제품 성공을 만들지 않음 |
@@ -44,9 +41,9 @@ AD-02~04는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택�
 ## 차단되었을 때 다음 작업 선택
 
 1. 현재 범위에서 해결할 결함은 해결한다. 외부 조건이면 ID·원인·재개 조건·영향·인계를 기록하고 소유 색인에 blocked를 남긴다.
-2. Next에서 **미완료·blocked 아님·직접 선행 전부 complete+인계 보유·알려진 unavailable 환경 없음**인 독립 후보로 Current를 바꾼다. 완료로 가장하거나 진짜 선행/보안/QA gate를 지우지 않는다.
-3. 후보가 없으면 TASK_INDEX(기존 W)·DEV_FOLLOW_UP_INDEX(AD/UX)·PC_EXECUTION_INDEX(전환)·[IMPLEMENTATION_TASKS](docs/managed-pc/IMPLEMENTATION_TASKS.json)(RX)를 ID로 합쳐 요약만 조회한다. managed_execution_mvp/product_shared를 우선한다. 기존 W/AD는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md)의 매핑을 따르며 CLOUD_TASK_INDEX의 future_optional_provider는 자동 선택하지 않는다.
-4. 후보도 없을 때만 재개 조건을 보고한다. 새 근거/환경 변화가 있을 때만 차단을 재평가한다. 고객 접속 PC 설치나 상용 provider 가입을 우회 필수 조건으로 만들지 않는다.
+2. Next에서 **미완료·blocked 아님·직접 선행 전부 complete+인계 보유·알려진 unavailable 환경 없음**인 구현 후보로 Current를 바꾼다. 완료로 가장하거나 진짜 선행/보안/QA gate를 지우지 않는다.
+3. 후보가 없으면 TASK_INDEX(기존 W)·DEV_FOLLOW_UP_INDEX(AD/UX)·PC_EXECUTION_INDEX(전환)·[IMPLEMENTATION_TASKS](docs/managed-pc/IMPLEMENTATION_TASKS.json)(RX)를 ID로 합쳐 요약만 조회한다. RX 색인의 feature_implementation을 먼저 선택한다. release_acceptance가 blocked여도 구현 후보를 유지한다. 기존 W/AD는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md)의 매핑을 따르며 CLOUD_TASK_INDEX의 future_optional_provider는 자동 선택하지 않는다.
+4. 후보도 없으면 [정상 경로 보완 카드](docs/managed-pc/ENTRY_COMPLETION_TASKS.md)의 완료 인계가 일반 브라우저/API/worker 진입점까지 확인했는지 대조한다. 제품 요청에서 fixture 기본값·미등록 handler·무동작 성공·증거 없는 완료가 보이면 구현 결함으로 카드에 남긴다. 확인한 기능 공백이 없을 때 재개 조건을 보고한다. 새 근거/환경 변화가 있을 때만 차단을 재평가한다. 고객 접속 PC 설치나 상용 provider 가입을 우회 필수 조건으로 만들지 않는다.
 
 ## 매 실행의 최소 입력과 종료
 
@@ -60,5 +57,5 @@ AD-02~04는 [구현 경계](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택�
 ## Cursor에 전달할 한 문장
 
 ```text
-NEXT_ACTION.md의 Current 하나를 수행·검증하고 인계와 큐를 갱신해줘. 중앙 관리/저장과 등록 실행 PC를 분리하고, offline 저장본 승인과 live 작업 차단을 구분해줘. 상용 디바이스팜은 필수 선행이 아니야. 외부 차단이면 근거를 남겨 독립 후보로 전환하고 기존 완료 이력은 보존해줘.
+master에서 NEXT_ACTION.md의 Current 기능 하나를 실제 진입점에 구현하고 로컬 검증·인계·큐를 갱신해줘. 운영 키·독립 서버·VM 대기는 실환경 카드에 남기고, 구현에는 로컬 fixture를 써. 차단되면 색인의 다른 feature_implementation 후보를 먼저 조회해. 실환경 완료는 별도 증거로만 기록해.
 ```

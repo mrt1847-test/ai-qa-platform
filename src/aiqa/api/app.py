@@ -59,6 +59,9 @@ def create_app(
     resolved = load_settings() if settings is None else settings
     if not isinstance(resolved, AppSettings):
         raise SettingsError("settings must be AppSettings")
+    from aiqa.store.queue import configure_active_slots
+
+    configure_active_slots(resolved.max_active_slots)
     application = FastAPI(title="AI QA", version="0.0.0")
     application.state.settings = resolved
     application.state.secret_resolver = build_server_secret_resolver(

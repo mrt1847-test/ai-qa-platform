@@ -53,6 +53,12 @@ from aiqa.domain.proposals import (
     pending_proposal_text,
     reject_case_proposal,
 )
+from aiqa.recording.structure import (
+    StructureRejected,
+    definition_field_diff,
+    request_structure,
+)
+from aiqa.store.queue import JobConflict
 from aiqa.domain.hashing import CanonicalJsonError
 from aiqa.recording.review_manifest import (
     ReviewConflict,
@@ -61,6 +67,7 @@ from aiqa.recording.review_manifest import (
     review_action,
     review_board,
     review_notice,
+    review_offline_gate,
 )
 from aiqa.domain.approvals import (
     ApprovalConflict,
@@ -220,7 +227,38 @@ def _pending_proposals(actor, case_id):
         rows=connection.execute("""SELECT p.proposal_id,p.body,p.base_version_id,p.kind FROM case_edit_proposals p
         WHERE p.project_id=? AND p.case_id=? AND NOT EXISTS(SELECT 1 FROM case_proposal_decisions d
         WHERE d.project_id=p.project_id AND d.proposal_id=p.proposal_id) ORDER BY p.rowid""",(str(actor.project_scope),str(case_id))).fetchall()
-    return [{'proposal_id':str(row[0]),'body':json.loads(row[1]),'base_version_id':str(row[2]),'kind':str(row[3])} for row in rows]
+        head = connection.execute(
+            "SELECT latest_draft_version_id FROM automation_cases WHERE project_id=? AND case_id=?",
+            (str(actor.project_scope), str(case_id)),
+        ).fetchone()
+        current: dict[str, object] = {}
+        if head is not None and head[0] is not None:
+            definition = connection.execute(
+                "SELECT definition_json FROM case_versions WHERE project_id=? AND version_id=?",
+                (str(actor.project_scope), str(head[0])),
+            ).fetchone()
+            if definition is not None:
+                try:
+                    parsed = json.loads(str(definition[0]))
+                except json.JSONDecodeError:
+                    parsed = {}
+                if type(parsed) is dict:
+                    current = parsed
+    items = []
+    for row in rows:
+        body = json.loads(row[1]) if type(row[1]) is str else row[1]
+        if type(body) is not dict:
+            body = {}
+        items.append(
+            {
+                "proposal_id": str(row[0]),
+                "body": body,
+                "base_version_id": str(row[2]),
+                "kind": str(row[3]),
+                "changed_fields": definition_field_diff(current, body),
+            }
+        )
+    return items
 
 
 def _revision(payload: dict[str, object], project: UUID | None = None) -> CaseRevisionInput:
@@ -412,6 +450,59 @@ def _view_json(view: CaseVersionView) -> dict[str, object]:
             "reasons": [{"code": reason.code, "message": reason.message} for reason in view.readiness.reasons],
         },
     }
+
+
+@router.post("/projects/{project_id}/cases/{case_id}/versions/{version_id}/structure")
+async def post_structure(project_id: str, case_id: str, version_id: str, request: Request) -> JSONResponse:
+    rejected = _idempotency(request)
+    if rejected is not None:
+        return rejected
+    project = _uuid(project_id)
+    parsed_case = _uuid(case_id)
+    parsed_version = _uuid(version_id)
+    if isinstance(project, JSONResponse) or isinstance(parsed_case, JSONResponse) or isinstance(parsed_version, JSONResponse):
+        return _error(404, "not_found", "case was not found", {})
+    with _bound(request):
+        try:
+            actor = authorize_browser(request, project, "case")
+            from aiqa.domain.versions import _bound_store as _case_store
+
+            row = _case_store()._connection.execute(
+                "SELECT case_id FROM case_versions WHERE project_id=? AND version_id=?",
+                (str(project), str(parsed_version)),
+            ).fetchone()
+            if row is None or str(row[0]) != str(parsed_case):
+                return _error(404, "not_found", "case was not found", {})
+            receipt = request_structure(
+                actor,
+                project,
+                parsed_version,
+                request_key=request.headers.get("idempotency-key", "").strip(),
+            )
+        except CsrfRejected:
+            return _error(403, "permission", "csrf token was rejected", {})
+        except OriginRejected:
+            return _error(403, "permission", "origin was rejected", {})
+        except ProjectHidden:
+            return _error(404, "not_found", "case was not found", {})
+        except AuthRequired:
+            return _error(401, "unauthorized", "session is missing", {})
+        except JobConflict:
+            return _error(409, "conflict", "idempotency body does not match", {})
+        except StructureRejected as exc:
+            message = str(exc) or "structure was rejected"
+            if "hidden" in message or "secret" in message:
+                return _error(422, "validation", "proposal source was rejected", {})
+            return _error(422, "validation", message, {})
+    return JSONResponse(
+        status_code=201,
+        content={
+            "job_id": str(receipt.job_id),
+            "proposal_id": str(receipt.proposal_id),
+            "base_version_id": str(receipt.base_version_id),
+            "auto_applied": receipt.auto_applied,
+        },
+    )
 
 
 @router.post("/projects/{project_id}/cases/{case_id}/proposals")
@@ -980,6 +1071,7 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
     protection = None
     decision = None
     revoke = None
+    offline_gate = None
     selected = request.query_params.get('entry', '')
     selection = None
     review_entry = None
@@ -1014,6 +1106,7 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
                             board = review_board(connection, project, parsed, version_uuid)
                             from aiqa.web.review_context import review_candidates
                             candidates = review_candidates(connection, project, parsed, version_uuid)
+                            offline_gate = review_offline_gate(connection, project, parsed, version_uuid)
                     if board and board.entries:
                         if selected and not any(entry.entry_id == selected for entry in board.entries):
                             return HTMLResponse(status_code=404,content='이 검토에 속한 단계가 아닙니다.')
@@ -1057,6 +1150,7 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
             "protection": protection,
             "decision": decision,
             "revoke": revoke,
+            "offline_gate": offline_gate,
             "selected": selected,
             "case_name":str(case_row[0]),"selection":selection,"actions":actions,"review_entry":review_entry,"embedded":True,
             "review_candidates": candidates,

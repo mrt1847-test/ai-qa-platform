@@ -149,14 +149,19 @@ def enqueue_execution(
     _scope(actor, project_id)
     purpose = payload.get("purpose")
     source = payload.get("source")
-    if purpose not in {"trial", "regression", "reverification"} or source not in {"single", "selection"}:
+    if purpose not in {"trial", "regression", "reverification"} or source not in {"single", "selection", "suite"}:
         raise ExecutionRejected("trial source is required")
     if purpose == "trial" and source != "single":
+        raise ExecutionRejected("trial source is required")
+    if source == "suite" and purpose not in {"regression", "reverification"}:
         raise ExecutionRejected("trial source is required")
     if _mixed_purposes(payload):
         raise ExecutionRejected("trial and formal cannot be mixed")
     if key.project_id != project_id or key.operation != _OPERATION or key.key.strip() == "":
         raise ExecutionRejected("idempotency key does not match")
+    suite_version_id = _suite_version_ref(payload) if source == "suite" else None
+    if source == "suite" and suite_version_id is None:
+        raise ExecutionRejected("suite version is required")
     body_hash = _request_hash(payload)
     existing = tx.connection.execute(
         """
@@ -180,13 +185,22 @@ def enqueue_execution(
     requested_at = datetime.now(timezone.utc).isoformat()
     commit_seq = next_commit_seq(tx, project_id)
     job_purpose = "regression" if purpose == "reverification" else str(purpose)
+    failure_policy = str(payload.get("failure_policy"))
     tx.connection.execute(
         """
         INSERT INTO executions (
             project_id, execution_id, name, purpose, source, suite_version_id, scope_requested_at
-        ) VALUES (?, ?, ?, ?, ?, NULL, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (str(project_id), str(execution_id), _name(payload), str(purpose), str(source), requested_at),
+        (
+            str(project_id),
+            str(execution_id),
+            _name(payload),
+            str(purpose),
+            str(source),
+            suite_version_id,
+            requested_at,
+        ),
     )
     job_ids: list[UUID] = []
     item_ids: list[UUID] = []
@@ -225,7 +239,7 @@ def enqueue_execution(
                 str(case_run_id),
                 body_hash,
                 json.dumps([str(item.replay_package_id)], ensure_ascii=False, separators=(",", ":")),
-                _snapshot_limits(tx, project_id, item, commit_seq),
+                _snapshot_limits(tx, project_id, item, commit_seq, failure_policy),
             ),
         )
     tx.connection.execute(
@@ -1396,6 +1410,20 @@ def _timeout(settings: dict[str, object]) -> int:
 
 
 def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
+    source = payload.get("source")
+    if source == "suite":
+        suite_version_id = _suite_version_ref(payload)
+        if suite_version_id is None:
+            raise ExecutionRejected("suite version is required")
+        return {
+            "name": payload.get("name"),
+            "purpose": payload.get("purpose"),
+            "source": "suite",
+            "selection": {"suite_version_id": suite_version_id},
+            "failure_policy": payload.get("failure_policy"),
+            "exclusions": payload.get("exclusions", []),
+            "release_label": payload.get("release_label"),
+        }
     items = payload.get("items")
     if type(items) is not list:
         raise ExecutionRejected("item is invalid")
@@ -1407,6 +1435,18 @@ def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
         "failure_policy": payload.get("failure_policy"),
         "exclusions": payload.get("exclusions", []),
     }
+
+
+def _suite_version_ref(payload: dict[str, object]) -> str | None:
+    sid = payload.get("suite_version_id")
+    if type(sid) is str and sid.strip() != "":
+        return sid.strip()
+    selection = payload.get("selection")
+    if type(selection) is dict:
+        sid = selection.get("suite_version_id")
+        if type(sid) is str and sid.strip() != "":
+            return sid.strip()
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1459,6 +1499,22 @@ def validate_claim_snapshot(job: object, connection: sqlite3.Connection) -> Clai
         ).fetchone()
         if found is None or str(found[0]) != environment_hash:
             return ClaimDecision("BLOCKED", pinned, False)
+    if job.purpose in {"trial", "regression"}:
+        package_id = limits.get("replay_package_id")
+        package_hash = limits.get("replay_package_hash")
+        if type(package_id) is not str or package_id.strip() == "":
+            return ClaimDecision("BLOCKED", pinned, False)
+        if type(package_hash) is not str or package_hash.strip() == "":
+            return ClaimDecision("BLOCKED", pinned, False)
+        found = connection.execute(
+            """
+            SELECT body_hash FROM replay_packages
+            WHERE project_id = ? AND package_id = ? AND ready = 1
+            """,
+            (str(job.project_id), package_id),
+        ).fetchone()
+        if found is None or str(found[0]) != package_hash:
+            return ClaimDecision("BLOCKED", pinned, False)
     return ClaimDecision("ALLOWED", pinned, False)
 
 
@@ -1488,7 +1544,9 @@ def _stored_receipt(tx: Transaction, project_id: UUID, execution_id: str, job_id
     )
 
 
-def _snapshot_limits(tx: Transaction, project_id: UUID, item: ResolvedTrialItem, commit_seq: int) -> str:
+def _snapshot_limits(
+    tx: Transaction, project_id: UUID, item: ResolvedTrialItem, commit_seq: int, failure_policy: str
+) -> str:
     settings_row = tx.connection.execute(
         "SELECT settings_json FROM case_versions WHERE project_id = ? AND version_id = ?",
         (str(project_id), str(item.case_version_id)),
@@ -1525,13 +1583,17 @@ def _snapshot_limits(tx: Transaction, project_id: UUID, item: ResolvedTrialItem,
             "timeout_seconds": 600,
             "actor": 0,
             **item.limits,
+            "failure_policy": failure_policy,
             "resource_id": str(item.resource_id),
             "dataset_version_id": None if item.dataset_version_id is None else str(item.dataset_version_id),
             "execution_snapshot": {
-                "case_version_id": str(item.case_version_id), "manifest_hash": item.manifest_hash,
-                "environment_revision_id": str(item.environment_revision_id), "resource_id": str(item.resource_id),
+                "case_version_id": str(item.case_version_id),
+                "manifest_hash": item.manifest_hash,
+                "environment_revision_id": str(item.environment_revision_id),
+                "resource_id": str(item.resource_id),
                 "dataset_version_id": None if item.dataset_version_id is None else str(item.dataset_version_id),
                 "approval_id": None if item.approval_id is None else str(item.approval_id),
+                "entry_id": item.entry_id,
             },
         }
     )
@@ -1593,12 +1655,13 @@ def _request_hash(payload: dict[str, object]) -> str:
         {
             "failure_policy": payload.get("failure_policy"),
             "name": _name(payload),
-            "preview_hash": payload.get('preview_hash'),
-            "items": payload.get('items'),
-            "exclusions":payload.get('exclusions',[]),
+            "preview_hash": payload.get("preview_hash"),
+            "items": payload.get("items"),
+            "exclusions": payload.get("exclusions", []),
             "purpose": payload.get("purpose"),
             "self_healing_enabled": False,
             "source": payload.get("source"),
+            "suite_version_id": _suite_version_ref(payload),
         },
         "canon-json-v1",
     )

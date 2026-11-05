@@ -10,6 +10,12 @@ import hashlib
 
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.domain.hashing import canonical_hash
+from aiqa.replay.android_plan import (
+    PlanRejected,
+    android_mapping_digest,
+    android_trace_ready,
+    build_android_package_from_manifest,
+)
 from aiqa.replay.compiler import CompiledPackage
 from aiqa.replay.packages import validate_package_body
 from aiqa.store.artifacts import ArtifactRejected, require_ready_artifacts
@@ -439,6 +445,99 @@ def materialize_recording(
     return _receipt(connection, project_id, manifest_id, version_id, package_id)
 
 
+def materialize_android_recording(
+    connection: object,
+    actor: Actor,
+    project_id: UUID,
+    manifest_id: UUID,
+    *,
+    ready_artifact_ids: tuple[str, ...] = (),
+) -> MaterializationReceipt:
+    """Compile a sealed Android manifest into an immutable package for that recording version."""
+
+    stored = _manifest_row(connection, project_id, manifest_id)
+    if stored is None:
+        raise PreflightRejected("manifest is missing")
+    artifact_ids = ready_artifact_ids or _artifact_ids_from_hashes(stored.source_artifact_hashes)
+    try:
+        compiled = build_android_package_from_manifest(stored, ready_artifact_ids=artifact_ids)
+    except PlanRejected as exc:
+        raise PreflightRejected(str(exc.reason)) from exc
+    return materialize_recording(connection, actor, project_id, manifest_id, compiled)
+
+
+def rebuild_android_package(
+    connection: object,
+    actor: Actor,
+    project_id: UUID,
+    recording_id: UUID,
+    request_key: str,
+) -> MaterializationReceipt:
+    """Seal a package_rebuild manifest and materialize a new version. Prior package digests stay."""
+
+    if type(request_key) is not str or request_key.strip() == "":
+        raise PreflightRejected("rebuild key is required")
+    source = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT manifest_id, revision, action_mapping, source_artifact_hashes, case_id, evidence_completeness
+        FROM recording_manifests
+        WHERE project_id = ? AND recording_id = ?
+        ORDER BY revision DESC
+        LIMIT 1
+        """,
+        (str(project_id), str(recording_id)),
+    ).fetchone()
+    if source is None:
+        raise PreflightRejected("manifest is missing")
+    mapping = str(source[2])
+    if not android_trace_ready(mapping):
+        raise PreflightRejected("trace is missing")
+    existing = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT manifest_id, body_hash FROM recording_manifests
+        WHERE project_id = ? AND recording_id = ? AND request_key = ?
+        """,
+        (str(project_id), str(recording_id), request_key.strip()),
+    ).fetchone()
+    body = {
+        "kind": "package_rebuild",
+        "prior_manifest_id": str(source[0]),
+        "recording_id": str(recording_id),
+        "source_artifact_hashes": str(source[3]),
+        "action_mapping": mapping,
+    }
+    body_hash = canonical_hash(body, "canon-json-v1")
+    if existing is not None:
+        if str(existing[1]) != body_hash:
+            raise FinishConflict("rebuild body does not match")
+        return materialize_android_recording(connection, actor, project_id, UUID(str(existing[0])))
+    manifest_id = uuid4()
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO recording_manifests (
+            project_id, case_id, recording_id, manifest_id, revision, kind, prior_manifest_id,
+            input_version_hash, source_artifact_hashes, action_mapping, evidence_completeness,
+            request_key, body_hash
+        ) VALUES (?, ?, ?, ?, ?, 'package_rebuild', ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(project_id),
+            str(source[4]),
+            str(recording_id),
+            str(manifest_id),
+            int(source[1]) + 1,
+            str(source[0]),
+            _input_version_hash(connection, project_id, recording_id),
+            str(source[3]),
+            mapping,
+            str(source[5]),
+            request_key.strip(),
+            body_hash,
+        ),
+    )
+    return materialize_android_recording(connection, actor, project_id, manifest_id)
+
+
 def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFinishInput) -> ManifestReceipt:
     recording = connection.execute(  # type: ignore[attr-defined]
         """
@@ -464,6 +563,7 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
     if spec.outcome != "interrupted":
         _require_artifacts(connection, project_id, spec.artifact_ids)
     outcome = "interrupted" if spec.outcome == "interrupted" else spec.outcome
+    mapping, source_hashes, should_compile = _android_seal_payload(spec, outcome)
     connection.execute(  # type: ignore[attr-defined]
         """
         UPDATE recordings
@@ -487,15 +587,77 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
             str(spec.recording_id),
             str(manifest_id),
             str(recording[1]),
-            json.dumps(list(spec.artifact_ids), sort_keys=True),
-            json.dumps({"final_seq": spec.final_seq, "outcome": outcome, "wait_limit_seconds": 30}, sort_keys=True),
+            source_hashes,
+            mapping,
             "complete",
             spec.request_key,
             body_hash,
         ),
     )
-    materialize_recording(connection, actor, project_id, manifest_id, None)
+    compiled: CompiledPackage | None = None
+    if should_compile:
+        stored = _manifest_row(connection, project_id, manifest_id)
+        if stored is not None:
+            try:
+                compiled = build_android_package_from_manifest(
+                    stored,
+                    ready_artifact_ids=spec.artifact_ids,
+                )
+            except PlanRejected:
+                compiled = None
+    materialize_recording(connection, actor, project_id, manifest_id, compiled)
     return ManifestReceipt(manifest_id, spec.recording_id, body_hash, False)
+
+
+def _android_seal_payload(spec: RecordingFinishInput, outcome: str) -> tuple[str, str, bool]:
+    mapping = spec.action_mapping if type(spec.action_mapping) is str else "{}"
+    if android_trace_ready(mapping):
+        digest = android_mapping_digest(mapping)
+        hashes = list(spec.artifact_ids)
+        if digest not in hashes:
+            hashes.append(digest)
+        return mapping, json.dumps(hashes, sort_keys=True), True
+    fallback = json.dumps(
+        {"final_seq": spec.final_seq, "outcome": outcome, "wait_limit_seconds": 30},
+        sort_keys=True,
+    )
+    return fallback, json.dumps(list(spec.artifact_ids), sort_keys=True), False
+
+
+def _input_version_hash(connection: object, project_id: UUID, recording_id: UUID) -> str:
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT versions.content_hash
+        FROM recordings
+        JOIN case_versions AS versions
+          ON versions.project_id = recordings.project_id
+         AND versions.case_id = recordings.case_id
+         AND versions.version_id = recordings.input_case_version_id
+        WHERE recordings.project_id = ? AND recordings.recording_id = ?
+        """,
+        (str(project_id), str(recording_id)),
+    ).fetchone()
+    if row is None:
+        raise PreflightRejected("input version is missing")
+    return str(row[0])
+
+
+def _artifact_ids_from_hashes(raw: str) -> tuple[str, ...]:
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if type(parsed) is not list:
+        return ()
+    ids: list[str] = []
+    for item in parsed:
+        if type(item) is not str:
+            continue
+        text = item.strip()
+        # Artifact UUID refs stay; mapping digests and opaque hashes are skipped.
+        if len(text) == 36 and text.count("-") == 4:
+            ids.append(text)
+    return tuple(ids)
 
 
 def _require_artifacts(connection: object, project_id: UUID, artifact_ids: tuple[str, ...]) -> None:

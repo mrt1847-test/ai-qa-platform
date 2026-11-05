@@ -140,8 +140,8 @@ def test_rx_36_recording_and_replay_gates(tmp_path: Path) -> None:
             },
         }
         ok = recording.handle(claim)
-        assert ok.outcome == "completed" and ok.actions == 1
-        assert recording.authoring_dispatches == 1
+        assert ok.outcome == "completed" and ok.actions == 2
+        assert recording.authoring_dispatches == 2
         assert recording.raw_sources_held == 2
         assert recording.approval_digests and recording.approval_digests[0].startswith("sha256:")
         assert recording.evidence_commits[0]["review_pending"] is True

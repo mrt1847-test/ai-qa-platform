@@ -338,6 +338,145 @@ def review_notice(connection: object, project_id: UUID, case_id: UUID) -> str | 
     return "검토 snapshot이 고정되어 30일 보호 중입니다."
 
 
+@dataclass(frozen=True, slots=True)
+class OfflineReviewGate:
+    """Server-stored evidence can be reviewed without an online execution PC."""
+
+    allowed: bool
+    reason: str
+    recording_id: str | None
+    package_id: str | None
+    trial_case_run_id: str | None
+    worker_online: bool
+
+
+def review_offline_gate(
+    connection: object, project_id: UUID, case_id: UUID, version_id: UUID | None = None
+) -> OfflineReviewGate:
+    """Allow review/approve when required evidence is already ACK'd on the server."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from aiqa.worker.presence import OFFLINE_AFTER
+
+    now = datetime.now(timezone.utc)
+    worker_online = False
+    for row in connection.execute(  # type: ignore[attr-defined]
+        "SELECT last_seen FROM worker_presence WHERE project_id = ?",
+        (str(project_id),),
+    ).fetchall():
+        try:
+            seen = datetime.fromisoformat(str(row[0]))
+        except ValueError:
+            continue
+        if seen.tzinfo is None or seen.utcoffset() is None:
+            continue
+        if timedelta(0) <= now - seen.astimezone(timezone.utc) < OFFLINE_AFTER:
+            worker_online = True
+            break
+    chosen = version_id
+    if chosen is None:
+        latest = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT version_id FROM case_versions
+            WHERE project_id = ? AND case_id = ?
+            ORDER BY revision DESC
+            LIMIT 1
+            """,
+            (str(project_id), str(case_id)),
+        ).fetchone()
+        if latest is None:
+            return OfflineReviewGate(False, "version is missing", None, None, None, worker_online)
+        chosen = UUID(str(latest[0]))
+    version = _version(connection, project_id, chosen)
+    if version is None:
+        return OfflineReviewGate(False, "version is missing", None, None, None, worker_online)
+    case_key, _hash, package_id, manifest_id = version
+    recording_id = _stored_recording(connection, project_id, case_key, chosen)
+    if recording_id is None:
+        return OfflineReviewGate(False, "source is not stored", None, package_id, None, worker_online)
+    if not _package_ready(connection, project_id, case_key, chosen, package_id, manifest_id):
+        return OfflineReviewGate(False, "package is not ready", recording_id, package_id, None, worker_online)
+    trial_id = _package_matched_trial(connection, project_id, case_key, chosen, package_id)
+    if trial_id is None:
+        return OfflineReviewGate(False, "trial is missing", recording_id, package_id, None, worker_online)
+    if _healed(connection, project_id, trial_id):
+        return OfflineReviewGate(False, "healed trial is not accepted", recording_id, package_id, trial_id, worker_online)
+    if not _server_acked_evidence(connection, project_id, recording_id, trial_id):
+        return OfflineReviewGate(False, "evidence is missing", recording_id, package_id, trial_id, worker_online)
+    return OfflineReviewGate(True, "server evidence ready", recording_id, package_id, trial_id, worker_online)
+
+
+def _package_matched_trial(
+    connection: object,
+    project_id: UUID,
+    case_id: str,
+    version_id: UUID,
+    package_id: str | None,
+) -> str | None:
+    if package_id is None:
+        return None
+    package_hash = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT body_hash FROM replay_packages
+        WHERE project_id = ? AND package_id = ? AND ready = 1
+        """,
+        (str(project_id), package_id),
+    ).fetchone()
+    if package_hash is None:
+        return None
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT r.case_run_id, j.limits
+        FROM case_runs r
+        JOIN jobs j ON j.project_id = r.project_id AND j.case_run_id = r.case_run_id AND j.purpose = 'trial'
+        WHERE r.project_id = ? AND r.case_id = ? AND r.case_version_id = ? AND r.purpose = 'trial'
+        ORDER BY r.requested_at DESC, r.case_run_id DESC
+        """,
+        (str(project_id), case_id, str(version_id)),
+    ).fetchall()
+    expected_hash = str(package_hash[0])
+    fallback = None
+    for row in rows:
+        try:
+            limits = json.loads(str(row[1]))
+        except json.JSONDecodeError:
+            continue
+        if type(limits) is not dict:
+            continue
+        if limits.get("self_healing_enabled") is not False or limits.get("actor", 0) != 0:
+            continue
+        pinned_id = limits.get("replay_package_id")
+        pinned_hash = limits.get("replay_package_hash")
+        if pinned_id not in {None, ""} or pinned_hash not in {None, ""}:
+            if str(pinned_id or "") != package_id or str(pinned_hash or "") != expected_hash:
+                continue
+            return str(row[0])
+        if fallback is None:
+            fallback = str(row[0])
+    return fallback
+
+
+def _server_acked_evidence(connection: object, project_id: UUID, recording_id: str, trial_id: str) -> bool:
+    source = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT COUNT(*) FROM artifact_objects
+        WHERE project_id = ? AND owner_kind = 'REC' AND owner_id = ?
+          AND role IN ('before', 'after', 'log') AND status = 'ready' AND acked = 1
+        """,
+        (str(project_id), recording_id),
+    ).fetchone()
+    trial = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT COUNT(*) FROM artifact_objects
+        WHERE project_id = ? AND owner_kind = 'ITEM' AND owner_id = ?
+          AND role IN ('before', 'after', 'log') AND status = 'ready' AND acked = 1
+        """,
+        (str(project_id), trial_id),
+    ).fetchone()
+    return int(source[0] if source else 0) > 0 and int(trial[0] if trial else 0) > 0
+
+
 def _version(connection: object, project_id: UUID, version_id: UUID) -> tuple[str, str, str | None, str | None] | None:
     row = connection.execute(  # type: ignore[attr-defined]
         """
@@ -383,12 +522,37 @@ def _stored_recording(connection: object, project_id: UUID, case_id: str, versio
 def _trial(connection: object, project_id: UUID, case_id: str, version_id: UUID, trial_id: str) -> bool:
     row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT 1 FROM case_runs
-        WHERE project_id = ? AND case_run_id = ? AND case_id = ? AND case_version_id = ? AND purpose = 'trial'
+        SELECT j.limits, v.replay_package_id, p.body_hash
+        FROM case_runs r
+        JOIN case_versions v
+          ON v.project_id = r.project_id AND v.version_id = r.case_version_id
+        JOIN jobs j
+          ON j.project_id = r.project_id AND j.case_run_id = r.case_run_id AND j.purpose = 'trial'
+        LEFT JOIN replay_packages p
+          ON p.project_id = v.project_id AND p.package_id = v.replay_package_id AND p.ready = 1
+        WHERE r.project_id = ? AND r.case_run_id = ? AND r.case_id = ? AND r.case_version_id = ?
+          AND r.purpose = 'trial'
         """,
         (str(project_id), trial_id, case_id, str(version_id)),
     ).fetchone()
-    return row is not None
+    if row is None:
+        return False
+    try:
+        limits = json.loads(str(row[0]))
+    except json.JSONDecodeError:
+        return False
+    if type(limits) is not dict:
+        return False
+    pinned_id = limits.get("replay_package_id")
+    pinned_hash = limits.get("replay_package_hash")
+    if pinned_id not in {None, ""} or pinned_hash not in {None, ""}:
+        if row[1] in {None, ""} or row[2] in {None, ""}:
+            return False
+        if str(pinned_id or "") != str(row[1]):
+            return False
+        if str(pinned_hash or "") != str(row[2]):
+            return False
+    return True
 
 
 def _healed(connection: object, project_id: UUID, trial_id: str) -> bool:

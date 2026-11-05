@@ -1,6 +1,6 @@
 {
   "schema_version": "managed-pc-runtime-v1",
-  "date": "2026-11-04",
+  "date": "2026-11-05",
   "scope": "managed_execution_mvp",
   "schedule_owner": "NEXT_ACTION.md",
   "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",
@@ -355,7 +355,8 @@
         "RX-20",
         "RX-28",
         "RX-37",
-        "RX-41"
+        "RX-41",
+        "RX-59"
       ],
       "status": "blocked",
       "execution_scope": "managed_execution_mvp",
@@ -370,7 +371,8 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/SERVER_TASKS.md#rx-21",
-      "evidence_path": "docs/validation/tasks/RX-21.md"
+      "evidence_path": "docs/validation/tasks/RX-21.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-22",
@@ -378,7 +380,8 @@
       "deps": [
         "RX-15",
         "RX-30",
-        "RX-35"
+        "RX-35",
+        "RX-60"
       ],
       "status": "blocked",
       "execution_scope": "managed_execution_mvp",
@@ -391,11 +394,12 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-22",
-      "evidence_path": "docs/validation/tasks/RX-22.md"
+      "evidence_path": "docs/validation/tasks/RX-22.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-23",
-      "title": "실제 Android 녹화와 재생",
+      "title": "실제 Android 녹화와 재생 (독립 호스트 최종 수용)",
       "deps": [
         "RX-12",
         "RX-21",
@@ -403,7 +407,15 @@
         "RX-34",
         "RX-39",
         "RX-44",
-        "RX-45"
+        "RX-45",
+        "RX-46",
+        "RX-52",
+        "RX-54",
+        "RX-64",
+        "RX-65",
+        "RX-66",
+        "RX-67",
+        "RX-71"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -412,11 +424,13 @@
         "local_python",
         "dedicated_android",
         "actual_model_key",
-        "native_test_authorized"
+        "native_test_authorized",
+        "independent_server"
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-23",
-      "evidence_path": "docs/validation/tasks/RX-23.md"
+      "evidence_path": "docs/validation/tasks/RX-23.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-24",
@@ -427,7 +441,9 @@
         "RX-31",
         "RX-36",
         "RX-42",
-        "RX-45"
+        "RX-45",
+        "RX-61",
+        "RX-70"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -441,7 +457,8 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24",
-      "evidence_path": "docs/validation/tasks/RX-24.md"
+      "evidence_path": "docs/validation/tasks/RX-24.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-25",
@@ -450,7 +467,8 @@
         "RX-21",
         "RX-23",
         "RX-24",
-        "PC-03"
+        "PC-03",
+        "RX-53"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -463,7 +481,8 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-25",
-      "evidence_path": "docs/validation/tasks/RX-25.md"
+      "evidence_path": "docs/validation/tasks/RX-25.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-26",
@@ -484,14 +503,16 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-26",
-      "evidence_path": "docs/validation/tasks/RX-26.md"
+      "evidence_path": "docs/validation/tasks/RX-26.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-27",
       "title": "두 워커의 동일 물리 자원 경합",
       "deps": [
         "RX-21",
-        "RX-23"
+        "RX-23",
+        "RX-62"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -505,7 +526,8 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-27",
-      "evidence_path": "docs/validation/tasks/RX-27.md"
+      "evidence_path": "docs/validation/tasks/RX-27.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-28",
@@ -543,7 +565,8 @@
       ],
       "verification_scope": "live_integration",
       "doc_file": "docs/managed-pc/ACCEPTANCE_TASKS.md#rx-29",
-      "evidence_path": "docs/validation/tasks/RX-29.md"
+      "evidence_path": "docs/validation/tasks/RX-29.md",
+      "track": "release_acceptance"
     },
     {
       "id": "RX-30",
@@ -827,6 +850,582 @@
       "verification_scope": "core_contract",
       "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-45",
       "evidence_path": "docs/validation/tasks/RX-45.md"
+    },
+    {
+      "id": "RX-46",
+      "title": "현재 PC Android 운영 모델 사전 검증",
+      "deps": [
+        "RX-44",
+        "RX-45"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "doc_file": "docs/managed-pc/RUNTIME_WIRING_TASKS.md#rx-46",
+      "evidence_path": "docs/validation/tasks/RX-46.md"
+    },
+    {
+      "id": "RX-47",
+      "title": "케이스의 검증 목표를 녹화 작업에 전달",
+      "deps": [
+        "RX-46",
+        "W16-01"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-47",
+      "evidence_path": "docs/validation/tasks/RX-47.md"
+    },
+    {
+      "id": "RX-48",
+      "title": "Android 여러 스텝 녹화",
+      "deps": [
+        "RX-47",
+        "RX-43",
+        "RX-38"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-48",
+      "evidence_path": "docs/validation/tasks/RX-48.md"
+    },
+    {
+      "id": "RX-49",
+      "title": "녹화 중 타임라인과 스텝별 증거 조회",
+      "deps": [
+        "RX-43",
+        "W16-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-49",
+      "evidence_path": "docs/validation/tasks/RX-49.md"
+    },
+    {
+      "id": "RX-50",
+      "title": "저장 녹화에서 Android 재생 패키지 생성",
+      "deps": [
+        "RX-48",
+        "W30-02"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-50",
+      "evidence_path": "docs/validation/tasks/RX-50.md"
+    },
+    {
+      "id": "RX-51",
+      "title": "서버 고정 패키지로 Android 시범·회귀 실행",
+      "deps": [
+        "RX-50",
+        "RX-34",
+        "W17-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-51",
+      "evidence_path": "docs/validation/tasks/RX-51.md"
+    },
+    {
+      "id": "RX-52",
+      "title": "시범 증거를 보고 승인하는 사용자 흐름",
+      "deps": [
+        "RX-49",
+        "RX-51",
+        "W19-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-25"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-52",
+      "evidence_path": "docs/validation/tasks/RX-52.md"
+    },
+    {
+      "id": "RX-53",
+      "title": "승인 버전을 묶음 회귀에 연결",
+      "deps": [
+        "RX-52",
+        "UX-03",
+        "W22-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-25"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-53",
+      "evidence_path": "docs/validation/tasks/RX-53.md"
+    },
+    {
+      "id": "RX-54",
+      "title": "실행 Check와 제한된 self-healing 연결",
+      "deps": [
+        "RX-31",
+        "W31-06"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/PRODUCT_FLOW_TASKS.md#rx-54",
+      "evidence_path": "docs/validation/tasks/RX-54.md"
+    },
+    {
+      "id": "RX-55",
+      "title": "케이스 자연어 구조화와 제안 수락",
+      "deps": [
+        "W16-01",
+        "W10-07",
+        "RX-45"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-02"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-55",
+      "evidence_path": "docs/validation/tasks/RX-55.md"
+    },
+    {
+      "id": "RX-56",
+      "title": "Android 설치 앱 조회와 선택",
+      "deps": [
+        "RX-32",
+        "W11-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W11-04"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-56",
+      "evidence_path": "docs/validation/tasks/RX-56.md"
+    },
+    {
+      "id": "RX-57",
+      "title": "명시 Android 설치·초기화와 사후 확인",
+      "deps": [
+        "RX-56",
+        "W11-05"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W11-06"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-57",
+      "evidence_path": "docs/validation/tasks/RX-57.md"
+    },
+    {
+      "id": "RX-58",
+      "title": "모델 연결 검사 화면과 결과 저장",
+      "deps": [
+        "RX-45",
+        "W15-03"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W15-04"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-58",
+      "evidence_path": "docs/validation/tasks/RX-58.md"
+    },
+    {
+      "id": "RX-59",
+      "title": "운영 브라우저 OIDC 로그인 연결",
+      "deps": [
+        "RX-41"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-21"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-59",
+      "evidence_path": "docs/validation/tasks/RX-59.md"
+    },
+    {
+      "id": "RX-60",
+      "title": "Web guest·브라우저 실행 설정과 안전한 연결",
+      "deps": [
+        "RX-35",
+        "RX-42"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-22",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-60",
+      "evidence_path": "docs/validation/tasks/RX-60.md"
+    },
+    {
+      "id": "RX-61",
+      "title": "Web 녹화와 승인 패키지 재생의 공통 계약",
+      "deps": [
+        "RX-60",
+        "RX-47",
+        "RX-54"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-61",
+      "evidence_path": "docs/validation/tasks/RX-61.md"
+    },
+    {
+      "id": "RX-62",
+      "title": "복수 워커의 물리 자원 식별·임대",
+      "deps": [
+        "RX-03",
+        "RX-05",
+        "RX-38"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-27"
+      ],
+      "doc_file": "docs/managed-pc/SUPPORT_FEATURE_TASKS.md#rx-62",
+      "evidence_path": "docs/validation/tasks/RX-62.md"
+    },
+    {
+      "id": "RX-63",
+      "title": "기존 UI·API 회귀와 자원 스키마 호환",
+      "deps": [
+        "RX-62",
+        "RX-28"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-21",
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-63",
+      "evidence_path": "docs/validation/tasks/RX-63.md"
+    },
+    {
+      "id": "RX-64",
+      "title": "연속 녹화의 시도별 상태와 중단 결과",
+      "deps": [
+        "RX-48",
+        "RX-38"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-64",
+      "evidence_path": "docs/validation/tasks/RX-64.md"
+    },
+    {
+      "id": "RX-65",
+      "title": "현재 화면을 본 뒤 모델이 다음 행동 결정",
+      "deps": [
+        "RX-47",
+        "RX-48",
+        "RX-46"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-65",
+      "evidence_path": "docs/validation/tasks/RX-65.md"
+    },
+    {
+      "id": "RX-66",
+      "title": "승인된 여러 스텝 실제 재생과 동작 후 검증",
+      "deps": [
+        "RX-51",
+        "RX-54"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-66",
+      "evidence_path": "docs/validation/tasks/RX-66.md"
+    },
+    {
+      "id": "RX-67",
+      "title": "행동별 서버 증거 ACK와 실시간 타임라인",
+      "deps": [
+        "RX-48",
+        "RX-49",
+        "RX-43"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-25"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-67",
+      "evidence_path": "docs/validation/tasks/RX-67.md"
+    },
+    {
+      "id": "RX-68",
+      "title": "앱 조회·설치·초기화를 실제 워커에 등록",
+      "deps": [
+        "RX-56",
+        "RX-57",
+        "RX-62"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-68",
+      "evidence_path": "docs/validation/tasks/RX-68.md"
+    },
+    {
+      "id": "RX-69",
+      "title": "자연어 구조화를 서버 모델 설정에 연결",
+      "deps": [
+        "RX-55",
+        "RX-45"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W16-02"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-69",
+      "evidence_path": "docs/validation/tasks/RX-69.md"
+    },
+    {
+      "id": "RX-70",
+      "title": "Web 신뢰 driver의 실제 브라우저 호출 연결",
+      "deps": [
+        "RX-60",
+        "RX-61"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-22",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-70",
+      "evidence_path": "docs/validation/tasks/RX-70.md"
+    },
+    {
+      "id": "RX-71",
+      "title": "현재 PC의 브라우저부터 승인·회귀까지 연결",
+      "deps": [
+        "RX-63",
+        "RX-64",
+        "RX-65",
+        "RX-66",
+        "RX-67",
+        "RX-68",
+        "RX-69"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-71",
+      "evidence_path": "docs/validation/tasks/RX-71.md"
     }
   ]
 }

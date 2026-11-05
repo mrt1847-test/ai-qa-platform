@@ -108,6 +108,11 @@ class TrustedWebDriver:
     def public_view(self) -> dict[str, object]:
         return {"owns_cdp": True, "origin": self._approved.origin, "digest": self._approved.digest}
 
+    def execution_allowed(self, *, now: datetime | None = None) -> bool:
+        """Replay stays blocked until the isolation proof verifies for this driver."""
+
+        return self._gate.web_ready(self._proof, now=now if now is not None else self._now) is not None
+
     def dispatch(self, payload: dict) -> TypedAction:
         """Parse only. Does not touch the browser or leak the CDP endpoint."""
 
@@ -128,6 +133,8 @@ class TrustedWebDriver:
 
         if self.ai_calls != 0:
             raise WebDispatchError("replay actor AI is forbidden")
+        if not self.execution_allowed():
+            raise WebDispatchError("web is not ready without isolation confirmation")
         if presented_digest != self._approved.digest:
             raise WebDispatchError("approval digest mismatch")
         if presented_revision != self._approved.revision:

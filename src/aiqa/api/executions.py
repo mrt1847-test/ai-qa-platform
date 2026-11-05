@@ -486,13 +486,14 @@ def execution_page_fields(
     items = _execution_items(connection, project_id, execution_id, selected)
     summary_row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT execution_id, name, purpose, source, scope_requested_at
+        SELECT execution_id, name, purpose, source, scope_requested_at, suite_version_id
         FROM executions
         WHERE project_id = ? AND execution_id = ?
         """,
         (str(project_id), str(execution_id)),
     ).fetchone()
-    summary = None if summary_row is None else _execution_summary(connection, project_id, summary_row)
+    summary = None if summary_row is None else _execution_summary(connection, project_id, summary_row[:5])
+    suite = _suite_revision(connection, project_id, None if summary_row is None else summary_row[5])
     link = query.get("link", "")
     if link == "down":
         connection_label = "연결이 끊겼습니다"
@@ -520,7 +521,38 @@ def execution_page_fields(
         "requested_at": "" if summary is None else summary["requested_at"],
         "execution_id": str(execution_id),
         "project_id": str(project_id),
+        "suite_version_id": suite["suite_version_id"],
+        "suite_name": suite["suite_name"],
+        "suite_revision_label": suite["suite_revision_label"],
         **lineage_fields(connection, project_id, execution_id),
+    }
+
+
+def _suite_revision(connection: object, project_id: UUID, suite_version_id: object) -> dict[str, str]:
+    if suite_version_id in {None, ""}:
+        return {"suite_version_id": "", "suite_name": "", "suite_revision_label": ""}
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT suites.name, suite_versions.content_hash, suite_versions.suite_version_id
+        FROM suite_versions
+        JOIN suites
+          ON suites.project_id = suite_versions.project_id
+         AND suites.suite_id = suite_versions.suite_id
+        WHERE suite_versions.project_id = ? AND suite_versions.suite_version_id = ?
+        """,
+        (str(project_id), str(suite_version_id)),
+    ).fetchone()
+    if row is None:
+        return {
+            "suite_version_id": str(suite_version_id),
+            "suite_name": "",
+            "suite_revision_label": str(suite_version_id),
+        }
+    label = str(row[1]) if str(row[1]).strip() != "" else str(row[2])
+    return {
+        "suite_version_id": str(row[2]),
+        "suite_name": str(row[0]),
+        "suite_revision_label": label,
     }
 
 
@@ -632,21 +664,22 @@ def _execution_items(
 
     rows = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT case_run_id FROM case_runs
+        SELECT case_run_id, case_version_id FROM case_runs
         WHERE project_id = ? AND execution_id = ?
-        ORDER BY case_run_id
+        ORDER BY rowid, case_run_id
         """,
         (str(project_id), str(execution_id)),
     ).fetchall()
     items: list[dict[str, object]] = []
     for row in rows:
         case_run_id = UUID(str(row[0]))
+        case_version_id = str(row[1])
         timeline = read_healing_timeline(connection, project_id, case_run_id)
         if timeline is None:
             continue
         job = connection.execute(  # type: ignore[attr-defined]
             """
-            SELECT job_id, status FROM jobs
+            SELECT job_id, status, limits FROM jobs
             WHERE project_id = ? AND case_run_id = ?
             """,
             (str(project_id), str(case_run_id)),
@@ -708,6 +741,15 @@ def _execution_items(
                 """,
                 (str(project_id), str(case_run_id)),
             ).fetchone()
+        pin = _item_pins("" if job is None else str(job[2]), case_version_id)
+        core = connection.execute(  # type: ignore[attr-defined]
+            """
+            SELECT core_result FROM item_finalizations
+            WHERE project_id = ? AND case_run_id = ?
+            """,
+            (str(project_id), str(case_run_id)),
+        ).fetchone()
+        core_result = "" if core is None or core[0] is None else str(core[0])
         items.append(
             {
                 "case_run_id": str(case_run_id),
@@ -726,9 +768,46 @@ def _execution_items(
                 "list_state": "running" if status in _RUNNING else "done" if status in _DONE else "waiting",
                 "finished_count": 1 if status in _DONE else 0,
                 "pass_count": 1 if job is not None and _is_success(connection, project_id, str(job[0]), status) else 0,
+                "case_version_id": pin["case_version_id"],
+                "approval_id": pin["approval_id"],
+                "entry_id": pin["entry_id"],
+                "replay_package_hash": pin["replay_package_hash"],
+                "core_result": core_result,
+                "verdict": core_result,
             }
         )
     return items
+
+
+def _item_pins(limits_text: str, case_version_id: str) -> dict[str, str]:
+    approval_id = ""
+    entry_id = ""
+    package_hash = ""
+    pinned_version = case_version_id
+    if limits_text.strip() != "":
+        try:
+            parsed = json.loads(limits_text)
+        except json.JSONDecodeError:
+            parsed = {}
+        if type(parsed) is dict:
+            if type(parsed.get("approval_id")) is str:
+                approval_id = str(parsed.get("approval_id"))
+            if type(parsed.get("replay_package_hash")) is str:
+                package_hash = str(parsed.get("replay_package_hash"))
+            snapshot = parsed.get("execution_snapshot")
+            if type(snapshot) is dict:
+                if type(snapshot.get("case_version_id")) is str and str(snapshot.get("case_version_id")).strip() != "":
+                    pinned_version = str(snapshot.get("case_version_id"))
+                if type(snapshot.get("approval_id")) is str:
+                    approval_id = str(snapshot.get("approval_id"))
+                if type(snapshot.get("entry_id")) is str:
+                    entry_id = str(snapshot.get("entry_id"))
+    return {
+        "case_version_id": pinned_version,
+        "approval_id": approval_id,
+        "entry_id": entry_id,
+        "replay_package_hash": package_hash,
+    }
 
 
 def _matches(item: dict[str, object], query: Mapping[str, str]) -> bool:

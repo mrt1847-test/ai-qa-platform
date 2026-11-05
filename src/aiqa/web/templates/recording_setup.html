@@ -17,7 +17,15 @@
 <div class="form-grid"><label>대상 종류 <select name="target_kind"><option value="web"{% if target == "web" %} selected{% endif %}>Web</option><option value="android"{% if target == "android" %} selected{% endif %}>Android</option></select></label>
 <label>환경 프로필 (선택) <select name="environment_revision_id"><option value="">케이스에서 직접 설정</option>{% for item in profiles %}<option value="{{ item.id }}" data-kind="{{ item.profile.target_kind }}"{% if item.id == draft.get('environment_revision_id') %} selected{% endif %}>{{ item.name }} · v{{ item.revision }}</option>{% endfor %}</select></label></div>
 <fieldset data-target-fields="web"><legend>Web</legend><label>시작 주소 <input name="web_url" type="url" value="{{ draft.get('web_url','') }}" placeholder="https://qa.example.com"></label></fieldset>
-<fieldset data-target-fields="android"><legend>Android</legend><label>앱 패키지 <input name="android_package" value="{{ draft.get('android_package','') }}" placeholder="com.example.app"></label><label>빌드 참조 (선택) <input name="build" value="{{ draft.get('build','') }}" placeholder="등록된 빌드의 참조 ID"></label><label>계정 참조 (선택) <input name="account_ref" value="{{ draft.get('account_ref','') }}" placeholder="저장된 비밀 참조"></label><p class="hint">현재는 명시 패키지·참조를 저장합니다. 설치 앱 자동 선택·설치는 해당 기능의 실제 지원 전까지 실행하지 않습니다.</p></fieldset>
+<fieldset data-target-fields="android"><legend>Android</legend>
+<label>설치 앱 선택 <select name="android_package_select" id="android-package-select"><option value="">조회 후 선택</option></select></label>
+<input type="button" class="secondary" id="refresh-installed-apps" value="설치 앱 조회">
+<p id="installed-apps-observed" class="muted" role="status">과거 관찰이 있으면 시각과 함께 표시됩니다. 조회는 lease가 있는 Android에서만 읽기 전용으로 실행됩니다.</p>
+<label>앱 패키지 <input name="android_package" id="android-package" value="{{ draft.get('android_package','') }}" placeholder="com.example.app"></label>
+<label>빌드 참조 (선택) <input name="build" value="{{ draft.get('build','') }}" placeholder="등록된 빌드의 참조 ID"></label>
+<label>계정 참조 (선택) <input name="account_ref" value="{{ draft.get('account_ref','') }}" placeholder="저장된 비밀 참조"></label>
+<p class="hint">설치 앱 조회 중에는 설치·초기화를 하지 않습니다. 선택 값은 패키지 필드에 반영되며 초안 저장 시 유지됩니다.</p>
+</fieldset>
 <label>테스트 데이터 (선택) <select name="data_revision_id"><option value="">사용하지 않음</option>{% for item in datasets %}<option value="{{ item.id }}"{% if item.id == draft.get('data_revision_id') %} selected{% endif %}>{{ item.name }} · v{{ item.revision }} · {{ item.rows|length }}행</option>{% endfor %}</select></label>
 <details><summary>초기화·실행 한도</summary><div class="form-grid"><label>초기화 정책 <select name="reset_policy"><option value="none">초기화하지 않음</option>{% if draft.get('reset_policy') and draft.reset_policy != 'none' %}<option selected value="{{ draft.reset_policy }}">저장된 정책 · {{ draft.reset_policy }}</option>{% endif %}</select></label><label>시간 한도 (초) <input name="timeout_seconds" type="number" min="1" max="600" value="{{ draft.get('limits',{}).get('timeout_seconds',600) }}"></label><label>동작 한도 (회) <input name="max_actions" type="number" min="1" value="{{ draft.get('limits',{}).get('max_actions',50) }}"></label><label>AI 비용 한도 (USD) <input name="budget" inputmode="decimal" value="{{ draft.get('limits',{}).get('budget','1') }}"></label></div></details>
 </section>

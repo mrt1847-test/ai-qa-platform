@@ -62,6 +62,12 @@ from aiqa.worker.service import (
 )
 
 
+def model_check_requires_physical_session() -> bool:
+    """model_check is a maintenance management job. No device/browser session."""
+
+    return False
+
+
 def install_worker(application: FastAPI) -> None:
     """Attach the claim route once. This does not open SQLite."""
 
@@ -85,6 +91,8 @@ def install_worker(application: FastAPI) -> None:
         token = header.removeprefix("Bearer ").strip()
         request_key = request.headers.get("idempotency-key", "")
         native_id: str | None = None
+        intent = None
+        claim_origin: str | None = None
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
@@ -96,17 +104,25 @@ def install_worker(application: FastAPI) -> None:
                         request_key=request_key,
                         project_id=payload.get("project_id"),
                     )
-                if isinstance(lease, ClaimReceipt) and lease.physical_key_id is not None:
+                if isinstance(lease, ClaimReceipt):
                     with store.transaction() as connection:
-                        row = connection.execute(
-                            """
-                            SELECT native_id FROM physical_resource_keys
-                            WHERE physical_key_id = ?
-                            """,
-                            (str(lease.physical_key_id),),
-                        ).fetchone()
-                    if row is not None and type(row[0]) is str and str(row[0]).strip() != "":
-                        native_id = str(row[0]).strip()
+                        if lease.physical_key_id is not None:
+                            row = connection.execute(
+                                """
+                                SELECT native_id FROM physical_resource_keys
+                                WHERE physical_key_id = ?
+                                """,
+                                (str(lease.physical_key_id),),
+                            ).fetchone()
+                            if row is not None and type(row[0]) is str and str(row[0]).strip() != "":
+                                native_id = str(row[0]).strip()
+                        if lease.snapshot.purpose == "recording":
+                            from aiqa.recording.intent import load_intent_for_attempt
+
+                            intent = load_intent_for_attempt(
+                                connection, lease.project_id, lease.attempt_id
+                            )
+                        claim_origin = _job_origin(connection, lease.project_id, lease.job_id)
             except AuthRequired:
                 return _error(401, "unauthorized", "worker token is missing", {})
             except WorkerDenied:
@@ -118,7 +134,12 @@ def install_worker(application: FastAPI) -> None:
         if lease is None:
             return Response(status_code=204)
         if isinstance(lease, ClaimReceipt):
-            return JSONResponse(status_code=200, content=_claim_payload(lease, native_id=native_id))
+            return JSONResponse(
+                status_code=200,
+                content=_claim_payload(
+                    lease, native_id=native_id, intent=intent, origin=claim_origin
+                ),
+            )
         return JSONResponse(
             status_code=200,
             content={
@@ -414,6 +435,9 @@ def install_worker(application: FastAPI) -> None:
             item_id = _text(payload.get("item_id"), "item_id")
             actor_raw = payload.get("actor_id")
             actor_id = _uuid(actor_raw) if actor_raw is not None else uuid4()
+            presented_intent = payload.get("intent_hash")
+            if presented_intent is not None and type(presented_intent) is not str:
+                raise ValueError("intent_hash is invalid")
         except (TypeError, ValueError):
             return _error(422, "validation", "invalid model request", {})
         token = header.removeprefix("Bearer ").strip()
@@ -421,6 +445,25 @@ def install_worker(application: FastAPI) -> None:
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
+                if project_id not in worker.permitted_projects:
+                    return _error(403, "permission", "worker cannot request model", {})
+                if model_request.purpose == "recording" and model_request.role == "authoring":
+                    from dataclasses import replace
+
+                    from aiqa.recording.intent import IntentRejected, bind_authoring_sanitized_inputs
+
+                    with store.transaction() as connection:
+                        try:
+                            bound_inputs = bind_authoring_sanitized_inputs(
+                                connection,
+                                project_id=project_id,
+                                attempt_id=item_id,
+                                presented_hash=presented_intent,
+                                worker_inputs=model_request.sanitized_inputs,
+                            )
+                        except IntentRejected as exc:
+                            return _error(403, "permission", exc.reason, {})
+                    model_request = replace(model_request, sanitized_inputs=bound_inputs)
                 receipt = gateway.handle(
                     worker,
                     model_request,
@@ -682,7 +725,36 @@ async def _lease_call(request: Request, renew: bool) -> Response:
     )
 
 
-def _claim_payload(receipt: ClaimReceipt, *, native_id: str | None = None) -> dict[str, object]:
+def _job_origin(connection: object, project_id: object, job_id: object) -> str | None:
+    """Read approved HTTPS origin pinned on the job limits for Web claims."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        "SELECT limits FROM jobs WHERE project_id = ? AND job_id = ?",
+        (str(project_id), str(job_id)),
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        import json
+
+        parsed = json.loads(str(row[0] or "{}"))
+    except Exception:
+        return None
+    if type(parsed) is not dict:
+        return None
+    origin = parsed.get("origin")
+    if type(origin) is str and origin.startswith("https://"):
+        return origin
+    return None
+
+
+def _claim_payload(
+    receipt: ClaimReceipt,
+    *,
+    native_id: str | None = None,
+    intent: object | None = None,
+    origin: str | None = None,
+) -> dict[str, object]:
     snapshot = receipt.snapshot
     snap: dict[str, object] = {
         "job_id": str(snapshot.job_id),
@@ -693,6 +765,25 @@ def _claim_payload(receipt: ClaimReceipt, *, native_id: str | None = None) -> di
         "policy_ref": snapshot.policy_ref,
         "digest": snapshot.digest,
     }
+    if snapshot.intent_hash is not None:
+        snap["intent_hash"] = snapshot.intent_hash
+    if snapshot.replay_package_id is not None:
+        snap["replay_package_id"] = snapshot.replay_package_id
+    if snapshot.replay_package_hash is not None:
+        snap["replay_package_hash"] = snapshot.replay_package_hash
+        snap["approved_digest"] = snapshot.replay_package_hash
+    if snapshot.self_healing_enabled is not None:
+        snap["self_healing_enabled"] = snapshot.self_healing_enabled
+    if snapshot.approved_plan not in {None, ""}:
+        snap["approved_plan"] = snapshot.approved_plan
+    if intent is not None:
+        from aiqa.contracts.worker_attempt import RecordingIntent
+        from aiqa.recording.intent import intent_to_document
+
+        if isinstance(intent, RecordingIntent):
+            snap["intent"] = intent_to_document(intent)
+    if origin is not None and origin.startswith("https://"):
+        snap["origin"] = origin
     if native_id is not None and native_id.strip() != "":
         # Resolve registered device for Android/Web workers without changing the claim digest.
         snap["serial"] = native_id

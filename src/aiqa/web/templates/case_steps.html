@@ -4,6 +4,11 @@
   <h1>단계</h1>
   <p>제안은 차이를 확인한 뒤에만 수락합니다.</p>
   <p id="proposal-diff">{% if proposal_text %}제안 차이 {{ proposal_text }}{% endif %}</p>
+  <section id="structure-request" data-project="{{ project_id }}" data-case="{{ case_id }}" data-head="{{ head }}">
+    <p>저장된 자연어는 명시 요청 시에만 구조화합니다. 자동 적용하지 않습니다.</p>
+    <button type="button" id="request-structure"{% if not head %} disabled{% endif %}>구조화 요청</button>
+    <p id="structure-status" role="status"></p>
+  </section>
   <form id="step-edit" method="post" action="/ui/projects/{{ project_id }}/cases/{{ case_id }}/steps">
     <input id="step-head" type="hidden" value="{{ head }}">
     <ul id="step-list">
@@ -23,6 +28,8 @@
     <input type="submit" value="추가" data-action="add">
   </form>
   <p><a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">검증 정의</a></p>
+  {% include "components/structure_proposal.html" %}
   {% include "components/tc_import.html" %}
   <script src="/static/step_editor.js?v={{ ui_asset_version }}"></script>
+  {# proposals.js is loaded once by structure_proposal; tc_import also references it idempotently #}
 {% endblock %}

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import base64
 import json
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
@@ -208,6 +211,9 @@ def install_recordings(application: FastAPI) -> None:
         return await _seal_route(recording_id, request, "stop")
 
     async def recording_page(project_id: str, recording_id: str, request: Request) -> HTMLResponse:
+        from datetime import datetime, timezone
+
+        from aiqa.api.artifacts import EvidenceViewerSelection
         from aiqa.api.auth import authorize_page
         from aiqa.web.routes import UiQueryState, render_template
 
@@ -217,6 +223,8 @@ def install_recordings(application: FastAPI) -> None:
         except ValueError:
             return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
         store = request.app.state.open_store()
+        timeline = _RecordingTimeline("", "", "", (), ())
+        row = None
         try:
             migrate_store(store)
             with bound_auth_store(store):
@@ -227,7 +235,8 @@ def install_recordings(application: FastAPI) -> None:
                 with store.transaction() as connection:
                     row = connection.execute(
                         """
-                        SELECT recordings.completion_status, versions.replay_package_id, cases.current_approval_id
+                        SELECT recordings.completion_status, versions.replay_package_id, cases.current_approval_id,
+                               recordings.case_id, versions.version_id
                         FROM recordings
                         LEFT JOIN recording_manifests AS manifests
                           ON manifests.project_id = recordings.project_id
@@ -246,10 +255,36 @@ def install_recordings(application: FastAPI) -> None:
                         """,
                         (str(project), str(recording)),
                     ).fetchone()
+                    if row is None:
+                        return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
+                    timeline = _recording_timeline(
+                        connection,
+                        store.config.artifacts_dir,
+                        project,
+                        recording,
+                        datetime.now(timezone.utc),
+                        request.query_params.get("action_id", ""),
+                    )
+                    offline_gate = None
+                    if row[3] is not None:
+                        from aiqa.recording.review_manifest import review_offline_gate
+                        from uuid import UUID as _UUID
+
+                        version_uuid = None if row[4] is None else _UUID(str(row[4]))
+                        offline_gate = review_offline_gate(
+                            connection, project, _UUID(str(row[3])), version_uuid
+                        )
         finally:
             store.close()
-        if row is None:
-            return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
+        selection = None
+        actions = ()
+        first_failure = ""
+        if timeline.attempt_id and timeline.actions:
+            selected = timeline.selected_action_id or timeline.actions[0].action_id
+            selection = EvidenceViewerSelection("REC", str(recording), timeline.attempt_id, selected)
+            actions = timeline.actions
+            first_failure = timeline.first_failure
+        case_id = None if row[3] is None else str(row[3])
         return render_template(
             request,
             "recording.html",
@@ -266,9 +301,84 @@ def install_recordings(application: FastAPI) -> None:
                 "list_href": f"/ui/projects/{project}/recordings/wizard",
                 "detail_href": f"/ui/projects/{project}/recordings/{recording}",
                 "request": request,
+                "project_id": str(project),
+                "recording_id": str(recording),
+                "case_id": case_id,
                 "completion_status": str(row[0]),
                 "package_id": None if row[1] is None else str(row[1]),
                 "approved": row[2] is not None,
+                "offline_gate": offline_gate,
+                "selection": selection,
+                "actions": actions,
+                "first_failure": first_failure,
+                "embedded": False,
+                "timeline": timeline,
+            },
+        )
+
+    async def get_recording_timeline(project_id: str, recording_id: str, request: Request) -> JSONResponse:
+        from datetime import datetime, timezone
+
+        try:
+            project = UUID(project_id)
+            recording = UUID(recording_id)
+        except ValueError:
+            return _error(404, "not_found", "recording was not found", {})
+        store = request.app.state.open_store()
+        try:
+            migrate_store(store)
+            with bound_auth_store(store):
+                try:
+                    authorize_browser(request, project, "recording_history")
+                except CsrfRejected:
+                    return _error(403, "permission", "csrf token was rejected", {})
+                except OriginRejected:
+                    return _error(403, "permission", "origin was rejected", {})
+                except ProjectHidden:
+                    return _error(404, "not_found", "recording was not found", {})
+                except AuthRequired:
+                    return _error(401, "unauthorized", "session is missing", {})
+                with store.transaction() as connection:
+                    exists = connection.execute(
+                        """
+                        SELECT 1 FROM recordings
+                        WHERE project_id = ? AND recording_id = ?
+                        """,
+                        (str(project), str(recording)),
+                    ).fetchone()
+                    if exists is None:
+                        return _error(404, "not_found", "recording was not found", {})
+                    timeline = _recording_timeline(
+                        connection,
+                        store.config.artifacts_dir,
+                        project,
+                        recording,
+                        datetime.now(timezone.utc),
+                        request.query_params.get("action_id", ""),
+                    )
+        finally:
+            store.close()
+        return JSONResponse(
+            status_code=200,
+            content={
+                "recording_id": str(recording),
+                "attempt_id": timeline.attempt_id,
+                "selected_action_id": timeline.selected_action_id,
+                "first_failure": timeline.first_failure,
+                "actions": [
+                    {
+                        "action_id": item.action_id,
+                        "step_id": item.step_id,
+                        "action_seq": item.action_seq,
+                        "dispatch_state": item.dispatch_state,
+                        "before": item.before_state,
+                        "after": item.after_state,
+                        "log": item.log_state,
+                        "check_status": item.check_status,
+                        "error_text": item.error_text,
+                    }
+                    for item in timeline.entries
+                ],
             },
         )
 
@@ -279,6 +389,11 @@ def install_recordings(application: FastAPI) -> None:
         recording_page,
         methods=["GET"],
         response_class=HTMLResponse,
+    )
+    application.add_api_route(
+        "/api/v1/projects/{project_id}/recordings/{recording_id}/timeline",
+        get_recording_timeline,
+        methods=["GET"],
     )
     async def get_case_recordings(case_id: str, request: Request) -> JSONResponse:
         parsed = _parse_uuid(case_id)
@@ -804,3 +919,109 @@ def _error(status: int, code: str, message: str, fields: dict[str, list[str]]) -
             }
         },
     )
+
+
+_LOG_ABSENT = frozenset(
+    {
+        "",
+        "파일이 없습니다.",
+        "보관 기한이 지났습니다.",
+        "파일 내용이 보관 hash와 다릅니다.",
+        "캡처가 늦었습니다.",
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _TimelineEntry:
+    action_id: str
+    step_id: str
+    action_seq: int
+    dispatch_state: str
+    before_state: str
+    after_state: str
+    log_state: str
+    check_status: str
+    error_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class _RecordingTimeline:
+    attempt_id: str
+    selected_action_id: str
+    first_failure: str
+    actions: tuple[object, ...]
+    entries: tuple[_TimelineEntry, ...]
+
+
+def _log_state(log_text: str) -> str:
+    return "missing" if log_text in _LOG_ABSENT else "stored"
+
+
+def _recording_attempt(connection: object, project_id: UUID, recording_id: UUID) -> str:
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT attempts.attempt_id
+        FROM jobs
+        JOIN attempts
+          ON attempts.project_id = jobs.project_id
+         AND attempts.job_id = jobs.job_id
+        WHERE jobs.project_id = ? AND jobs.recording_id = ?
+        ORDER BY attempts.generation DESC
+        LIMIT 1
+        """,
+        (str(project_id), str(recording_id)),
+    ).fetchone()
+    return "" if row is None else str(row[0])
+
+
+def _recording_timeline(
+    connection: object,
+    artifacts_dir: Path,
+    project_id: UUID,
+    recording_id: UUID,
+    now: datetime,
+    preferred_action: str,
+) -> _RecordingTimeline:
+    from aiqa.api.artifacts import EvidenceViewerSelection, _viewer
+
+    attempt_id = _recording_attempt(connection, project_id, recording_id)
+    if attempt_id == "":
+        return _RecordingTimeline("", "", "", (), ())
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT action_id, step_id, action_seq, dispatch_state
+        FROM actions
+        WHERE project_id = ? AND attempt_id = ?
+        ORDER BY action_seq
+        """,
+        (str(project_id), attempt_id),
+    ).fetchall()
+    if not rows:
+        return _RecordingTimeline(attempt_id, "", "", (), ())
+    action_ids = {str(row[0]) for row in rows}
+    selected = preferred_action.strip() if preferred_action.strip() in action_ids else str(rows[0][0])
+    selection = EvidenceViewerSelection("REC", str(recording_id), attempt_id, selected)
+    page = _viewer(connection, artifacts_dir, project_id, selection, now)
+    by_id = {action.action_id: action for action in page.actions}
+    entries: list[_TimelineEntry] = []
+    ordered: list[object] = []
+    for action_id, step_id, action_seq, dispatch_state in rows:
+        view = by_id.get(str(action_id))
+        if view is None:
+            continue
+        ordered.append(view)
+        entries.append(
+            _TimelineEntry(
+                str(action_id),
+                str(step_id),
+                int(action_seq),
+                str(dispatch_state),
+                view.before.state,
+                view.after.state,
+                _log_state(view.log_text),
+                view.check_status,
+                view.error_text,
+            )
+        )
+    return _RecordingTimeline(attempt_id, selected, page.first_failure, tuple(ordered), tuple(entries))

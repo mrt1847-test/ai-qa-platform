@@ -14,6 +14,17 @@
     });
     root.setAttribute("data-action-id", actionId);
     if(!params.has('entry')){params.set("action_id", actionId);window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());}
+    document.querySelectorAll("[data-timeline-action]").forEach(function (link) {
+      if (link.getAttribute("data-timeline-action") === actionId) {
+        link.setAttribute("aria-current", "step");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+    var timelineRoot = document.getElementById("recording-timeline-root");
+    if (timelineRoot) {
+      timelineRoot.setAttribute("data-action-id", actionId);
+    }
   }
 
   root.addEventListener("keydown", function (event) {

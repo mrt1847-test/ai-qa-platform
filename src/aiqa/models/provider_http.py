@@ -57,7 +57,7 @@ class ProviderHttpError(ValueError):
 
 
 def structured_fixture_content(role: str) -> str:
-    """Typed action / verification / healing payloads for fixture responses."""
+    """Typed action / verification / healing / structure payloads for fixture responses."""
 
     if role == "authoring":
         return json.dumps({"type": "click", "selector": "#go"}, separators=(",", ":"), sort_keys=True)
@@ -66,6 +66,26 @@ def structured_fixture_content(role: str) -> str:
     if role == "healing":
         return json.dumps(
             {"status": "candidate", "basis": "typed", "action": "click", "input": "#go", "path": "dom"},
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    if role == "structure":
+        return json.dumps(
+            {
+                "objective": "주문 확인",
+                "preconditions": [],
+                "variables": {},
+                "secret_refs": {},
+                "steps": [
+                    {
+                        "id": "step-1",
+                        "instruction": "로그인 후 첫 주문을 연다",
+                        "expected": [{"id": "exp-1", "kind": "text", "expected": "주문번호"}],
+                    }
+                ],
+                "final_expected": [{"id": "final-1", "kind": "text", "expected": "결제 금액"}],
+                "path_policy": {"must_use": [], "forbidden": []},
+            },
             separators=(",", ":"),
             sort_keys=True,
         )

@@ -661,7 +661,8 @@ def _require_trial(
         raise ApprovalRejected("trial is not off")
     row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT case_runs.case_version_id, case_versions.content_hash, jobs.limits
+        SELECT case_runs.case_version_id, case_versions.content_hash, jobs.limits,
+               case_versions.replay_package_id, packages.body_hash
         FROM case_runs
         JOIN case_versions
           ON case_versions.project_id = case_runs.project_id
@@ -670,12 +671,31 @@ def _require_trial(
           ON jobs.project_id = case_runs.project_id
          AND jobs.case_run_id = case_runs.case_run_id
          AND jobs.purpose = 'trial'
+        LEFT JOIN replay_packages AS packages
+          ON packages.project_id = case_versions.project_id
+         AND packages.package_id = case_versions.replay_package_id
+         AND packages.ready = 1
         WHERE case_runs.project_id = ? AND case_runs.case_run_id = ? AND case_runs.purpose = 'trial'
         """,
         (str(project_id), str(case_run_id)),
     ).fetchone()
     if row is None or str(row[0]) != str(version_id) or str(row[1]) != version_hash or not _limits_off(row[2]):
         raise ApprovalRejected("trial is not off")
+    try:
+        limits = json.loads(str(row[2]))
+    except json.JSONDecodeError as exc:
+        raise ApprovalRejected("trial is not off") from exc
+    if type(limits) is not dict:
+        raise ApprovalRejected("trial is not off")
+    pinned_id = limits.get("replay_package_id")
+    pinned_hash = limits.get("replay_package_hash")
+    if pinned_id not in {None, ""} or pinned_hash not in {None, ""}:
+        if row[3] in {None, ""} or row[4] in {None, ""}:
+            raise ApprovalRejected("package is not ready")
+        if str(pinned_id or "") != str(row[3]):
+            raise ApprovalRejected("trial package mismatch")
+        if str(pinned_hash or "") != str(row[4]):
+            raise ApprovalRejected("trial package mismatch")
 
 
 def _require_reviewed_evidence(connection: object, project_id: UUID, review_id: UUID) -> tuple[tuple[str, ...], tuple[str, ...]]:

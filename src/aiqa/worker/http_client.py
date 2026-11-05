@@ -273,6 +273,37 @@ class WorkerHttpClient:
 
         return self.finish_attempt(payload=payload, idempotency_key=idempotency_key)
 
+    def request_model(
+        self,
+        *,
+        project_id: str,
+        item_id: str,
+        payload: dict[str, Any],
+        idempotency_key: str,
+        actor_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Ask the management server to complete one model role. Secrets stay on the server."""
+
+        if type(idempotency_key) is not str or idempotency_key.strip() == "":
+            raise WorkerHttpError("model request idempotency key is required", retry_class=RetryClass.fatal)
+        if type(project_id) is not str or project_id.strip() == "":
+            raise WorkerHttpError("model request project_id is required", retry_class=RetryClass.fatal)
+        if type(item_id) is not str or item_id.strip() == "":
+            raise WorkerHttpError("model request item_id is required", retry_class=RetryClass.fatal)
+        if type(payload) is not dict:
+            raise WorkerHttpError("model request payload must be an object", retry_class=RetryClass.fatal)
+        body = dict(payload)
+        body["project_id"] = project_id
+        body["item_id"] = item_id
+        if actor_id is not None:
+            body["actor_id"] = actor_id
+        return self._json(
+            "POST",
+            "/api/v1/worker/model-requests",
+            json_body=body,
+            idempotency_key=idempotency_key,
+        )
+
     def _json(
         self,
         method: str,

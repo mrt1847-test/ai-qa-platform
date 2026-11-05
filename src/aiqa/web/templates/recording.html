@@ -8,4 +8,49 @@
   <p>엔진 종료는 승인이나 QA가 아닙니다.</p>
   <p>compiler가 없으면 package는 비어 있습니다.</p>
   <p>실패와 중단도 보존합니다.</p>
+  {% if case_id %}<p><a id="recording-review-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review">저장본 검토·승인</a></p>{% endif %}
+  {% if offline_gate %}<p id="recording-offline-gate" data-allowed="{{ 'true' if offline_gate.allowed else 'false' }}" data-worker-online="{{ 'true' if offline_gate.worker_online else 'false' }}" data-reason="{{ offline_gate.reason }}">{% if offline_gate.allowed %}서버에 저장된 증거로 실행 PC 없이도 검토할 수 있습니다.{% else %}검토 전 서버 증거: {{ offline_gate.reason }}{% endif %}</p>{% endif %}
+  <section
+    id="recording-timeline-root"
+    class="review-workspace recording-timeline"
+    data-timeline-url="/api/v1/projects/{{ project_id }}/recordings/{{ recording_id }}/timeline"
+    data-poll-seconds="2"
+    data-action-count="{{ timeline.entries|length if timeline else 0 }}"
+    data-action-id="{{ selection.action_id if selection else '' }}"
+  >
+    <aside class="panel review-actions">
+      <h2>타임라인</h2>
+      <p data-ack-count>서버 ACK {{ timeline.entries|length if timeline else 0 }}</p>
+      <p class="hint">녹화 중에도 선택 스텝을 유지한 채 진행을 갱신합니다. 실행 PC가 끊겨도 서버에 저장된 증거는 조회할 수 있습니다.</p>
+      <nav id="recording-timeline" aria-label="녹화 행동">
+        {% if timeline and timeline.entries %}
+          {% for entry in timeline.entries %}
+          <a
+            class="review-step"
+            href="?action_id={{ entry.action_id }}"
+            data-timeline-action="{{ entry.action_id }}"
+            data-action-seq="{{ entry.action_seq }}"
+            {% if selection and entry.action_id == selection.action_id %}aria-current="step"{% endif %}
+          >
+            순서 {{ entry.action_seq }} · 단계 {{ entry.step_id }}
+            <small data-dispatch>{{ entry.dispatch_state }}</small>
+            <small data-shot-state>이전 {{ entry.before_state }} · 이후 {{ entry.after_state }} · 로그 {{ entry.log_state }}</small>
+            {% if entry.error_text %}<small data-error>오류 {{ entry.error_text }}</small>{% elif entry.check_status %}<small data-check>검증 {{ entry.check_status }}</small>{% endif %}
+          </a>
+          {% endfor %}
+        {% else %}
+          <p class="empty">서버에 ACK된 행동이 아직 없습니다.</p>
+        {% endif %}
+      </nav>
+    </aside>
+    <div class="review-evidence panel">
+      {% if selection and actions %}
+        {% include "components/evidence_panel.html" %}
+      {% else %}
+        <h2>단계 증거</h2>
+        <p class="empty">행동이 ACK되면 전후 화면과 로그가 여기에 나타납니다. 미수신·오류 상태는 타임라인과 증거 영역에 함께 표시됩니다.</p>
+      {% endif %}
+    </div>
+  </section>
+  <script src="/static/recording_timeline.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

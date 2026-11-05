@@ -1,11 +1,13 @@
-# 실환경 수용·계측 구현 계획
+# 실환경 수용·계측 계획
+
+이 문서의 환경 제약과 최종 판정은 출시 수용에 적용한다. 동일 기능의 코드는 [제품 동선](PRODUCT_FLOW_TASKS.md)과 [독립 구현](SUPPORT_FEATURE_TASKS.md) 카드에서 로컬 계약을 검증하며 먼저 진행한다. RX-29는 RX-23과 RX-24 이후 계측한다.
 
 > [경계와 공통 검증 규칙](RUNTIME_BOUNDARIES.md) · [직접 선행 및 환경 색인](IMPLEMENTATION_TASKS.json) · [공통 계약](../execution/CONTRACTS.md). NEXT_ACTION의 Current 절 하나만 실행한다. TDD로 실패 조건을 확인하고 기능을 연결한 뒤 같은 검사를 반복한다. 선행 인계와 구현의 필드명이 다르면 계약을 먼저 대조한다. 카드의 파일은 기존 파일과 생성 예정 파일을 함께 지정한다.
 
 <a id="rx-22"></a>
 ## RX-22 · 실제 Web 격리 공격 검증
 
-**입력** RX-15 · RX-30 · RX-35 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
+**입력** RX-15 · RX-30 · RX-35 · RX-60 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
 
 **파일** `docs/managed-pc/WEB_ISOLATION_RUNBOOK.md`, `docs/validation/tasks/RX-22.md`.
 
@@ -15,11 +17,13 @@
 - [ ] `docs/validation/tasks/RX-22.md`에 검증 등급·명령·결과와 backend 버전·테스트 origin과 deny matrix를 남긴다.
 
 <a id="rx-23"></a>
-## RX-23 · 실제 Android 녹화와 재생
+## RX-23 · 실제 Android 녹화와 재생 (독립 호스트 최종 수용)
 
-**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 · RX-44 · RX-45 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 · RX-44 · RX-45 · RX-46 · RX-52 · RX-54 · RX-64 · RX-65 · RX-66 · RX-67 · RX-71 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized` · `independent_server`.
 
 **파일** `tests/operational/test_rx_23.py`, `docs/validation/tasks/RX-23.md`.
+
+현재 PC 모의 HTTPS·워커 배선 사전 검증은 [RX-46](RUNTIME_WIRING_TASKS.md#rx-46)에서 완료한다. 이 카드는 독립 관리 호스트와 **실제 운영 모델 키**로 최종 수용한다.
 
 - [ ] 녹화 종료 후 증거가 먼저 저장되며, OFF replay actor/healer 0회, 화면 불일치 시 오탭 0회, 명시 ON 실패에서만 제한된 healer.
 - [ ] 전용 AVD를 등록 PC에서 선택하고 녹화→정제 증거 ACK→검토→승인→기록 기반 replay를 수행한다. 검증과 healing은 실제 사용량을 목적별로 구분한다.
@@ -29,7 +33,7 @@
 <a id="rx-24"></a>
 ## RX-24 · 실제 Web 녹화와 재생
 
-**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 · RX-45 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 · RX-45 · RX-61 · RX-70 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_24.py`, `docs/validation/tasks/RX-24.md`.
 
@@ -41,7 +45,7 @@
 <a id="rx-25"></a>
 ## RX-25 · 전원 종료 중 다른 PC에서 검토
 
-**입력** RX-21 · RX-23 · RX-24 · PC-03 및 C00/C01/C03/C08/C09/C11. **환경** `local_python` · `independent_server` · `second_client` · `execution_pc_power_test_authorized`.
+**입력** RX-21 · RX-23 · RX-24 · PC-03 · RX-53 및 C00/C01/C03/C08/C09/C11. **환경** `local_python` · `independent_server` · `second_client` · `execution_pc_power_test_authorized`.
 
 **파일** `tests/operational/test_rx_25.py`, `docs/validation/tasks/RX-25.md`.
 
@@ -65,7 +69,7 @@
 <a id="rx-27"></a>
 ## RX-27 · 두 워커의 동일 물리 자원 경합
 
-**입력** RX-21 · RX-23 및 C00/C01/C03/C04/C05. **환경** `local_python` · `independent_server` · `two_registered_workers` · `shared_test_physical_scope` · `native_test_authorized`.
+**입력** RX-21 · RX-23 · RX-62 및 C00/C01/C03/C04/C05. **환경** `local_python` · `independent_server` · `two_registered_workers` · `shared_test_physical_scope` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_27.py`, `docs/validation/tasks/RX-27.md`.
 

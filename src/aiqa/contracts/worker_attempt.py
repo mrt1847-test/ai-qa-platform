@@ -7,6 +7,22 @@ from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
+class RecordingIntent:
+    """Frozen case verification goal bound to one recording. Secret values stay out."""
+
+    case_version_id: str
+    content_hash: str
+    objective: str
+    preconditions: tuple[str, ...]
+    steps: tuple[dict[str, object], ...]
+    final_expected: tuple[dict[str, object], ...]
+    variables: dict[str, object]
+    secret_refs: dict[str, dict[str, object]]
+    path_policy: dict[str, object]
+    intent_hash: str
+
+
+@dataclass(frozen=True, slots=True)
 class JobSpecSnapshot:
     job_id: UUID
     attempt_id: UUID
@@ -15,6 +31,11 @@ class JobSpecSnapshot:
     revision_ref: str | None
     policy_ref: str | None
     digest: str
+    intent_hash: str | None = None
+    replay_package_id: str | None = None
+    replay_package_hash: str | None = None
+    self_healing_enabled: bool | None = None
+    approved_plan: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,8 +13,16 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.templating import Jinja2Templates
 
 _PACKAGE = "aiqa.web"
-_UI_ASSET_VERSION = "20261104-rx28"
+_UI_ASSET_VERSION = "20261105-rx58"
 _templates: Jinja2Templates | None = None
+
+
+def approved_replay_requires_model_check() -> bool:
+    """Shell/settings copy: deterministic approved replay does not need a model check."""
+
+    from aiqa.domain.model_bindings import approved_deterministic_replay_requires_model_check
+
+    return approved_deterministic_replay_requires_model_check()
 
 
 def _resource_dir(name: str) -> Path:
@@ -33,6 +41,7 @@ def _jinja() -> Jinja2Templates:
     if _templates is None:
         _templates = Jinja2Templates(directory=str(_resource_dir("templates")))
         _templates.env.globals['ui_asset_version'] = _UI_ASSET_VERSION
+        _templates.env.globals['approved_replay_requires_model_check'] = approved_replay_requires_model_check()
     return _templates
 
 
@@ -63,18 +72,52 @@ def hosted_login_path() -> str:
 
 
 def render_hosted_login(request: Request) -> HTMLResponse:
-    """Point operators at the OIDC start API. Does not issue a development nonce."""
+    """Hosted browser login: start OIDC and follow the registered redirect URI."""
+
+    from html import escape
 
     settings = getattr(request.app.state, "settings", None)
     profile = getattr(settings, "profile", "local")
     if profile != "hosted":
         return HTMLResponse(status_code=403, content="hosted login only")
+    project_id = escape(str(request.query_params.get("project_id") or ""))
     return HTMLResponse(
         content=(
-            "<!DOCTYPE html><html lang='ko'><body>"
+            "<!DOCTYPE html><html lang='ko'><head><meta charset='utf-8'>"
+            "<title>관리 서버 로그인</title></head><body>"
             "<h1>관리 서버 로그인</h1>"
-            "<p>OIDC authorization code + PKCE로 로그인합니다.</p>"
-            "<p data-oidc-start='/api/v1/auth/oidc/start'>POST /api/v1/auth/oidc/start</p>"
+            "<p>OIDC authorization code + PKCE로 로그인합니다. "
+            "콜백은 등록 redirect URI에서 처리합니다.</p>"
+            "<form id='oidc-login' data-oidc-start='/api/v1/auth/oidc/start' "
+            "data-oidc-callback='/api/v1/auth/oidc/callback'>"
+            "<label>프로젝트 ID "
+            f"<input name='project_id' value='{project_id}' required "
+            "autocomplete='off'></label> "
+            "<button type='submit'>OIDC 로그인</button>"
+            "</form>"
+            "<p id='oidc-status' data-oidc-status></p>"
+            "<script>"
+            "(function(){"
+            "var form=document.getElementById('oidc-login');"
+            "var status=document.getElementById('oidc-status');"
+            "form.addEventListener('submit',async function(ev){"
+            "ev.preventDefault();"
+            "status.textContent='로그인 시작 중';"
+            "var projectId=String(form.project_id.value||'').trim();"
+            "var res=await fetch(form.dataset.oidcStart,{"
+            "method:'POST',"
+            "headers:{'Content-Type':'application/json',"
+            "'Idempotency-Key':'ui-login-'+Date.now(),"
+            "'Origin':window.location.origin},"
+            "body:JSON.stringify({project_id:projectId})"
+            "});"
+            "if(!res.ok){status.textContent='시작 실패 '+res.status;return;}"
+            "var body=await res.json();"
+            "if(!body.authorize_url){status.textContent='authorize_url 없음';return;}"
+            "window.location.assign(body.authorize_url);"
+            "});"
+            "})();"
+            "</script>"
             "</body></html>"
         )
     )

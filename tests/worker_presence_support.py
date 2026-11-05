@@ -2,8 +2,32 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
+from aiqa.contracts.resources import new_resource_alias_id, require_target_kind
 from aiqa.store.models import WorkerScope
 from aiqa.worker.presence import report_presence
+
+
+def seed_resource_alias(
+    connection,
+    project,
+    physical_key_id,
+    display_name="Fixture",
+    target_kind="web",
+    alias_id=None,
+) -> str:
+    """Insert one resource_aliases row with named columns including alias_id (RX-62 schema)."""
+
+    kind = require_target_kind(target_kind)
+    allocated = str(alias_id) if alias_id is not None else new_resource_alias_id()
+    connection.execute(
+        """
+        INSERT INTO resource_aliases (
+            project_id, physical_key_id, display_name, target_kind, alias_id
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (str(project), str(physical_key_id), display_name, kind, allocated),
+    )
+    return allocated
 
 
 def seed_presence(connection, project, worker, now=None):

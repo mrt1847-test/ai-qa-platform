@@ -155,7 +155,7 @@ def test_rx_41_operational_client_exchanges_and_rejects(tmp_path: Path) -> None:
         signing_key=secret,
         require_signature=True,
     )
-    forged_transport = httpx.MockTransport(mock_https_token_handler(forged))
+    forged_transport = httpx.MockTransport(mock_https_token_handler(forged, clock=now))
     forged_client = OperationalOidcClient(
         config=runtime.config,
         token_endpoint="https://idp.example.test/token",

@@ -87,6 +87,7 @@ def start_oidc_login(
     config: OidcClientConfig,
     *,
     authorize_endpoint: str,
+    project_id: UUID | None = None,
     now: datetime | None = None,
 ) -> dict[str, str]:
     instant = _utc(now)
@@ -94,8 +95,8 @@ def start_oidc_login(
     connection.execute(
         """
         INSERT INTO oidc_login_states (
-            state, nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at
-        ) VALUES (?, ?, ?, ?, ?, ?, NULL)
+            state, nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at, project_id
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
         """,
         (
             started.state,
@@ -104,6 +105,7 @@ def start_oidc_login(
             started.pkce.verifier,
             config.redirect_uri,
             (instant + DEFAULT_STATE_TTL).isoformat(),
+            None if project_id is None else str(project_id),
         ),
     )
     return {
@@ -120,15 +122,15 @@ def complete_oidc_login(
     *,
     code: str,
     state: str,
-    code_verifier: str,
-    project_id: UUID,
+    code_verifier: str | None,
+    project_id: UUID | None,
     origin: str,
     now: datetime | None = None,
 ) -> BrowserSession:
     instant = _utc(now)
     row = connection.execute(
         """
-        SELECT nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at
+        SELECT nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at, project_id
         FROM oidc_login_states WHERE state = ?
         """,
         (state,),
@@ -139,8 +141,24 @@ def complete_oidc_login(
         raise OidcRejected("state expired")
     if str(row[3]) != config.redirect_uri:
         raise OidcRejected("redirect_uri was rejected")
-    if str(row[2]) != code_verifier:
-        raise OidcRejected("pkce was rejected")
+    stored_verifier = str(row[2])
+    if code_verifier is None or str(code_verifier).strip() == "":
+        presented_verifier = stored_verifier
+    else:
+        presented_verifier = str(code_verifier)
+        if presented_verifier != stored_verifier:
+            raise OidcRejected("pkce was rejected")
+    if project_id is None:
+        if row[6] is None or str(row[6]).strip() == "":
+            raise OidcRejected("project was rejected")
+        try:
+            bound_project = UUID(str(row[6]))
+        except (TypeError, ValueError) as exc:
+            raise OidcRejected("project was rejected") from exc
+    else:
+        bound_project = project_id
+        if row[6] is not None and str(row[6]).strip() != "" and str(row[6]) != str(bound_project):
+            raise OidcRejected("project was rejected")
     updated = connection.execute(
         "UPDATE oidc_login_states SET used_at = ? WHERE state = ? AND used_at IS NULL",
         (instant.isoformat(), state),
@@ -150,12 +168,17 @@ def complete_oidc_login(
 
     claims = idp.exchange(
         code=code,
-        code_verifier=code_verifier,
+        code_verifier=presented_verifier,
         redirect_uri=config.redirect_uri,
         state=state,
         now=instant,
     )
-    validate_id_token_claims(claims, config=config, expected_nonce=str(row[0]))
+    validate_id_token_claims(
+        claims,
+        config=config,
+        expected_nonce=str(row[0]),
+        now=instant,
+    )
 
     identity = connection.execute(
         "SELECT actor_id FROM oidc_identities WHERE issuer = ? AND subject = ?",
@@ -173,8 +196,8 @@ def complete_oidc_login(
     else:
         actor_id = UUID(str(identity[0]))
 
-    actor = Actor(actor_id=actor_id, project_scope=project_id, is_local_owner=False)
-    require_project_capability(Transaction(connection), actor, project_id, "project_view")
+    actor = Actor(actor_id=actor_id, project_scope=bound_project, is_local_owner=False)
+    require_project_capability(Transaction(connection), actor, bound_project, "project_view")
 
     session_id = uuid4()
     csrf = secrets.token_urlsafe(32)
@@ -190,7 +213,7 @@ def complete_oidc_login(
             origin,
             hashlib.sha256(csrf.encode("utf-8")).hexdigest(),
             str(actor_id),
-            str(project_id),
+            str(bound_project),
             expires.isoformat(),
         ),
     )

@@ -37,6 +37,7 @@ class HandlerResult:
     evidence_artifacts: tuple[dict[str, Any], ...] = ()
     source_artifact_hashes: tuple[str, ...] = ()
     review_pending: bool = False
+    action_mapping: str = "{}"
 
 
 class JobHandler(Protocol):
@@ -427,7 +428,7 @@ class WorkerRuntime:
             "physical_key_id": claimed.get("physical_key_id"),
             "now": self._now().isoformat(),
             "source_artifact_hashes": list(result.source_artifact_hashes),
-            "action_mapping": "{}",
+            "action_mapping": result.action_mapping if result.action_mapping.strip() else "{}",
         }
         key = f"finish-{claimed['attempt_id']}"
         try:
@@ -495,19 +496,25 @@ def make_android_inventory_provider(
 def recording_prepared_adapters() -> frozenset[str]:
     """Adapters that may be claimed after Android inventory/recording wiring (RX-32/33)."""
 
-    return frozenset({"resource_probe", "recording"})
+    return frozenset({"resource_probe", "recording", "structure"})
 
 
 def replay_prepared_adapters() -> frozenset[str]:
     """Adapters for Android recording plus approved trial/regression replay (RX-34)."""
 
-    return frozenset({"resource_probe", "recording", "trial", "regression"})
+    return frozenset({"resource_probe", "recording", "trial", "regression", "structure"})
 
 
 def web_prepared_adapters() -> frozenset[str]:
     """Adapters for Web recording and approved trial/regression replay (RX-36)."""
 
-    return frozenset({"resource_probe", "recording", "trial", "regression"})
+    return frozenset({"resource_probe", "recording", "trial", "regression", "structure"})
+
+
+def structure_prepared_adapters() -> frozenset[str]:
+    """Management adapter for NL structure jobs completed without device actions."""
+
+    return frozenset({"structure"})
 
 
 def android_worker_prepared_adapters() -> frozenset[str]:
@@ -541,58 +548,119 @@ def run_worker_process(
     web_binding = load_web_guest_entry_binding(source)
     resolved_handler = handler
     model_mode = str(source.get("AIQA_WORKER_MODEL_MODE", "")).strip().lower()
-    if resolved_handler is None and binding is not None and model_mode == "fixture":
-        from aiqa.worker.android_jobs import (
-            assemble_android_worker_handlers,
-            build_fixture_android_recording_handler,
-        )
-
-        runtime_root = Path(str(source.get("AIQA_WORKER_RUNTIME_ROOT") or Path.cwd() / "worker-runtime"))
-        runtime_root.mkdir(parents=True, exist_ok=True)
-        fixture_response = str(
-            source.get("AIQA_WORKER_FIXTURE_RESPONSE") or "swipe(360, 1200, 360, 400, 300)"
-        ).strip()
-        recording = build_fixture_android_recording_handler(
-            adb_path=Path(binding.adb_path),
-            serial=binding.serial,
-            expected_avd=binding.expected_avd,
-            runtime_root=runtime_root,
-            fixture_response=fixture_response,
-        )
-        resolved_handler = assemble_android_worker_handlers(recording=recording)
-    adapters = frozenset()
-    if resolved_handler is not None:
-        if prepared_adapters is not None:
-            default = prepared_adapters
-        elif binding is not None:
-            default = android_worker_prepared_adapters()
-        elif web_binding is not None:
-            default = web_worker_prepared_adapters()
-        else:
-            default = recording_prepared_adapters()
-        adapters = default
+    approved_digest = str(source.get("AIQA_WORKER_APPROVED_DIGEST", "")).strip()
+    approved_plan = str(source.get("AIQA_WORKER_APPROVED_PLAN", "")).strip()
     cycles = max_cycles
     if cycles is None:
         raw_cycles = str(source.get("AIQA_WORKER_MAX_CYCLES", "")).strip()
         if raw_cycles.isdigit():
             cycles = int(raw_cycles)
-    config = WorkerRuntimeConfig(
-        boot_id=boot_id,
-        prepared_adapters=adapters,
-        automatic_resume=False,
-        max_cycles=cycles,
-    )
     provider = inventory_provider
     if provider is None and binding is not None:
         provider = make_android_inventory_provider(binding)
+    assembled_web = None
     with WorkerHttpClient(settings) as client:
-        runtime = WorkerRuntime(
-            client,
-            config,
-            resolved_handler or InertHandler(),
-            inventory_provider=provider,
-            registered_serial=None if binding is None else binding.serial,
-            approved_web_origin=None if web_binding is None else web_binding.approved_origin,
-        )
-        runtime.run()
+        try:
+            if resolved_handler is None and binding is not None and model_mode in {"fixture", "operational"}:
+                from aiqa.worker.android_jobs import (
+                    assemble_android_worker_handlers,
+                    build_approved_android_replay_handler,
+                    build_fixture_android_recording_handler,
+                    build_operational_android_recording_handler,
+                )
+
+                runtime_root = Path(
+                    str(source.get("AIQA_WORKER_RUNTIME_ROOT") or Path.cwd() / "worker-runtime")
+                )
+                runtime_root.mkdir(parents=True, exist_ok=True)
+                if model_mode == "fixture":
+                    fixture_response = str(
+                        source.get("AIQA_WORKER_FIXTURE_RESPONSE")
+                        or "swipe(360, 1200, 360, 400, 300)"
+                    ).strip()
+                    recording = build_fixture_android_recording_handler(
+                        adb_path=Path(binding.adb_path),
+                        serial=binding.serial,
+                        expected_avd=binding.expected_avd,
+                        runtime_root=runtime_root,
+                        fixture_response=fixture_response,
+                    )
+                else:
+                    recording = build_operational_android_recording_handler(
+                        adb_path=Path(binding.adb_path),
+                        serial=binding.serial,
+                        expected_avd=binding.expected_avd,
+                        runtime_root=runtime_root,
+                        client=client,
+                    )
+                # Claim carries package id/digest/plan. Env pins stay optional fallbacks only.
+                replay = build_approved_android_replay_handler(
+                    adb_path=Path(binding.adb_path),
+                    serial=binding.serial,
+                    expected_avd=binding.expected_avd,
+                    runtime_root=runtime_root,
+                    approved_digest=approved_digest,
+                    approved_plan=approved_plan,
+                )
+                resolved_handler = assemble_android_worker_handlers(
+                    recording=recording, replay=replay
+                )
+            elif (
+                resolved_handler is None
+                and binding is None
+                and web_binding is not None
+                and model_mode in {"", "fixture"}
+            ):
+                from aiqa.worker.web_jobs import assemble_web_worker_from_entry_binding
+
+                runtime_root = Path(
+                    str(source.get("AIQA_WORKER_RUNTIME_ROOT") or Path.cwd() / "worker-runtime")
+                )
+                runtime_root.mkdir(parents=True, exist_ok=True)
+                secret_raw = str(source.get("AIQA_WEB_GUEST_PROOF_SECRET", "")).strip()
+                proof_secret = (
+                    secret_raw.encode("utf-8")
+                    if len(secret_raw.encode("utf-8")) >= 16
+                    else None
+                )
+                approved_revision = str(
+                    source.get("AIQA_WORKER_APPROVED_REVISION", "lock-1")
+                ).strip() or "lock-1"
+                assembled_web = assemble_web_worker_from_entry_binding(
+                    web_binding,
+                    runtime_root=runtime_root,
+                    proof_secret=proof_secret,
+                    approved_digest=approved_digest,
+                    approved_revision=approved_revision,
+                )
+                resolved_handler = assembled_web.handler
+            adapters = frozenset()
+            if resolved_handler is not None:
+                if prepared_adapters is not None:
+                    default = prepared_adapters
+                elif binding is not None:
+                    default = android_worker_prepared_adapters()
+                elif web_binding is not None:
+                    default = web_worker_prepared_adapters()
+                else:
+                    default = recording_prepared_adapters()
+                adapters = default
+            config = WorkerRuntimeConfig(
+                boot_id=boot_id,
+                prepared_adapters=adapters,
+                automatic_resume=False,
+                max_cycles=cycles,
+            )
+            runtime = WorkerRuntime(
+                client,
+                config,
+                resolved_handler or InertHandler(),
+                inventory_provider=provider,
+                registered_serial=None if binding is None else binding.serial,
+                approved_web_origin=None if web_binding is None else web_binding.approved_origin,
+            )
+            runtime.run()
+        finally:
+            if assembled_web is not None:
+                assembled_web.close()
     return 0

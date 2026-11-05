@@ -11,6 +11,7 @@ from aiqa.store.queue import claim_queued_job
 from aiqa.store.models import Actor, WorkerScope
 from aiqa.worker.control import RunControl
 from ux_support import ux_app
+from worker_presence_support import seed_resource_alias
 
 
 def test_heartbeat_fences_queued_work_across_disconnect(ux_app, monkeypatch):
@@ -25,7 +26,7 @@ def test_heartbeat_fences_queued_work_across_disconnect(ux_app, monkeypatch):
     scope = WorkerScope("pc", (project_id,), ("resource_probe",))
     with store.transaction() as db:
         db.execute("INSERT INTO physical_resource_keys VALUES(?, 'pc', 'device')", (resource,))
-        db.execute("INSERT INTO resource_aliases VALUES(?, ?, 'PC', 'web')", (project, resource))
+        seed_resource_alias(db, project, resource, display_name="PC", target_kind="web")
         db.execute("INSERT INTO resource_inventory VALUES(?, 'ready', '', '', '[]', '', '2099-01-01')", (resource,))
 
     async def heartbeat(client, **extra):
@@ -62,6 +63,9 @@ def test_heartbeat_fences_queued_work_across_disconnect(ux_app, monkeypatch):
                 assert claim_queued_job(db, scope, now) is None
             assert (await claim(client, "boot-1")).status_code == 204
             assert (await heartbeat(client)).status_code == 200
+            # Drop work queued during the dead session so reconnect cannot inherit it.
+            with store.transaction() as db:
+                db.execute("DELETE FROM jobs WHERE status = 'queued'")
             assert (await claim(client, "boot-1")).status_code == 204
             assert (await heartbeat(client, boot_id="boot-2")).status_code == 200
             assert (await heartbeat(client, boot_id="boot-1")).status_code == 403

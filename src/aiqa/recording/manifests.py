@@ -21,6 +21,7 @@ class RecordingFinishInput:
     final_seq: int
     artifact_ids: tuple[str, ...]
     request_key: str
+    action_mapping: str = "{}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +60,7 @@ def finish_body_hash(spec: RecordingFinishInput) -> str:
 
     return canonical_hash(
         {
+            "action_mapping": spec.action_mapping,
             "artifact_ids": list(spec.artifact_ids),
             "final_seq": spec.final_seq,
             "outcome": spec.outcome,

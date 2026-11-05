@@ -257,6 +257,111 @@ def stored_mapping_hash(steps: tuple[PackageStepView, ...]) -> str:
     )
 
 
+def load_package_digest(connection: object, project_id: UUID, package_id: UUID) -> str | None:
+    """Read one stored package body hash. Rebuild must not rewrite this digest."""
+
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT body_hash FROM replay_packages
+        WHERE project_id = ? AND package_id = ?
+        """,
+        (str(project_id), str(package_id)),
+    ).fetchone()
+    if row is None:
+        return None
+    return str(row[0])
+
+
+@dataclass(frozen=True, slots=True)
+class ClaimPackagePin:
+    """Server-fixed package reference carried on trial/regression claims."""
+
+    package_id: str
+    package_hash: str
+    approved_plan: str
+    self_healing_enabled: bool
+
+
+def resolve_claim_package_pin(
+    connection: object,
+    project_id: UUID | str,
+    *,
+    package_id: object,
+    package_hash: object,
+    purpose: str,
+    self_healing_enabled: object = False,
+) -> ClaimPackagePin | None:
+    """Resolve a ready package in this project. Wrong project or digest returns None."""
+
+    if type(package_id) is not str or package_id.strip() == "":
+        return None
+    if type(package_hash) is not str or package_hash.strip() == "":
+        return None
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT body_hash, source_manifest_id FROM replay_packages
+        WHERE project_id = ? AND package_id = ? AND ready = 1
+        """,
+        (str(project_id), package_id),
+    ).fetchone()
+    if row is None or str(row[0]) != package_hash:
+        return None
+    plan = _approved_plan_from_manifest(connection, project_id, row[1])
+    healing = False if purpose == "trial" else self_healing_enabled is True
+    return ClaimPackagePin(package_id, package_hash, plan, healing)
+
+
+def mobile_agent_plan_from_android_mapping(mapping: str) -> str:
+    """Derive a sealed Mobile-Agent style plan from an Android action mapping."""
+
+    try:
+        parsed = json.loads(mapping)
+    except json.JSONDecodeError:
+        return ""
+    if type(parsed) is not dict or type(parsed.get("events")) is not list:
+        return ""
+    lines: list[str] = []
+    for item in parsed["events"]:
+        if type(item) is not dict or item.get("kind") == "model":
+            continue
+        action = str(item.get("action", ""))
+        geometry = item.get("geometry")
+        if type(geometry) is not dict:
+            continue
+        bounds = geometry.get("content_bounds")
+        if type(bounds) is not list or len(bounds) != 4:
+            continue
+        try:
+            x0, y0, x1, y1 = (int(str(value)) for value in bounds)
+        except ValueError:
+            continue
+        if action == "tap":
+            lines.append(f"click({(x0 + x1) // 2}, {(y0 + y1) // 2})")
+        elif action == "swipe":
+            cx = (x0 + x1) // 2
+            lines.append(f"swipe({cx}, {max(y0 + 1, y1 - 10)}, {cx}, {min(y1 - 1, y0 + 10)}, 300)")
+        elif action == "back":
+            lines.append("back()")
+    return "\n".join(lines)
+
+
+def _approved_plan_from_manifest(
+    connection: object, project_id: UUID | str, source_manifest_id: object
+) -> str:
+    if source_manifest_id in {None, ""}:
+        return ""
+    row = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT action_mapping FROM recording_manifests
+        WHERE project_id = ? AND manifest_id = ?
+        """,
+        (str(project_id), str(source_manifest_id)),
+    ).fetchone()
+    if row is None or type(row[0]) is not str:
+        return ""
+    return mobile_agent_plan_from_android_mapping(str(row[0]))
+
+
 def _body_hash(body: ReplayPackageBody) -> str:
     return canonical_hash(
         {

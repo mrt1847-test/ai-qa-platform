@@ -180,6 +180,8 @@ class CuawrightWebAdapter:
         revision: str,
         manifest: RecordingManifest,
         lock_hash: str,
+        evidence_before: tuple[str, ...] = (),
+        evidence_after: tuple[str, ...] = (),
     ) -> ApprovalPackageDraft:
         if not bundle.package_ready:
             raise CuawrightRejected(bundle.reject_reason or "package is not ready")
@@ -195,8 +197,8 @@ class CuawrightWebAdapter:
             origin=origin,
             body_hash=compiled.body_hash,
             compiled=compiled,
-            evidence_before=(),
-            evidence_after=(),
+            evidence_before=tuple(evidence_before),
+            evidence_after=tuple(evidence_after),
         )
 
     def run_allowlisted_steps(
@@ -332,4 +334,147 @@ def make_recording_manifest(*, raw_source: str, project_id: UUID | None = None) 
         evidence_completeness="complete",
         request_key="rx15",
         body_hash="manifest-hash",
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class LocalWebFixture:
+    """Dedicated local web page fixture: HTTPS origin + two allowlisted actions."""
+
+    origin: str
+    page_html: str
+    trajectory: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class WebContractPackage:
+    """Pinned Web authoring/replay package: step code + evidence digests for trial/regression."""
+
+    package_id: str
+    digest: str
+    revision: str
+    origin: str
+    trajectory: dict[str, object]
+    step_code_digests: tuple[str, ...]
+    evidence_before: tuple[str, ...]
+    evidence_after: tuple[str, ...]
+    reviewable_source: str
+
+
+def local_web_fixture(*, origin: str = "https://app.example.test") -> LocalWebFixture:
+    """Two-action local fixture page used by RX-61 contract tests (no real browser)."""
+
+    if type(origin) is not str or not origin.startswith("https://"):
+        raise CuawrightRejected("fixture origin must be https")
+    trajectory: dict[str, object] = {
+        "complete": True,
+        "steps": [
+            {
+                "hook": "hook.web.code_output.step_script",
+                "code": "qa_runtime.click('#go')",
+                "summary": {"type": "click", "selector": "#go"},
+            },
+            {
+                "hook": "hook.web.code_output.script_py",
+                "code": "qa_runtime.fill('#name', 'ada')",
+                "summary": {"type": "fill", "selector": "#name", "value": "ada"},
+            },
+        ],
+    }
+    html = (
+        "<!DOCTYPE html><html lang='ko'><body>"
+        f"<p data-origin='{origin}'>local web fixture</p>"
+        "<button id='go'>Go</button>"
+        "<input id='name' value=''>"
+        "</body></html>"
+    )
+    return LocalWebFixture(origin=origin, page_html=html, trajectory=trajectory)
+
+
+def persist_web_contract_package(
+    root: Path,
+    package: WebContractPackage,
+) -> Path:
+    """Write step code + evidence digests under the worker runtime. Import opens no sockets."""
+
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{package.package_id}.json"
+    body = {
+        "package_id": package.package_id,
+        "digest": package.digest,
+        "revision": package.revision,
+        "origin": package.origin,
+        "trajectory": package.trajectory,
+        "step_code_digests": list(package.step_code_digests),
+        "evidence_before": list(package.evidence_before),
+        "evidence_after": list(package.evidence_after),
+        "reviewable_source": package.reviewable_source,
+    }
+    path.write_text(json.dumps(body, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def load_web_contract_package(root: Path, package_id: str) -> WebContractPackage:
+    """Load a previously persisted Web contract package. Missing/forged body is refused."""
+
+    path = root / f"{package_id}.json"
+    if not path.is_file():
+        raise CuawrightRejected("web package is missing")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CuawrightRejected("web package was rejected") from exc
+    if type(raw) is not dict:
+        raise CuawrightRejected("web package was rejected")
+    try:
+        trajectory = raw["trajectory"]
+        if type(trajectory) is not dict:
+            raise CuawrightRejected("web package was rejected")
+        return WebContractPackage(
+            package_id=str(raw["package_id"]),
+            digest=str(raw["digest"]),
+            revision=str(raw["revision"]),
+            origin=str(raw["origin"]),
+            trajectory=trajectory,
+            step_code_digests=tuple(str(item) for item in raw["step_code_digests"]),
+            evidence_before=tuple(str(item) for item in raw["evidence_before"]),
+            evidence_after=tuple(str(item) for item in raw["evidence_after"]),
+            reviewable_source=str(raw["reviewable_source"]),
+        )
+    except (KeyError, TypeError) as exc:
+        raise CuawrightRejected("web package was rejected") from exc
+
+
+def build_web_contract_package(
+    adapter: CuawrightWebAdapter,
+    trajectory: dict[str, object],
+    *,
+    origin: str,
+    revision: str,
+    evidence_before: tuple[str, ...] = (),
+    evidence_after: tuple[str, ...] = (),
+    package_id: str | None = None,
+) -> WebContractPackage:
+    """Compile one approval package that trial and regression can share."""
+
+    bundle = adapter.extract_trajectory(trajectory)
+    draft = adapter.build_approval_package(
+        bundle,
+        origin=origin,
+        revision=revision,
+        manifest=make_recording_manifest(raw_source=bundle.reviewable_source),
+        lock_hash=revision,
+        evidence_before=evidence_before,
+        evidence_after=evidence_after,
+    )
+    return WebContractPackage(
+        package_id=package_id or str(uuid4()),
+        digest=draft.digest,
+        revision=draft.revision,
+        origin=draft.origin,
+        trajectory=trajectory,
+        step_code_digests=tuple(item.code_digest for item in bundle.raw_sources),
+        evidence_before=draft.evidence_before,
+        evidence_after=draft.evidence_after,
+        reviewable_source=bundle.reviewable_source,
     )

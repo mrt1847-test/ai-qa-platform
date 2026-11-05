@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 LOOPBACK_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_WORKER_TIMEOUT_SECONDS = 10.0
+DEFAULT_MAX_ACTIVE_SLOTS = 1
 PROFILE_LOCAL = "local"
 PROFILE_HOSTED = "hosted"
 LOCAL_SECRET_ACCOUNT = "aiqa-local"
@@ -103,6 +104,7 @@ class AppSettings:
     secret_account: str = LOCAL_SECRET_ACCOUNT
     oidc: OidcHostedSettings | None = None
     model_provider: ModelProviderSettings = field(default_factory=ModelProviderSettings)
+    max_active_slots: int = DEFAULT_MAX_ACTIVE_SLOTS
 
     @property
     def artifacts_dir(self) -> Path:
@@ -155,6 +157,8 @@ class AppSettings:
                 raise SettingsError("AIQA_TRUSTED_PROXIES contains an empty entry")
         if self.oidc is not None and self.profile != PROFILE_HOSTED:
             raise SettingsError("OIDC settings require hosted profile")
+        if type(self.max_active_slots) is not int or self.max_active_slots < 1:
+            raise SettingsError("AIQA_MAX_ACTIVE_SLOTS must be an integer >= 1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +248,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
             token_endpoint=str(token).rstrip("/"),
         )
     model_provider = _load_model_provider_settings(source)
+    max_active_slots = DEFAULT_MAX_ACTIVE_SLOTS
+    if "AIQA_MAX_ACTIVE_SLOTS" in source:
+        raw_slots = source["AIQA_MAX_ACTIVE_SLOTS"]
+        if type(raw_slots) is not str or not _PORT_TEXT.fullmatch(raw_slots.strip()):
+            raise SettingsError("AIQA_MAX_ACTIVE_SLOTS is invalid")
+        max_active_slots = int(raw_slots.strip())
     return AppSettings(
         host=host,
         port=port,
@@ -254,6 +264,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
         secret_account=secret_account,
         oidc=oidc,
         model_provider=model_provider,
+        max_active_slots=max_active_slots,
     )
 
 

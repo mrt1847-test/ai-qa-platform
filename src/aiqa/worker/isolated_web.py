@@ -209,6 +209,42 @@ def bind_web_vm_transport(
     )
 
 
+def web_handlers_blocked_without_proof(proof_ready: object | None) -> bool:
+    """Execution stays unavailable until guest isolation proof verifies."""
+
+    return not require_web_ready(proof_ready)
+
+
+def bind_web_transport_from_entry(
+    gate: object,
+    *,
+    endpoint_id: str,
+    peer_token: str,
+    spawn_guest: bool = True,
+    connect_deadline_seconds: float = 2.0,
+    request_deadline_seconds: float = 2.0,
+) -> tuple[object, object | None]:
+    """Bind approved guest endpoint from execution settings. Returns (transport, guest)."""
+
+    from aiqa.worker.web_vm_transport import GuestIpcLimits, spawn_local_guest_process
+
+    guest = None
+    bindings: tuple[object, ...] = ()
+    if spawn_guest:
+        guest = spawn_local_guest_process(endpoint_id=endpoint_id, peer_token=peer_token)
+        bindings = (guest.binding,)
+    transport = bind_web_vm_transport(
+        gate,
+        approved_endpoints=(endpoint_id,),
+        limits=GuestIpcLimits(
+            connect_deadline_seconds=connect_deadline_seconds,
+            request_deadline_seconds=request_deadline_seconds,
+        ),
+        bindings=bindings,
+    )
+    return transport, guest
+
+
 def transport_as_cleanup_provider(transport: object) -> object:
     """Expose close_context proof for attempt cleanup."""
 

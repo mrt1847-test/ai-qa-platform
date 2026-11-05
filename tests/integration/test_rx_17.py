@@ -68,21 +68,23 @@ def test_oidc_rejects_bad_claims_and_reused_code() -> None:
         state="state-1",
         now=now,
     )
-    validate_id_token_claims(claims, config=config, expected_nonce="nonce-1")
+    validate_id_token_claims(claims, config=config, expected_nonce="nonce-1", now=now)
     with pytest.raises(OidcRejected, match="issuer"):
         validate_id_token_claims(
             IdTokenClaims("https://evil.test", "user-1", idp.audience, "nonce-1"),
             config=config,
             expected_nonce="nonce-1",
+            now=now,
         )
     with pytest.raises(OidcRejected, match="audience"):
         validate_id_token_claims(
             IdTokenClaims(idp.issuer, "user-1", "other-aud", "nonce-1"),
             config=config,
             expected_nonce="nonce-1",
+            now=now,
         )
     with pytest.raises(OidcRejected, match="nonce"):
-        validate_id_token_claims(claims, config=config, expected_nonce="other")
+        validate_id_token_claims(claims, config=config, expected_nonce="other", now=now)
     with pytest.raises(OidcRejected, match="reused"):
         idp.exchange(
             code=code,

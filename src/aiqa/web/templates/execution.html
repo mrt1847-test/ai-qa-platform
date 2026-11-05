@@ -9,6 +9,7 @@
   <label>healing <input id="running-healing-toggle" type="checkbox" data-default="off"{% if not toggle_enabled %} disabled{% endif %}></label>
   <p>기본은 꺼져 있습니다. 진행 중에는 바꿀 수 없습니다.</p>
   <p>{{ run_name }} · {{ run_purpose }} · {{ run_source }}</p>
+  <p>묶음 {{ suite_name|default('') }} · 개정 {{ suite_revision_label|default('') }}</p>
   <p>요청자 {{ requester }}</p>
   <p>환경 {{ environment }} · 빌드 {{ build }}</p>
   <p>종료 {{ finished_count|default(0) }} · 성공 {{ pass_count|default(0) }}</p>
@@ -30,6 +31,10 @@
     {% for item in items|default([]) %}
     <li {% if item.selected %}data-selected="true"{% endif %}>
       항목 {{ item.case_run_id }}
+      항목 id {{ item.entry_id|default('') }}
+      승인 버전 {{ item.case_version_id|default('') }}
+      승인 {{ item.approval_id|default('') }}
+      결과 {{ item.core_result|default(item.verdict|default('')) }}
       현재 화면 {{ item.screen }}
       이벤트 {{ item.event_count }}
       경과 {{ item.elapsed }}

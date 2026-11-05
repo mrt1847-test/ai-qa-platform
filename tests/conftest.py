@@ -1,6 +1,6 @@
 """Shared pytest settings. The aiqa package comes from the editable install."""
 
-from worker_presence_support import seed_presence, seed_inventory
+from worker_presence_support import seed_presence, seed_inventory, seed_resource_alias
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
@@ -35,7 +35,7 @@ def review_recording(tmp_path):
         worker_token = enroll_worker(actor, 'review-worker', 'recording')
     physical = uuid4()
     con.execute('INSERT INTO physical_resource_keys (physical_key_id,worker_id,native_id) VALUES (?,?,?)', (str(physical), 'review-worker', 'fixture-device'))
-    con.execute('INSERT INTO resource_aliases (project_id,physical_key_id,display_name,target_kind) VALUES (?,?,?,?)', (str(project.project_id), str(physical), 'Fixture', 'web'))
+    seed_resource_alias(con, project.project_id, physical, display_name='Fixture', target_kind='web')
     now = datetime(2026, 11, 1, tzinfo=timezone.utc)
     seed_presence(con, project.project_id, "review-worker", now)
     seed_inventory(con, physical)

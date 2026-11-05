@@ -163,3 +163,14 @@
 - [x] 모의 HTTPS endpoint에서 요청·응답, 잘못된 CA/주소, 키 누락, quota와 멱등성을 검증한다. 실제 모델 호출은 승인된 RX-23/24에서 수행한다.
 - [x] 관리 서버가 승인된 공급자 주소와 secret ref를 읽어 실제 전송과 구조화 응답을 연결한다. fixture는 로컬 검증에서만 명시적으로 선택한다.
 - [x] `python -m pytest -q tests/integration/test_rx_40.py`에서 지정 회귀를 검증한다. `docs/validation/tasks/RX-45.md`에 시험 명령과 실제 결과를 남긴다.
+
+<a id="rx-46"></a>
+## RX-46 · 현재 PC Android 운영 모델 사전 검증
+
+**입력** RX-44 · RX-45와 C00/C01/C04/C05/C06/C08. **환경** `local_python`.
+
+**파일** `src/aiqa/worker/http_client.py`, `src/aiqa/worker/android_jobs.py`, `src/aiqa/worker/runtime.py`, `src/aiqa/models/broker.py`, `tests/integration/test_rx_46.py`.
+
+- [x] RX-23을 현재 PC 사전 검증(이 카드)과 독립 호스트·운영 키 최종 수용으로 분리한다. 모의 HTTPS 공급자 응답을 실제 워커 `model-requests`→녹화 행동에 연결하고, 승인본 digest·plan으로 trial/regression 재생(actor 0)을 검증한다.
+- [x] `AIQA_WORKER_MODEL_MODE=operational`과 `AIQA_WORKER_APPROVED_DIGEST`/`AIQA_WORKER_APPROVED_PLAN`을 워커 진입점에 배선한다. 키 원문은 워커에 두지 않는다.
+- [x] `python -m pytest -q tests/integration/test_rx_46.py`로 모의 HTTPS 사전 검증을 남긴다. `docs/validation/tasks/RX-46.md`에 결과와 제약을 기록한다.

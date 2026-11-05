@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from aiqa.contracts.resources import (
@@ -14,11 +16,13 @@ from aiqa.contracts.resources import (
     InventoryReceipt,
     InventoryReport,
     ResourcePreviewView,
+    new_resource_alias_id,
     require_target_kind,
     resource_key,
 )
-from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
+from aiqa.contracts.jobs import IdempotencyKey, JobReceipt, JobSubmission
 from aiqa.environments.android_observation import AndroidObservationProvider, AndroidObservationResult
+from aiqa.environments.usb_android import InstalledAppsObservation, list_installed_apps
 from aiqa.store.database import Store
 from aiqa.store.models import Actor, Transaction, WorkerScope
 from aiqa.store.queue import enqueue_job
@@ -219,14 +223,32 @@ def report_inventory(worker: WorkerScope, report: InventoryReport) -> InventoryR
             )
         else:
             physical_key_id = str(row[0])
+        alias_id = new_resource_alias_id()
         connection.execute(
             """
-            INSERT INTO resource_aliases (project_id, physical_key_id, display_name, target_kind)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT (project_id, physical_key_id) DO UPDATE SET display_name = excluded.display_name
+            INSERT INTO resource_aliases (project_id, physical_key_id, display_name, target_kind, alias_id)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (project_id, physical_key_id) DO UPDATE SET
+                display_name = excluded.display_name
             """,
-            (str(project_id), physical_key_id, report.display_name, target_kind),
+            (str(project_id), physical_key_id, report.display_name, target_kind, alias_id),
         )
+        # Preserve an existing alias_id on conflict (SQLite keeps prior row values for unset cols).
+        existing_alias = connection.execute(
+            """
+            SELECT alias_id FROM resource_aliases
+            WHERE project_id = ? AND physical_key_id = ?
+            """,
+            (str(project_id), physical_key_id),
+        ).fetchone()
+        if existing_alias is None or existing_alias[0] in (None, ""):
+            connection.execute(
+                """
+                UPDATE resource_aliases SET alias_id = ?
+                WHERE project_id = ? AND physical_key_id = ?
+                """,
+                (alias_id, str(project_id), physical_key_id),
+            )
         connection.execute(
             """
             INSERT INTO resource_inventory (
@@ -291,7 +313,8 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             """
             SELECT aliases.physical_key_id, aliases.display_name, aliases.target_kind,
                    inventory.state, inventory.os_build, inventory.geometry, inventory.observed_at,
-                   quarantine.physical_key_id, physical.worker_id, inventory.permissions
+                   quarantine.physical_key_id, physical.worker_id, inventory.permissions,
+                   aliases.alias_id, physical.native_id
             FROM resource_aliases AS aliases
             JOIN physical_resource_keys AS physical USING (physical_key_id)
             LEFT JOIN resource_inventory AS inventory
@@ -318,6 +341,20 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             observed = "" if row[6] is None else str(row[6])
             device_kind = _device_kind("" if row[9] is None else str(row[9]))
             rotation = _rotation_of("" if row[9] is None else str(row[9]), "" if row[5] is None else str(row[5]))
+            alias_id = "" if row[10] is None else str(row[10])
+            if alias_id == "":
+                # Pre-0047 rows or fixtures that omitted alias_id stay readable.
+                alias_id = new_resource_alias_id()
+                connection.execute(
+                    """
+                    UPDATE resource_aliases
+                    SET alias_id = ?
+                    WHERE project_id = ? AND physical_key_id = ?
+                      AND (alias_id IS NULL OR alias_id = '')
+                    """,
+                    (alias_id, str(project_id), resource_id),
+                )
+            native_id = "" if row[11] is None else str(row[11])
             observation = connection.execute(
                 """
                 SELECT artifact_id, captured_at FROM resource_observations
@@ -354,6 +391,9 @@ def list_resources(project_id: UUID) -> tuple[dict[str, object], ...]:
             listed.append(
                 {
                     "resource_id": resource_id,
+                    "alias_id": alias_id,
+                    "physical_key_id": resource_id,
+                    "common_physical_scope": native_id,
                     "display_name": str(row[1]),
                     "target_kind": str(row[2]),
                     "kind_label": _KIND_LABELS.get(str(row[2]), str(row[2])),
@@ -512,11 +552,15 @@ def submit_diagnostic(
     proof: str | None,
     request_key: str,
 ) -> tuple[object, bool]:
-    """Queue a management probe or recovery. Ready waits for VM proof."""
+    """Queue a management probe or recovery. Ready waits for VM proof.
+
+    kind=installed_apps requires an Android resource with a physical lease and
+    completes the fixture listing without install/reset.
+    """
 
     if provider != "fixture":
         raise DiagnosticBlocked("provider is not configured")
-    if kind not in {"probe", "recovery"}:
+    if kind not in {"probe", "recovery", "installed_apps"}:
         raise DiagnosticBlocked("diagnostic kind is invalid")
     if kind == "recovery" and (proof is None or proof.strip() == ""):
         raise DiagnosticBlocked("recovery requires proof")
@@ -532,8 +576,23 @@ def submit_diagnostic(
         ).fetchone()
         if alias is None:
             raise PreviewDenied("resource was not found")
-        if str(alias[0]) == "web" and proof != "vm-present":
+        target_kind = str(alias[0])
+        if kind == "installed_apps":
+            if target_kind != "android":
+                raise DiagnosticBlocked("installed_apps requires android")
+            lease = connection.execute(
+                """
+                SELECT 1 FROM leases
+                WHERE project_id = ? AND physical_key_id = ?
+                """,
+                (str(project_id), str(resource_id)),
+            ).fetchone()
+            if lease is None:
+                raise DiagnosticBlocked("physical lease is required")
             ready = False
+        if target_kind == "web" and proof != "vm-present":
+            ready = False
+        limits_payload: dict[str, object] = {"kind": kind, "qa": None, "ready": ready}
         receipt = enqueue_job(
             Transaction(connection),
             JobSubmission(
@@ -542,11 +601,72 @@ def submit_diagnostic(
                 None,
                 None,
                 (str(resource_id),),
-                json.dumps({"kind": kind, "qa": None, "ready": ready}, sort_keys=True),
+                json.dumps(limits_payload, sort_keys=True),
             ),
             IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
         )
+        if kind == "installed_apps" and not receipt.replayed:
+            observation = _run_installed_apps_listing(connection, resource_id)
+            limits_payload = _installed_apps_limits(observation, ready=observation.state == "ready")
+            connection.execute(
+                "UPDATE jobs SET status = 'completed', limits = ? WHERE project_id = ? AND job_id = ?",
+                (json.dumps(limits_payload, sort_keys=True), str(project_id), str(receipt.job_id)),
+            )
+            connection.execute(
+                """
+                UPDATE job_receipts SET status = 'completed'
+                WHERE project_id = ? AND job_id = ? AND operation = 'enqueue_job' AND request_key = ?
+                """,
+                (str(project_id), str(receipt.job_id), request_key),
+            )
+            receipt = JobReceipt(
+                job_id=receipt.job_id,
+                purpose=receipt.purpose,
+                status="completed",
+                recording_id=receipt.recording_id,
+                execution_id=receipt.execution_id,
+                case_run_id=receipt.case_run_id,
+                status_href=receipt.status_href,
+                replayed=receipt.replayed,
+                body_hash=receipt.body_hash,
+            )
+            ready = observation.state == "ready"
     return receipt, ready
+
+
+def latest_installed_apps(project_id: UUID, resource_id: UUID) -> dict[str, object] | None:
+    """Return the newest completed installed_apps probe for one resource. No ADB call."""
+
+    refs = json.dumps([str(resource_id)], ensure_ascii=False, separators=(",", ":"))
+    with _bound_store().transaction() as connection:
+        rows = connection.execute(
+            """
+            SELECT limits FROM jobs
+            WHERE project_id = ? AND purpose = 'resource_probe' AND status = 'completed'
+              AND source_refs = ?
+            ORDER BY rowid DESC
+            """,
+            (str(project_id), refs),
+        ).fetchall()
+    for row in rows:
+        limits = json.loads(str(row[0]))
+        if str(limits.get("kind", "")) != "installed_apps":
+            continue
+        apps = limits.get("apps")
+        if type(apps) is not list:
+            apps = []
+        return {
+            "resource_id": str(resource_id),
+            "serial": str(limits.get("serial", "")),
+            "state": str(limits.get("state", "unavailable")),
+            "reason": str(limits.get("reason", "")),
+            "observed_at": str(limits.get("observed_at", "")),
+            "apps": apps,
+            "install_calls": int(limits.get("install_calls", 0) or 0),
+            "reset_calls": int(limits.get("reset_calls", 0) or 0),
+            "qa": None,
+        }
+    return None
 
 
 def list_diagnostic_jobs(project_id: UUID) -> tuple[dict[str, object], ...]:
@@ -573,6 +693,53 @@ def list_diagnostic_jobs(project_id: UUID) -> tuple[dict[str, object], ...]:
             }
         )
     return tuple(listed)
+
+
+def _run_installed_apps_listing(connection: object, resource_id: UUID) -> InstalledAppsObservation:
+    row = connection.execute(
+        """
+        SELECT native_id FROM physical_resource_keys
+        WHERE physical_key_id = ?
+        """,
+        (str(resource_id),),
+    ).fetchone()
+    if row is None:
+        return InstalledAppsObservation(
+            serial="",
+            state="unavailable",
+            reason="resource_missing",
+            observed_at=datetime.now(timezone.utc).isoformat(),
+            apps=(),
+            install_calls=0,
+            reset_calls=0,
+        )
+    serial = str(row[0])
+    adb = Path(str(os.environ.get("AIQA_ADB_PATH", r"C:\sdk\adb.exe")).strip() or r"C:\sdk\adb.exe")
+    return list_installed_apps(adb, serial, expected_serial=serial)
+
+
+def _installed_apps_limits(observation: InstalledAppsObservation, *, ready: bool) -> dict[str, object]:
+    return {
+        "kind": "installed_apps",
+        "qa": None,
+        "ready": ready,
+        "serial": observation.serial,
+        "state": observation.state,
+        "reason": observation.reason,
+        "observed_at": observation.observed_at,
+        "install_calls": observation.install_calls,
+        "reset_calls": observation.reset_calls,
+        "apps": [
+            {
+                "package": app.package,
+                "version_name": app.version_name,
+                "api_level": app.api_level,
+                "abi": app.abi,
+                "content_hash": app.content_hash,
+            }
+            for app in observation.apps
+        ],
+    }
 
 
 def _bound_store() -> Store:

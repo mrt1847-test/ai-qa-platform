@@ -65,7 +65,7 @@
 <a id="rx-21"></a>
 ## RX-21 · 별도 관리 호스트 수용
 
-**입력** RX-08 · RX-20 · RX-28 · RX-37 · RX-41 및 C00/C01/C03/C04/C08. **환경** `local_python` · `independent_server` · `tls_domain` · `oidc_tenant` · `second_client` · `deployment_authorized`.
+**입력** RX-08 · RX-20 · RX-28 · RX-37 · RX-41 · RX-59 및 C00/C01/C03/C04/C08. **환경** `local_python` · `independent_server` · `tls_domain` · `oidc_tenant` · `second_client` · `deployment_authorized`.
 
 **파일** `docs/managed-pc/HOST_RUNBOOK.md`, `docs/validation/tasks/RX-21.md`.
 

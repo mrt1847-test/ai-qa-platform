@@ -1,17 +1,112 @@
 {% extends "base.html" %}
-{% block title %}앱 등록{% endblock %}
+{% block title %}앱 등록 · AI QA{% endblock %}
 {% block content %}
-  <h1>앱 등록</h1>
-  <p>단일 APK만 받습니다. 앱 코드는 실행하지 않습니다.</p>
+<header class="page-heading"><div><p class="eyebrow">환경 / 앱</p><h1>앱 등록</h1><p class="muted">단일 APK만 받습니다. 앱 코드는 실행하지 않습니다. 설치·초기화는 확인된 명시 요청과 lease가 있을 때만 진행합니다.</p></div></header>
+
+<section class="panel">
+  <h2>등록된 빌드</h2>
   {% for item in builds %}
-  <article data-ready="{{ 'true' if item.ready else 'false' }}">
-    <h2>{{ item.filename }}</h2>
-    <p>서명 {{ item.signature_status }}</p>
+  <article data-ready="{{ 'true' if item.ready else 'false' }}" data-build-id="{{ item.build_id }}" data-hash="{{ item.content_hash }}">
+    <h3>{{ item.filename }}</h3>
+    <p>패키지 {{ item.package_name or '미확인' }} · 서명 {{ item.signature_status }} · hash {{ item.content_hash }}</p>
     {% if not item.ready %}<p>분석 도구가 없어 등록할 수 없습니다.</p>{% endif %}
   </article>
+  {% else %}
+  <p class="muted">등록된 빌드가 없습니다.</p>
   {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>명시 설치·초기화</h2>
+  <p class="hint">기본은 설치 앱 사용(use_installed)이며 설치 횟수는 0입니다. force_reinstall·clear는 확인 후에만 실행합니다.</p>
+  <form id="app-install-form" data-project="{{ project_id }}" novalidate>
+    <div class="form-grid">
+      <label>빌드
+        <select name="build_id" required>
+          <option value="">선택</option>
+          {% for item in builds %}
+          <option value="{{ item.build_id }}" data-hash="{{ item.content_hash }}" data-ready="{{ 'true' if item.ready else 'false' }}">{{ item.filename }} · {{ item.package_name or '미확인' }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Android 기기
+        <select name="resource_id" required>
+          <option value="">선택</option>
+          {% for item in resources %}
+          <option value="{{ item.resource_id }}" data-serial="{{ item.display_name }}">{{ item.display_name }} · {{ item.state_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>정책
+        <select name="policy">
+          <option value="use_installed">설치 앱 사용</option>
+          <option value="install_if_needed">필요 시 설치</option>
+          <option value="force_reinstall">강제 재설치</option>
+          <option value="clear">앱 데이터 초기화</option>
+        </select>
+      </label>
+      <label>대상 serial <input name="serial" placeholder="emulator-5580" required></label>
+    </div>
+    <label class="checkbox-label"><input type="checkbox" name="confirmed">설치·초기화 영향과 대상 기기·빌드 hash를 확인했습니다.</label>
+    <input type="hidden" name="content_hash" value="">
+    <p id="install-status" class="muted" role="status">사후 관찰과 실패·정리 대기는 아래에 남습니다.</p>
+    <div class="action-bar"><input type="submit" value="설치 요청"></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>설치 작업</h2>
+  {% for item in installs %}
+  <article data-state="{{ item.state }}">
+    <p>상태 {{ item.state or item.status }} · ready {{ item.ready }} · 사유 {{ item.reason }}</p>
+    <p class="muted">관찰 {{ item.observed_at or '없음' }} · 설치 {{ item.install_calls }} · 초기화 {{ item.reset_calls }} · 정책 {{ item.policy }}</p>
+  </article>
+  {% else %}
+  <p class="muted">설치 작업이 없습니다.</p>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <h2>APK 등록</h2>
   <form method="post" action="/api/v1/projects/{{ project_id }}/app-builds">
     <label>파일 이름 <input name="filename" value="app.apk"></label>
     <input type="submit" value="앱 등록">
   </form>
+</section>
+
+<script>
+(function(){
+  var form=document.getElementById('app-install-form');if(!form)return;
+  var build=form.elements.namedItem('build_id');
+  var hash=form.elements.namedItem('content_hash');
+  var status=document.getElementById('install-status');
+  function syncHash(){var option=build.options[build.selectedIndex];hash.value=option&&option.dataset.hash||'';}
+  build.addEventListener('change',syncHash);syncHash();
+  form.addEventListener('submit',async function(event){
+    event.preventDefault();
+    var resource=form.elements.namedItem('resource_id').value;
+    if(!resource||!build.value||!hash.value){status.textContent='빌드와 기기를 선택해 주세요.';return;}
+    status.textContent='설치 요청을 접수하는 중입니다.';
+    try{
+      var key=(crypto.randomUUID&&crypto.randomUUID())||('install-'+Date.now());
+      var response=await window.aiqaRequest('/api/v1/resources/'+encodeURIComponent(resource)+'/app-installs?project_id='+form.dataset.project,{
+        method:'POST',
+        headers:{'Idempotency-Key':key},
+        body:JSON.stringify({
+          provider:'fixture',
+          build_id:build.value,
+          content_hash:hash.value,
+          policy:form.elements.namedItem('policy').value,
+          serial:form.elements.namedItem('serial').value,
+          confirmed:form.elements.namedItem('confirmed').checked
+        })
+      });
+      var body=await response.json();
+      if(!response.ok){status.textContent=(body.error&&body.error.message)||'설치 요청이 거절되었습니다.';return;}
+      status.textContent='상태 '+body.state+' · ready '+body.ready+' · 설치 '+body.install_calls+' · 초기화 '+body.reset_calls+(body.observed_at?' · 관찰 '+body.observed_at:'');
+      if(body.ready||body.state==='cleanup_pending'||body.state==='failed')location.reload();
+    }catch(_){status.textContent='설치 요청 응답을 받지 못했습니다.';}
+  });
+})();
+</script>
 {% endblock %}

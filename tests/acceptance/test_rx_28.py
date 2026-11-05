@@ -15,7 +15,7 @@ from aiqa.domain.projects import bind_store, create_project, grant_membership
 from aiqa.store.database import migrate_store
 from aiqa.store.models import Actor, ProjectCreate, Transaction
 from ux_support import session, ux_app
-from worker_presence_support import seed_inventory, seed_presence
+from worker_presence_support import seed_inventory, seed_presence, seed_resource_alias
 
 
 def test_rx_28_admin_registration_viewer_denied_revoke_blocks(ux_app) -> None:
@@ -35,7 +35,7 @@ async def _exercise(ux_app) -> None:
             (str(uuid4()), worker_id, project, now.isoformat()),
         )
         db.execute("INSERT INTO physical_resource_keys VALUES (?, ?, 'device')", (device, worker_id))
-        db.execute("INSERT INTO resource_aliases VALUES (?, ?, ?, 'web')", (project, device, worker_id))
+        seed_resource_alias(db, project, device, display_name=worker_id, target_kind="web")
         seed_inventory(db, device)
         seed_presence(db, project, worker_id, now)
         db.commit()

@@ -7,7 +7,7 @@
 <a id="rx-22"></a>
 ## RX-22 · 실제 Web 격리 공격 검증
 
-**입력** RX-15 · RX-30 · RX-35 · RX-60 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
+**입력** RX-15 · RX-30 · RX-35 · RX-60 · RX-76 및 C00/C01/C05/C07. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `native_test_authorized`.
 
 **파일** `docs/managed-pc/WEB_ISOLATION_RUNBOOK.md`, `docs/validation/tasks/RX-22.md`.
 
@@ -19,7 +19,7 @@
 <a id="rx-23"></a>
 ## RX-23 · 실제 Android 녹화와 재생 (독립 호스트 최종 수용)
 
-**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 · RX-44 · RX-45 · RX-46 · RX-52 · RX-54 · RX-64 · RX-65 · RX-66 · RX-67 · RX-71 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized` · `independent_server`.
+**입력** RX-12 · RX-21 · RX-31 · RX-34 · RX-39 · RX-44 · RX-45 · RX-46 · RX-52 · RX-54 · RX-64 · RX-65 · RX-66 · RX-67 · RX-71 · RX-72 · RX-75 · RX-77 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `dedicated_android` · `actual_model_key` · `native_test_authorized` · `independent_server`.
 
 **파일** `tests/operational/test_rx_23.py`, `docs/validation/tasks/RX-23.md`.
 
@@ -33,7 +33,7 @@
 <a id="rx-24"></a>
 ## RX-24 · 실제 Web 녹화와 재생
 
-**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 · RX-45 · RX-61 · RX-70 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
+**입력** RX-21 · RX-22 · RX-31 · RX-36 · RX-42 · RX-45 · RX-61 · RX-70 · RX-72 · RX-76 및 C00/C01/C05/C06/C07/C08. **환경** `local_python` · `verified_web_vm` · `dedicated_web_origin` · `actual_model_key` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_24.py`, `docs/validation/tasks/RX-24.md`.
 
@@ -45,7 +45,7 @@
 <a id="rx-25"></a>
 ## RX-25 · 전원 종료 중 다른 PC에서 검토
 
-**입력** RX-21 · RX-23 · RX-24 · PC-03 · RX-53 및 C00/C01/C03/C08/C09/C11. **환경** `local_python` · `independent_server` · `second_client` · `execution_pc_power_test_authorized`.
+**입력** RX-21 · RX-23 · RX-24 · PC-03 · RX-53 · RX-73 · RX-77 및 C00/C01/C03/C08/C09/C11. **환경** `local_python` · `independent_server` · `second_client` · `execution_pc_power_test_authorized`.
 
 **파일** `tests/operational/test_rx_25.py`, `docs/validation/tasks/RX-25.md`.
 
@@ -57,7 +57,7 @@
 <a id="rx-26"></a>
 ## RX-26 · 재연결의 미확정 행동과 늦은 ACK
 
-**입력** RX-21 · RX-23 · RX-38 및 C00/C01/C04/C05/C08. **환경** `local_python` · `independent_server` · `dedicated_android` · `fault_injection_authorized`.
+**입력** RX-21 · RX-23 · RX-38 · RX-73 및 C00/C01/C04/C05/C08. **환경** `local_python` · `independent_server` · `dedicated_android` · `fault_injection_authorized`.
 
 **파일** `tests/operational/test_rx_26.py`, `docs/validation/tasks/RX-26.md`.
 
@@ -69,7 +69,7 @@
 <a id="rx-27"></a>
 ## RX-27 · 두 워커의 동일 물리 자원 경합
 
-**입력** RX-21 · RX-23 · RX-62 및 C00/C01/C03/C04/C05. **환경** `local_python` · `independent_server` · `two_registered_workers` · `shared_test_physical_scope` · `native_test_authorized`.
+**입력** RX-21 · RX-23 · RX-62 · RX-73 및 C00/C01/C03/C04/C05. **환경** `local_python` · `independent_server` · `two_registered_workers` · `shared_test_physical_scope` · `native_test_authorized`.
 
 **파일** `tests/operational/test_rx_27.py`, `docs/validation/tasks/RX-27.md`.
 

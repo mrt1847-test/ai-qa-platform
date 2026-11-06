@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+
+_PC_REGISTRATION_ACTIONS = frozenset({"issue", "copy", "cancel", "revoke"})
+
+
+def _assert_only_registration_controls(text: str) -> None:
+    """RX-28 PC registration buttons are allowed; cloud/manualcontrol/pause controls are not."""
+
+    for tag in re.findall(r"<button\b[^>]*>", text):
+        action = re.search(r'data-pc-action="([^"]+)"', tag)
+        assert action is not None and action.group(1) in _PC_REGISTRATION_ACTIONS, tag
+    for hook in ("cloud", "manualcontrol", "pause"):
+        assert hook not in text.lower(), hook
 
 
 def test_w11_08(tmp_path: Path) -> None:
@@ -100,7 +113,8 @@ def test_w11_07(tmp_path: Path) -> None:
     assert page.status_code == 200
     assert "진단 작업" in text and "proof 없음" in text
     assert "키와 외부 전송은 막혀 있습니다." in text
-    assert "<button" not in text and "PASS" not in text
+    _assert_only_registration_controls(text)
+    assert "PASS" not in text
     assert observed == {
         "vm_missing_web_ready": False,
         "recovery_requires_proof": True,
@@ -496,7 +510,8 @@ def test_w11_01(tmp_path: Path) -> None:
     assert "보관 기한이 지났습니다." in text
     assert "아직 관찰이 없습니다." in text
     assert "사용할 수 없음" in text
-    assert "<button" not in text and "PASS" not in text
+    _assert_only_registration_controls(text)
+    assert "PASS" not in text
     assert preview.status_code == 200
     assert preview.json()["reason"] == "expired"
     assert observed == {

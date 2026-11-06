@@ -473,11 +473,16 @@ async def post_structure(project_id: str, case_id: str, version_id: str, request
             ).fetchone()
             if row is None or str(row[0]) != str(parsed_case):
                 return _error(404, "not_found", "case was not found", {})
+            gateway = getattr(request.app.state, "model_gateway", None)
+            provider = getattr(gateway, "provider", None) if gateway is not None else None
             receipt = request_structure(
                 actor,
                 project,
                 parsed_version,
                 request_key=request.headers.get("idempotency-key", "").strip(),
+                provider=provider,
+                secret_resolver=getattr(request.app.state, "secret_resolver", None),
+                store=_case_store(),
             )
         except CsrfRejected:
             return _error(403, "permission", "csrf token was rejected", {})
@@ -491,9 +496,29 @@ async def post_structure(project_id: str, case_id: str, version_id: str, request
             return _error(409, "conflict", "idempotency body does not match", {})
         except StructureRejected as exc:
             message = str(exc) or "structure was rejected"
-            if "hidden" in message or "secret" in message:
-                return _error(422, "validation", "proposal source was rejected", {})
-            return _error(422, "validation", message, {})
+            status = exc.status if type(exc.status) is int else 422
+            if "hidden" in message:
+                message = "proposal source was rejected"
+                status = 422
+            code = "validation"
+            if status in {401, 403}:
+                code = "permission"
+            elif status == 429:
+                code = "quota"
+            elif status >= 500:
+                code = "upstream"
+            return JSONResponse(
+                status_code=status,
+                content={
+                    "error": {
+                        "code": code,
+                        "message": message,
+                        "fields": {},
+                        "retryable": bool(exc.retryable) or status in {401, 403, 429} or status >= 500,
+                        "request_id": str(uuid4()),
+                    }
+                },
+            )
     return JSONResponse(
         status_code=201,
         content={

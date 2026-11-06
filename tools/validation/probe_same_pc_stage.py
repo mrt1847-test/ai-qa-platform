@@ -1,4 +1,13 @@
-"""Check a same-PC management API and worker over real TLS with disposable data."""
+"""Check a same-PC management API and worker over real TLS with disposable data.
+
+Recording finish seals an unapproved draft; when the worker returns a compile-ready
+Android action_mapping the server materializes a replay package. Full
+browser→trial→approve→suite regression without SQL shortcuts is covered by
+tests/acceptance/test_rx_71.py (local ASGI + fixture worker). RX-77
+(tests/acceptance/test_rx_77.py) extends that ASGI path with two cases, a two-entry suite
+regression, real WorkerRuntime cleanup, and finalization/evidence checks; it needs no AVD.
+This probe is the real-TLS / dedicated-AVD counterpart and stays an opt-in script.
+"""
 
 from __future__ import annotations
 

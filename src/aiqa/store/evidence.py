@@ -415,11 +415,15 @@ def _place_active_artifacts(
 
     job = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT jobs.purpose, jobs.recording_id, recordings.case_id, recordings.input_case_version_id
+        SELECT jobs.purpose, jobs.recording_id, recordings.case_id, recordings.input_case_version_id,
+               jobs.case_run_id, case_runs.case_id, case_runs.case_version_id
         FROM jobs
         LEFT JOIN recordings
           ON recordings.project_id = jobs.project_id
          AND recordings.recording_id = jobs.recording_id
+        LEFT JOIN case_runs
+          ON case_runs.project_id = jobs.project_id
+         AND case_runs.case_run_id = jobs.case_run_id
         WHERE jobs.project_id = ? AND jobs.job_id = ?
         """,
         (str(lease.project_id), str(lease.job_id)),
@@ -430,6 +434,11 @@ def _place_active_artifacts(
     recording_id = None if job[1] is None else str(job[1])
     case_id = None if job[2] is None else str(job[2])
     case_version_id = None if job[3] is None else str(job[3])
+    case_run_id = None if job[4] is None else str(job[4])
+    if purpose in {"trial", "regression"} and case_run_id is not None:
+        # Replay evidence is owned by the ITEM (case run) and links to the replay action.
+        case_id = None if job[5] is None else str(job[5])
+        case_version_id = None if job[6] is None else str(job[6])
     stored_ids: list[str] = []
     stamped = binding.now.astimezone(timezone.utc).isoformat()
     for part in artifacts:
@@ -442,9 +451,11 @@ def _place_active_artifacts(
         if suffix is None:
             raise ValueError("artifact filename is invalid")
         action_id = part.action_id
+        replay_item = purpose in {"trial", "regression"} and case_run_id is not None
         if action_id is not None and action_id.strip() != "":
-            if purpose != "recording" or recording_id is None or case_id is None or case_version_id is None:
-                raise ValueError("action evidence requires a recording job")
+            recording_ok = purpose == "recording" and recording_id is not None
+            if not (recording_ok or replay_item) or case_id is None or case_version_id is None:
+                raise ValueError("action evidence requires a recording or replay job")
             _ensure_recording_action(
                 connection,
                 project_id=str(lease.project_id),
@@ -454,6 +465,10 @@ def _place_active_artifacts(
                 case_version_id=case_version_id,
             )
         owner_id = part.owner_id
+        if replay_item:
+            if part.owner_kind != "ITEM" or (owner_id is not None and str(owner_id) != case_run_id):
+                raise ValueError("replay evidence owner is invalid")
+            owner_id = UUID(str(case_run_id))
         if owner_id is None and recording_id is not None:
             owner_id = UUID(recording_id)
         if owner_id is None:

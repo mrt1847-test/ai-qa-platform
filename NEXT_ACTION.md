@@ -1,28 +1,25 @@
 # Next Actions
 
-Updated: **2026-11-05 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
+Updated: **2026-11-06 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
 
-실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. 실제 독립 서버 배포·전원 단절 수용과 [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md)은 남아 있다.
+실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~66 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~78 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
 
 ## Current
 
-**RX-67 — 행동별 서버 증거 ACK와 실시간 타임라인.** 상태 `not_started`. (선행 RX-48·RX-49·RX-43)
+**(큐 비움)** — RESULTS RX-72~78 완료. 다음 기능 구현 Current 없음.
 
-- [RX-67 카드](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-67)와 RX-48·49·43 인계를 읽는다. 스텝마다 서버 commit/ACK가 진행 중 타임라인에 반영되는지 로컬 fixture로 확인한다.
-- 핸들러가 끝까지 메모리에만 모으지 않고, 실패·취소 후에도 이미 ACK된 증거를 보존한다.
+- 로컬 구현 트랙(ENTRY·PRODUCT·RESULTS) 카드는 소진됐다. 남은 것은 실환경 수용·release다.
+- 외부 조건이 열리면 [RX-21](docs/validation/tasks/RX-21.md)~[RX-27](docs/validation/tasks/RX-27.md)·[RX-29](docs/validation/tasks/RX-29.md) 또는 release_acceptance를 연다. 운영 키·독립 호스트·VM 없이도 문서만으로 완료를 추가하지 않는다.
 
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | [RX-68](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-68) | 앱 조회/설치를 일반 워커 경로에 연결 | RX-56/57/62 |
-| 2 | [RX-69](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-69) | 자연어 구조화를 설정된 모델로 연결 | RX-55/45 |
-| 3 | [RX-70](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-70) | Web 신뢰 driver의 실제 실행 포트 | RX-60/61 |
-| 4 | [RX-71](docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-71) | 현재 PC 브라우저에서 녹화→승인→회귀 | RX-63~69 |
+| — | 실환경 수용 | 독립 서버·OIDC·AVD/브라우저·비용 계측 | 외부 대기 표 |
 
-RX-63~70은 로컬에서 독립적으로 개발할 수 있다. RX-71의 기기·모델은 테스트 경계에서 대체할 수 있으나 일반 브라우저/API·작업 큐·worker와 증거 저장은 같은 흐름으로 확인한다. RX-21~27은 실환경 수용 대기로 유지하고 RX-29 계측은 최종 기능 수용 뒤에 진행한다.
+기능 구현 Current가 비었다. 외부 대기 표를 본다. 운영 키·독립 관리 서버·VM이 없어도 로컬 구현을 진행한다. 실제 VM 격리와 물리 전원 종료는 release_acceptance에서 확인한다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
 
 ## 외부 대기와 재사용
 

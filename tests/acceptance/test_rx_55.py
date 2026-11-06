@@ -13,11 +13,13 @@ import httpx
 
 from aiqa.api.app import create_app
 from aiqa.config import load_settings
+from aiqa.domain.model_bindings import bind_model_store, save_model_binding_revision
 from aiqa.domain.projects import bind_store, create_project
 from aiqa.models.provider_http import structured_fixture_content
 from aiqa.recording.structure import structure_body_from_text
+from aiqa.security.secrets import MemorySecretBackend, bind_secret_store
 from aiqa.store.database import migrate_store
-from aiqa.store.models import Actor, ProjectCreate
+from aiqa.store.models import Actor, ModelBindingInput, ProjectCreate, SecretInput, SecretRef
 from aiqa.worker.runtime import structure_prepared_adapters
 from ux_support import session
 
@@ -32,14 +34,39 @@ _NL = "로그인한 뒤 주문 내역에서 첫 주문을 열고, 주문번호�
 
 def test_rx_55_structure_propose_compare_accept(tmp_path: Path) -> None:
     root = tmp_path / "runtime"
-    app = create_app(
-        load_settings({"AIQA_HOST": "127.0.0.1", "AIQA_PORT": "8000", "AIQA_RUNTIME_ROOT": str(root)})
+    settings = load_settings(
+        {"AIQA_HOST": "127.0.0.1", "AIQA_PORT": "8000", "AIQA_RUNTIME_ROOT": str(root)}
     )
+    backend = MemorySecretBackend()
+    app = create_app(settings, secret_backend=backend)
     owner = Actor(uuid4(), None, True)
     store = app.state.open_store()
     migrate_store(store)
     with bind_store(store):
         project = create_project(owner, ProjectCreate("구조화", "rx55", "제안", "web"))
+    actor = Actor(owner.actor_id, project.project_id, True)
+    with bind_secret_store(store):
+        created = app.state.secret_resolver.put(
+            actor, SecretInput(value="rx55-structure-key", name="structure")
+        )
+    with bind_model_store(store):
+        save_model_binding_revision(
+            ModelBindingInput(
+                project_id=project.project_id,
+                actor_id=actor.actor_id,
+                name="structure",
+                role="structure",
+                provider="fixture",
+                endpoint_kind="https",
+                endpoint="https://model.example/v1",
+                model="fixture-structure",
+                key_ref=SecretRef(project.project_id, created.ref_id, created.revision),
+                prompt_hash="sha256:" + ("cd" * 32),
+                tariff_id="t1",
+                compatibility_status="compatible",
+                binding_id=None,
+            )
+        )
     store.close()
     project_id = str(project.project_id)
     database = root / "db" / "aiqa.sqlite"

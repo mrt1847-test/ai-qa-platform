@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.routing import APIRouter
 
 from aiqa.api.auth import (
@@ -20,21 +20,25 @@ from aiqa.api.auth import (
     authorize_browser,
     authorize_page,
     bound_auth_store,
+    worker_scope_from_token,
 )
 from aiqa.contracts.jobs import IdempotencyKey, JobReceipt, JobSubmission
 from aiqa.environments.app_builds import (
     ApkRejected,
     ApkInspectionSpec,
+    AppBuildView,
     AppInstallBlocked,
     AppPreparationResult,
     AppPreparationSpec,
     FixtureInstallDriver,
     get_app_build,
     list_app_builds,
+    load_app_build_bytes,
     prepare_app,
     register_app_build,
 )
-from aiqa.store.database import migrate_store
+from aiqa.store.artifacts import ArtifactRejected
+from aiqa.store.database import Store, migrate_store
 from aiqa.store.models import Transaction
 from aiqa.store.queue import JobConflict, ResourceOffline, enqueue_job
 from aiqa.web.routes import UiQueryState, render_template
@@ -78,15 +82,20 @@ async def post_app_build(project_id: str, request: Request) -> JSONResponse:
     tool = payload.get("tool_path", ...)
     if tool is not ... and tool is not None and type(tool) is not str:
         return _error(422, "validation", "invalid apk")
-    with _bound(request):
+    with _bound(request) as store:
         try:
             authorize_browser(request, project, "app_build")
-            receipt, view = register_app_build(
-                ApkInspectionSpec(project, filename, body, declared, int(payload.get("project_total", 0))),
-                tool_path=tool,
-            )
+            with store.transaction() as connection:
+                receipt, view = register_app_build(
+                    ApkInspectionSpec(project, filename, body, declared, int(payload.get("project_total", 0))),
+                    tool_path=tool,
+                    connection=connection,
+                    artifacts_dir=store.config.artifacts_dir,
+                )
         except ApkRejected:
             return _error(422, "validation", "invalid apk")
+        except ArtifactRejected:
+            return _error(409, "conflict", "stored apk does not match its hash")
         except (CsrfRejected, OriginRejected):
             return _error(403, "permission", "request was rejected")
         except AuthRequired:
@@ -105,6 +114,77 @@ async def post_app_build(project_id: str, request: Request) -> JSONResponse:
             "ready": view.ready,
             "signature_status": view.signature_status,
             "package_name": view.package_name,
+            "content_hash": view.content_hash,
+            "byte_length": view.byte_length,
+        },
+    )
+
+
+@router.get("/projects/{project_id}/app-builds")
+async def list_app_builds_json(project_id: str, request: Request) -> JSONResponse:
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return project
+    with _bound(request) as store:
+        try:
+            _authorize_read(request, project)
+            with store.transaction() as connection:
+                items = list_app_builds(project, connection=connection)
+        except _ReadDenied as denied:
+            return denied.response
+    return JSONResponse(status_code=200, content={"items": [_build_json(item) for item in items]})
+
+
+@router.get("/projects/{project_id}/app-builds/{build_id}")
+async def get_app_build_json(project_id: str, build_id: str, request: Request) -> JSONResponse:
+    project = _uuid(project_id)
+    build = _build_uuid(build_id)
+    if isinstance(project, JSONResponse):
+        return project
+    if build is None:
+        return _error(404, "not_found", "build was not found")
+    with _bound(request) as store:
+        try:
+            _authorize_read(request, project)
+            with store.transaction() as connection:
+                view = get_app_build(project, build, connection=connection)
+        except _ReadDenied as denied:
+            return denied.response
+    if view is None:
+        return _error(404, "not_found", "build was not found")
+    return JSONResponse(status_code=200, content=_build_json(view))
+
+
+@router.get("/projects/{project_id}/app-builds/{build_id}/content")
+async def get_app_build_content(project_id: str, build_id: str, request: Request) -> Response:
+    """APK bytes for one project build. Worker Bearer token or browser session; never cross-project."""
+
+    project = _uuid(project_id)
+    build = _build_uuid(build_id)
+    if isinstance(project, JSONResponse):
+        return project
+    if build is None:
+        return _error(404, "not_found", "build was not found")
+    with _bound(request) as store:
+        try:
+            _authorize_read(request, project)
+            with store.transaction() as connection:
+                loaded = load_app_build_bytes(connection, store.config.artifacts_dir, project, build)
+        except _ReadDenied as denied:
+            return denied.response
+        except ArtifactRejected:
+            return _error(409, "conflict", "stored apk is missing or does not match its hash")
+    if loaded is None:
+        return _error(404, "not_found", "build was not found")
+    body, digest = loaded
+    return Response(
+        content=body,
+        status_code=200,
+        media_type="application/vnd.android.package-archive",
+        headers={
+            "Content-Hash": digest,
+            "X-Content-Hash": digest,
+            "Cache-Control": "no-store",
         },
     )
 
@@ -137,7 +217,7 @@ async def post_app_install(resource_id: str, request: Request) -> JSONResponse:
         or type(cancel_requested) is not bool
     ):
         return _error(422, "validation", "invalid app install")
-    if provider != "fixture":
+    if provider not in {"fixture", "worker"}:
         return _error(422, "validation", "install provider is not configured")
     try:
         build_uuid = UUID(build_id)
@@ -159,6 +239,7 @@ async def post_app_install(resource_id: str, request: Request) -> JSONResponse:
                 confirmed=confirmed,
                 cancel_requested=cancel_requested,
                 request_key=request_key,
+                provider=provider,
             )
         except AppInstallBlocked as exc:
             return _error(422, "validation", str(exc) or "install was blocked")
@@ -200,10 +281,11 @@ async def app_builds_page(project_id: str, request: Request) -> HTMLResponse:
     project = _uuid(project_id)
     if isinstance(project, JSONResponse):
         return HTMLResponse(status_code=404, content="앱을 찾지 못했습니다.")
-    with _bound(request):
+    with _bound(request) as page_store:
         try:
             authorize_page(request, project)
-            items = list_app_builds(project)
+            with page_store.transaction() as page_connection:
+                items = list_app_builds(project, connection=page_connection)
             installs = _list_install_jobs(request, project)
             resources = _list_android_resources(request, project)
         except (OriginRejected, ProjectHidden, AuthRequired):
@@ -245,18 +327,20 @@ def _submit_app_install(
     confirmed: bool,
     cancel_requested: bool,
     request_key: str,
+    provider: str = "fixture",
 ) -> tuple[JobReceipt, AppPreparationResult, FixtureInstallDriver]:
-    build = get_app_build(project_id, build_id)
-    if build is None:
-        raise AppInstallBlocked("build was not found")
-    if policy not in {"use_installed", "install_if_needed", "force_reinstall", "clear"}:
-        raise AppInstallBlocked("policy is invalid")
-    if policy in {"install_if_needed", "force_reinstall", "clear"} and not confirmed:
-        raise AppInstallBlocked("confirmation required")
     store = request.app.state.open_store()
     migrate_store(store)
     driver: FixtureInstallDriver = request.app.state.fixture_install_driver
     try:
+        with store.transaction() as lookup:
+            build = get_app_build(project_id, build_id, connection=lookup)
+        if build is None:
+            raise AppInstallBlocked("build was not found")
+        if policy not in {"use_installed", "install_if_needed", "force_reinstall", "clear"}:
+            raise AppInstallBlocked("policy is invalid")
+        if policy in {"install_if_needed", "force_reinstall", "clear"} and not confirmed:
+            raise AppInstallBlocked("confirmation required")
         with bind_inventory_store(store):
             with store.transaction() as connection:
                 alias = connection.execute(
@@ -281,15 +365,19 @@ def _submit_app_install(
                     (str(project_id), str(resource_id)),
                 ).fetchone()
                 lease_held = lease is not None
+                # Claim snapshot validation pins build_id→content_hash in app_builds.
+                pin_build_hash(connection, project_id, build_id, content_hash)
                 limits = {
                     "kind": "app_install",
                     "qa": None,
                     "build_id": str(build_id),
+                    "build_hash": content_hash,
                     "content_hash": content_hash,
                     "policy": policy,
                     "serial": serial,
                     "confirmed": confirmed,
                     "resource_id": str(resource_id),
+                    "provider": provider,
                 }
                 receipt = enqueue_job(
                     Transaction(connection),
@@ -323,6 +411,21 @@ def _submit_app_install(
                         qa=None,
                     )
                     return receipt, result, driver
+                # provider=worker leaves the job queued for a registered Android worker claim.
+                provider = str(limits.get("provider") or "fixture")
+                if provider == "worker":
+                    pending = AppPreparationResult(
+                        ready=False,
+                        state="queued",
+                        reason="worker_pending",
+                        install_calls=0,
+                        reset_calls=0,
+                        observed_at="",
+                        package=None,
+                        content_hash=None,
+                        qa=None,
+                    )
+                    return receipt, pending, driver
                 result = prepare_app(
                     AppPreparationSpec(
                         project_id,
@@ -378,6 +481,23 @@ def _submit_app_install(
         store.close()
 
 
+def pin_build_hash(connection: object, project_id: UUID, build_id: UUID, content_hash: str) -> None:
+    """Pin build_id→hash for claim validation. A published build keeps its stored hash."""
+
+    connection.execute(  # type: ignore[attr-defined]
+        """
+        INSERT INTO app_builds (project_id, build_id, content_hash)
+        VALUES (?, ?, ?)
+        ON CONFLICT(project_id, build_id) DO UPDATE SET
+            content_hash = CASE
+                WHEN app_builds.object_key IS NULL THEN excluded.content_hash
+                ELSE app_builds.content_hash
+            END
+        """,
+        (str(project_id), str(build_id), content_hash),
+    )
+
+
 def _list_install_jobs(request: Request, project_id: UUID) -> tuple[dict[str, object], ...]:
     store = request.app.state.open_store()
     try:
@@ -427,14 +547,62 @@ def _list_android_resources(request: Request, project_id: UUID) -> tuple[dict[st
 
 
 @contextmanager
-def _bound(request: Request) -> Iterator[None]:
+def _bound(request: Request) -> Iterator[Store]:
     store = request.app.state.open_store()
     try:
         migrate_store(store)
         with bound_auth_store(store):
-            yield
+            yield store
     finally:
         store.close()
+
+
+class _ReadDenied(Exception):
+    def __init__(self, response: JSONResponse) -> None:
+        super().__init__("read denied")
+        self.response = response
+
+
+def _authorize_read(request: Request, project: UUID) -> None:
+    """Worker Bearer token or browser session. Both stay inside one project."""
+
+    header = request.headers.get("authorization", "")
+    try:
+        if header.lower().startswith("bearer "):
+            worker = worker_scope_from_token(header[7:].strip())
+            if project not in worker.permitted_projects:
+                raise _ReadDenied(_error(404, "not_found", "project was not found"))
+            return
+        authorize_page(request, project)
+    except AuthRequired as exc:
+        raise _ReadDenied(_error(401, "unauthorized", "session is missing")) from exc
+    except OriginRejected as exc:
+        raise _ReadDenied(_error(403, "permission", "request was rejected")) from exc
+    except ProjectHidden as exc:
+        raise _ReadDenied(_error(404, "not_found", "project was not found")) from exc
+
+
+def _build_uuid(value: str) -> UUID | None:
+    try:
+        return UUID(value)
+    except ValueError:
+        return None
+
+
+def _build_json(view: AppBuildView) -> dict[str, object]:
+    return {
+        "build_id": str(view.build_id),
+        "filename": view.filename,
+        "package_name": view.package_name,
+        "version_name": view.version_name,
+        "min_sdk": view.min_sdk,
+        "abi": view.abi,
+        "signature_status": view.signature_status,
+        "ready": view.ready,
+        "content_hash": view.content_hash,
+        "byte_length": view.byte_length,
+        "created_at": view.created_at,
+    }
 
 
 def _project_query(request: Request) -> UUID | JSONResponse:

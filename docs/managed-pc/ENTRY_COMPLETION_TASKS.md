@@ -77,10 +77,12 @@
 
 **파일** `src/aiqa/worker/android_jobs.py`, `src/aiqa/worker/runtime.py`, `src/aiqa/worker/http_client.py`, `src/aiqa/api/recordings.py`, `tests/acceptance/test_rx_67.py`.
 
-- [ ] 두 번째 스텝을 보류한 상태에서 첫 스텝 PNG·로그를 API/브라우저로 조회한다. commit 응답 유실과 재전송에서 중복 행동 0·파일 bytes 동일·미ACK 삭제 0을 확인한다.
-- [ ] 행동별 로컬 spool과 서버 commit·ACK를 연결하고 ACK된 prefix를 유지한다. 다음 스텝에서 프로세스가 종료돼도 이전 증거가 조회되고 녹화는 미완료 상태로 남게 한다.
-- [ ] `python -m pytest -q tests/acceptance/test_rx_67.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
-- [ ] `docs/validation/tasks/RX-67.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+- [x] 두 번째 스텝을 보류한 상태에서 첫 스텝 PNG·로그를 API/브라우저로 조회한다. commit 응답 유실과 재전송에서 중복 행동 0·파일 bytes 동일·미ACK 삭제 0을 확인한다.
+- [x] 행동별 로컬 spool과 서버 commit·ACK를 연결하고 ACK된 prefix를 유지한다. 다음 스텝에서 프로세스가 종료돼도 이전 증거가 조회되고 녹화는 미완료 상태로 남게 한다.
+- [x] `python -m pytest -q tests/acceptance/test_rx_67.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
+- [x] `docs/validation/tasks/RX-67.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+
+완료 근거: [RX-67.md](../validation/tasks/RX-67.md).
 
 <a id="rx-68"></a>
 ## RX-68 · 앱 조회·설치·초기화를 실제 워커에 등록
@@ -91,10 +93,12 @@
 
 **파일** `src/aiqa/worker/runtime.py`, `src/aiqa/worker/android_jobs.py`, `src/aiqa/api/resources.py`, `src/aiqa/api/app_builds.py`, `tests/acceptance/test_rx_68.py`.
 
-- [ ] 사용자 API 요청부터 별도 worker entry·모의 ADB까지 실행해 앱 목록과 설치 결과가 서버에 반영되는지 확인한다. 미허가 변경과 serial 위조는 0회이며 metadata-only 응답을 성공 설치로 표시하지 않는다.
-- [ ] 자원 관리 목적을 허용된 등록 scope와 고정 물리 기기로 라우팅한다. claim payload와 결과 저장 경로를 연결해 화면에서 접수한 앱 조회/설치/reset의 진행·결과·정리 상태를 읽을 수 있게 한다.
-- [ ] `python -m pytest -q tests/acceptance/test_rx_68.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
-- [ ] `docs/validation/tasks/RX-68.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+- [x] 사용자 API 요청부터 별도 worker entry·모의 ADB까지 실행해 앱 목록과 설치 결과가 서버에 반영되는지 확인한다. 미허가 변경과 serial 위조는 0회이며 metadata-only 응답을 성공 설치로 표시하지 않는다.
+- [x] 자원 관리 목적을 허용된 등록 scope와 고정 물리 기기로 라우팅한다. claim payload와 결과 저장 경로를 연결해 화면에서 접수한 앱 조회/설치/reset의 진행·결과·정리 상태를 읽을 수 있게 한다.
+- [x] `python -m pytest -q tests/acceptance/test_rx_68.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
+- [x] `docs/validation/tasks/RX-68.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+
+완료 근거: [RX-68.md](../validation/tasks/RX-68.md).
 
 <a id="rx-69"></a>
 ## RX-69 · 자연어 구조화를 서버 모델 설정에 연결
@@ -105,10 +109,12 @@
 
 **파일** `src/aiqa/recording/structure.py`, `src/aiqa/api/cases.py`, `src/aiqa/models/broker.py`, `src/aiqa/models/provider_http.py`, `tests/acceptance/test_rx_69.py`.
 
-- [ ] 일반 API로 서로 다른 자연어 두 건을 요청해 공급자 입력과 제안이 구분되는지 확인한다. API 반복 전송·stale base·401/429에서 중복 모델 호출·자동 적용·원문 노출을 막는다.
-- [ ] 구조화 job에서 프로젝트 모델 binding·서버 secret ref·역할 예산을 사용한다. 일반 요청에 고정 구조화 응답을 기본값으로 넣지 않고, 설정 누락/응답 실패를 UI의 재시도 가능한 오류로 돌려준다. 수락은 새 버전으로 남긴다.
-- [ ] `python -m pytest -q tests/acceptance/test_rx_69.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
-- [ ] `docs/validation/tasks/RX-69.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+- [x] 일반 API로 서로 다른 자연어 두 건을 요청해 공급자 입력과 제안이 구분되는지 확인한다. API 반복 전송·stale base·401/429에서 중복 모델 호출·자동 적용·원문 노출을 막는다.
+- [x] 구조화 job에서 프로젝트 모델 binding·서버 secret ref·역할 예산을 사용한다. 일반 요청에 고정 구조화 응답을 기본값으로 넣지 않고, 설정 누락/응답 실패를 UI의 재시도 가능한 오류로 돌려준다. 수락은 새 버전으로 남긴다.
+- [x] `python -m pytest -q tests/acceptance/test_rx_69.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
+- [x] `docs/validation/tasks/RX-69.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+
+완료 근거: [RX-69.md](../validation/tasks/RX-69.md).
 
 <a id="rx-70"></a>
 ## RX-70 · Web 신뢰 driver의 실제 브라우저 호출 연결
@@ -119,10 +125,12 @@
 
 **파일** `src/aiqa/replay/driver.py`, `src/aiqa/worker/web_jobs.py`, `src/aiqa/worker/web_vm_transport.py`, `tests/integration/test_rx_70.py`.
 
-- [ ] 로컬 전용 웹을 여는 브라우저 driver에서 click/fill/scroll의 실제 DOM 변화와 전후 capture를 확인한다. VM 부재는 격리 수용 RX-22에 남기고, 검증되지 않은 proof로 제품 ready를 올리지 않는다.
-- [ ] 신뢰 영역의 전용 브라우저 session과 allowlist 동작·관찰 포트를 실제 worker에 연결한다. 실행 포트가 없으면 명시 차단하고 성공 count를 올리지 않는다. 생성 코드에는 raw CDP·Playwright 핸들을 넘기지 않는다.
-- [ ] `python -m pytest -q tests/integration/test_rx_70.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
-- [ ] `docs/validation/tasks/RX-70.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+- [x] 로컬 전용 웹을 여는 브라우저 driver에서 click/fill/scroll의 실제 DOM 변화와 전후 capture를 확인한다. VM 부재는 격리 수용 RX-22에 남기고, 검증되지 않은 proof로 제품 ready를 올리지 않는다.
+- [x] 신뢰 영역의 전용 브라우저 session과 allowlist 동작·관찰 포트를 실제 worker에 연결한다. 실행 포트가 없으면 명시 차단하고 성공 count를 올리지 않는다. 생성 코드에는 raw CDP·Playwright 핸들을 넘기지 않는다.
+- [x] `python -m pytest -q tests/integration/test_rx_70.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
+- [x] `docs/validation/tasks/RX-70.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+
+완료 근거: [RX-70.md](../validation/tasks/RX-70.md).
 
 <a id="rx-71"></a>
 ## RX-71 · 현재 PC의 브라우저부터 승인·회귀까지 연결
@@ -133,8 +141,10 @@
 
 **파일** `tools/validation/probe_same_pc_stage.py`, `src/aiqa/web/templates/recording_setup.html`, `src/aiqa/web/templates/case_review.html`, `src/aiqa/web/templates/execution.html`, `tests/acceptance/test_rx_71.py`.
 
-- [ ] 임시 데이터·로컬 모의 모델 공급자로 브라우저 조작부터 실제 entry를 실행한다. 중간 상태를 SQL로 완료시키거나 승인 gate를 우회하지 않는다. 최종 서버 파일 bytes·버전/패키지 hash·actor 호출 0·결과 조회를 기록한다.
-- [ ] 정상 케이스 작성과 대상 선택, 녹화, 시범 실행, 증거 확인과 승인, 묶음 회귀를 현재 PC의 독립 API/worker·브라우저로 연결한다. 진행 중 발견한 API·UI·worker 누락은 해당 기능 코드에서 수정한다.
-- [ ] `python -m pytest -q tests/acceptance/test_rx_71.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
-- [ ] `docs/validation/tasks/RX-71.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+- [x] 임시 데이터·로컬 모의 모델 공급자로 브라우저 조작부터 실제 entry를 실행한다. 중간 상태를 SQL로 완료시키거나 승인 gate를 우회하지 않는다. 최종 서버 파일 bytes·버전/패키지 hash·actor 호출 0·결과 조회를 기록한다.
+- [x] 정상 케이스 작성과 대상 선택, 녹화, 시범 실행, 증거 확인과 승인, 묶음 회귀를 현재 PC의 독립 API/worker·브라우저로 연결한다. 진행 중 발견한 API·UI·worker 누락은 해당 기능 코드에서 수정한다.
+- [x] `python -m pytest -q tests/acceptance/test_rx_71.py` 및 카드에 영향받는 기존 시험을 통과시킨다. RX-63은 기존 RX-28 실패를 고치는 범위에서 회귀를 재사용하고 필요하지 않은 새 시험은 생략한다.
+- [x] `docs/validation/tasks/RX-71.md`에 정상 진입점·관측 결과·추가/재사용 코드·명령·실환경 제한을 남긴다.
+
+완료 근거: [RX-71.md](../validation/tasks/RX-71.md).
 

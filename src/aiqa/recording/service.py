@@ -567,10 +567,11 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
     connection.execute(  # type: ignore[attr-defined]
         """
         UPDATE recordings
-        SET stop_status = 'stopped', completion_status = ?, evidence_status = 'complete'
+        SET stop_status = 'stopped', completion_status = ?, evidence_status = 'complete',
+            storage_status = CASE WHEN ? = 'interrupted' THEN storage_status ELSE 'stored' END
         WHERE project_id = ? AND recording_id = ? AND completion_status = 'open'
         """,
-        (outcome, str(project_id), str(spec.recording_id)),
+        (outcome, outcome, str(project_id), str(spec.recording_id)),
     )
     manifest_id = uuid4()
     connection.execute(  # type: ignore[attr-defined]

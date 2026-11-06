@@ -80,6 +80,7 @@ class TrustedWebDriver:
         now: datetime | None = None,
         secrets: tuple[str, ...] = (),
         attempt_id: UUID | None = None,
+        observe: Callable[[], Observation] | None = None,
     ) -> None:
         if not isinstance(cdp_endpoint, str) or not cdp_endpoint:
             raise ValueError("driver requires a CDP endpoint")
@@ -96,6 +97,7 @@ class TrustedWebDriver:
         else:
             self._spool = EvidenceSpool(Path(spool))
         self._runner = runner
+        self._observe = observe
         self._now = now
         self._secrets = secrets
         self._attempt_id = attempt_id or uuid4()
@@ -175,14 +177,28 @@ class TrustedWebDriver:
         ):
             raise WebDispatchError("ipc translation mismatch")
 
-        if self._runner is not None:
+        # Execution port is mandatory. Without a runner, do not invent native success.
+        if self._runner is None:
+            raise WebDispatchError("execution port is not configured")
+        try:
             self._runner(typed)
-        # Keep CDP on this object only; guest IPC never receives it.
+        except WebDispatchError:
+            raise
+        except Exception as exc:
+            raise WebDispatchError(str(exc) or "execution failed") from exc
+        # Keep CDP on this object only; guest IPC and generated code never receive it.
         _ = self._cdp_endpoint
 
         self.native_calls += 1
         self.auto_retries = 0
         self.retries = 0
+
+        if after is None and self._observe is not None:
+            # Post-action observation comes from the same owned execution port.
+            try:
+                after = self._observe()
+            except Exception as exc:
+                raise WebDispatchError(str(exc) or "post-action observation failed") from exc
 
         after_ref = None
         if after is not None:

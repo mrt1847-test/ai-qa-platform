@@ -307,6 +307,10 @@ def test_rx_61_local_fixture_two_actions_package_pin_actor0_and_proof(
     assert shared.record.healer_calls == 0
     assert shared.record.package_digest_after == package.digest
 
+    from aiqa.worker.local_page import local_page_from_fixture_html
+
+    page = local_page_from_fixture_html(origin=ORIGIN)
+
     def _replay(purpose: str) -> WebReplayHandler:
         return WebReplayHandler(
             adapter=CuawrightWebAdapter(),
@@ -328,6 +332,7 @@ def test_rx_61_local_fixture_two_actions_package_pin_actor0_and_proof(
                 verify_control=_Allow(),
                 healing_enabled=False,
                 healing_context=_heal_context(package.digest),
+                runner=page.as_runner(),
             ),
         )
 

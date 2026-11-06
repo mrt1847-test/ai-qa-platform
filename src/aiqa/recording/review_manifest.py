@@ -510,11 +510,25 @@ def _package_ready(
 def _stored_recording(connection: object, project_id: UUID, case_id: str, version_id: UUID) -> str | None:
     row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT recording_id FROM recordings
-        WHERE project_id = ? AND case_id = ? AND input_case_version_id = ?
-          AND storage_status = 'stored' AND completion_status = 'completed' AND evidence_status = 'complete'
+        SELECT recordings.recording_id FROM recordings
+        WHERE recordings.project_id = ? AND recordings.case_id = ?
+          AND recordings.storage_status = 'stored' AND recordings.completion_status = 'completed'
+          AND recordings.evidence_status = 'complete'
+          AND (
+              recordings.input_case_version_id = ?
+              OR recordings.recording_id IN (
+                  SELECT manifests.recording_id
+                  FROM case_versions AS versions
+                  JOIN recording_manifests AS manifests
+                    ON manifests.project_id = versions.project_id
+                   AND manifests.manifest_id = versions.source_manifest_id
+                  WHERE versions.project_id = ? AND versions.version_id = ?
+              )
+          )
+        ORDER BY CASE WHEN recordings.input_case_version_id = ? THEN 0 ELSE 1 END
+        LIMIT 1
         """,
-        (str(project_id), case_id, str(version_id)),
+        (str(project_id), case_id, str(version_id), str(project_id), str(version_id), str(version_id)),
     ).fetchone()
     return None if row is None else str(row[0])
 

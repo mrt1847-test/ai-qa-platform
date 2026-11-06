@@ -273,6 +273,58 @@ class WorkerHttpClient:
 
         return self.finish_attempt(payload=payload, idempotency_key=idempotency_key)
 
+    def confirm_cleanup(
+        self,
+        *,
+        project_id: str,
+        job_id: str,
+        attempt_id: str,
+        generation: int,
+        physical_key_id: str | None,
+        proof_refs: list[str],
+        now: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Confirm local cleanup so the server frees the lease (or quarantines without proof)."""
+
+        if type(idempotency_key) is not str or idempotency_key.strip() == "":
+            raise WorkerHttpError("cleanup idempotency key is required", retry_class=RetryClass.fatal)
+        if type(proof_refs) is not list or any(type(item) is not str for item in proof_refs):
+            raise WorkerHttpError("cleanup proof_refs must be a list of strings", retry_class=RetryClass.fatal)
+        return self._json(
+            "POST",
+            "/api/v1/worker/cleanup-confirmations",
+            json_body={
+                "project_id": project_id,
+                "job_id": job_id,
+                "attempt_id": attempt_id,
+                "generation": generation,
+                "physical_key_id": physical_key_id,
+                "proof_refs": list(proof_refs),
+                "now": now,
+            },
+            idempotency_key=idempotency_key,
+        )
+
+    def confirm_pending_cleanup(
+        self,
+        *,
+        payload: dict[str, Any],
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Re-post the same cleanup key and body after a lost response."""
+
+        return self.confirm_cleanup(
+            project_id=payload["project_id"],
+            job_id=payload["job_id"],
+            attempt_id=payload["attempt_id"],
+            generation=payload["generation"],
+            physical_key_id=payload.get("physical_key_id"),
+            proof_refs=list(payload.get("proof_refs") or []),
+            now=payload["now"],
+            idempotency_key=idempotency_key,
+        )
+
     def request_model(
         self,
         *,
@@ -303,6 +355,76 @@ class WorkerHttpClient:
             json_body=body,
             idempotency_key=idempotency_key,
         )
+
+    def get_app_build(self, project_id: str, build_id: str) -> dict[str, Any]:
+        """Read one build's server-side metadata. Authentication is the worker Bearer token."""
+
+        return self._get_json(f"/api/v1/projects/{project_id}/app-builds/{build_id}")
+
+    def fetch_app_build_content(
+        self,
+        project_id: str,
+        build_id: str,
+        *,
+        expected_hash: str | None = None,
+    ) -> tuple[bytes, str]:
+        """Download APK bytes and verify the server-declared sha256. Returns (bytes, content_hash).
+
+        A hash header that is missing, differs from the bytes, or differs from ``expected_hash``
+        raises a fatal ``WorkerHttpError``; nothing is returned in that case.
+        """
+
+        import hashlib
+
+        path = f"/api/v1/projects/{project_id}/app-builds/{build_id}/content"
+        response = self._send_get(path, accept="application/vnd.android.package-archive")
+        declared = response.headers.get("x-content-hash") or response.headers.get("content-hash") or ""
+        body = response.content
+        actual = "sha256:" + hashlib.sha256(body).hexdigest()
+        if declared == "" or declared != actual:
+            raise WorkerHttpError(
+                "app build content hash does not match",
+                retry_class=RetryClass.fatal,
+                status_code=response.status_code,
+            )
+        if expected_hash is not None and expected_hash != actual:
+            raise WorkerHttpError(
+                "app build content hash is not the pinned hash",
+                retry_class=RetryClass.fatal,
+                status_code=response.status_code,
+            )
+        return body, actual
+
+    def _get_json(self, path: str) -> dict[str, Any]:
+        response = self._send_get(path, accept="application/json")
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise WorkerHttpError("worker response is not JSON", retry_class=RetryClass.fatal, status_code=response.status_code) from exc
+        if type(payload) is not dict:
+            raise WorkerHttpError("worker response must be an object", retry_class=RetryClass.fatal, status_code=response.status_code)
+        return _strip_secrets(payload)
+
+    def _send_get(self, path: str, *, accept: str) -> httpx.Response:
+        headers = {"Authorization": f"Bearer {self._token}", "Accept": accept}
+        try:
+            response = self._client.request("GET", path, headers=headers)
+        except httpx.TimeoutException as exc:
+            raise WorkerHttpError("worker request timed out", retry_class=RetryClass.timeout) from exc
+        except httpx.ConnectError as exc:
+            raise WorkerHttpError(f"worker connect failed: {exc}", retry_class=classify_exception(exc)) from exc
+        except Exception as exc:
+            if isinstance(exc, ssl_error_types()):
+                raise WorkerHttpError("worker tls handshake failed", retry_class=RetryClass.tls) from exc
+            raise WorkerHttpError(f"worker request failed: {exc}", retry_class=RetryClass.fatal) from exc
+        self._reject_foreign_redirect(response)
+        if response.status_code >= 400:
+            raise WorkerHttpError(
+                f"worker request rejected with status {response.status_code}",
+                retry_class=classify_status(response.status_code),
+                status_code=response.status_code,
+            )
+        return response
 
     def _json(
         self,

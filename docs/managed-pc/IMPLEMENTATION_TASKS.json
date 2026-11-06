@@ -1,6 +1,6 @@
 {
   "schema_version": "managed-pc-runtime-v1",
-  "date": "2026-11-05",
+  "date": "2026-11-06",
   "scope": "managed_execution_mvp",
   "schedule_owner": "NEXT_ACTION.md",
   "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",
@@ -356,7 +356,8 @@
         "RX-28",
         "RX-37",
         "RX-41",
-        "RX-59"
+        "RX-59",
+        "RX-78"
       ],
       "status": "blocked",
       "execution_scope": "managed_execution_mvp",
@@ -381,7 +382,8 @@
         "RX-15",
         "RX-30",
         "RX-35",
-        "RX-60"
+        "RX-60",
+        "RX-76"
       ],
       "status": "blocked",
       "execution_scope": "managed_execution_mvp",
@@ -415,7 +417,10 @@
         "RX-65",
         "RX-66",
         "RX-67",
-        "RX-71"
+        "RX-71",
+        "RX-72",
+        "RX-75",
+        "RX-77"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -443,7 +448,9 @@
         "RX-42",
         "RX-45",
         "RX-61",
-        "RX-70"
+        "RX-70",
+        "RX-72",
+        "RX-76"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -468,7 +475,9 @@
         "RX-23",
         "RX-24",
         "PC-03",
-        "RX-53"
+        "RX-53",
+        "RX-73",
+        "RX-77"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -490,7 +499,8 @@
       "deps": [
         "RX-21",
         "RX-23",
-        "RX-38"
+        "RX-38",
+        "RX-73"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -512,7 +522,8 @@
       "deps": [
         "RX-21",
         "RX-23",
-        "RX-62"
+        "RX-62",
+        "RX-73"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1317,7 +1328,7 @@
         "RX-49",
         "RX-43"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1341,7 +1352,7 @@
         "RX-57",
         "RX-62"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1363,7 +1374,7 @@
         "RX-55",
         "RX-45"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1385,7 +1396,7 @@
         "RX-60",
         "RX-61"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1412,7 +1423,7 @@
         "RX-68",
         "RX-69"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1426,6 +1437,166 @@
       ],
       "doc_file": "docs/managed-pc/ENTRY_COMPLETION_TASKS.md#rx-71",
       "evidence_path": "docs/validation/tasks/RX-71.md"
+    },
+    {
+      "id": "RX-72",
+      "title": "실행 종료를 QA 결과와 다음 ITEM으로 연결",
+      "deps": [
+        "RX-53",
+        "RX-71",
+        "RX-38"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24",
+        "RX-25"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-72",
+      "evidence_path": "docs/validation/tasks/RX-72.md"
+    },
+    {
+      "id": "RX-73",
+      "title": "워커의 정리 완료와 자원 재사용 연결",
+      "deps": [
+        "RX-38",
+        "RX-62",
+        "RX-71"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-25",
+        "RX-26",
+        "RX-27"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-73",
+      "evidence_path": "docs/validation/tasks/RX-73.md"
+    },
+    {
+      "id": "RX-74",
+      "title": "APK 원본과 빌드 정보를 서버에 영속 저장",
+      "deps": [
+        "RX-57",
+        "RX-68"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "W11-06"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-74",
+      "evidence_path": "docs/validation/tasks/RX-74.md"
+    },
+    {
+      "id": "RX-75",
+      "title": "실제 Android 설치·초기화 driver 연결",
+      "deps": [
+        "RX-74",
+        "RX-68"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-75",
+      "evidence_path": "docs/validation/tasks/RX-75.md"
+    },
+    {
+      "id": "RX-76",
+      "title": "Web 신뢰 driver를 실제 브라우저에 연결",
+      "deps": [
+        "RX-70",
+        "RX-61"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-22",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-76",
+      "evidence_path": "docs/validation/tasks/RX-76.md"
+    },
+    {
+      "id": "RX-77",
+      "title": "브라우저에서 결과·자원 복귀까지 사용자 여정 검증",
+      "deps": [
+        "RX-72",
+        "RX-73",
+        "RX-75",
+        "RX-71"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-25"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-77",
+      "evidence_path": "docs/validation/tasks/RX-77.md"
+    },
+    {
+      "id": "RX-78",
+      "title": "기존 관리 UI와 로컬 launcher 회귀 정리",
+      "deps": [
+        "RX-63",
+        "RX-71"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-21"
+      ],
+      "doc_file": "docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md#rx-78",
+      "evidence_path": "docs/validation/tasks/RX-78.md"
     }
   ]
 }

@@ -209,13 +209,14 @@ class CuawrightWebAdapter:
         gate: WebIsolationGate,
         proof: IsolationProof,
         before: Observation,
-        after: Observation,
+        after: Observation | None = None,
         spool: Path,
         now: datetime | None = None,
         presented_digest: str | None = None,
         presented_revision: str | None = None,
         page_origin: str | None = None,
         runner=None,
+        observe=None,
     ) -> tuple[WebDispatchResult, ...]:
         """Execute only allowlisted summaries through TrustedWebDriver."""
 
@@ -232,6 +233,7 @@ class CuawrightWebAdapter:
             spool=spool,
             runner=runner,
             now=clock,
+            observe=observe,
         )
         results: list[WebDispatchResult] = []
         for summary in bundle.summaries:

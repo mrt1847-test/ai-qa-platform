@@ -270,7 +270,7 @@ async def _flow(app: object, project_id: str, database: Path, boundary: AppsAdbB
                 }
             }
         )
-        handler_event = handled.evidence_events[0]
+        handler_event = json.loads(handled.action_mapping)
 
         page = await client.get(
             f"/ui/projects/{project_id}/recordings/wizard",

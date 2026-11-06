@@ -93,6 +93,7 @@ def install_worker(application: FastAPI) -> None:
         native_id: str | None = None
         intent = None
         claim_origin: str | None = None
+        claim_limits: dict[str, object] | None = None
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
@@ -123,6 +124,7 @@ def install_worker(application: FastAPI) -> None:
                                 connection, lease.project_id, lease.attempt_id
                             )
                         claim_origin = _job_origin(connection, lease.project_id, lease.job_id)
+                        claim_limits = _job_limits(connection, lease.project_id, lease.job_id)
             except AuthRequired:
                 return _error(401, "unauthorized", "worker token is missing", {})
             except WorkerDenied:
@@ -137,7 +139,11 @@ def install_worker(application: FastAPI) -> None:
             return JSONResponse(
                 status_code=200,
                 content=_claim_payload(
-                    lease, native_id=native_id, intent=intent, origin=claim_origin
+                    lease,
+                    native_id=native_id,
+                    intent=intent,
+                    origin=claim_origin,
+                    limits=claim_limits,
                 ),
             )
         return JSONResponse(
@@ -725,8 +731,8 @@ async def _lease_call(request: Request, renew: bool) -> Response:
     )
 
 
-def _job_origin(connection: object, project_id: object, job_id: object) -> str | None:
-    """Read approved HTTPS origin pinned on the job limits for Web claims."""
+def _job_limits(connection: object, project_id: object, job_id: object) -> dict[str, object] | None:
+    """Load the job limits object for claim snapshots (probe/install routing)."""
 
     row = connection.execute(  # type: ignore[attr-defined]
         "SELECT limits FROM jobs WHERE project_id = ? AND job_id = ?",
@@ -742,6 +748,15 @@ def _job_origin(connection: object, project_id: object, job_id: object) -> str |
         return None
     if type(parsed) is not dict:
         return None
+    return parsed
+
+
+def _job_origin(connection: object, project_id: object, job_id: object) -> str | None:
+    """Read approved HTTPS origin pinned on the job limits for Web claims."""
+
+    parsed = _job_limits(connection, project_id, job_id)
+    if parsed is None:
+        return None
     origin = parsed.get("origin")
     if type(origin) is str and origin.startswith("https://"):
         return origin
@@ -754,6 +769,7 @@ def _claim_payload(
     native_id: str | None = None,
     intent: object | None = None,
     origin: str | None = None,
+    limits: dict[str, object] | None = None,
 ) -> dict[str, object]:
     snapshot = receipt.snapshot
     snap: dict[str, object] = {
@@ -784,6 +800,11 @@ def _claim_payload(
             snap["intent"] = intent_to_document(intent)
     if origin is not None and origin.startswith("https://"):
         snap["origin"] = origin
+    if limits is not None:
+        snap["limits"] = limits
+        resource = limits.get("resource_id")
+        if type(resource) is str and resource.strip() != "":
+            snap["resource_id"] = resource
     if native_id is not None and native_id.strip() != "":
         # Resolve registered device for Android/Web workers without changing the claim digest.
         snap["serial"] = native_id

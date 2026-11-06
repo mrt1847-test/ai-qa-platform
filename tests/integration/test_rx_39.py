@@ -315,7 +315,9 @@ def test_rx_39_register_claim_ack_action_evidence_review(tmp_path: Path, monkeyp
         assert path.read_bytes()
         assert len(path.read_bytes()) == int(row[3])
     assert len(refs) >= 3
-    assert all(row[1] and row[2] for row in refs)
+    source_ids = {str(row[0]) for row in objects if str(row[5]) == "source"}
+    # Source (replay mapping) artifacts are recording-scoped; evidence artifacts are action-scoped.
+    assert all((row[1] and row[2]) or str(row[0]) in source_ids for row in refs)
     assert len(actions) >= 1
     assert str(actions[0][1]) == "observed"
     assert finish is not None

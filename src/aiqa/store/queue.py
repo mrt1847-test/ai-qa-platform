@@ -27,6 +27,7 @@ from aiqa.contracts.worker_attempt import (
     WorkerAttemptFinishInput,
     WorkerAttemptFinishReceipt,
 )
+from aiqa.domain.execution_scheduler import CaseRunView, SchedulingRejected, advance_execution
 from aiqa.domain.hashing import canonical_hash, canonical_json
 from aiqa.domain.resource_readiness import resource_readiness
 from aiqa.store.models import Actor, Transaction, WorkerIncarnation, WorkerScope
@@ -1627,6 +1628,68 @@ _OUTCOME_TO_REASON = {
 }
 
 
+def _apply_support_job_result(
+    connection: sqlite3.Connection,
+    project_id: UUID,
+    job_id: UUID,
+    action_mapping: str,
+) -> None:
+    """Merge worker probe/install observations into jobs.limits for UI/API reads."""
+
+    try:
+        parsed = json.loads(action_mapping) if type(action_mapping) is str else {}
+    except json.JSONDecodeError:
+        parsed = {}
+    if type(parsed) is not dict or parsed == {}:
+        return
+    row = connection.execute(
+        "SELECT limits FROM jobs WHERE project_id = ? AND job_id = ?",
+        (str(project_id), str(job_id)),
+    ).fetchone()
+    current: dict[str, object] = {}
+    if row is not None:
+        try:
+            loaded = json.loads(str(row[0] or "{}"))
+        except json.JSONDecodeError:
+            loaded = {}
+        if type(loaded) is dict:
+            current = loaded
+    current.update(parsed)
+    connection.execute(
+        "UPDATE jobs SET limits = ? WHERE project_id = ? AND job_id = ?",
+        (json.dumps(current, sort_keys=True), str(project_id), str(job_id)),
+    )
+
+
+def _execution_id_for_case_run(
+    connection: sqlite3.Connection, project_id: UUID, case_run_id: UUID
+) -> UUID | None:
+    row = connection.execute(
+        "SELECT execution_id FROM case_runs WHERE project_id = ? AND case_run_id = ?",
+        (str(project_id), str(case_run_id)),
+    ).fetchone()
+    if row is None or row[0] is None:
+        return None
+    return UUID(str(row[0]))
+
+
+def _item_result_from_finish(finish: WorkerAttemptFinishInput, control_verdict: str | None) -> tuple[str, bool]:
+    """Map one worker finish to an item core result. PASS needs a completed outcome with full evidence."""
+
+    cancelled = finish.outcome in {"cancelled", "interrupted"}
+    if finish.required_violation:
+        return "FAIL", cancelled
+    if finish.outcome == "completed":
+        return ("PASS" if finish.evidence_complete else "INCONCLUSIVE"), False
+    if finish.outcome == "cancelled":
+        return "CANCELLED", True
+    if finish.outcome == "interrupted":
+        return "INCONCLUSIVE", False
+    if control_verdict in {"FAIL", "INCONCLUSIVE"}:
+        return str(control_verdict), False
+    return "INCONCLUSIVE", False
+
+
 def finish_worker_attempt(
     connection: sqlite3.Connection,
     worker: WorkerScope,
@@ -1812,6 +1875,8 @@ def finish_worker_attempt(
                     finish.action_mapping,
                 ),
             )
+        elif purpose in {"resource_probe", "app_install"}:
+            _apply_support_job_result(connection, finish.project_id, finish.job_id, finish.action_mapping)
         elif purpose in {"trial", "regression"} and finish.required_violation:
             from aiqa.domain.verdicts import JobFinishInput
 
@@ -1833,6 +1898,8 @@ def finish_worker_attempt(
         assert reason is not None
         from aiqa.domain.verdicts import JobFinishInput
 
+        if purpose in {"resource_probe", "app_install"}:
+            _apply_support_job_result(connection, finish.project_id, finish.job_id, finish.action_mapping)
         snapshot = finalize_job_control(
             connection,
             JobFinishInput(
@@ -1846,6 +1913,35 @@ def finish_worker_attempt(
         )
         status = snapshot.status
         verdict = snapshot.verdict
+
+    case_run_raw = job[3]
+    if purpose in {"trial", "regression"} and case_run_raw is not None:
+        item_result, item_cancelled = _item_result_from_finish(finish, verdict)
+        execution_id = _execution_id_for_case_run(connection, finish.project_id, UUID(str(case_run_raw)))
+        if execution_id is not None:
+            try:
+                advance_execution(
+                    Transaction(connection),
+                    finish.project_id,
+                    execution_id,
+                    CaseRunView(
+                        UUID(str(case_run_raw)),
+                        item_result,
+                        "quarantine" if finish.cleanup_failed else "unchanged",
+                        item_cancelled,
+                    ),
+                )
+            except SchedulingRejected:
+                # The item cannot move this run (for example a missing policy); the finish itself stays valid.
+                pass
+            else:
+                if verdict is None:
+                    # The stored result wins: a late or repeated finish never changes a result already written.
+                    stored_result = connection.execute(
+                        "SELECT core_result FROM item_finalizations WHERE project_id = ? AND case_run_id = ?",
+                        (str(finish.project_id), str(case_run_raw)),
+                    ).fetchone()
+                    verdict = item_result if stored_result is None else str(stored_result[0])
 
     receipt = WorkerAttemptFinishReceipt(
         finish.project_id,

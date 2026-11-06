@@ -38,6 +38,12 @@ class HandlerResult:
     source_artifact_hashes: tuple[str, ...] = ()
     review_pending: bool = False
     action_mapping: str = "{}"
+    cleanup_proof_refs: tuple[str, ...] = ()
+
+
+# Default proof after a local handler returned and the finish receipt exists. Real device
+# cleanup proof (for example ADB state) is supplied by handlers through cleanup_proof_refs.
+_DEFAULT_CLEANUP_PROOF = "runtime:attempt-closed"
 
 
 class JobHandler(Protocol):
@@ -57,6 +63,7 @@ class InertHandler:
             final_seq=0,
             last_ack_seq=0,
             last_ack_hash=_empty_ack_hash(),
+            cleanup_proof_refs=("runtime:inert",),
         )
 
 
@@ -125,6 +132,7 @@ class WorkerRuntime:
         # Restart contract: no durable claimed-job journal.
         self._active_attempt: str | None = None
         self._pending_finish: dict[str, Any] | None = None
+        self._pending_cleanup: dict[str, Any] | None = None
 
     @property
     def state(self) -> str:
@@ -133,6 +141,10 @@ class WorkerRuntime:
     @property
     def pending_finish(self) -> dict[str, Any] | None:
         return self._pending_finish
+
+    @property
+    def pending_cleanup(self) -> dict[str, Any] | None:
+        return self._pending_cleanup
 
     @property
     def total_actions(self) -> int:
@@ -226,6 +238,10 @@ class WorkerRuntime:
             self._last_reason = "no_execution_handler"
             return CycleReport("idle", False, 0, False, self._last_reason)
 
+        if self._pending_cleanup is not None:
+            # A lost cleanup response keeps the lease; retry the same key/body before claiming more.
+            self.confirm_pending_cleanup()
+
         claim_key = f"claim-{self._config.boot_id}-{uuid.uuid4()}"
         try:
             claimed = self._client.claim(
@@ -274,6 +290,7 @@ class WorkerRuntime:
             return CycleReport("offline", True, 0, False, "ack_failed")
 
         bound = self._bind_claim_targets(claimed)
+        self._bind_step_evidence_commit(bound)
         result = self._handler.handle(bound)
         try:
             result = self._commit_evidence(bound, result)
@@ -289,6 +306,12 @@ class WorkerRuntime:
             self._last_reason = "finish_receipt_missing"
             return CycleReport("finish_pending", True, int(result.actions), False, "finish_receipt_missing")
         self._finished += 1
+        cleanup = self._submit_cleanup(bound, result)
+        if cleanup is None:
+            # The attempt is sealed; only the lease release is outstanding.
+            self._state = "cleanup_pending"
+            self._last_reason = "cleanup_pending"
+            return CycleReport("cleanup_pending", True, int(result.actions), True, "cleanup_pending")
         self._state = "running"
         self._last_reason = "finished"
         return CycleReport("running", True, int(result.actions), True, "finished")
@@ -298,6 +321,7 @@ class WorkerRuntime:
 
         self._active_attempt = None
         self._pending_finish = None
+        self._pending_cleanup = None
         self._resumed_past = 0
         self._state = "restarted"
 
@@ -318,7 +342,96 @@ class WorkerRuntime:
         self._finished += 1
         self._state = "running"
         self._last_reason = "finish_confirmed"
+        # The attempt is sealed; release its lease too so the resource is reusable.
+        if self._pending_cleanup is not None:
+            self.confirm_pending_cleanup()
+        else:
+            body = pending["payload"]
+            self._send_cleanup(
+                self._cleanup_payload(
+                    body,
+                    physical_key_id=body.get("physical_key_id"),
+                    proofs=(_DEFAULT_CLEANUP_PROOF,),
+                )
+            )
+        if self._pending_cleanup is not None:
+            self._state = "cleanup_pending"
+            self._last_reason = "cleanup_pending"
         return receipt
+
+    def confirm_pending_cleanup(self) -> dict[str, Any] | None:
+        """Re-post a lost cleanup with the same idempotency key and body. No new dispatch."""
+
+        pending = self._pending_cleanup
+        if pending is None:
+            return None
+        try:
+            receipt = self._client.confirm_pending_cleanup(
+                payload=pending["payload"],
+                idempotency_key=str(pending["idempotency_key"]),
+            )
+        except WorkerHttpError:
+            return None
+        self._pending_cleanup = None
+        if self._state == "cleanup_pending":
+            self._state = "running"
+            self._last_reason = "cleanup_confirmed"
+        return receipt
+
+    def _cleanup_payload(
+        self,
+        ids: Mapping[str, Any],
+        *,
+        physical_key_id: object,
+        proofs: tuple[str, ...],
+    ) -> dict[str, Any]:
+        physical = None if physical_key_id in {None, ""} else str(physical_key_id)
+        return {
+            "project_id": ids["project_id"],
+            "job_id": ids["job_id"],
+            "attempt_id": ids["attempt_id"],
+            "generation": ids["generation"],
+            "physical_key_id": physical,
+            "proof_refs": [str(item) for item in proofs],
+            "now": self._now().isoformat(),
+        }
+
+    def _send_cleanup(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+        key = f"cleanup-{payload['attempt_id']}"
+        try:
+            receipt = self._client.confirm_cleanup(
+                project_id=payload["project_id"],
+                job_id=payload["job_id"],
+                attempt_id=payload["attempt_id"],
+                generation=payload["generation"],
+                physical_key_id=payload["physical_key_id"],
+                proof_refs=list(payload["proof_refs"]),
+                now=payload["now"],
+                idempotency_key=key,
+            )
+        except WorkerHttpError:
+            # Never invent a release. Keep the exact body for a same-key re-post.
+            self._pending_cleanup = {"payload": payload, "idempotency_key": key}
+            return None
+        self._pending_cleanup = None
+        return receipt
+
+    def _submit_cleanup(self, claimed: dict[str, Any], result: HandlerResult) -> dict[str, Any] | None:
+        """Confirm cleanup after the finish receipt so the lease frees for the next claim.
+
+        Handlers may pass cleanup_proof_refs. When they do not, the runtime attests with
+        `runtime:attempt-closed` because the local handler returned and the server sealed the
+        attempt; sending an empty list would quarantine the resource. Real device proof is
+        supplied by device handlers later. Quarantine is left to the server when cleanup never
+        arrives or the handler reports an explicit failure.
+        """
+
+        proofs = tuple(item for item in result.cleanup_proof_refs if str(item).strip() != "")
+        if proofs == ():
+            proofs = (_DEFAULT_CLEANUP_PROOF,)
+        # Same fence value as the finish body: the lease's physical key, never a guessed one.
+        physical = claimed.get("physical_key_id")
+        return self._send_cleanup(self._cleanup_payload(claimed, physical_key_id=physical, proofs=proofs))
 
     def _finish_without_dispatch(self, claimed: dict[str, Any], *, outcome: str, reason: str) -> None:
         try:
@@ -341,6 +454,11 @@ class WorkerRuntime:
         receipt = self._submit_finish(claimed, result)
         if receipt is not None:
             self._finished += 1
+            # No device was touched; release the lease so the resource is not held.
+            self._submit_cleanup(
+                claimed,
+                replace(result, cleanup_proof_refs=("runtime:unsupported-skip",)),
+            )
 
     def _bind_claim_targets(self, claimed: dict[str, Any]) -> dict[str, Any]:
         bound = claimed
@@ -361,11 +479,40 @@ class WorkerRuntime:
             )
         return bound
 
+    def _bind_step_evidence_commit(self, claimed: dict[str, Any]) -> None:
+        """Wire per-action evidence commit so the timeline updates before the attempt finishes."""
+
+        from aiqa.worker.android_jobs import bind_step_evidence_commit
+
+        attempt_id = str(claimed.get("attempt_id") or "")
+        project_id = str(claimed.get("project_id") or "")
+        job_id = str(claimed.get("job_id") or "")
+        generation = int(claimed.get("generation") or 0)
+
+        def commit_step(
+            *,
+            action_seq: int,
+            action_id: str,
+            events: list[dict[str, Any]],
+            artifacts: list[dict[str, Any]],
+        ) -> dict[str, Any]:
+            del action_id  # identity is carried inside event/artifact payloads
+            return self._client.commit_evidence(
+                sanitized=True,
+                project_id=project_id,
+                job_id=job_id,
+                generation=generation,
+                now=self._now().isoformat(),
+                events=events,
+                artifacts=artifacts,
+                idempotency_key=f"evidence-{attempt_id}-step-{int(action_seq)}",
+            )
+
+        bind_step_evidence_commit(self._handler, commit_step)
+
     def _commit_evidence(self, claimed: dict[str, Any], result: HandlerResult) -> HandlerResult:
         events = list(result.evidence_events)
         artifacts = list(result.evidence_artifacts)
-        if events == [] and artifacts == []:
-            return result
         purpose = ""
         snapshot = claimed.get("snapshot")
         if type(snapshot) is dict:
@@ -375,6 +522,16 @@ class WorkerRuntime:
             and result.evidence_complete
             and purpose == "recording"
         )
+        if events == [] and artifacts == []:
+            # Steps may already be ACK'd during the handler; trust the prefix.
+            if requires_files and result.source_artifact_hashes == ():
+                return replace(
+                    result,
+                    outcome="error",
+                    evidence_complete=False,
+                    source_artifact_hashes=(),
+                )
+            return result
         if requires_files and artifacts == []:
             return replace(
                 result,
@@ -496,13 +653,13 @@ def make_android_inventory_provider(
 def recording_prepared_adapters() -> frozenset[str]:
     """Adapters that may be claimed after Android inventory/recording wiring (RX-32/33)."""
 
-    return frozenset({"resource_probe", "recording", "structure"})
+    return frozenset({"resource_probe", "recording", "structure", "app_install"})
 
 
 def replay_prepared_adapters() -> frozenset[str]:
     """Adapters for Android recording plus approved trial/regression replay (RX-34)."""
 
-    return frozenset({"resource_probe", "recording", "trial", "regression", "structure"})
+    return frozenset({"resource_probe", "recording", "trial", "regression", "structure", "app_install"})
 
 
 def web_prepared_adapters() -> frozenset[str]:
@@ -602,8 +759,24 @@ def run_worker_process(
                     approved_digest=approved_digest,
                     approved_plan=approved_plan,
                 )
+                from aiqa.worker.android_jobs import (
+                    build_android_support_handlers,
+                    http_apk_provider,
+                    http_app_build_fetcher,
+                )
+
+                # RX-75: real AdbInstallDriver by default; the APK is pinned and spooled locally.
+                probe, install = build_android_support_handlers(
+                    adb_path=Path(binding.adb_path),
+                    serial=binding.serial,
+                    build_fetcher=http_app_build_fetcher(client),
+                    apk_provider=http_apk_provider(client, runtime_root / "apk-spool"),
+                )
                 resolved_handler = assemble_android_worker_handlers(
-                    recording=recording, replay=replay
+                    recording=recording,
+                    replay=replay,
+                    installed_apps=probe,
+                    app_install=install,
                 )
             elif (
                 resolved_handler is None

@@ -11,15 +11,26 @@ from uuid import UUID
 
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.domain.hashing import canonical_json
+from aiqa.domain.model_bindings import BindingNotFound, bind_model_store, load_latest_binding_for_role
 from aiqa.domain.proposals import ProposalSource, create_case_proposal
 from aiqa.domain.versions import definition_from_document
-from aiqa.models.provider_http import FixtureProviderHttp, structured_fixture_content
-from aiqa.store.models import Actor, CaseProposalInput, Transaction
+from aiqa.models.provider_http import ProviderHttpError, structured_fixture_content
+from aiqa.security.secrets import SecretScopeDenied, SecretUnavailable, bind_secret_store
+from aiqa.store.models import Actor, CaseProposalInput, RuntimeScope, SecretRef, Transaction
 from aiqa.store.queue import enqueue_job
+
+_STRUCTURE_ROLE = "structure"
+_STRUCTURE_BUDGET = 8
+_structure_calls: dict[str, int] = {}
 
 
 class StructureRejected(Exception):
     """The structure request cannot become a proposal."""
+
+    def __init__(self, message: str = "", *, status: int | None = None, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.status = status
+        self.retryable = retryable
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +46,11 @@ def structure_body_from_text(raw_text: str, *, model_content: str | None = None)
 
     if type(raw_text) is not str or raw_text.strip() == "":
         raise StructureRejected("natural language draft is required")
-    content = structured_fixture_content("structure") if model_content is None else model_content
+    content = (
+        structured_fixture_content("structure", sanitized_inputs=(raw_text.strip(),))
+        if model_content is None
+        else model_content
+    )
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError as exc:
@@ -76,15 +91,17 @@ def request_structure(
     *,
     request_key: str,
     provider: object | None = None,
+    secret_resolver: object | None = None,
+    store: object | None = None,
 ) -> StructureReceipt:
-    """Enqueue one structure job, complete it with a fixture/mock model, and store a proposal."""
+    """Enqueue one structure job, complete it via project model binding, and store a proposal."""
 
     from aiqa.domain.proposals import _bound_store
 
     if actor.project_scope != project_id:
         raise StructureRejected("case version was not found")
-    store = _bound_store()
-    with store.transaction() as connection:
+    bound = store if store is not None else _bound_store()
+    with bound.transaction() as connection:
         row = connection.execute(
             """
             SELECT case_id, content_hash, definition_json, settings_json
@@ -124,10 +141,27 @@ def request_structure(
             IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
         )
         job_id = receipt.job_id
-        current_definition = definition
+        if receipt.replayed:
+            existing = connection.execute(
+                """
+                SELECT proposal_id FROM case_edit_proposals
+                WHERE project_id = ? AND source_job_id = ? AND kind = 'structure'
+                ORDER BY rowid DESC LIMIT 1
+                """,
+                (str(project_id), str(job_id)),
+            ).fetchone()
+            if existing is not None:
+                return StructureReceipt(job_id, UUID(str(existing[0])), version_id, False)
 
     try:
-        model_content = _model_content(provider, raw_text.strip())
+        model_content = _model_content(
+            provider,
+            raw_text.strip(),
+            project_id=project_id,
+            actor_id=actor.actor_id,
+            secret_resolver=secret_resolver,
+            store=bound,
+        )
         body = structure_body_from_text(raw_text, model_content=model_content)
         proposal = create_case_proposal(
             actor,
@@ -142,7 +176,7 @@ def request_structure(
             ),
         )
     except (StructureRejected, ProposalSource) as exc:
-        with store.transaction() as connection:
+        with bound.transaction() as connection:
             connection.execute(
                 "UPDATE jobs SET status = 'error' WHERE project_id = ? AND job_id = ?",
                 (str(project_id), str(job_id)),
@@ -151,29 +185,86 @@ def request_structure(
             raise StructureRejected(str(exc) or "proposal source was rejected") from exc
         raise
 
-    with store.transaction() as connection:
+    with bound.transaction() as connection:
         connection.execute(
             "UPDATE jobs SET status = 'completed' WHERE project_id = ? AND job_id = ? AND status IN ('queued', 'error')",
             (str(project_id), str(job_id)),
         )
-    _ = current_definition
     return StructureReceipt(job_id, proposal.proposal_id, version_id, False)
 
 
-def _model_content(provider: object | None, raw_text: str) -> str:
-    if provider is None:
-        provider = FixtureProviderHttp()
-    complete = getattr(provider, "complete", None)
-    if complete is None:
-        return structured_fixture_content("structure")
-    result = complete(
-        model="fixture-structure",
-        role="structure",
-        secret="fixture-structure-secret",
-        sanitized_inputs=(raw_text[:200],),
-        token_output_limit=512,
-    )
+def _model_content(
+    provider: object | None,
+    raw_text: str,
+    *,
+    project_id: UUID,
+    actor_id: UUID,
+    secret_resolver: object | None,
+    store: object,
+) -> str:
+    """Call the project structure binding through the server secret resolver. No fixture defaults."""
+
+    if secret_resolver is None:
+        raise StructureRejected(
+            "model secret is unavailable",
+            status=503,
+            retryable=True,
+        )
+    if provider is None or getattr(provider, "complete", None) is None:
+        raise StructureRejected(
+            "model provider is not configured",
+            status=503,
+            retryable=True,
+        )
+    used = _structure_calls.get(str(project_id), 0)
+    if used >= _STRUCTURE_BUDGET:
+        raise StructureRejected("structure model budget is exhausted", status=429, retryable=True)
+    with bind_model_store(store):  # type: ignore[arg-type]
+        try:
+            binding = load_latest_binding_for_role(project_id, _STRUCTURE_ROLE)
+        except BindingNotFound as exc:
+            raise StructureRejected(
+                "structure model binding is required",
+                status=422,
+                retryable=True,
+            ) from exc
+    secret_ref = SecretRef(project_id, binding["key_ref_id"], int(binding["key_revision"]))  # type: ignore[arg-type]
+    with bind_secret_store(store):  # type: ignore[arg-type]
+        try:
+            secret = secret_resolver.resolve_for_server(  # type: ignore[union-attr]
+                secret_ref,
+                RuntimeScope(project_id, actor_id),
+            )
+        except SecretScopeDenied as exc:
+            raise StructureRejected("model secret is unavailable", status=403, retryable=True) from exc
+        except SecretUnavailable as exc:
+            raise StructureRejected("model secret is unavailable", status=503, retryable=True) from exc
+    value = getattr(secret, "value", None)
+    if type(value) is not str or value.strip() == "":
+        raise StructureRejected("model secret is unavailable", status=503, retryable=True)
+    try:
+        result = provider.complete(  # type: ignore[union-attr]
+            model=str(binding["model"]),
+            role=_STRUCTURE_ROLE,
+            secret=value,
+            sanitized_inputs=(raw_text[:200],),
+            token_output_limit=512,
+        )
+    except ProviderHttpError as exc:
+        status = exc.status if type(exc.status) is int else 502
+        retryable = status in {401, 403, 429, 502, 503} or status >= 500
+        raise StructureRejected(
+            str(exc.reason) or "structure model request failed",
+            status=status,
+            retryable=retryable,
+        ) from exc
+    except ValueError as exc:
+        raise StructureRejected(str(exc) or "structure model request failed", status=422, retryable=True) from exc
     content = getattr(result, "content", None)
     if type(content) is not str or content.strip() == "":
-        raise StructureRejected("structure model response is invalid")
+        raise StructureRejected("structure model response is invalid", status=502, retryable=True)
+    # Reject only explicit secret field echoes; substring matches on short keys are false positives.
+    if len(value) >= 16 and value in content:
+        raise StructureRejected("structure model response keeps hidden model text", status=422)
+    _structure_calls[str(project_id)] = used + 1
     return content

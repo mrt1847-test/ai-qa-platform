@@ -116,7 +116,7 @@ def test_prepare_app_gates_without_unapproved_mutations() -> None:
     assert default.ready is True and default.install_calls == 0 and default.reset_calls == 0
     assert driver.unapproved_mutations == 0
 
-    handler = AppInstallHandler(_SERIAL, build, driver, lease_held=True)
+    handler = AppInstallHandler(_SERIAL, driver, build=build, lease_held=True)
     handled = handler.handle(
         {
             "project_id": str(project),
@@ -134,8 +134,9 @@ def test_prepare_app_gates_without_unapproved_mutations() -> None:
             },
         }
     )
-    assert handled.evidence_events[0]["install_calls"] == 0
-    assert handled.evidence_events[0]["unapproved_mutations"] == 0
+    mapped = json.loads(handled.action_mapping)
+    assert mapped["install_calls"] == 0
+    assert mapped["unapproved_mutations"] == 0
 
 
 def test_rx_57_app_install_api_and_ui(tmp_path: Path) -> None:

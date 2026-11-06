@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from aiqa.adapters.mobile_agent_android import (
 )
 from aiqa.contracts.actions import Observation
 from aiqa.environments.app_builds import (
+    AdbInstallDriver,
     AppPreparationSpec,
     FixtureInstallDriver,
     prepare_app,
@@ -64,7 +66,13 @@ class InstalledAppsProbeHandler:
             if type(parsed) is dict:
                 kind = str(parsed.get("kind", ""))
         if kind != "installed_apps":
-            return _fail_closed("wrong_probe_kind")
+            # Other resource_probe kinds stay no-op on this Android entry.
+            return HandlerResult(
+                actions=0,
+                outcome="completed",
+                evidence_complete=True,
+                ambiguous_dispatch=False,
+            )
         serial = str(snapshot.get("serial") or snapshot.get("native_id") or self.expected_serial)
         observation = list_installed_apps(
             self.adb_path,
@@ -73,6 +81,7 @@ class InstalledAppsProbeHandler:
             run=self.run,
         )
         payload = {
+            "kind": "installed_apps",
             "type": "installed_apps",
             "serial": observation.serial,
             "state": observation.state,
@@ -80,6 +89,8 @@ class InstalledAppsProbeHandler:
             "observed_at": observation.observed_at,
             "install_calls": observation.install_calls,
             "reset_calls": observation.reset_calls,
+            "ready": observation.state == "ready",
+            "qa": None,
             "apps": [
                 {
                     "package": app.package,
@@ -93,10 +104,10 @@ class InstalledAppsProbeHandler:
         }
         return HandlerResult(
             actions=0,
-            outcome="completed" if observation.state == "ready" else "failed",
+            outcome="completed" if observation.state == "ready" else "error",
             evidence_complete=True,
             ambiguous_dispatch=False,
-            evidence_events=(payload,),
+            action_mapping=json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
         )
 
 
@@ -118,8 +129,13 @@ class AppInstallHandler:
     """Explicit app_install/reset under lease and digest gates. Unapproved mutations stay 0."""
 
     expected_serial: str
-    build: object
-    driver: FixtureInstallDriver
+    driver: FixtureInstallDriver | AdbInstallDriver
+    build: object | None = None
+    build_lookup: Callable[[UUID, UUID], object | None] | None = None
+    # RX-74: (project_id, build_id, pinned_hash) -> verified build from the management server.
+    build_fetcher: Callable[[UUID, UUID, str], object | None] | None = None
+    # RX-75: (project_id, build_id, pinned_hash) -> local hash-verified APK path for a real driver.
+    apk_provider: Callable[[UUID, UUID, str], Path | None] | None = None
     lease_held: bool = True
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
@@ -138,11 +154,51 @@ class AppInstallHandler:
             return _fail_closed("limits_missing")
         try:
             build_id = UUID(str(limits.get("build_id", "")))
-            project_id = UUID(str(claim.get("project_id") or snapshot.get("project_id") or uuid4()))
-            resource_id = UUID(str(limits.get("resource_id") or snapshot.get("resource_id") or uuid4()))
+            project_id = UUID(str(claim.get("project_id") or snapshot.get("project_id") or ""))
+            resource_id = UUID(str(limits.get("resource_id") or snapshot.get("resource_id") or ""))
         except ValueError:
             return _fail_closed("invalid_ids")
+        build = self.build
+        if build is None and self.build_lookup is not None:
+            build = self.build_lookup(project_id, build_id)
+        if build is None:
+            from aiqa.environments.app_builds import get_app_build
+
+            build = get_app_build(project_id, build_id)
+        pinned = str(limits.get("content_hash", ""))
+        claim_build_hash = str(limits.get("build_hash") or pinned)
+        if build is None and self.build_fetcher is not None:
+            if pinned == "" or claim_build_hash != pinned:
+                return _fail_closed("digest_mismatch")
+            try:
+                build = self.build_fetcher(project_id, build_id, pinned)
+            except Exception:
+                return _fail_closed("build_fetch_failed")
+            if build is not None and (
+                getattr(build, "content_hash", None) != pinned
+                or getattr(build, "build_id", None) != build_id
+            ):
+                return _fail_closed("digest_mismatch")
+        if build is None:
+            return _fail_closed("build_missing")
         serial = str(limits.get("serial") or snapshot.get("serial") or self.expected_serial)
+        policy = str(limits.get("policy", "use_installed"))
+        apk_path: Path | None = None
+        if (
+            self.apk_provider is not None
+            and policy in {"install_if_needed", "force_reinstall"}
+            and bool(limits.get("confirmed", False))
+            and self.lease_held
+            and serial == self.expected_serial
+            and getattr(build, "ready", False) is True
+            and pinned != ""
+            and getattr(build, "content_hash", None) == pinned
+            and not snapshot.get("cancel_requested")
+        ):
+            try:
+                apk_path = self.apk_provider(project_id, build_id, pinned)
+            except Exception:
+                return _fail_closed("apk_fetch_failed")
         result = prepare_app(
             AppPreparationSpec(
                 project_id,
@@ -150,16 +206,18 @@ class AppInstallHandler:
                 build_id,
                 str(limits.get("content_hash", "")),
                 serial,
-                str(limits.get("policy", "use_installed")),
+                policy,
                 bool(limits.get("confirmed", False)),
+                apk_path,
             ),
-            build=self.build,  # type: ignore[arg-type]
+            build=build,  # type: ignore[arg-type]
             driver=self.driver,
             enrolled_serial=self.expected_serial,
             lease_held=self.lease_held,
             cancel_requested=bool(snapshot.get("cancel_requested")),
         )
         payload = {
+            "kind": "app_install",
             "type": "app_install",
             "ready": result.ready,
             "state": result.state,
@@ -168,14 +226,22 @@ class AppInstallHandler:
             "reset_calls": result.reset_calls,
             "unapproved_mutations": self.driver.unapproved_mutations,
             "observed_at": result.observed_at,
+            "package": result.package,
+            "result_hash": result.content_hash,
             "qa": None,
+            "build_id": str(build_id),
+            "content_hash": str(limits.get("content_hash", "")),
+            "policy": str(limits.get("policy", "use_installed")),
+            "serial": serial,
+            "confirmed": bool(limits.get("confirmed", False)),
+            "resource_id": str(resource_id),
         }
         return HandlerResult(
             actions=result.install_calls + result.reset_calls,
-            outcome="completed" if result.ready else "failed",
+            outcome="completed" if result.ready else "error",
             evidence_complete=True,
             ambiguous_dispatch=False,
-            evidence_events=(payload,),
+            action_mapping=json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
         )
 
 
@@ -303,8 +369,12 @@ def android_evidence_artifacts(
     before: Observation,
     after: Observation,
     action_seq: int | None = None,
+    owner_kind: str = "REC",
 ) -> tuple[dict[str, Any], ...]:
-    """Build sanitized before/after PNG and action log bodies for evidence commit."""
+    """Build sanitized before/after PNG and action log bodies for evidence commit.
+
+    Recording evidence is owned by the recording (``REC``); replay evidence by the case run (``ITEM``).
+    """
 
     parts: list[dict[str, Any]] = []
     prefix = "" if action_seq is None else f"a{action_seq}-"
@@ -318,7 +388,7 @@ def android_evidence_artifacts(
                 "declared_length": len(obs.png),
                 "body_b64": base64.b64encode(obs.png).decode("ascii"),
                 "role": phase,
-                "owner_kind": "REC",
+                "owner_kind": owner_kind,
                 "attempt_id": attempt_id,
                 "action_id": action_id,
             }
@@ -338,18 +408,38 @@ def android_evidence_artifacts(
     log_body = log_text.encode("utf-8")
     parts.append(
         {
-            "filename": "action.log",
+            "filename": f"{prefix}action.log",
             "media_type": "text/plain",
             "declared_hash": "sha256:" + hashlib.sha256(log_body).hexdigest(),
             "declared_length": len(log_body),
             "body_b64": base64.b64encode(log_body).decode("ascii"),
             "role": "log",
-            "owner_kind": "REC",
+            "owner_kind": owner_kind,
             "attempt_id": attempt_id,
             "action_id": action_id,
         }
     )
     return tuple(parts)
+
+
+def android_source_artifact(*, attempt_id: str, action_mapping: str) -> dict[str, Any]:
+    """Recording `source` evidence: the sealed action mapping that the replay package compiles from."""
+
+    body = action_mapping.encode("utf-8")
+    return {
+        "filename": "source-mapping.log",
+        "media_type": "text/plain",
+        "declared_hash": "sha256:" + hashlib.sha256(body).hexdigest(),
+        "declared_length": len(body),
+        "body_b64": base64.b64encode(body).decode("ascii"),
+        "role": "source",
+        "owner_kind": "REC",
+        "attempt_id": attempt_id,
+    }
+
+
+# Per-step server commit. Returns the evidence-commit ACK dict (contiguous_seq, prefix_hash, …).
+StepEvidenceCommit = Callable[..., dict[str, Any]]
 
 
 @dataclass
@@ -370,6 +460,7 @@ class AndroidRecordingContext:
     max_actions: int = 50
     max_seconds: float | None = None
     cancelled: bool | Callable[[], bool] = False
+    step_evidence_commit: StepEvidenceCommit | None = None
 
 
 @dataclass
@@ -393,6 +484,7 @@ class AndroidRecordingHandler:
     _plan_index: int = field(default=0, init=False, repr=False)
     _device_prepared: bool = field(default=False, init=False, repr=False)
     _previous_result: str = field(default="", init=False, repr=False)
+    _seal_events: list[dict[str, Any]] = field(default_factory=list, init=False, repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         snapshot = claim.get("snapshot")
@@ -431,6 +523,11 @@ class AndroidRecordingHandler:
         self._mono_origin = None
         self._device_prepared = False
         self._previous_result = ""
+        self._seal_events = []
+        last_ack_seq = 0
+        last_ack_hash = ""
+        acked_artifact_ids: list[str] = []
+        step_commit = self.context.step_evidence_commit
 
         for action_seq in range(1, max_actions + 1):
             if self._is_cancelled():
@@ -502,7 +599,7 @@ class AndroidRecordingHandler:
                 self.stopped_reason = exc.reason
                 break
 
-            before, after, before_ref, after_ref = step
+            before, after, before_ref, after_ref, typed_action = step
             self.tap_count += 1
             try:
                 self.journal.append(attempt_id, action_id, "acknowledged")
@@ -515,7 +612,12 @@ class AndroidRecordingHandler:
                 self.tap_count -= 1
                 break
 
-            seq_base = len(all_events)
+            seal_event = _seal_event_for_action(
+                typed_action, before, action_id=action_id, line=action_seq
+            )
+            if seal_event is not None:
+                self._seal_events.append(seal_event)
+            seq_base = last_ack_seq if step_commit is not None else len(all_events)
             events = android_evidence_events(
                 attempt_id=attempt_id,
                 before=before,
@@ -531,19 +633,53 @@ class AndroidRecordingHandler:
                 after=after,
                 action_seq=action_seq,
             )
-            all_events.extend(events)
-            all_artifacts.extend(artifacts)
-            self.evidence_commits.append(
-                {
-                    "attempt_id": attempt_id,
-                    "action_id": action_id,
-                    "action_seq": action_seq,
-                    "before_ref": before_ref,
-                    "after_ref": after_ref,
-                    "sanitized": True,
-                    "review_pending": True,
-                }
-            )
+            if step_commit is not None:
+                try:
+                    ack = step_commit(
+                        action_seq=action_seq,
+                        action_id=action_id,
+                        events=list(events),
+                        artifacts=list(artifacts),
+                    )
+                except Exception:
+                    self.stopped_reason = "evidence_commit_failed"
+                    break
+                if type(ack) is not dict:
+                    self.stopped_reason = "evidence_commit_failed"
+                    break
+                last_ack_seq = int(ack.get("contiguous_seq") or last_ack_seq)
+                last_ack_hash = str(ack.get("prefix_hash") or last_ack_hash)
+                for item in ack.get("artifact_ids") or ():
+                    text = str(item).strip()
+                    if text != "":
+                        acked_artifact_ids.append(text)
+                self.evidence_commits.append(
+                    {
+                        "attempt_id": attempt_id,
+                        "action_id": action_id,
+                        "action_seq": action_seq,
+                        "before_ref": before_ref,
+                        "after_ref": after_ref,
+                        "sanitized": True,
+                        "review_pending": True,
+                        "acked": True,
+                        "contiguous_seq": last_ack_seq,
+                    }
+                )
+            else:
+                all_events.extend(events)
+                all_artifacts.extend(artifacts)
+                self.evidence_commits.append(
+                    {
+                        "attempt_id": attempt_id,
+                        "action_id": action_id,
+                        "action_seq": action_seq,
+                        "before_ref": before_ref,
+                        "after_ref": after_ref,
+                        "sanitized": True,
+                        "review_pending": True,
+                    }
+                )
             if self._is_cancelled():
                 self.stopped_reason = "cancelled"
                 break
@@ -564,6 +700,53 @@ class AndroidRecordingHandler:
             self.stopped_reason = "action_budget"
 
         outcome = _recording_attempt_outcome(self.stopped_reason)
+        # Only a completed recording carries a compile-ready mapping; cancelled/error stay "{}".
+        action_mapping = "{}"
+        if outcome == "completed" and self._seal_events:
+            action_mapping = json.dumps(
+                {"events": list(self._seal_events)},
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        if action_mapping != "{}":
+            source_part = android_source_artifact(attempt_id=attempt_id, action_mapping=action_mapping)
+            if step_commit is None:
+                all_artifacts.append(source_part)
+            else:
+                try:
+                    source_ack = step_commit(
+                        action_seq=self.tap_count + 1,
+                        action_id="source",
+                        events=[],
+                        artifacts=[source_part],
+                    )
+                    if type(source_ack) is not dict:
+                        raise ValueError("source ack is invalid")
+                    for item in source_ack.get("artifact_ids") or ():
+                        text = str(item).strip()
+                        if text != "":
+                            acked_artifact_ids.append(text)
+                except Exception:
+                    # No source evidence means no compile-ready mapping and no approval-ready outcome.
+                    self.stopped_reason = "evidence_commit_failed"
+                    outcome = _recording_attempt_outcome(self.stopped_reason)
+                    action_mapping = "{}"
+        if step_commit is not None:
+            return HandlerResult(
+                actions=self.tap_count,
+                outcome=outcome,
+                evidence_complete=True,
+                ambiguous_dispatch=self.stopped_reason == "ambiguous_dispatch",
+                final_seq=max(last_ack_seq, self.tap_count * 2),
+                last_ack_seq=last_ack_seq,
+                last_ack_hash=last_ack_hash,
+                evidence_events=(),
+                evidence_artifacts=(),
+                source_artifact_hashes=tuple(acked_artifact_ids),
+                review_pending=outcome == "completed",
+                action_mapping=action_mapping,
+            )
         return HandlerResult(
             actions=self.tap_count,
             outcome=outcome,
@@ -576,6 +759,7 @@ class AndroidRecordingHandler:
             evidence_artifacts=tuple(all_artifacts),
             source_artifact_hashes=(),
             review_pending=outcome == "completed",
+            action_mapping=action_mapping,
         )
 
     def _is_cancelled(self) -> bool:
@@ -651,7 +835,7 @@ class AndroidRecordingHandler:
 
     def _run_recording_step(
         self, claim: dict[str, Any], *, action_seq: int
-    ) -> tuple[Observation, Observation, str | None, str | None]:
+    ) -> tuple[Observation, Observation, str | None, str | None, Any]:
         """Observe → sanitize → model plan → parse → dispatch. Capture failure skips the model."""
 
         live = self.context.live_capture
@@ -674,7 +858,7 @@ class AndroidRecordingHandler:
                 raise _RecordingFinished()
             dispatch = self.adapter._dispatch(self.driver, before, after, action)
             self._previous_result = _action_result_token(action)
-            return before, after, dispatch.before_ref, dispatch.after_ref
+            return before, after, dispatch.before_ref, dispatch.after_ref, action
 
         if self.context.prepare_device is not None and not self._device_prepared:
             try:
@@ -710,7 +894,50 @@ class AndroidRecordingHandler:
         if after is None or not after.capture_ok or after.png == b"":
             raise _CaptureFailed("after_evidence_missing")
         after_ref = self.driver._sanitize_to_spool(after, phase="after")
-        return before, after, dispatch.before_ref, after_ref
+        return before, after, dispatch.before_ref, after_ref, action
+
+
+def _seal_event_for_action(
+    action: Any, before: Observation, *, action_id: str, line: int
+) -> dict[str, Any] | None:
+    """One RX-50 style seal event for a dispatched step. Unsupported kinds are skipped."""
+
+    kind = str(getattr(action, "kind", "") or "")
+    x = getattr(action, "x", None)
+    y = getattr(action, "y", None)
+    if kind == "tap" and type(x) is int and type(y) is int:
+        name = "tap"
+        bounds = [x, y, x + 1, y + 1]
+        target: Any = f"{x},{y}"
+    elif kind == "swipe" and type(x) is int and type(y) is int:
+        x2, y2 = getattr(action, "x2", None), getattr(action, "y2", None)
+        if type(x2) is not int or type(y2) is not int:
+            return None
+        name = "swipe"
+        bounds = [min(x, x2), min(y, y2), max(x, x2) + 1, max(y, y2) + 1]
+        target = f"{x},{y}->{x2},{y2}"
+    elif kind == "text":
+        name = "type"
+        bounds = [0, 0, 1, 1]
+        target = "text"
+    elif kind == "key" and getattr(action, "keycode", None) == 4:
+        name = "back"
+        bounds = [0, 0, 1, 1]
+        target = "back"
+    else:
+        return None
+    return {
+        "kind": "action",
+        "action": name,
+        "intent": "open",
+        "target": target,
+        "action_id": action_id,
+        "line": line,
+        "geometry": {
+            "rotation": int(before.geometry.rotation),
+            "content_bounds": bounds,
+        },
+    }
 
 
 def _action_result_token(action: object) -> str:
@@ -748,6 +975,20 @@ class PurposeRoutedHandler:
         purpose = "" if type(snapshot) is not dict else str(snapshot.get("purpose", ""))
         handler = self.routes.get(purpose, self.default)
         return handler.handle(claim)
+
+
+def bind_step_evidence_commit(handler: object, committer: StepEvidenceCommit | None) -> None:
+    """Attach a per-step evidence committer to recording handlers under a router."""
+
+    if isinstance(handler, AndroidRecordingHandler):
+        handler.context.step_evidence_commit = committer
+        return
+    routes = getattr(handler, "routes", None)
+    if type(routes) is not dict:
+        return
+    for route in routes.values():
+        if isinstance(route, AndroidRecordingHandler):
+            route.context.step_evidence_commit = committer
 
 
 @dataclass
@@ -847,6 +1088,7 @@ class AndroidReplayHandler:
         self.stopped_reason = ""
         before_authoring = self.broker.authoring_calls
         all_events: list[dict[str, Any]] = []
+        all_artifacts: list[dict[str, Any]] = []
         previous_after: Observation | None = None
         base_action_id = str(snapshot.get("action_id") or f"replay-{attempt_id}")
 
@@ -978,6 +1220,16 @@ class AndroidReplayHandler:
                 action_seq=step_index + 1,
             )
             all_events.extend(events)
+            all_artifacts.extend(
+                android_evidence_artifacts(
+                    attempt_id=attempt_id,
+                    action_id=action_id,
+                    before=before,
+                    after=after,
+                    action_seq=step_index + 1,
+                    owner_kind="ITEM",
+                )
+            )
             previous_after = after
             if not verify.success:
                 self.stopped_reason = "check_failed"
@@ -991,6 +1243,7 @@ class AndroidReplayHandler:
                     last_ack_seq=0,
                     last_ack_hash="",
                     evidence_events=tuple(all_events),
+                    evidence_artifacts=tuple(all_artifacts),
                     source_artifact_hashes=hashes,
                 )
 
@@ -1010,6 +1263,7 @@ class AndroidReplayHandler:
                 last_ack_seq=0,
                 last_ack_hash="",
                 evidence_events=tuple(all_events),
+                evidence_artifacts=tuple(all_artifacts),
                 source_artifact_hashes=hashes,
             )
         if self.stopped_reason:
@@ -1022,6 +1276,7 @@ class AndroidReplayHandler:
                 last_ack_seq=0,
                 last_ack_hash="",
                 evidence_events=tuple(all_events),
+                evidence_artifacts=tuple(all_artifacts),
                 source_artifact_hashes=hashes,
             )
         return HandlerResult(
@@ -1033,6 +1288,7 @@ class AndroidReplayHandler:
             last_ack_seq=0,
             last_ack_hash="",
             evidence_events=tuple(all_events),
+            evidence_artifacts=tuple(all_artifacts),
             source_artifact_hashes=hashes,
         )
 
@@ -1183,13 +1439,131 @@ def assemble_android_worker_handlers(
     *,
     recording: AndroidRecordingHandler,
     replay: AndroidReplayHandler | None = None,
+    installed_apps: InstalledAppsProbeHandler | None = None,
+    app_install: AppInstallHandler | None = None,
     other: dict[str, JobHandler] | None = None,
 ) -> PurposeRoutedHandler:
     """Register prepared Android handlers for the worker process entry."""
 
+    routes: dict[str, JobHandler] = {}
+    if installed_apps is not None:
+        routes["resource_probe"] = installed_apps
+    if app_install is not None:
+        routes["app_install"] = app_install
+    if other:
+        routes.update(other)
     if replay is None:
-        return register_android_recording_handler(recording, other=other)
-    return register_android_replay_handler(replay, recording=recording, other=other)
+        return register_android_recording_handler(recording, other=routes or None)
+    return register_android_replay_handler(replay, recording=recording, other=routes or None)
+
+
+def build_android_support_handlers(
+    *,
+    adb_path: Path,
+    serial: str,
+    run: Callable[..., Any] | None = None,
+    install_driver: FixtureInstallDriver | AdbInstallDriver | None = None,
+    build_fetcher: Callable[[UUID, UUID, str], object | None] | None = None,
+    apk_provider: Callable[[UUID, UUID, str], Path | None] | None = None,
+) -> tuple[InstalledAppsProbeHandler, AppInstallHandler]:
+    """Helpers for installed_apps probe and explicit app_install claims.
+
+    Without an explicit ``install_driver`` the real ``AdbInstallDriver`` is used (RX-75);
+    fixtures are injected by tests only.
+    """
+
+    driver = (
+        install_driver
+        if install_driver is not None
+        else AdbInstallDriver(adb_path=adb_path, expected_serial=serial, run=run)
+    )
+    probe = InstalledAppsProbeHandler(adb_path=adb_path, expected_serial=serial, run=run)
+    install = AppInstallHandler(
+        expected_serial=serial,
+        driver=driver,
+        build_fetcher=build_fetcher,
+        apk_provider=apk_provider,
+        lease_held=True,
+    )
+    return probe, install
+
+
+_DIGEST_FORM = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def http_apk_provider(client: object, spool_dir: Path) -> Callable[[UUID, UUID, str], Path | None]:
+    """Download the pinned APK over the worker HTTP client into ``spool_dir`` (RX-75).
+
+    The bytes are hash-verified by the client and again here; the file name is derived only from
+    the validated digest. A bad or missing hash raises, so the handler fails closed.
+    """
+
+    root = Path(spool_dir)
+
+    def provide(project_id: UUID, build_id: UUID, pinned_hash: str) -> Path | None:
+        if type(pinned_hash) is not str or _DIGEST_FORM.fullmatch(pinned_hash) is None:
+            raise ValueError("pinned hash is invalid")
+        body, digest = getattr(client, "fetch_app_build_content")(
+            str(project_id), str(build_id), expected_hash=pinned_hash
+        )
+        actual = "sha256:" + hashlib.sha256(body).hexdigest()
+        if digest != pinned_hash or actual != pinned_hash:
+            raise ValueError("apk bytes do not match the pinned hash")
+        root.mkdir(parents=True, exist_ok=True)
+        target = root / f"{pinned_hash.split(':', 1)[1]}.apk"
+        temp = root / f".{uuid4().hex}.tmp"
+        try:
+            temp.write_bytes(body)
+            temp.replace(target)
+        finally:
+            if temp.exists():
+                temp.unlink()
+        return target
+
+    return provide
+
+
+def http_app_build_fetcher(client: object) -> Callable[[UUID, UUID, str], object | None]:
+    """Fetch a pinned build over the authenticated worker HTTP client (RX-74).
+
+    Downloads the APK bytes, verifies their sha256 against the claim-pinned hash, and returns
+    an ``AppBuildView`` whose hash comes from the verified bytes. A 404 returns None; any
+    hash problem raises so the handler fails closed.
+    """
+
+    from aiqa.environments.app_builds import AppBuildView
+    from aiqa.worker.http_client import WorkerHttpError
+
+    def fetch(project_id: UUID, build_id: UUID, pinned_hash: str) -> object | None:
+        try:
+            meta = getattr(client, "get_app_build")(str(project_id), str(build_id))
+        except WorkerHttpError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        _, digest = getattr(client, "fetch_app_build_content")(
+            str(project_id), str(build_id), expected_hash=pinned_hash
+        )
+
+        def text(name: str) -> str | None:
+            value = meta.get(name)
+            return None if value is None or str(value) == "" else str(value)
+
+        return AppBuildView(
+            build_id,
+            str(meta.get("filename") or ""),
+            text("package_name"),
+            text("version_name"),
+            text("min_sdk"),
+            text("abi"),
+            str(meta.get("signature_status") or "unknown"),
+            meta.get("ready") is True,
+            digest,
+            int(meta.get("byte_length") or 0),
+            str(meta.get("created_at") or ""),
+        )
+
+    return fetch
 
 
 def _live_android_capture_pair(

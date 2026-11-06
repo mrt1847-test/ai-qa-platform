@@ -558,7 +558,7 @@ def submit_diagnostic(
     completes the fixture listing without install/reset.
     """
 
-    if provider != "fixture":
+    if provider not in {"fixture", "worker"}:
         raise DiagnosticBlocked("provider is not configured")
     if kind not in {"probe", "recovery", "installed_apps"}:
         raise DiagnosticBlocked("diagnostic kind is invalid")
@@ -580,19 +580,28 @@ def submit_diagnostic(
         if kind == "installed_apps":
             if target_kind != "android":
                 raise DiagnosticBlocked("installed_apps requires android")
-            lease = connection.execute(
-                """
-                SELECT 1 FROM leases
-                WHERE project_id = ? AND physical_key_id = ?
-                """,
-                (str(project_id), str(resource_id)),
-            ).fetchone()
-            if lease is None:
-                raise DiagnosticBlocked("physical lease is required")
+            # fixture lists in-process under an existing physical lease.
+            # provider=worker queues for claim; the claim itself creates the fence.
+            if provider == "fixture":
+                lease = connection.execute(
+                    """
+                    SELECT 1 FROM leases
+                    WHERE project_id = ? AND physical_key_id = ?
+                    """,
+                    (str(project_id), str(resource_id)),
+                ).fetchone()
+                if lease is None:
+                    raise DiagnosticBlocked("physical lease is required")
             ready = False
         if target_kind == "web" and proof != "vm-present":
             ready = False
-        limits_payload: dict[str, object] = {"kind": kind, "qa": None, "ready": ready}
+        limits_payload: dict[str, object] = {
+            "kind": kind,
+            "qa": None,
+            "ready": ready,
+            "resource_id": str(resource_id),
+            "provider": provider,
+        }
         receipt = enqueue_job(
             Transaction(connection),
             JobSubmission(
@@ -605,9 +614,11 @@ def submit_diagnostic(
             ),
             IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
         )
-        if kind == "installed_apps" and not receipt.replayed:
+        # provider=worker leaves the job queued for a registered Android worker claim.
+        if kind == "installed_apps" and provider == "fixture" and not receipt.replayed:
             observation = _run_installed_apps_listing(connection, resource_id)
             limits_payload = _installed_apps_limits(observation, ready=observation.state == "ready")
+            limits_payload["resource_id"] = str(resource_id)
             connection.execute(
                 "UPDATE jobs SET status = 'completed', limits = ? WHERE project_id = ? AND job_id = ?",
                 (json.dumps(limits_payload, sort_keys=True), str(project_id), str(receipt.job_id)),

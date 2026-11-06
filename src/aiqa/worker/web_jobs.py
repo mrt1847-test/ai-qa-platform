@@ -385,6 +385,7 @@ class WebReplayContext:
     heal_observation: Observation | None = None
     worker_model_call: object | None = None
     package_root: Path | None = None
+    observe: Callable[[], Observation] | None = None
 
 
 @dataclass
@@ -471,7 +472,8 @@ class WebReplayHandler:
             return _fail_closed("lease_expired", evidence_complete=False)
 
         after = self.context.after
-        if after is None or not after.capture_ok:
+        observe = self.context.observe
+        if (after is None and observe is None) or (after is not None and not after.capture_ok):
             self.original_failure = "after_evidence_missing"
             return _fail_closed("after_evidence_missing", evidence_complete=False)
 
@@ -507,11 +509,22 @@ class WebReplayHandler:
                 presented_revision=revision or approved.revision,
                 page_origin=origin,
                 runner=self.context.runner,
+                observe=observe,
             )
         except CuawrightRejected as exc:
             self.journal.mark_started_only_unknown(attempt_id, action_id)
             self.original_failure = str(exc.reason)
             return _fail_closed("replay_rejected", evidence_complete=False, ambiguous=True)
+
+        if after is None and observe is not None:
+            # Final post-action evidence comes from the owned browser, not a pre-made fixture.
+            try:
+                after = observe()
+            except Exception:
+                self.journal.mark_started_only_unknown(attempt_id, action_id)
+                self.original_failure = "after_evidence_missing"
+                return _fail_closed("after_evidence_missing", evidence_complete=False, ambiguous=True)
+        assert after is not None
 
         self.dispatch_count += len(results)
         self.actor_ai_calls = sum(item.ai_calls for item in results)
@@ -655,11 +668,17 @@ class AssembledWebWorker:
     guest: LocalGuestProcess | None = None
     recording: WebRecordingHandler | None = None
     replay: WebReplayHandler | None = None
+    page_session: Any | None = None
+    owns_page_session: bool = False
 
     def close(self) -> None:
         close = getattr(self.transport, "close", None)
         if close is not None:
             close()
+        if self.owns_page_session and self.page_session is not None:
+            page_close = getattr(self.page_session, "close", None)
+            if page_close is not None:
+                page_close()
         if self.guest is not None:
             self.guest.terminate()
 
@@ -716,12 +735,35 @@ def assemble_web_worker_from_entry_binding(
     proof: IsolationProof | None = None,
     before: Observation | None = None,
     after: Observation | None = None,
+    browser_session: Any | None = None,
+    page_session: Any | None = None,
+    browser_transport: Any | None = None,
+    fixture_html: str | None = None,
 ) -> AssembledWebWorker:
     """Read approved guest endpoint + origin and assemble recording/replay handlers.
+
+    The execution port defaults to an owned ``TrustedBrowserSession`` (RX-76).
+    ``browser_session``/``page_session`` inject any session exposing
+    ``capture()``/``as_runner()`` (e.g. a test ``LocalPageSession``);
+    ``browser_transport`` injects a CDP transport for the default session.
 
     Guest IPC stays fail-closed until a verified proof admits web_ready. Real VM
     security acceptance remains RX-22.
     """
+
+    from aiqa.environments.web_browser import TrustedBrowserSession, default_fixture_html
+
+    injected = browser_session if browser_session is not None else page_session
+    if injected is not None and browser_transport is not None:
+        raise ValueError("inject either a session or a transport, not both")
+    owns_session = injected is None
+    if injected is None:
+        injected = TrustedBrowserSession.open(
+            origin=binding.approved_origin,
+            html=fixture_html if fixture_html is not None else default_fixture_html(binding.approved_origin),
+            transport=browser_transport,
+        )
+    page = injected
 
     instant = now if now is not None else datetime.now(timezone.utc)
     gate = build_fixture_web_gate(
@@ -751,9 +793,10 @@ def assemble_web_worker_from_entry_binding(
     spool = EvidenceSpool(runtime_root / "spool")
     journal = DispatchJournal(runtime_root / "journal.jsonl")
     adapter = CuawrightWebAdapter()
-    obs_before = before if before is not None else fixture_web_observation()
+    obs_before = before if before is not None else page.capture()
     obs_after = after if after is not None else fixture_web_observation()
     traj = trajectory if trajectory is not None else dict(_DEFAULT_FIXTURE_TRAJECTORY)
+    page_runner = page.as_runner()
 
     recording = WebRecordingHandler(
         adapter=adapter,
@@ -803,9 +846,11 @@ def assemble_web_worker_from_entry_binding(
             ),
             bundle_source=traj,
             before=obs_before,
-            after=obs_after,
+            after=after,
             proof=issued,
             now=instant,
+            runner=page_runner,
+            observe=page.capture,
         ),
     )
     handler = assemble_web_worker_handlers(recording=recording, replay=replay)
@@ -819,6 +864,8 @@ def assemble_web_worker_from_entry_binding(
         guest=guest,
         recording=recording,
         replay=replay,
+        page_session=page,
+        owns_page_session=owns_session,
     )
 
 

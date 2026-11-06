@@ -19,7 +19,7 @@ from aiqa.store.models import ModelBindingInput, ModelBindingView, SecretRef
 
 _store: ContextVar[Store] = ContextVar("aiqa_model_binding_store")
 _PROMPT_HASH = re.compile(r"^sha256:[0-9a-f]{64}$")
-_ROLES = {"authoring", "verification", "healing", "maintenance"}
+_ROLES = {"authoring", "verification", "healing", "maintenance", "structure"}
 _COMPATIBILITY = {"unchecked", "compatible", "incompatible"}
 _CHECK_STATUSES = frozenset(
     {
@@ -214,7 +214,8 @@ def load_binding_row(project_id: UUID, binding_id: UUID) -> dict[str, object]:
             SELECT binding_revisions.role, binding_revisions.model, binding_revisions.endpoint,
                    binding_revisions.compatibility_status, binding_revisions.key_ref_id,
                    binding_revisions.key_revision, binding_revisions.provider,
-                   binding_revisions.prompt_hash, binding_revisions.tariff_id
+                   binding_revisions.prompt_hash, binding_revisions.tariff_id,
+                   binding_revisions.binding_id, binding_revisions.revision
             FROM binding_revisions
             JOIN model_bindings
               ON model_bindings.project_id = binding_revisions.project_id
@@ -226,6 +227,39 @@ def load_binding_row(project_id: UUID, binding_id: UUID) -> dict[str, object]:
         ).fetchone()
     if row is None:
         raise BindingNotFound("binding was not found")
+    return _binding_fields(row)
+
+
+def load_latest_binding_for_role(project_id: UUID, role: str) -> dict[str, object]:
+    """Load the newest project binding for one role. Does not open a provider."""
+
+    if role not in _ROLES:
+        raise BindingNotFound("binding was not found")
+    with _bound_store().transaction() as connection:
+        row = connection.execute(
+            """
+            SELECT binding_revisions.role, binding_revisions.model, binding_revisions.endpoint,
+                   binding_revisions.compatibility_status, binding_revisions.key_ref_id,
+                   binding_revisions.key_revision, binding_revisions.provider,
+                   binding_revisions.prompt_hash, binding_revisions.tariff_id,
+                   binding_revisions.binding_id, binding_revisions.revision
+            FROM binding_revisions
+            JOIN model_bindings
+              ON model_bindings.project_id = binding_revisions.project_id
+             AND model_bindings.binding_id = binding_revisions.binding_id
+             AND model_bindings.latest_revision_id = binding_revisions.revision_id
+            WHERE binding_revisions.project_id = ? AND binding_revisions.role = ?
+            ORDER BY binding_revisions.created_at DESC, binding_revisions.revision DESC
+            LIMIT 1
+            """,
+            (str(project_id), role),
+        ).fetchone()
+    if row is None:
+        raise BindingNotFound("binding was not found")
+    return _binding_fields(row)
+
+
+def _binding_fields(row: object) -> dict[str, object]:
     return {
         "role": str(row[0]),
         "model": str(row[1]),
@@ -236,6 +270,8 @@ def load_binding_row(project_id: UUID, binding_id: UUID) -> dict[str, object]:
         "provider": str(row[6]),
         "prompt_hash": str(row[7]),
         "tariff_id": str(row[8]),
+        "binding_id": UUID(str(row[9])),
+        "revision": int(row[10]),
     }
 
 

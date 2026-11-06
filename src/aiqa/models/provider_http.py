@@ -33,6 +33,7 @@ class ProviderHttpCall:
     role: str
     secret_present: bool
     token_output_limit: int
+    sanitized_inputs: tuple[str, ...] = ()
 
 
 class ProviderHttpPort(Protocol):
@@ -56,7 +57,7 @@ class ProviderHttpError(ValueError):
         self.status = status
 
 
-def structured_fixture_content(role: str) -> str:
+def structured_fixture_content(role: str, *, sanitized_inputs: tuple[str, ...] = ()) -> str:
     """Typed action / verification / healing / structure payloads for fixture responses."""
 
     if role == "authoring":
@@ -70,20 +71,23 @@ def structured_fixture_content(role: str) -> str:
             sort_keys=True,
         )
     if role == "structure":
+        seed = "|".join(item.strip() for item in sanitized_inputs if type(item) is str and item.strip() != "")
+        digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:8] if seed else "default"
+        label = seed[:24] if seed else "주문 확인"
         return json.dumps(
             {
-                "objective": "주문 확인",
+                "objective": f"{label} ({digest})",
                 "preconditions": [],
                 "variables": {},
                 "secret_refs": {},
                 "steps": [
                     {
-                        "id": "step-1",
-                        "instruction": "로그인 후 첫 주문을 연다",
-                        "expected": [{"id": "exp-1", "kind": "text", "expected": "주문번호"}],
+                        "id": f"step-{digest}",
+                        "instruction": seed[:120] if seed else "로그인 후 첫 주문을 연다",
+                        "expected": [{"id": f"exp-{digest}", "kind": "text", "expected": "주문번호"}],
                     }
                 ],
-                "final_expected": [{"id": "final-1", "kind": "text", "expected": "결제 금액"}],
+                "final_expected": [{"id": f"final-{digest}", "kind": "text", "expected": "결제 금액"}],
                 "path_policy": {"must_use": [], "forbidden": []},
             },
             separators=(",", ":"),
@@ -113,17 +117,19 @@ class FixtureProviderHttp:
             raise ValueError("provider secret is missing")
         if type(model) is not str or model.strip() == "":
             raise ValueError("provider model is missing")
+        inputs = tuple(sanitized_inputs) if type(sanitized_inputs) is tuple else ()
         self.calls.append(
             ProviderHttpCall(
                 model=model,
                 role=role,
                 secret_present=True,
                 token_output_limit=token_output_limit,
+                sanitized_inputs=inputs,
             )
         )
         seq = len(self.calls)
         return ProviderHttpResult(
-            content=structured_fixture_content(role),
+            content=structured_fixture_content(role, sanitized_inputs=inputs),
             provider_request_id=f"fixture-{seq}",
             http_status=200,
             actual_model=model,
@@ -180,18 +186,20 @@ class OperationalProviderHttp:
             raise ValueError("operational provider is not enabled")
         if self.base_url is None or self.base_url.strip() == "":
             raise ValueError("live provider endpoint is not configured")
+        inputs = tuple(sanitized_inputs) if type(sanitized_inputs) is tuple else ()
         self.calls.append(
             ProviderHttpCall(
                 model=model,
                 role=role,
                 secret_present=True,
                 token_output_limit=token_output_limit,
+                sanitized_inputs=inputs,
             )
         )
         body = {
             "model": model,
             "role": role,
-            "sanitized_inputs": list(sanitized_inputs),
+            "sanitized_inputs": list(inputs),
             "token_output_limit": token_output_limit,
         }
         idempotency_key = _request_key(body)

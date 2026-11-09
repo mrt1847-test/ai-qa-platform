@@ -53,22 +53,16 @@ def read_analytics(tx: Transaction, actor: Actor, query: AnalyticsQuery) -> Anal
         raise AnalyticsRejected("analytics query is invalid")
     start, end = _utc_window(query.period_from, query.period_to)
     criteria = "latest_terminal" if query.criteria == "latest_terminal" else "all_observations"
-    rows = _analytics_rows(tx, query.project_id)
-    selected = [row for row in rows if _analytics_visible(row, query, start, end)]
-    facts = tuple(_analytics_fact(row) for row in selected)
-    if criteria == "latest_terminal":
-        kept = {item.item_id for item in latest_terminals(facts, query.as_of)}
-        paired = [(row, fact) for row, fact in zip(selected, facts, strict=True) if fact.item_id in kept]
-    else:
-        paired = list(zip(selected, facts, strict=True))
+    selected, eligible = _analytics_scope(tx, query, start, end)
+    paired = [(row, _analytics_fact(row)) for row in eligible]
     durations = [_duration(row, fact) for row, fact in paired]
     measured = [value for value in durations if value is not None]
     cost = _cost(tx, query.project_id, tuple(fact.item_id for _, fact in paired), query.as_of)
     dates = tuple(sorted({_kst_date(str(row["requested"])) for row, _ in paired}))
     rates = None if paired == [] else _rate_triple(tuple(fact for _, fact in paired))
     return AnalyticsReport(
-        sample_count=len(paired),
-        denominator=sum(1 for row, _ in paired if row["created"] is None or int(row["created"]) <= query.as_of),
+        sample_count=len(paired) if criteria == "latest_terminal" else len(selected),
+        denominator=len(paired),
         unverified=0 if paired == [] else _unverified(tuple(fact for _, fact in paired)),
         as_of=query.as_of,
         criteria=criteria,
@@ -92,65 +86,56 @@ def read_analytics(tx: Transaction, actor: Actor, query: AnalyticsQuery) -> Anal
 
 
 def query_observations(tx: Transaction, actor: Actor, query: AnalyticsQuery) -> ObservationPage:
-    """Return one row per item. Attempts do not add rows, and a rerun is a new item."""
-
+    """Return each selected item once; pending admissions already belong to the denominator."""
     if actor.project_scope != query.project_id or type(query.as_of) is not int:
         raise AnalyticsRejected("observation query is invalid")
     start, end = _utc_window(query.period_from, query.period_to)
-    rows = tx.connection.execute(
-        """
-        SELECT case_runs.case_run_id, case_runs.execution_id, executions.source, executions.purpose,
-               executions.scope_requested_at, item_finalizations.created_seq,
-               item_finalizations.finalized_seq, item_finalizations.core_result,
-               (
-                   SELECT COUNT(*)
-                   FROM jobs
-                   JOIN attempts
-                     ON attempts.project_id = jobs.project_id
-                    AND attempts.job_id = jobs.job_id
-                   WHERE jobs.project_id = case_runs.project_id
-                     AND jobs.case_run_id = case_runs.case_run_id
-               )
-        FROM case_runs
-        JOIN executions
-          ON executions.project_id = case_runs.project_id
-         AND executions.execution_id = case_runs.execution_id
-        LEFT JOIN item_finalizations
-          ON item_finalizations.project_id = case_runs.project_id
-         AND item_finalizations.case_run_id = case_runs.case_run_id
-        WHERE case_runs.project_id = ?
-        ORDER BY executions.scope_requested_at, case_runs.execution_id, case_runs.rowid
-        """,
-        (str(query.project_id),),
-    ).fetchall()
-    items: list[Observation] = []
-    for row in rows:
-        source, purpose, requested = str(row[2]), str(row[3]), str(row[4])
-        if source == "recording" or purpose == "recording":
-            continue
-        if purpose == "trial" and not query.include_trial:
-            continue
-        if query.purpose != "" and purpose != query.purpose:
-            continue
-        if requested < start or requested >= end:
-            continue
-        created = None if row[5] is None else int(row[5])
-        finalized = None if row[6] is None else int(row[6])
-        in_denominator = created is not None and created <= query.as_of
-        terminal = finalized is not None and finalized <= query.as_of
-        items.append(
-            Observation(
-                case_run_id=UUID(str(row[0])),
-                execution_id=UUID(str(row[1])),
-                source=source,
-                purpose=purpose,
-                in_denominator=in_denominator,
-                terminal=terminal and in_denominator,
-                result=None if not (terminal and in_denominator) or row[7] is None else str(row[7]),
-                attempt_count=int(row[8]),
-            )
-        )
+    items = []
+    selected, eligible = _analytics_scope(tx, query, start, end)
+    scope = eligible if query.criteria == "latest_terminal" else selected
+    for row in scope:
+        created, finalized = row["created"], row["finalized"]
+        in_denominator = created is not None and int(created) <= query.as_of
+        terminal = in_denominator and finalized is not None and int(finalized) <= query.as_of
+        items.append(Observation(
+            case_run_id=UUID(str(row["case_run_id"])), execution_id=UUID(str(row["execution_id"])),
+            source=str(row["source"]), purpose=str(row["purpose"]),
+            in_denominator=in_denominator, terminal=terminal,
+            result=str(row["result"]) if terminal and row["result"] else None,
+            attempt_count=int(row["attempts"]),
+        ))
     return ObservationPage(tuple(items))
+
+
+def _analytics_scope(
+    tx: Transaction, query: AnalyticsQuery, start: str, end: str
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    if query.criteria not in {"", "all_observations", "latest_terminal"}:
+        raise AnalyticsRejected("analytics query is invalid")
+    selected = [row for row in _analytics_rows(tx, query.project_id)
+                if _analytics_visible(row, query, start, end)]
+    eligible = []
+    for row in selected:
+        if row["created"] is None or int(row["created"]) > query.as_of:
+            continue
+        projected = dict(row)
+        if row["finalized"] is None or int(row["finalized"]) > query.as_of:
+            projected["result"] = ""
+            if row["finalized"] is not None:
+                projected["duration"] = None
+        eligible.append(projected)
+    if query.criteria == "latest_terminal":
+        kept = {item.item_id for item in latest_terminals(
+            tuple(_analytics_fact(row) for row in eligible), query.as_of)}
+        eligible = [row for row in eligible if row["case_run_id"] in kept]
+    return selected, eligible
+
+
+def _created_seq(limits: dict, finalized_creation: object) -> int | None:
+    admitted = limits.get("commit_seq")
+    if type(admitted) is int and admitted > 0:
+        return admitted
+    return None if finalized_creation is None else int(finalized_creation)
 
 
 def _utc_window(period_from: str, period_to: str) -> tuple[str, str]:
@@ -165,16 +150,13 @@ def _utc(value: str) -> str:
     if type(value) is not str or value.strip() == "":
         raise AnalyticsRejected("observation window is invalid")
     text = value.strip()
-    if len(text) == 10:
-        parsed = datetime.fromisoformat(text + "T00:00:00")
-    else:
-        try:
-            parsed = datetime.fromisoformat(text)
-        except ValueError as exc:
-            raise AnalyticsRejected("observation window is invalid") from exc
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=_KST)
-    return parsed.astimezone(timezone.utc).isoformat()
+    try:
+        parsed = datetime.fromisoformat(text + "T00:00:00" if len(text) == 10 else text)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=_KST)
+        return parsed.astimezone(timezone.utc).isoformat()
+    except (ValueError, OverflowError) as exc:
+        raise AnalyticsRejected("observation window is invalid") from exc
 
 
 def _analytics_rows(tx: Transaction, project_id: UUID) -> tuple[dict[str, object], ...]:
@@ -192,7 +174,7 @@ def _analytics_rows(tx: Transaction, project_id: UUID) -> tuple[dict[str, object
                     AND attempts.job_id = owned.job_id
                    WHERE owned.project_id = case_runs.project_id
                      AND owned.case_run_id = case_runs.case_run_id
-               )
+               ), item_finalizations.finalized_seq
         FROM case_runs
         JOIN executions
           ON executions.project_id = case_runs.project_id
@@ -226,7 +208,8 @@ def _analytics_rows(tx: Transaction, project_id: UUID) -> tuple[dict[str, object
                 "requested": str(row[7]),
                 "verification": str(row[8]),
                 "result": "" if row[10] is None else str(row[10]),
-                "created": None if row[11] is None else int(row[11]),
+                "created": _created_seq(limits, row[11]),
+                "finalized": None if row[13] is None else int(row[13]),
                 "attempts": int(row[12]),
                 "environment": str(limits.get("environment_revision_id", "")),
                 "data": str(limits.get("data_fingerprint", "")),

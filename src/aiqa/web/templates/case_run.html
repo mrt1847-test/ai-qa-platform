@@ -1,10 +1,17 @@
 {% extends "base.html" %}
-{% block title %}항목 치유{% endblock %}
+{% block title %}{{ case_name|default("항목") }} · 실행 결과{% endblock %}
 {% block content %}
-  <h1>항목 치유</h1>
+  <header class="page-heading"><div><p class="eyebrow">EXECUTION / ITEM</p><h1>{{ case_name|default("항목") }} · 실행 결과</h1></div><a href="/ui/projects/{{ project_id }}/executions/{{ execution_id }}">실행 기록으로</a></header>
+  <section class="panel" aria-label="저장된 QA 결과"><h2>저장된 QA 결과</h2>
+    {% set result_label = {"PASS":"만족", "FAIL":"실패", "BLOCKED":"차단", "INCONCLUSIVE":"판정 불명", "SKIPPED":"건너뜀", "CANCELLED":"취소", "NOT_RUN":"미실행"}.get(core_result, "판정 불명") %}
+    {% if core_result %}<strong class="metric-value" data-qa-result="{{ result_label }}">{{ result_label }}</strong>{% else %}<p>확정된 QA 결과가 없습니다.</p>{% endif %}
+    <p>작업 종료와 검증 결과는 구분합니다. 아래 값은 현재 저장된 기록입니다.</p>
+  </section>
   <p>작업 상태 {{ job_status }}</p>
   <p>단계 {{ phase }}</p>
   <p>episode {{ episode_count }} · 호출 {{ call_count }} / {{ max_calls }} · {{ max_seconds }}초</p>
+  {% if episode_count %}
+  <details class="panel" open><summary>셀프힐링 기록</summary>
   <ol>
     <li>원래 오류 {{ original_error }}</li>
     <li>제안 {{ proposal_id }}</li>
@@ -16,6 +23,8 @@
   {% if badge %}<p data-healing-badge="used">치유를 사용했습니다.</p>{% endif %}
   {% if terminal_failed %}<p><a href="{{ new_run_href }}">새 수행</a></p>{% endif %}
   <p>원래 오류는 그대로 보입니다.</p>
+  </details>
+  {% else %}<p>이 항목의 셀프힐링 사용 기록이 없습니다.</p>{% endif %}
   <section>
     <p>{{ assistance_label|default('이 항목의 결과입니다.') }}</p>
     <p>검증 역할은 따로 셉니다.</p>

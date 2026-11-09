@@ -21,6 +21,7 @@ from aiqa.api.auth import (
     bound_auth_store,
 )
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
+from aiqa.recording.intent import IntentRejected
 from aiqa.recording.manifests import FinishConflict, RecordingFinishInput
 from aiqa.healing.proposals import ProposalRejected, adopt_repair_proposal
 from aiqa.recording.service import (
@@ -181,7 +182,7 @@ def install_recordings(application: FastAPI) -> None:
                     )
                 except JobConflict:
                     return _error(409, "conflict", "idempotency body does not match", {})
-                except PreflightRejected as exc:
+                except (PreflightRejected, IntentRejected) as exc:
                     return _error(422, "validation", exc.reason, {})
                 except ResourceOffline as exc:
                     return _error(422, "validation", str(exc), {})
@@ -566,7 +567,7 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(409, "conflict", "idempotency body does not match", {})
                 except (HashMismatch, ResourceBusy):
                     return _error(409, "conflict", "rerecording was rejected", {})
-                except PreflightRejected as exc:
+                except (PreflightRejected, IntentRejected) as exc:
                     return _error(422, "validation", exc.reason, {})
                 except ResourceOffline as exc:
                     return _error(422, "validation", str(exc), {})

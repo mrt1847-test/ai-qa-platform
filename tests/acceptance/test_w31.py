@@ -249,10 +249,12 @@ async def _session(client: object, origin: str, project_id: str, key: str) -> di
 
 
 def _graph(database: Path, project_id: str, case_id: str, actor_id: str) -> dict[str, str]:
+    from aiqa.domain.hashing import canonical_hash
     version_id, recording_id, manifest_id = str(uuid4()), str(uuid4()), str(uuid4())
     package_id, episode_id = str(uuid4()), str(uuid4())
     execution_id, run_id, job_id, attempt_id = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
     settings = json.dumps({"target_kind": "web", "limits": {"timeout_seconds": 30}}, sort_keys=True)
+    version_hash = canonical_hash({"definition": {}, "settings": json.loads(settings), "recorded_steps": []}, "canon-json-v1")
     with sqlite3.connect(database) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute(
@@ -295,10 +297,10 @@ def _graph(database: Path, project_id: str, case_id: str, actor_id: str) -> dict
                 project_id, case_id, version_id, revision, creation_kind, parent_version_id, base_version_id,
                 is_branch, definition_json, settings_json, recorded_steps_json, content_hash, verification_digest,
                 source_manifest_id, replay_package_id, readiness_json, actor_id, reason, created_at
-            ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', ?, '[]', 'script-hash', 'digest',
+            ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', ?, '[]', ?, 'digest',
                 ?, ?, '{}', ?, 'recorded', '2026-11-01T00:00:00+00:00')
             """,
-            (project_id, case_id, version_id, settings, manifest_id, package_id, actor_id),
+            (project_id, case_id, version_id, settings, version_hash, manifest_id, package_id, actor_id),
         )
         connection.execute(
             "UPDATE automation_cases SET latest_draft_version_id = ?, next_revision = 2 WHERE project_id = ? AND case_id = ?",

@@ -112,6 +112,71 @@ async def post_execution(project_id: str, request: Request) -> JSONResponse:
     return JSONResponse(status_code=200 if receipt.replayed else 201, content=_receipt_json(receipt))
 
 
+@pages.get("/ui/projects/{project_id}/execution-setup", response_class=HTMLResponse)
+async def selection_execution_page(project_id: str, request: Request) -> HTMLResponse:
+    """Prepare only the explicitly selected cases and pin their current approvals."""
+    project = _uuid(project_id)
+    if isinstance(project, JSONResponse):
+        return HTMLResponse(status_code=404, content="프로젝트를 찾지 못했습니다.")
+    raw_ids = request.query_params.getlist("case_id")
+    if not 1 <= len(raw_ids) <= 100:
+        return HTMLResponse(status_code=422, content="케이스를 1~100개 선택하세요.")
+    ids = [_uuid(value) for value in raw_ids]
+    if any(isinstance(value, JSONResponse) for value in ids):
+        return HTMLResponse(status_code=404, content="선택한 케이스를 찾지 못했습니다.")
+    if len(set(ids)) != len(ids):
+        return HTMLResponse(status_code=422, content="같은 케이스를 중복 선택할 수 없습니다.")
+    with _bound(request) as store:
+        try:
+            authorize_page(request, project)
+        except (AuthRequired, OriginRejected, ProjectHidden):
+            return HTMLResponse(status_code=404, content="선택한 케이스를 찾지 못했습니다.")
+        choices = []
+        with store.transaction() as connection:
+            for case_id in ids:
+                row = connection.execute(
+                    """SELECT c.name, c.archived_at, c.current_approval_id,
+                              a.case_version_id, v.revision, v.settings_json
+                       FROM automation_cases c
+                       LEFT JOIN approval_events a ON a.project_id=c.project_id
+                         AND a.case_id=c.case_id AND a.approval_id=c.current_approval_id
+                         AND a.event_kind='approved'
+                       LEFT JOIN case_versions v ON v.project_id=c.project_id
+                         AND v.case_id=c.case_id AND v.version_id=a.case_version_id
+                       WHERE c.project_id=? AND c.case_id=?""",
+                    (str(project), str(case_id)),
+                ).fetchone()
+                if row is None:
+                    return HTMLResponse(status_code=404, content="선택한 케이스를 찾지 못했습니다.")
+                settings = json.loads(str(row[5])) if row[5] else {}
+                if type(settings) is not dict:
+                    settings = {}
+                choices.append({
+                    "case_id": str(case_id), "name": str(row[0]),
+                    "problem": "보관된 케이스입니다." if row[1] else (
+                        "승인본이 없습니다. 저장된 녹화와 시범을 검토해 승인하세요." if not row[3] else ""
+                    ),
+                    "approval_id": str(row[2] or ""), "version_id": str(row[3] or ""),
+                    "revision": row[4], "target_kind": settings.get("target_kind", "web"),
+                    "environment_revision_id": settings.get("environment_revision_id", ""),
+                    "resource_id": settings.get("resource_id", ""),
+                    "dataset_version_id": settings.get("dataset_version_id", settings.get("data_revision_id", "")),
+                })
+        from aiqa.domain.environments import bind_environment_store, list_environment_profiles
+        from aiqa.domain.datasets import bind_dataset_store, list_datasets
+        from aiqa.worker.resources import bind_inventory_store, list_resources
+        with bind_environment_store(store), bind_dataset_store(store), bind_inventory_store(store):
+            profiles = list_environment_profiles(project)
+            datasets = list_datasets(project)
+            resources = list_resources(project)
+    return render_template(request, "selection_execution.html", {
+        "project_id": str(project), "choices": choices, "profiles": profiles,
+        "datasets": datasets, "resources": resources,
+        "blocked": any(choice["problem"] for choice in choices),
+        "crumbs": (("자동화 케이스", f"/ui/projects/{project}/cases"), ("선택 정식 실행", "")),
+    })
+
+
 @pages.get("/ui/projects/{project_id}/cases/{case_id}/execution-setup", response_class=HTMLResponse)
 async def execution_setup_page(project_id: str, case_id: str, request: Request) -> HTMLResponse:
     project = _uuid(project_id)

@@ -15,6 +15,7 @@ from aiqa.domain.hashing import canonical_hash, canonical_json
 from aiqa.domain.resource_readiness import resource_readiness
 from aiqa.healing.policy import resolve_healing_policy
 from aiqa.domain.projects import next_commit_seq
+from aiqa.domain.execution_metadata import item_created_seq, item_release_label, normalized_release_label
 from aiqa.store.models import Actor, Transaction
 from aiqa.store.queue import JobConflict
 
@@ -173,7 +174,10 @@ def enqueue_execution(
     ).fetchone()
     if existing is not None:
         if str(existing[0]) != body_hash:
-            raise JobConflict("idempotency body does not match")
+            # Old versions did not hash or persist a release label. Replay only:
+            # never apply the new label or enqueue another run under this key.
+            if not _legacy_receipt_matches(tx, project_id, str(existing[1]), str(existing[0]), payload):
+                raise JobConflict("idempotency body does not match")
         return _stored_receipt(tx, project_id, str(existing[2]), str(existing[1]))
     preview = preview_execution(tx, actor, project_id, _preview_payload(payload))
     if not preview.ready:
@@ -239,7 +243,7 @@ def enqueue_execution(
                 str(case_run_id),
                 body_hash,
                 json.dumps([str(item.replay_package_id)], ensure_ascii=False, separators=(",", ":")),
-                _snapshot_limits(tx, project_id, item, commit_seq, failure_policy),
+                _snapshot_limits(tx, project_id, item, commit_seq, failure_policy, preview.release_label),
             ),
         )
     tx.connection.execute(
@@ -331,9 +335,9 @@ def skip_case_run(
         """
         INSERT INTO item_finalizations (
             project_id, case_run_id, created_seq, finalized_seq, release_label, content_hash, core_result, denominator
-        ) VALUES (?, ?, ?, ?, '', ?, 'SKIPPED', 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, 'SKIPPED', 1)
         """,
-        (str(actor.project_scope), str(case_run_id), seq, seq, f"SKIPPED:{case_run_id}"),
+        (str(actor.project_scope), str(case_run_id), item_created_seq(tx.connection, actor.project_scope, case_run_id, seq), seq, item_release_label(tx.connection, actor.project_scope, case_run_id), f"SKIPPED:{case_run_id}"),
     )
     updated = tx.connection.execute(
         "UPDATE jobs SET status = 'completed' WHERE project_id = ? AND job_id = ? AND status = 'queued'",
@@ -791,9 +795,9 @@ def _stop_later(tx: Transaction, project_id: UUID, execution_id: str, case_run_i
             """
             INSERT INTO item_finalizations (
                 project_id, case_run_id, created_seq, finalized_seq, release_label, content_hash, core_result, denominator
-            ) VALUES (?, ?, ?, ?, '', ?, 'NOT_RUN', 1)
+            ) VALUES (?, ?, ?, ?, ?, ?, 'NOT_RUN', 1)
             """,
-            (str(project_id), str(later_id), seq, seq, f"NOT_RUN:{later_id}"),
+            (str(project_id), str(later_id), item_created_seq(tx.connection, project_id, later_id, seq), seq, item_release_label(tx.connection, project_id, later_id), f"NOT_RUN:{later_id}"),
         )
         tx.connection.execute(
             "UPDATE jobs SET status = 'completed' WHERE project_id = ? AND job_id = ? AND status = 'queued'",
@@ -945,9 +949,9 @@ def _apply_cancel(tx: Transaction, actor: Actor, request_key: str, jobs: list[tu
                 """
                 INSERT INTO item_finalizations (
                     project_id, case_run_id, created_seq, finalized_seq, release_label, content_hash, core_result, denominator
-                ) VALUES (?, ?, ?, ?, '', ?, 'CANCELLED', 1)
+                ) VALUES (?, ?, ?, ?, ?, ?, 'CANCELLED', 1)
                 """,
-                (project_id, case_run_id, seq, seq, f"CANCELLED:{case_run_id}"),
+                (project_id, case_run_id, item_created_seq(tx.connection, project_id, case_run_id, seq), seq, item_release_label(tx.connection, project_id, case_run_id), f"CANCELLED:{case_run_id}"),
             )
         phase = "requested" if status_after == "cancel_requested" else phase or "stopped"
     return None if phase == "" else phase
@@ -1432,6 +1436,7 @@ def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
         "purpose": payload.get("purpose"),
         "source": payload.get("source"),
         "selection": {"items": items},
+        "release_label": payload.get("release_label"),
         "failure_policy": payload.get("failure_policy"),
         "exclusions": payload.get("exclusions", []),
     }
@@ -1545,7 +1550,8 @@ def _stored_receipt(tx: Transaction, project_id: UUID, execution_id: str, job_id
 
 
 def _snapshot_limits(
-    tx: Transaction, project_id: UUID, item: ResolvedTrialItem, commit_seq: int, failure_policy: str
+    tx: Transaction, project_id: UUID, item: ResolvedTrialItem, commit_seq: int, failure_policy: str,
+    release_label: str = "",
 ) -> str:
     settings_row = tx.connection.execute(
         "SELECT settings_json FROM case_versions WHERE project_id = ? AND version_id = ?",
@@ -1569,6 +1575,7 @@ def _snapshot_limits(
     return canonical_json(
         {
             "approval_id": None if item.approval_id is None else str(item.approval_id),
+            "release_label": normalized_release_label(release_label),
             "budget": "2.00",
             "build_hash": build_hash,
             "build_id": build_id,
@@ -1643,6 +1650,7 @@ def _preview_hash(
                 for item in items
             ],
             "purpose": payload.get("purpose"),
+            "release_label": normalized_release_label(payload.get("release_label")),
             "self_healing_enabled": False,
             "source": payload.get("source"),
         },
@@ -1650,21 +1658,38 @@ def _preview_hash(
     )
 
 
-def _request_hash(payload: dict[str, object]) -> str:
-    return canonical_hash(
-        {
-            "failure_policy": payload.get("failure_policy"),
-            "name": _name(payload),
-            "preview_hash": payload.get("preview_hash"),
-            "items": payload.get("items"),
-            "exclusions": payload.get("exclusions", []),
-            "purpose": payload.get("purpose"),
-            "self_healing_enabled": False,
-            "source": payload.get("source"),
-            "suite_version_id": _suite_version_ref(payload),
-        },
-        "canon-json-v1",
-    )
+def _legacy_receipt_matches(
+    tx: Transaction, project_id: UUID, job_id: str, body_hash: str, payload: dict[str, object]
+) -> bool:
+    if body_hash != _request_hash(payload, legacy=True):
+        return False
+    row = tx.connection.execute(
+        "SELECT limits FROM jobs WHERE project_id=? AND job_id=?", (str(project_id), job_id)
+    ).fetchone()
+    if row is None:
+        return False
+    try:
+        limits = json.loads(str(row[0]))
+    except (ValueError, TypeError):
+        return False
+    return type(limits) is dict and "release_label" not in limits
+
+
+def _request_hash(payload: dict[str, object], *, legacy: bool = False) -> str:
+    document = {
+        "failure_policy": payload.get("failure_policy"),
+        "name": _name(payload),
+        "preview_hash": payload.get("preview_hash"),
+        "items": payload.get("items"),
+        "exclusions": payload.get("exclusions", []),
+        "purpose": payload.get("purpose"),
+        "self_healing_enabled": False,
+        "source": payload.get("source"),
+        "suite_version_id": _suite_version_ref(payload),
+    }
+    if not legacy:
+        document["release_label"] = normalized_release_label(payload.get("release_label"))
+    return canonical_hash(document, "canon-json-v1")
 
 
 def _name(payload: dict[str, object]) -> str:

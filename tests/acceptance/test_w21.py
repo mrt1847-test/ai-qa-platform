@@ -1034,6 +1034,7 @@ def _schedule_graph(database: Path, project_id: str, actor_id: str, key_id: str)
             for index in range(counts.get(name, 3)):
                 case_id, version_id, run_id, job_id = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
                 stamp = "2026-11-01T00:00:00+00:00"
+                package_id, manifest_id = str(uuid4()), str(uuid4())
                 connection.execute(
                     """
                     INSERT INTO automation_cases (
@@ -1050,10 +1051,11 @@ def _schedule_graph(database: Path, project_id: str, actor_id: str, key_id: str)
                         is_branch, definition_json, settings_json, recorded_steps_json, content_hash, verification_digest,
                         source_manifest_id, replay_package_id, readiness_json, actor_id, reason, created_at
                     ) VALUES (?, ?, ?, 1, 'recorded', NULL, NULL, 0, '{}', '{}', '[]', 'version-hash', ?,
-                        NULL, NULL, '{}', ?, 'recorded', ?)
+                        ?, ?, '{}', ?, 'recorded', ?)
                     """,
-                    (project_id, case_id, version_id, f"digest-{name}-{index}", actor_id, stamp),
+                    (project_id, case_id, version_id, f"digest-{name}-{index}", manifest_id, package_id, actor_id, stamp),
                 )
+                package_id, package_hash = _schedule_package(connection, project_id, case_id, version_id, package_id, manifest_id)
                 connection.execute(
                     """
                     INSERT INTO case_runs (
@@ -1073,7 +1075,7 @@ def _schedule_graph(database: Path, project_id: str, actor_id: str, key_id: str)
                         job_id,
                         run_id,
                         json.dumps([key_id]),
-                        json.dumps({"failure_policy": policies[name]}, separators=(",", ":")),
+                        json.dumps({"failure_policy": policies[name], "resource_id": key_id, "replay_package_id": package_id, "replay_package_hash": package_hash}, separators=(",", ":")),
                     ),
                 )
                 items.append(run_id)
@@ -1081,8 +1083,43 @@ def _schedule_graph(database: Path, project_id: str, actor_id: str, key_id: str)
             seeded[name] = execution_id
             seeded[f"{name}_items"] = items
             seeded[f"{name}_jobs"] = jobs
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
     return seeded
 
+
+
+def _schedule_package(connection, project_id: str, case_id: str, version_id: str, package_id: str, manifest_id: str) -> tuple[str, str]:
+    """A scheduler fixture still needs the immutable package required by real claim."""
+    recording_id = str(uuid4())
+    connection.execute(
+        """INSERT INTO recordings (
+             project_id,case_id,recording_id,creation_kind,input_case_version_id,
+             storage_status,stop_status,completion_status,evidence_status
+           ) VALUES (?,?,?,'recorded',?,'stored','stopped','completed','complete')""",
+        (project_id, case_id, recording_id, version_id),
+    )
+    connection.execute(
+        """INSERT INTO recording_manifests (
+             project_id,case_id,recording_id,manifest_id,revision,kind,input_version_hash,
+             source_artifact_hashes,action_mapping,evidence_completeness,request_key,body_hash
+           ) VALUES (?,?,?,?,1,'original','version-hash','[]','{}','complete',?,'manifest-hash')""",
+        (project_id, case_id, recording_id, manifest_id, manifest_id),
+    )
+    package_hash = "scheduler-package-" + package_id
+    connection.execute(
+        """INSERT INTO replay_packages (
+             project_id,package_id,case_id,case_version_id,ready,schema_version,
+             source_manifest_id,source_manifest_hash,raw_source_hash,approved_code_hash,
+             runtime_ref,compiler_ref,lock_hash,step_mapping_hash,body_hash
+           ) VALUES (?,?,?,?,1,'replay-package-v1',?,'manifest-hash','raw','code',
+                     'web','web-ipc-subset','lock','mapping',?)""",
+        (project_id, package_id, case_id, version_id, manifest_id, package_hash),
+    )
+    connection.execute(
+        "INSERT INTO package_version_links (project_id,case_id,version_id,package_id) VALUES (?,?,?,?)",
+        (project_id, case_id, version_id, package_id),
+    )
+    return package_id, package_hash
 
 def _result(database: Path, project_id: str, case_run_id: str) -> str | None:
     with sqlite3.connect(database) as connection:

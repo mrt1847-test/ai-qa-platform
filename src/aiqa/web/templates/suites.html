@@ -44,6 +44,7 @@
         <span>{{ suite.updated_at }}</span>
         {% if suite.archived_at %}<span>보관</span><span>보관됨</span>
         {% else %}
+        <a href="/ui/projects/{{ project_id }}/suites/{{ suite.suite_id }}/execution-setup">회귀 실행 준비</a>
         <button type="button" class="secondary" data-suite-clone data-suite-id="{{ suite.suite_id }}" data-suite-name="{{ suite.name }}">복제</button>
         <button type="button" class="secondary" data-suite-archive data-suite-id="{{ suite.suite_id }}" data-suite-name="{{ suite.name }}">보관</button>
         {% endif %}

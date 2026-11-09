@@ -1,31 +1,82 @@
 {% extends "base.html" %}
 {% block title %}누적 분석{% endblock %}
 {% block content %}
-<section>
-  <h1>누적 분석</h1>
+<header class="page-heading"><div><p class="eyebrow">REPORTS / ANALYTICS</p><h1>누적 분석</h1><p class="muted">배포·기간·실행 조건별로 저장된 결과를 확인합니다.</p></div><a href="/ui/projects/{{ project_id }}/reports">실행별 리포트</a></header>
+<form method="get" class="panel" aria-label="누적 분석 조건">
+  <h2>조회 조건</h2>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  <label>시작 날짜·시각 <input name="from" value="{{ filters['from'] }}" required placeholder="YYYY-MM-DD"></label>
+  <label>종료 날짜·시각 <input name="to" value="{{ filters['to'] }}" required placeholder="YYYY-MM-DD"></label>
+  <p class="hint">시작 이상·종료 미만입니다. 시간대가 없는 날짜·시각은 한국 시간(KST) 기준입니다.</p>
+  <label>배포 라벨 <input name="release_label" value="{{ filters.release_label }}" placeholder="전체 배포 또는 라벨 입력"></label>
+  <label>실행 목적 <select name="purpose">
+    {% for value,label in [('', '전체 목적'), ('regression', '회귀'), ('reverification', '재검증'), ('trial', '시범 · 시범 포함 선택 필요')] %}
+    <option value="{{ value }}"{% if filters.purpose == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select></label>
+  <label><input type="checkbox" name="include_trial" value="1"{% if filters.include_trial == '1' %} checked{% endif %}>시범도 포함</label>
+  <label>집계 기준 <select name="criteria">
+    <option value="all_observations"{% if filters.criteria == 'all_observations' %} selected{% endif %}>전체 관측</option>
+    <option value="latest_terminal"{% if filters.criteria == 'latest_terminal' %} selected{% endif %}>같은 조건의 최근 완료</option>
+  </select></label>
+  <details{% if error %} open{% endif %}><summary>세부 조건과 조회 기준 고정</summary>
+    <p>기준 기록 번호를 유지하면 같은 시점까지 저장된 자료를 비교할 수 있습니다.</p>
+    <label>기준 기록 번호 <input name="as_of" type="text" inputmode="numeric" pattern="[0-9]+" value="{{ filters.as_of }}" required></label>
+    {% for name,label in [('case','케이스 ID'),('version','케이스 버전 ID'),('verification','검증 정의'),('data','데이터 지문'),('env','환경 개정 ID'),('build','빌드 ID'),('model','모델 조건')] %}
+    <label>{{ label }} <input name="{{ name }}" value="{{ filters[name] }}"></label>
+    {% endfor %}
+  </details>
+  <label>페이지당 표본 <select name="limit">{% for count in ['25','50','100'] %}<option value="{{ count }}"{% if filters.limit == count %} selected{% endif %}>{{ count }}개</option>{% endfor %}{% if filters.limit not in ['25','50','100'] %}<option value="{{ filters.limit }}" selected>지원하지 않는 값 {{ filters.limit }}</option>{% endif %}</select></label>
+  <button type="submit">조건으로 조회</button>
+  <a href="{{ refresh_href }}">같은 조건으로 최신 기록 조회</a>
+  <a href="/ui/projects/{{ project_id }}/analytics">조건 초기화</a>
+</form>
+{% if report %}
+<section aria-label="누적 분석 결과">
   <p>기간 {{ report.period_from }} 부터 {{ report.period_to }} 전까지</p>
-  <p>목적 {{ report.purpose }} · 케이스 {{ report.case_id }}</p>
-  <p>{% if report.criteria == "latest_terminal" %}최근 완료{% else %}전체 관측{% endif %}</p>
-  <p>표본 {{ report.sample_count }} · 분모 {{ report.denominator }} · 미검증 {{ report.unverified }}</p>
-  <p>기준 시각 {{ report.as_of }}</p>
-  <p>조건 {{ report.condition_count }}</p>
-  <p>추세 {% for day in report.trend_dates %}{{ day }} {% endfor %}</p>
-  <p>처음 만족 {{ report.first_satisfied }} · 복구 {{ report.recovery_count }}</p>
-  <p>반복 검사 {{ report.repeated_checks }} · 분석 {{ report.analysis_count }}</p>
-  <p>시간 중앙값 {{ report.p50 if report.p50 is not none else "없음" }}</p>
-  <p>시간 상위 {{ report.p95 if report.p95 is not none else "없음" }}</p>
-  <p>실행하지 않은 항목의 시간은 비어 있습니다.</p>
-  <p>비용 {{ report.cost if report.cost else "없음" }}</p>
-  <p>늦은 비용은 기준 시각 뒤에 더하지 않습니다.</p>
-  <p>저장량 {{ report.storage_count }}건</p>
-  <p>{% if report.rates is none %}빈 표본은 비율을 내지 않습니다.{% else %}비율을 표본과 함께 보입니다.{% endif %}</p>
-  <form method="get">
-    <input name="from" value="{{ report.period_from }}">
-    <input name="to" value="{{ report.period_to }}">
-    <input name="as_of" value="{{ report.as_of }}">
-    <input name="purpose" value="{{ report.purpose }}">
-    <input name="case" value="{{ report.case_id }}">
-    <input name="criteria" value="{{ report.criteria }}">
-  </form>
+  <p>배포 {{ filters.release_label or '전체' }} · 목적 {{ report.purpose or ('정식+시범 전체' if filters.include_trial == '1' else '정식 전체') }} · 케이스 {{ report.case_id or '전체' }}</p>
+  <p>{% if report.criteria == "latest_terminal" %}최근 완료{% else %}전체 관측{% endif %} · 기준 기록 {{ report.as_of }}</p>
+  <p>기준 시점 분모에 포함되지 않은 표본 {{ report.sample_count - report.denominator }}개 · 비율은 기준 기록까지 접수된 항목으로 계산합니다.</p>
+  <div class="metrics">
+    <article class="metric"><span class="metric-label">표본 {{ report.sample_count }}</span><strong class="metric-value">{{ report.sample_count }}</strong><small>분모 {{ report.denominator }} · 미검증 {{ report.unverified }}</small></article>
+    {% for index,label in [(0,'완료율'),(1,'검증 통과율'),(2,'전체 통과율')] %}
+    <article class="metric"><span class="metric-label">{{ label }}</span><strong class="metric-value">{% if report.rates is not none and report.rates[index] is not none %}{{ (report.rates[index] * 100)|round(1) }}%{% else %}없음{% endif %}</strong></article>
+    {% endfor %}
+  </div>
+  {% if report.rates is none %}<p>{% if report.sample_count == 0 %}빈 표본은 비율을 내지 않습니다. 기간과 배포 라벨을 확인하세요.{% else %}선택한 표본 중 기준 기록까지 접수된 분모가 없어 비율을 계산하지 않습니다.{% endif %}</p>{% else %}<p>비율을 표본과 함께 보입니다. 작업 종료와 검증 통과를 구분합니다.</p>{% endif %}
+  <section class="panel" aria-label="조건과 추세"><h2>조건과 추세</h2>
+    <p>조건 {{ report.condition_count }} · 추세 {% for day in report.trend_dates %}{{ day }} {% else %}기록 없음{% endfor %}</p>
+    <p>처음 만족 {{ report.first_satisfied }} · 복구 {{ report.recovery_count }}</p>
+    <p>반복 검사 {{ report.repeated_checks }} · 분석 {{ report.analysis_count }}</p>
+  </section>
+  <section class="panel" aria-label="시간과 비용"><h2>시간과 비용</h2>
+    <p>시간 중앙값 {{ report.p50 if report.p50 is not none else "없음" }} · 시간 상위 {{ report.p95 if report.p95 is not none else "없음" }}</p>
+    <p>실행하지 않은 항목의 시간은 비어 있습니다.</p>
+    <p>비용 {{ report.cost if report.cost is not none else "없음" }} · 저장량 {{ report.storage_count }}건</p>
+    <p>늦은 비용은 기준 시각 뒤에 더하지 않습니다.</p>
+  </section>
+  <section class="panel" aria-label="분석 표본 목록">
+    <h2>분석 표본 목록</h2>
+    <p>전체 {{ pagination.total }}개 중 {{ pagination.start }}–{{ pagination.end }}</p>
+    <p>표의 결과는 선택한 기준 기록까지의 결과입니다. 상세 링크는 현재 저장 결과와 실행 기록을 엽니다.</p>
+    <div class="table-scroll"><table>
+      <caption class="sr-only">조회 조건과 집계 기준에 포함된 케이스 관측</caption>
+      <thead><tr><th scope="col">케이스</th><th scope="col">목적</th><th scope="col">기준 시점 결과</th><th scope="col">분모</th><th scope="col">시도</th><th scope="col">기록</th></tr></thead>
+      <tbody>
+      {% for item in observations %}
+        <tr data-observation-row="{{ item.case_run_id }}">
+          <td>{{ item.name }}</td><td>{{ item.purpose }}</td>
+          <td>{{ item.result or ('기준 분모 밖' if not item.in_denominator else '진행·판정 대기') }}</td>
+          <td>{{ '포함' if item.in_denominator else '제외' }}</td><td>{{ item.attempt_count }}</td>
+          <td><a href="/ui/projects/{{ project_id }}/case-runs/{{ item.case_run_id }}">현재 저장 결과</a> · <a href="/ui/projects/{{ project_id }}/executions/{{ item.execution_id }}">실행 기록</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6">조건에 맞는 표본이 없습니다.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <nav aria-label="분석 표본 페이지">{% if pagination.previous %}<a href="{{ pagination.previous }}">이전 표본</a>{% endif %}{% if pagination.next %}<a href="{{ pagination.next }}">다음 표본</a>{% endif %}</nav>
+  </section>
 </section>
+{% endif %}
 {% endblock %}

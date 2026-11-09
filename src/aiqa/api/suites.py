@@ -285,6 +285,36 @@ async def suite_editor_page(project_id: str, suite_id: str, request: Request) ->
     )
 
 
+@pages.get("/ui/projects/{project_id}/suites/{suite_id}/execution-setup", response_class=HTMLResponse)
+async def suite_execution_page(project_id: str, suite_id: str, request: Request) -> HTMLResponse:
+    """Read the saved suite head; GET never previews, queues, or changes a suite."""
+    project = _uuid(project_id)
+    parsed = _uuid(suite_id)
+    if isinstance(project, JSONResponse) or isinstance(parsed, JSONResponse):
+        return HTMLResponse(status_code=404, content="묶음을 찾지 못했습니다.")
+    with _bound(request) as store:
+        try:
+            actor = authorize_page(request, project)
+            with store.transaction() as connection:
+                name, version_id, _, entries, _ = suite_editor(
+                    Transaction(connection), actor, project, parsed, ""
+                )
+        except (AuthRequired, OriginRejected, ProjectHidden, SuiteRejected):
+            return HTMLResponse(status_code=404, content="묶음을 찾지 못했습니다.")
+    return render_template(
+        request,
+        "suite_execution.html",
+        {
+            "shell": False,
+            "project_id": str(project),
+            "suite_id": str(parsed),
+            "name": name,
+            "version_id": str(version_id),
+            "entries": entries,
+        },
+    )
+
+
 async def _command(suite_id: str, request: Request, operation: str, command: object) -> JSONResponse:
     rejected = _idempotency(request)
     if rejected is not None:

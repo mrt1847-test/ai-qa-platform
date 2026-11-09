@@ -217,6 +217,11 @@ def install_healing(application: FastAPI) -> None:
 
                         view.update(read_case_run_facts(connection, project, parsed, request.query_params.get("attempt", "")))
                         view.update(lineage_fields(connection, project, UUID(str(view["execution_id"]))))
+                        result = connection.execute(
+                            "SELECT core_result FROM item_finalizations WHERE project_id=? AND case_run_id=?",
+                            (str(project), str(parsed)),
+                        ).fetchone()
+                        view["core_result"] = "" if result is None else str(result[0] or "")
         finally:
             store.close()
         if view is None:

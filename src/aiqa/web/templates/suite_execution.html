@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} · 묶음 실행 준비{% endblock %}
+{% block content %}
+  <nav aria-label="경로">
+    <a href="/ui/projects/{{ project_id }}/suites">테스트 묶음</a> /
+    <a href="/ui/projects/{{ project_id }}/suites/{{ suite_id }}">{{ name }}</a> / 실행 준비
+  </nav>
+  <h1>{{ name }} · 회귀 실행</h1>
+  <p>저장된 구성 {{ entries|length }}개를 실행합니다. 다른 탭에서 수정해도 이 화면의 버전은 바뀌지 않습니다.</p>
+  <details><summary>저장된 버전 확인</summary><p>{{ version_id }}</p></details>
+  <p>녹화된 절차로 재생하며 셀프힐링은 OFF입니다. 필요한 검증 단계에서만 AI를 호출합니다.</p>
+  {% if not entries %}
+  <p role="status">구성이 비어 있습니다. <a href="/ui/projects/{{ project_id }}/suites/{{ suite_id }}">묶음에 승인된 케이스를 추가하고 저장하세요.</a></p>
+  {% elif entries|length > 100 %}
+  <p role="status">한 번에 100개까지 실행할 수 있습니다. 묶음을 나누어 저장하세요.</p>
+  {% endif %}
+  <form id="suite-execution" data-project="{{ project_id }}" data-version="{{ version_id }}" data-count="{{ entries|length }}">
+    <section class="panel" aria-label="실행 설정">
+      <h2>실행 설정</h2>
+      <label>실행 이름 <input name="name" value="{{ name }} · 회귀" required maxlength="200" autocomplete="off"></label>
+      <label>배포 라벨 <input name="release_label" placeholder="예: 2026.11" autocomplete="off"></label>
+      <label>항목 실패 시
+        <select name="failure_policy">
+          <option value="stop_on_non_pass">나머지 실행 중단</option>
+          <option value="continue">다음 항목 계속 실행</option>
+        </select>
+      </label>
+    </section>
+    <section class="panel" aria-label="실행 대상">
+      <h2>저장된 실행 대상</h2>
+      <ol>
+      {% for entry in entries %}
+        <li>{{ entry.entry_id }} · {{ entry.target_kind }} · 데이터 {{ entry.data_name }}
+          <details><summary>고정된 승인본·환경·기기 확인</summary>
+            <dl>
+              <dt>케이스 버전</dt><dd>{{ entry.case_version_id }}</dd>
+              <dt>승인</dt><dd>{{ entry.approval_id }}</dd>
+              <dt>환경</dt><dd>{{ entry.environment_revision_id }}</dd>
+              <dt>기기</dt><dd>{{ entry.resource_id }}</dd>
+            </dl>
+          </details>
+        </li>
+      {% endfor %}
+      </ol>
+      <button id="preview-suite" type="button"{% if not entries or entries|length > 100 %} disabled{% endif %}>준비 상태 확인</button>
+      <ul id="suite-blockers" aria-label="실행 전 보완할 항목"></ul>
+      <ol id="suite-items" aria-label="검사한 실행 대상"></ol>
+      <p id="suite-status" role="status" aria-live="polite">기기 연결·승인본·재생 패키지를 확인한 뒤 실행을 접수하세요.</p>
+      <button id="enqueue-suite" type="button" disabled>이 구성으로 회귀 실행 접수</button>
+    </section>
+  </form>
+  <script src="/static/suite_execution.js?v={{ ui_asset_version }}"></script>
+{% endblock %}

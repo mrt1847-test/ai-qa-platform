@@ -148,3 +148,7 @@ TC 화면은 선택적으로 이용하지만 구현 대상에서 빠지는 P1 �
 - UI03→05→04/06→07→09→10→11/12→13, UI14/15 준비, UI16 선택 참조를 실제 browser로 확인한다.
 - 일부 기능이 뒤 작업에 있다면 앞 화면은 사유를 표시하고 담당 ID를 남긴다. W28에서 그런 임시 상태가 MVP 핵심에 남으면 출시 차단이다.
 - 최종 근거: `docs/validation/ui-management-recording.md`, `ui-review-execution.md`, `mvp-results.md`. 이번에는 생성/실행하지 않았다.
+
+## 2026-11-09 정상 UI 보완
+
+기존94개 의무 묶음의 완료율을 추가하지 않는다. [RX-79/80](../managed-pc/UI_EXECUTION_TASKS.md)은 UI03/08→UI09의 실제 묶음·선택 정식 접수를, [RX-82~84](../managed-pc/UI_EXECUTION_TASKS.md)는 UI09 release_label→UI12/13 누적 조건·as_of 분모를 연결했다. 실제 브라우저/fixture 범위는 해당 인계에 있다. 표본 상세는 RX-85, 정상 접수 healing ON과 플랫폼 소비는 RX-86~89, 공통4단계/최종 상한 확인은 RX-90이다. API/부품 완료만으로 UI09 전체나 실환경 수용을 완료 처리하지 않는다.

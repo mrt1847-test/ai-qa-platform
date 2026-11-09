@@ -56,7 +56,7 @@ def _section_for_path(path: str) -> str:
         return "settings"
     if "/suites" in path:
         return "suites"
-    if path.endswith("/report") or "/report/" in path or "/reports" in path:
+    if path.endswith("/report") or "/report/" in path or "/reports" in path or "/analytics" in path:
         return "reports"
     if "/executions" in path:
         return "runs"

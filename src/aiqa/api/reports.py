@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from collections.abc import Mapping
+from urllib.parse import urlencode
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -95,8 +97,9 @@ async def get_observations(project_id: str, request: Request) -> JSONResponse:
     project = _uuid(project_id)
     if project is None:
         return _error(404, "not_found", "trial was not found")
-    raw_as_of = request.query_params.get("as_of", "")
-    if not raw_as_of.isdigit():
+    try:
+        _analytics_as_of(request.query_params.get("as_of", ""))
+    except AnalyticsRejected:
         return _error(422, "validation", "observation filter is invalid")
     store = request.app.state.open_store()
     try:
@@ -104,14 +107,7 @@ async def get_observations(project_id: str, request: Request) -> JSONResponse:
         with bound_auth_store(store):
             try:
                 actor = authorize_browser(request, project, "read_observations")
-                query = AnalyticsQuery(
-                    project,
-                    request.query_params.get("from", ""),
-                    request.query_params.get("to", ""),
-                    int(raw_as_of),
-                    request.query_params.get("purpose", ""),
-                    request.query_params.get("include_trial", "") == "1",
-                )
+                query = _analytics_query(project, request)
                 with store.transaction() as connection:
                     page = query_observations(Transaction(connection), actor, query)
             except CsrfRejected:
@@ -179,6 +175,10 @@ async def analytics_page(project_id: str, request: Request) -> HTMLResponse:
     if project is None:
         return HTMLResponse(status_code=404, content="프로젝트를 찾지 못했습니다.")
     store = request.app.state.open_store()
+    report = None
+    error = ""
+    observations = []
+    pagination = {"total": 0, "start": 0, "end": 0, "previous": "", "next": ""}
     try:
         migrate_store(store)
         with bound_auth_store(store):
@@ -187,35 +187,103 @@ async def analytics_page(project_id: str, request: Request) -> HTMLResponse:
             except (AuthRequired, OriginRejected, ProjectHidden):
                 return HTMLResponse(status_code=403, content="이 화면을 볼 권한이 없습니다.")
             with store.transaction() as connection:
+                clock = connection.execute(
+                    "SELECT commit_seq FROM project_commit_clock WHERE project_id=?", (str(project),)
+                ).fetchone()
+                today = datetime.now(timezone(timedelta(hours=9))).date()
+                filters = {name: "" for name in (
+                    "purpose", "include_trial", "case", "version", "verification",
+                    "data", "env", "build", "model", "release_label",
+                )}
+                filters.update({
+                    "from": (today - timedelta(days=29)).isoformat(),
+                    "to": (today + timedelta(days=1)).isoformat(),
+                    "as_of": str(clock[0] if clock else 0), "criteria": "all_observations",
+                    "page": "1", "limit": "50",
+                })
+                filters.update(dict(request.query_params))
                 try:
-                    report = read_analytics(Transaction(connection), actor, _analytics_query(project, request))
+                    query = _analytics_query(project, request, filters)
+                    page_number = _analytics_as_of(filters["page"])
+                    page_size = _analytics_as_of(filters["limit"])
+                    if page_number < 1 or page_size not in {25, 50, 100}:
+                        raise AnalyticsRejected("observation page is invalid")
+                    all_items = query_observations(Transaction(connection), actor, query).items
+                    total = len(all_items)
+                    if page_number > max(1, (total + page_size - 1) // page_size):
+                        raise AnalyticsRejected("observation page is invalid")
+                    offset = (page_number - 1) * page_size
+                    window = all_items[offset:offset + page_size]
+                    names = {}
+                    if window:
+                        marks = ",".join("?" for _ in window)
+                        names = dict(connection.execute(
+                            f"""SELECT r.case_run_id,c.name FROM case_runs r
+                                JOIN automation_cases c USING(project_id,case_id)
+                                WHERE r.project_id=? AND r.case_run_id IN ({marks})""",
+                            (str(project), *(str(item.case_run_id) for item in window)),
+                        ).fetchall())
+                    observations = [{
+                        "case_run_id": str(item.case_run_id), "execution_id": str(item.execution_id),
+                        "name": names.get(str(item.case_run_id), str(item.case_run_id)[:8]),
+                        "purpose": item.purpose, "result": item.result,
+                        "in_denominator": item.in_denominator, "terminal": item.terminal,
+                        "attempt_count": item.attempt_count,
+                    } for item in window]
+                    def page_href(number: int) -> str:
+                        return f"/ui/projects/{project}/analytics?" + urlencode({**filters, "page": str(number)})
+                    pagination = {
+                        "total": total, "start": offset + 1 if total else 0,
+                        "end": min(offset + page_size, total),
+                        "previous": page_href(page_number - 1) if page_number > 1 else "",
+                        "next": page_href(page_number + 1) if offset + page_size < total else "",
+                    }
+                    report = read_analytics(Transaction(connection), actor, query)
                 except AnalyticsRejected:
-                    return HTMLResponse(status_code=422, content="분석 조건이 올바르지 않습니다.")
+                    error = "분석 조건이 올바르지 않습니다. 날짜·기준 기록 번호·페이지와 표시 개수(25/50/100)를 확인하세요. 조건으로 다시 조회하면 첫 페이지를 엽니다."
     finally:
         store.close()
-    return render_template(request, "analytics.html", {"shell": False, "project_id": str(project), "report": report})
+    refresh = urlencode({key: value for key, value in filters.items() if key not in {"as_of", "page"}})
+    response = render_template(request, "analytics.html", {
+        "shell": False, "project_id": str(project), "report": report, "filters": filters,
+        "observations": observations, "pagination": pagination,
+        "error": error, "refresh_href": f"/ui/projects/{project}/analytics?{refresh}",
+        "crumbs": (("리포트", f"/ui/projects/{project}/reports"), ("누적 분석", "")),
+    })
+    response.status_code = 422 if error else 200
+    return response
 
 
-def _analytics_query(project: UUID, request: Request) -> AnalyticsQuery:
-    raw_as_of = request.query_params.get("as_of", "")
-    if not raw_as_of.isdigit():
+def _analytics_as_of(raw: str) -> int:
+    if not raw.isascii() or not raw.isdigit() or len(raw) > 19:
         raise AnalyticsRejected("analytics query is invalid")
+    value = int(raw)
+    if value > 2**63 - 1:
+        raise AnalyticsRejected("analytics query is invalid")
+    return value
+
+
+def _analytics_query(
+    project: UUID, request: Request, filters: Mapping[str, str] | None = None
+) -> AnalyticsQuery:
+    params = request.query_params if filters is None else filters
+    as_of = _analytics_as_of(params.get("as_of", ""))
     return AnalyticsQuery(
         project,
-        request.query_params.get("from", ""),
-        request.query_params.get("to", ""),
-        int(raw_as_of),
-        request.query_params.get("purpose", ""),
-        request.query_params.get("include_trial", "") == "1",
-        request.query_params.get("criteria", "all_observations"),
-        request.query_params.get("case", ""),
-        request.query_params.get("version", ""),
-        request.query_params.get("verification", ""),
-        request.query_params.get("data", ""),
-        request.query_params.get("env", ""),
-        request.query_params.get("build", ""),
-        request.query_params.get("model", ""),
-        request.query_params.get("release_label", ""),
+        params.get("from", ""),
+        params.get("to", ""),
+        as_of,
+        params.get("purpose", ""),
+        params.get("include_trial", "") == "1",
+        params.get("criteria", "all_observations"),
+        params.get("case", ""),
+        params.get("version", ""),
+        params.get("verification", ""),
+        params.get("data", ""),
+        params.get("env", ""),
+        params.get("build", ""),
+        params.get("model", ""),
+        params.get("release_label", ""),
     )
 
 

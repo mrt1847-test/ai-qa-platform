@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}선택 케이스 · 정식 실행 준비{% endblock %}
+{% block content %}
+<header class="page-heading"><div><p class="eyebrow">CASES / REGRESSION</p><h1>선택 케이스 정식 실행</h1><p>선택한 {{ choices|length }}개 케이스의 현재 승인본을 이 화면에 고정했습니다. 환경·기기·데이터를 확인하세요.</p></div><a href="/ui/projects/{{ project_id }}/cases">케이스 목록으로</a></header>
+<p>녹화된 절차로 재생하며 셀프힐링은 OFF입니다. 검증 AI는 저장된 검증 단계에서만 호출합니다.</p>
+<form id="selection-execution" data-project="{{ project_id }}" data-source="selection" data-count="{{ choices|length }}" data-blocked="{{ 'true' if blocked else 'false' }}">
+  <section class="panel"><h2>실행 설정</h2>
+    <label>실행 이름 <input name="name" value="선택 케이스 회귀" required maxlength="200" autocomplete="off"></label>
+    <label>배포 라벨 <input name="release_label" placeholder="예: 2026.11" autocomplete="off"></label>
+    <label>항목 실패 시 <select name="failure_policy"><option value="stop_on_non_pass">나머지 실행 중단</option><option value="continue">다음 항목 계속 실행</option></select></label>
+  </section>
+  {% for item in choices %}
+  <section class="panel" aria-label="{{ item.name }} 실행 대상" data-execution-item data-entry-id="{{ item.case_id }}" data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">
+    <h2>{{ loop.index }}. {{ item.name }}</h2>
+    <p>{{ 'Android' if item.target_kind == 'android' else 'Web' }} · {% if item.version_id %}승인 버전 v{{ item.revision }}{% else %}승인 전{% endif %}</p>
+    {% if item.problem %}<p role="status">{{ item.problem }} <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">저장본 검토</a> · <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/execution-setup">시범 준비</a></p>{% endif %}
+    <details><summary>고정된 케이스 버전과 승인 확인</summary><p>버전 {{ item.version_id or '없음' }} · 승인 {{ item.approval_id or '없음' }}</p></details>
+    <label>환경 프로필 <select name="environment_revision_id" required><option value="">환경 선택</option>{% set saved = namespace(found=false) %}{% for profile in profiles %}{% if profile.profile.target_kind == item.target_kind %}<option value="{{ profile.id }}"{% if profile.id|string == item.environment_revision_id|string %}{% set saved.found=true %} selected{% endif %}>{{ profile.name }} · v{{ profile.revision }}</option>{% endif %}{% endfor %}{% if item.environment_revision_id and not saved.found %}<option value="{{ item.environment_revision_id }}" selected>저장된 환경 개정 · {{ item.environment_revision_id }} (검사 필요)</option>{% endif %}</select></label>
+    <label>실행 기기 <select name="resource_id" required><option value="">기기 선택</option>{% set saved = namespace(found=false) %}{% for resource in resources %}{% if resource.target_kind == item.target_kind %}<option value="{{ resource.resource_id }}"{% if resource.resource_id|string == item.resource_id|string %}{% set saved.found=true %} selected{% endif %}>{{ resource.display_name }} · {{ resource.state_label }} · {{ resource.connection_label }}</option>{% endif %}{% endfor %}{% if item.resource_id and not saved.found %}<option value="{{ item.resource_id }}" selected>저장된 기기 · {{ item.resource_id }} (검사 필요)</option>{% endif %}</select></label>
+    <label>데이터 <select name="dataset_version_id"><option value="">데이터 없음</option>{% set saved = namespace(found=false) %}{% for data in datasets %}<option value="{{ data.version_id }}"{% if data.version_id|string == item.dataset_version_id|string %}{% set saved.found=true %} selected{% endif %}>{{ data.name }} · v{{ data.revision }}</option>{% endfor %}{% if item.dataset_version_id and not saved.found %}<option value="{{ item.dataset_version_id }}" selected>저장된 데이터 개정 · {{ item.dataset_version_id }} (검사 필요)</option>{% endif %}</select></label>
+    <a href="/ui/projects/{{ project_id }}/environments">환경·기기 관리</a>
+  </section>
+  {% endfor %}
+  <section class="panel" aria-label="사전 검사와 실행">
+    <h2>사전 검사와 접수</h2>
+    <p>검사만으로 장치를 제어하거나 AI를 호출하지 않습니다. 준비되지 않은 케이스를 자동으로 제외하지 않습니다.</p>
+    {% if blocked %}<p>위 케이스의 승인·보관 상태를 먼저 보완한 뒤 목록에서 다시 준비하세요.</p>{% endif %}
+    <button id="preview-selection" type="button"{% if blocked %} disabled{% endif %}>준비 상태 확인</button>
+    <ul id="selection-blockers" aria-label="실행 전 보완할 항목"></ul>
+    <ol id="selection-items" aria-label="검사한 실행 대상"></ol>
+    <p id="selection-status" role="status" aria-live="polite">모든 항목을 확인한 뒤 실행을 접수하세요.</p>
+    <button id="enqueue-selection" type="button" disabled>이 구성으로 회귀 실행 접수</button>
+  </section>
+</form>
+<script src="/static/suite_execution.js?v={{ ui_asset_version }}"></script>
+{% endblock %}

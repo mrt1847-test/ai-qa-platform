@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from aiqa.contracts.reports import CORE_RESULTS, CaseRunFacts
+from aiqa.domain.execution_metadata import item_created_seq, item_release_label
 from aiqa.domain.projects import next_commit_seq
 from aiqa.domain.report_math import summarize_execution
 from aiqa.domain.verdicts import remaining_disposition
@@ -132,9 +133,9 @@ def _insert_result(tx: Transaction, project_id: UUID, case_run_id: str, result: 
         """
         INSERT INTO item_finalizations (
             project_id, case_run_id, created_seq, finalized_seq, release_label, content_hash, core_result, denominator
-        ) VALUES (?, ?, ?, ?, '', ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         """,
-        (str(project_id), case_run_id, seq, seq, f"{result}:{case_run_id}", result),
+        (str(project_id), case_run_id, item_created_seq(tx.connection, project_id, case_run_id, seq), seq, item_release_label(tx.connection, project_id, case_run_id), f"{result}:{case_run_id}", result),
     )
 
 

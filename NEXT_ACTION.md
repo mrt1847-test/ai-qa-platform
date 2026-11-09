@@ -4,25 +4,28 @@ Updated: **2026-11-09 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~85·RX-91 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~85·RX-91~93 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
 
 ## Current
 
-**RX-86 — 정식 실행의 명시 healing 요청과 승인 정책 해석.** 다음 RX-87.
+**RX-86 — 정식 실행의 명시 healing 요청을 preview·접수 snapshot에 고정.** 다음 RX-94.
 
-범위·부정 조건은 [RX-86 카드](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-86) 하나를 읽는다. RX-79~85의 실제 접수·누적 조회·시점 정합성과 기존 원격 실행 배선을 보존한다.
+범위·부정 조건은 [RX-86 카드](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-86) 하나를 읽는다. 직접 선행 [RX-92](docs/validation/tasks/RX-92.md)의 설정 저장과 [RX-93](docs/validation/tasks/RX-93.md)의 서버 resolver interface를 소비한다. 승인 검사는 기존 _formal_approval 경계를 유지하며 저장된 binding pin을 normal worker까지 고정하는 일은 아직 남아 있다.
 
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) | Android runtime의 고정 정책·허용 실패 치유 | RX-86/RX-54/RX-75 |
-| 2 | [RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88) | Web runtime의 고정 정책·허용 실패 치유 | RX-86/RX-54/RX-76 |
-| 3 | [RX-89](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-89) | 정식 준비 ON/OFF와 이유 | RX-86/87/88 등 카드 |
-| 4 | [RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90) | 공통4단계·최종 버전/한도/호출 확인 | RX-89 |
+| 1 | [RX-94](docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-94) | claim 전 정책·키 폐기 재검사 | RX-86/RX-93 |
+| 2 | [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) | Android runtime의 고정 정책·허용 실패 치유 | RX-86/RX-94/RX-54/RX-75 |
+| 3 | [RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88) | Web runtime의 고정 정책·허용 실패 치유 | RX-86/RX-94/RX-54/RX-76 |
+| 4 | [RX-89](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-89) | 정식 준비 ON/OFF와 이유 | RX-86/87/88 등 카드 |
+| 5 | [RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90) | 공통4단계·최종 버전/한도/호출 확인 | RX-89 |
 | 별도 | 실환경 수용 | 독립 서버·OIDC·AVD/브라우저·비용 계측 | 외부 대기 표 |
 
-운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. 현재 정식 실행 접수는 healing OFF로 고정되어 있으며 RX-54의 제한 치유 부품을 정상 접수가 소비하는 일은 RX-86~89에 남아 있다. 구현 완료를 실환경 AI 수용으로 해석하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
+운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. 현재 정식 실행 접수는 healing OFF로 고정되어 있다. RX-92/93은 설정 저장과 정책 해석 경계이며 정상 접수 ON은 RX-86~89에 남아 있다. 구현 완료를 실환경 AI 수용으로 해석하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
+
+전체 회귀의 기준 커밋부터 존재하는 9개 실패는 [검사 기준선](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)에 정확한 node와 재현을 기록했다. 실제 제품 결함/fixture/테스트 간섭을 구분해 처리하며 실패를 숨기거나 안전 gate를 완화하지 않는다. 독립적인 RX-86 구현은 진행할 수 있다.
 
 ## 외부 대기와 재사용
 

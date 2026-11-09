@@ -267,7 +267,7 @@ def _read(project: UUID) -> dict[str, object]:
         bindings = connection.execute(
             """
             SELECT binding_revisions.role, binding_revisions.model, binding_revisions.endpoint,
-                   binding_revisions.binding_id
+                   binding_revisions.binding_id, binding_revisions.revision_id, binding_revisions.revision
             FROM binding_revisions
             JOIN model_bindings
               ON model_bindings.project_id = binding_revisions.project_id
@@ -289,7 +289,7 @@ def _read(project: UUID) -> dict[str, object]:
             "healing_scope": str(row[4]),
         }
     stored["bindings"] = [
-        {"role": str(item[0]), "model": str(item[1]), "endpoint": str(item[2]), "binding_id": str(item[3])}
+        {"role": str(item[0]), "model": str(item[1]), "endpoint": str(item[2]), "binding_id": str(item[3]), "revision_id": str(item[4]), "revision": int(item[5])}
         for item in bindings
     ]
     return stored

@@ -33,6 +33,17 @@
     roles.forEach(function(role){
       var binding=(body.bindings||[]).filter(function(item){return item.role===role;}).pop();
       form.querySelector('[data-binding-status="'+role+'"]').textContent=binding?'연결 저장됨 · '+binding.model+' · '+binding.endpoint+' · 키 참조 연결됨':'저장된 연결 없음';
+      var field=form.querySelector('[data-role="'+role+'"]'),reference=form.querySelector('[data-binding-ref="'+role+'"]'),revision=form.querySelector('[data-binding-ref-revision="'+role+'"]');
+      var changed=revision&&revision.textContent!==(binding?binding.revision_id:'');
+      if(reference)reference.hidden=!binding;
+      if(revision)revision.textContent=binding?binding.revision_id:'';
+      var id=form.querySelector('[data-binding-ref-id="'+role+'"]'),number=form.querySelector('[data-binding-ref-number="'+role+'"]');
+      if(id)id.textContent=binding?binding.binding_id:'';
+      if(number)number.textContent=binding?'v'+binding.revision:'';
+      if(field){if(binding)field.setAttribute('data-binding-id',binding.binding_id);else field.removeAttribute('data-binding-id');}
+      var check=form.querySelector('[data-check-binding="'+role+'"]'),checkStatus=form.querySelector('[data-check-status="'+role+'"]');
+      if(check)check.disabled=!binding;
+      if(changed&&checkStatus)checkStatus.textContent='연결 검사 전';
       var submitted=payload.roles.find(function(item){return item.role===role;});
       if(submitted&&submitted.mode==='replace'&&node('key-'+role).value===submitted.key){node('key-'+role).value='';node('key-'+role).type='password';}
       if(unchanged){node('mode-'+role).value='keep';node('mode-'+role).dispatchEvent(new Event('change'));}

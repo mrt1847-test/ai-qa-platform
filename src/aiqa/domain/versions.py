@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from uuid import UUID, uuid4
 
 from aiqa.contracts.cases import (
@@ -123,20 +124,23 @@ def parse_case_settings(payload: dict[str, object], project_id: UUID | None) -> 
         raise SettingsRejected("healing stays off", submitted)
     if type(healing.get("allowed", False)) is not bool:
         raise SettingsRejected("invalid healing", submitted)
+    if type(healing.get("scope", "")) is not str:
+        raise SettingsRejected("invalid healing scope", submitted)
     method = str(payload.get("verifier_method", "deterministic"))
     if method not in {"deterministic", "ai_visual", "deterministic_then_ai_unknown"}:
         raise SettingsRejected("invalid verifier", submitted)
     binding = str(payload.get("verifier_binding_id", ""))
     if method != "deterministic" and binding == "":
         raise SettingsRejected("ai binding is required", submitted)
-    try:
-        episodes = int(healing.get("max_episodes_per_item", 1))
-        calls = int(healing.get("max_model_calls_per_item", 2))
-        seconds = int(healing.get("max_seconds", 30))
-    except (TypeError, ValueError) as exc:
-        raise SettingsRejected("healing limit exceeded", submitted) from exc
-    if episodes < 0 or episodes > 1 or calls < 0 or calls > 2 or seconds < 0 or seconds > 30:
-        raise SettingsRejected("healing limit exceeded", submitted)
+    episodes = _setting_integer(healing.get("max_episodes_per_item", 1), 0, 1, submitted)
+    calls = _setting_integer(healing.get("max_model_calls_per_item", 2), 0, 2, submitted)
+    seconds = _setting_integer(healing.get("max_seconds", 30), 0, 30, submitted)
+    binding_refs = {}
+    for name in ("model_binding_ref", "binding_revision"):
+        if name in healing:
+            if type(healing[name]) is not str:
+                raise SettingsRejected("invalid healing binding reference", submitted)
+            binding_refs[name] = healing[name].strip()
     secret_refs = _parse_setting_refs(payload.get("secret_refs", {}), project_id, submitted)
     document: dict[str, object] = {
         "web_url": str(payload.get("web_url", "")),
@@ -150,7 +154,7 @@ def parse_case_settings(payload: dict[str, object], project_id: UUID | None) -> 
         "install_policy": str(payload.get("install_policy", "none")),
         "reset_policy": str(payload.get("reset_policy", "none")),
         "cleanup_policy": str(payload.get("cleanup_policy", "none")),
-        "limits": {"timeout_seconds": _limit(payload.get("limits", {}), submitted)},
+        "limits": _setting_limits(payload.get("limits", {}), submitted),
         "verifier_bindings": [
             {
                 "method": method,
@@ -161,10 +165,11 @@ def parse_case_settings(payload: dict[str, object], project_id: UUID | None) -> 
         "healing_policy": {
             "allowed": healing.get("allowed", False) is True,
             "default_enabled": False,
-            "scope": str(healing.get("scope", "")),
+            "scope": healing.get("scope", "").strip(),
             "max_episodes_per_item": episodes,
             "max_model_calls_per_item": calls,
             "max_seconds": seconds,
+            **binding_refs,
         },
     }
     if payload.get("wizard") is True:
@@ -208,16 +213,42 @@ def _public_settings(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _limit(payload: object, submitted: dict[str, object]) -> int:
-    if type(payload) is not dict:
+def _setting_integer(value: object, minimum: int, maximum: int, submitted: dict[str, object]) -> int:
+    # HTML numbers may arrive as strings; booleans/floats must not be truncated.
+    if type(value) not in (int, str):
         raise SettingsRejected("invalid limit", submitted)
     try:
-        timeout = int(payload.get("timeout_seconds", 600))
-    except (TypeError, ValueError) as exc:
+        number = int(value)
+    except (ValueError, OverflowError) as exc:
         raise SettingsRejected("invalid limit", submitted) from exc
-    if timeout < 1 or timeout > 600:
+    if number < minimum or number > maximum:
         raise SettingsRejected("invalid limit", submitted)
-    return timeout
+    return number
+
+
+def _setting_limits(payload: object, submitted: dict[str, object]) -> dict[str, object]:
+    if type(payload) is not dict:
+        raise SettingsRejected("invalid limit", submitted)
+    limits: dict[str, object] = {"timeout_seconds": _setting_integer(payload.get("timeout_seconds", 600), 1, 600, submitted)}
+    for name, maximum in (("max_actions", 50), ("max_model_calls", 80), ("max_episodes_per_item", 1), ("max_model_calls_per_item", 2), ("max_seconds", 30)):
+        if name in payload:
+            limits[name] = _setting_integer(payload[name], 0, maximum, submitted)
+    if "budget" in payload:
+        value = payload["budget"]
+        if type(value) not in (str, int):
+            raise SettingsRejected("invalid budget", submitted)
+        try:
+            budget = Decimal(str(value))
+        except InvalidOperation as exc:
+            raise SettingsRejected("invalid budget", submitted) from exc
+        if not budget.is_finite() or budget < 0:
+            raise SettingsRejected("invalid budget", submitted)
+        limits["budget"] = str(value).strip()
+    if "currency" in payload:
+        if payload["currency"] != "USD":
+            raise SettingsRejected("unsupported currency", submitted)
+        limits["currency"] = "USD"
+    return limits
 
 
 def _parse_setting_refs(

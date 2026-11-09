@@ -53,10 +53,15 @@ def resolve_healing_policy(
     effective_limits = {
         "budget": _narrow_budget(global_limits.budget),
         "max_episodes_per_item": _narrow(episodes, request.max_episodes_per_item, global_limits.max_episodes_per_item, 1),
-        "max_model_calls_per_item": _narrow(calls, request.max_model_calls_per_item, global_limits.max_model_calls_per_item, 2),
+        "max_model_calls_per_item": _narrow(calls, request.max_model_calls_per_item, min(global_limits.max_model_calls_per_item, global_limits.max_model_calls), 2),
         "max_seconds": _narrow(seconds, request.max_seconds, global_limits.max_seconds, 30),
         "timeout_seconds": min(global_limits.timeout_seconds, 600),
     }
+    if request.requested_enabled and (
+        Decimal(str(effective_limits["budget"])) <= 0
+        or any(int(effective_limits[name]) <= 0 for name in ("max_episodes_per_item", "max_model_calls_per_item", "max_seconds", "timeout_seconds"))
+    ):
+        rejected = True
     effective = request.purpose != "trial" and request.requested_enabled and allowed and not rejected
     approved_hash = canonical_hash(
         {
@@ -100,7 +105,7 @@ def _narrow_budget(global_budget: str) -> str:
     try:
         requested = Decimal(global_budget)
     except InvalidOperation:
-        return "2.00"
-    if requested < 0:
+        return "0.00"
+    if not requested.is_finite() or requested < 0:
         return "0.00"
     return str(min(requested, Decimal("2.00")))

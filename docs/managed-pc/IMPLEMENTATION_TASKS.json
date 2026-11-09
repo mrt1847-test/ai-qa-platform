@@ -1744,7 +1744,8 @@
       "title": "정식 실행 명시 healing 요청과 승인 정책 해석",
       "deps": [
         "RX-54",
-        "RX-84"
+        "RX-84",
+        "RX-93"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1767,7 +1768,8 @@
       "deps": [
         "RX-86",
         "RX-54",
-        "RX-75"
+        "RX-75",
+        "RX-94"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1789,7 +1791,8 @@
       "deps": [
         "RX-86",
         "RX-54",
-        "RX-76"
+        "RX-76",
+        "RX-94"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1871,6 +1874,72 @@
       "live_acceptance_tasks": [],
       "doc_file": "docs/managed-pc/UI_EXECUTION_TASKS.md#rx-91",
       "evidence_path": "docs/validation/tasks/RX-91.md"
+    },
+    {
+      "id": "RX-92",
+      "title": "복구 모델 연결·개정과 한도의 설정 저장 왕복",
+      "deps": [
+        "RX-54",
+        "RX-91"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python",
+        "local_browser"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-92",
+      "evidence_path": "docs/validation/tasks/RX-92.md"
+    },
+    {
+      "id": "RX-93",
+      "title": "승인된 healing 정책의 서버 binding·키 개정 해석",
+      "deps": [
+        "RX-92"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-93",
+      "evidence_path": "docs/validation/tasks/RX-93.md"
+    },
+    {
+      "id": "RX-94",
+      "title": "claim 시 고정 healing 정책·binding·키 재검사",
+      "deps": [
+        "RX-86",
+        "RX-93"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-94",
+      "evidence_path": "docs/validation/tasks/RX-94.md"
     }
   ]
 }

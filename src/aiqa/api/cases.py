@@ -1389,12 +1389,14 @@ def _merged_settings(stored, payload):
             merged[name]=flat[name]
     for name in ('limits','healing_policy'):
         current=dict(merged.get(name,{}))
-        if name in payload and type(payload[name]) is dict:
+        if name in payload:
+            if type(payload[name]) is not dict:
+                raise SettingsRejected("invalid settings section", _public_form(payload))
             current.update(payload[name])
         elif name=='limits' and 'timeout_seconds' in payload:
             current['timeout_seconds']=payload['timeout_seconds']
         elif name=='healing_policy':
-            mapping={'healing_allowed':'allowed','healing_default_enabled':'default_enabled','healing_scope':'scope','healing_max_episodes':'max_episodes_per_item','healing_max_calls':'max_model_calls_per_item','healing_max_seconds':'max_seconds'}
+            mapping={'healing_allowed':'allowed','healing_default_enabled':'default_enabled','healing_scope':'scope','healing_max_episodes':'max_episodes_per_item','healing_max_calls':'max_model_calls_per_item','healing_max_seconds':'max_seconds','healing_binding_id':'model_binding_ref','healing_binding_revision':'binding_revision'}
             for source,target in mapping.items():
                 if source in payload:
                     current[target]=payload[source]
@@ -1414,7 +1416,9 @@ def _settings_payload(payload: dict[str, object]) -> dict[str, object]:
         healing = {
             "allowed": payload.get("healing_allowed", False) is True,
             "default_enabled": payload.get("healing_default_enabled", False) is True,
-            "scope": str(payload.get("healing_scope", "")),
+            "scope": payload.get("healing_scope", ""),
+            "model_binding_ref": payload.get("healing_binding_id", ""),
+            "binding_revision": payload.get("healing_binding_revision", ""),
             "max_episodes_per_item": payload.get("healing_max_episodes", 1),
             "max_model_calls_per_item": payload.get("healing_max_calls", 2),
             "max_seconds": payload.get("healing_max_seconds", 30),
@@ -1489,6 +1493,8 @@ def _settings_view(actor: object, case_id: UUID) -> dict[str, object] | None:
         "verifier_method": method,
         "verifier_binding_id": binding,
         "healing_scope": str(healing.get("scope", "")),
+        "healing_binding_id": str(healing.get("model_binding_ref", "")),
+        "healing_binding_revision": str(healing.get("binding_revision", "")),
         "healing_allowed": "false" if healing.get("allowed", False) is not True else "true",
     }
 

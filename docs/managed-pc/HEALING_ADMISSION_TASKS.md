@@ -52,3 +52,17 @@ Updated: 2026-11-10. 실행 순서는 NEXT_ACTION.md만 관리한다. 운영 키
 - [x] 이 작업만으로 실제 episode 예약·공급자 응답 소비·치유 행동/성공을 완료 처리하지 않는다. 해당 경로는 RX-87/88이며 운영 모델 수용은 RX-23/24다.
 
 **인계** docs/validation/tasks/RX-95.md.
+
+<a id="rx-96"></a>
+## RX-96 · 실제 healing 공급자 응답 소비와 현재 표적 일치 검증
+
+**선행** RX-54/RX-95. **계약** C00/C01/C04/C08/C09/C14. **환경** local_python.
+
+근거: run_replay_verify_and_heal은 worker_model_call.complete_role의 응답을 버리고 static HealingContext.payload를 검사한다. 실제 공급자 결과가 불량해도 미리 주입한 fixture target을 accepted로 기록할 수 있다. 플랫폼 actor 연결 전에 이 소비 경계를 고친다.
+
+- [x] 실제 공급자 port가 있으면 반환한 문자열 JSON 객체만 typed candidate로 검사하고 static payload로 fallback하지 않는다. 잘못된/비객체/중복 키/비유한 JSON은 실패로 남기며 소비된 호출은 계측한다.
+- [x] 원본 context/package/required FAIL은 불변이며 action/input/path/identity/visible/enabled/bounds와 현재 관측 target locator가 일치해야 제안을 accepted로 기록한다. 모델의 성공 주장이나 잘못된 locator로 치환하지 않는다.
+- [x] OFF/한도0/비허용 실패/timeout은 기존대로 처리하고 provider port 없는 독립 fixture 동작과 실제 응답을 구분한다.
+- [x] Memory secret backend + 실제 ServerModelGateway/WorkerModelCallBridge + 모의 provider와 직접 typed proof 시험으로 응답·호출 수·반려/타임아웃·원본 FAIL/패키지 불변을 확인한다. 실제 치유 dispatch와 운영 키 수용은 RX-87/88/23/24다.
+
+**인계** docs/validation/tasks/RX-96.md.

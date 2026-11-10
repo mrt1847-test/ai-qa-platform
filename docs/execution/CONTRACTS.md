@@ -277,6 +277,8 @@ ResolvedHealingPolicy = {requested_enabled, effective_enabled, approved_policy_h
 
 - preview는 예약이 아니다. enqueue/claim에서 exact approval/revoke·package/policy/data/env/실제 환경을 재검사한다. client의 임의 approval 값을 신뢰하지 않는다.
 - 명시 ON의 resolved item은 healing_resolution/binding을 함께 고정하고 job limits에 healing_schema=healing-admission-v1·healing_policy_hash/healing_snapshot을 저장한다. policy_ref의 healing-admission-v1:sha256 참조는 전체 정책·binding/key 개정을 claim digest에 연결한다. typed echo 불일치/키 폐기/손상 ON은 접수·claim·worker preflight에서 거절하며 OFF로 낮추지 않는다. OFF/trial의 기존 wire shape는 유지한다. 같은 구성 재실행은 원본의 명시 ON/OFF·data·배포·lineage를 보존하고 동일 키는 같은 저장본을 반환한다.
+- 복구 provider port가 있으면 실제 응답 JSON만 검사하며 static fixture target으로 대체하지 않는다. 표적 locator는 관측 전체에서 unique이며 action/input/path/동일 표적 proof를 만족해야 한다. 공급자로 전송된 timeout·잘못된 응답·HTTP 실패는 호출 상한에서 차감하고 timed_out/invalid_response/provider_failed로 보존한다. 사전 정책 거절은0이며 실패 호출 차감은 토큰/청구 실측과 별개다.
+
 
 - trial은 승인 불필요/OFF 강제, 정식은 exact 유효 승인 필수다. 유효 과거본 명시 선택은 사유와 함께 허용하고 최신으로 자동 교체하지 않는다. 한 RUN에 trial/정식 혼합은 없다.
 - RUN+전체 ITEM/jobs+명시 exclusions+receipt는 원자 생성이다. ITEM=case version×data 행×target, N1..100, N0/101이상422다. 제외는 범위 확정 전 명시 확인, 확정 후 미실행은 NOT_RUN 등으로 분모 안이다.

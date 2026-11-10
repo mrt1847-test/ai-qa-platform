@@ -98,9 +98,12 @@ class ModelBroker:
         """Keep a typed target candidate. A visual, canvas, or guessed target is refused."""
 
         basis = payload.get("basis")
-        if basis in _VISUAL_BASIS or basis != "typed":
+        if type(basis) is not str or basis != "typed":
             return None
-        if payload.get("kind") in _VISUAL_BASIS:
+        kind = payload.get("kind")
+        if kind is not None and type(kind) is not str:
+            return None
+        if kind in _VISUAL_BASIS:
             return None
         if type(payload.get("action")) is not str or payload.get("action") == "":
             return None
@@ -195,10 +198,11 @@ class ModelRequestReceipt:
 class ModelRequestDenied(Exception):
     """Worker model request refused by server policy."""
 
-    def __init__(self, reason: str, *, status: int = 403) -> None:
+    def __init__(self, reason: str, *, status: int = 403, provider_dispatched: bool = False) -> None:
         super().__init__(reason)
         self.reason = reason
         self.status = status
+        self.provider_dispatched = provider_dispatched
 
 
 class ModelRequestConflict(Exception):
@@ -430,7 +434,14 @@ class ServerModelGateway:
                 token_output_limit=request.token_output_limit,
             )
         except ProviderHttpError as exc:
-            raise ModelRequestDenied(exc.reason, status=exc.status or 502) from exc
+            # A completed HTTP failure or uncertain send still consumes a call.
+            broker.meter(model_request)
+            ledger[request.role] = ledger.get(request.role, 0) + 1
+            raise ModelRequestDenied(exc.reason, status=exc.status or 502, provider_dispatched=True) from exc
+        except TimeoutError as exc:
+            broker.meter(model_request)
+            ledger[request.role] = ledger.get(request.role, 0) + 1
+            raise ModelRequestDenied("provider_timeout", status=504, provider_dispatched=True) from exc
         broker.meter(model_request)
         ledger[request.role] = ledger.get(request.role, 0) + 1
         token = bind_usage(self._usage)

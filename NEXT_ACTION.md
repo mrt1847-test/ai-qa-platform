@@ -4,13 +4,13 @@ Updated: **2026-11-10 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~86·RX-91~95 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~86·RX-91~96 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
 
 ## Current
 
-**RX-87 — Android runtime에서 고정 healing 정책과 실제 공급자 응답을 소비.** 다음 RX-88.
+**RX-87 — Android runtime의 고정 정책·실제 provider 응답·허용 실패 치유.** 다음 RX-88.
 
-범위는 [RX-87 카드](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)다. [RX-86](docs/validation/tasks/RX-86.md)의 접수·재실행, [RX-94](docs/validation/tasks/RX-94.md)의 claim 재검사, [RX-95](docs/validation/tasks/RX-95.md)의 resolve_claim_healing_pin(snapshot)을 소비한다. 아직 실제 healing episode/공급자 응답/치유 동작을 연결했다고 해석하지 않는다. 기존 service가 worker_model_call의 응답을 버리고 static context.payload를 사용하므로 실제 공급자 결과를 사용하도록 먼저 수정해야 한다. locator 실패와 실제 product check 위반·불명 dispatch를 분리한다.
+직접 선행 [RX-96](docs/validation/tasks/RX-96.md)까지 완료했다. 정상 worker 모델 요청의 서버 policy 준비·episode 소유·HTTP 오류의 provider_dispatched 전달을 먼저 연결해야 하며, callback 주입만으로 runtime 완료로 표시하지 않는다. 범위는 [RX-87 카드](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)다.
 
 ## Next
 

@@ -77,12 +77,19 @@ def validate_healing_proposal(proposal: HealingProposal, observation: Observatio
         return HealingDecision(False, False, ("input",))
     if not _candidate_matches(candidate, proposal):
         return HealingDecision(False, False, ("identity",))
-    matches = [item for item in _elements(observation) if _element_matches(item, proposal)]
+    elements = _elements(observation)
+    matches = [item for item in elements if _element_matches(item, proposal)]
     if len(matches) != 1:
         return HealingDecision(False, False, ("ambiguous" if len(matches) > 1 else "missing",))
     element = matches[0]
-    if element.get("kind") in _VISUAL or element.get("visible") is not True or element.get("enabled") is not True:
+    kind = element.get("kind")
+    if (kind is not None and type(kind) is not str) or kind in _VISUAL or element.get("visible") is not True or element.get("enabled") is not True:
         return HealingDecision(False, False, ("state",))
+    if type(element.get("locator")) is not str or not element["locator"].strip() or candidate.locator != element["locator"]:
+        return HealingDecision(False, False, ("locator",))
+    located = [item for item in elements if item.get("locator") == candidate.locator]
+    if len(located) != 1 or located[0] is not element:
+        return HealingDecision(False, False, ("locator",))
     if candidate.coordinates is not None and not _inside(candidate.coordinates, element.get("bounds")):
         return HealingDecision(False, False, ("bounds",))
     return HealingDecision(True, True, ())

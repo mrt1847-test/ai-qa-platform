@@ -1770,7 +1770,8 @@
         "RX-54",
         "RX-75",
         "RX-94",
-        "RX-95"
+        "RX-95",
+        "RX-96"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1794,7 +1795,8 @@
         "RX-54",
         "RX-76",
         "RX-94",
-        "RX-95"
+        "RX-95",
+        "RX-96"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1964,6 +1966,28 @@
       ],
       "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-95",
       "evidence_path": "docs/validation/tasks/RX-95.md"
+    },
+    {
+      "id": "RX-96",
+      "title": "실제 healing 공급자 응답 소비·현재 표적 proof",
+      "deps": [
+        "RX-54",
+        "RX-95"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-96",
+      "evidence_path": "docs/validation/tasks/RX-96.md"
     }
   ]
 }

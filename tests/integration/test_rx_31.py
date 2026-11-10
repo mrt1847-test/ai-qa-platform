@@ -288,7 +288,16 @@ def test_rx_31_on_heal_via_worker_model_bridge_keeps_package(tmp_path: Path) -> 
     settings = load_settings(_env(tmp_path / "runtime"))
     backend = MemorySecretBackend()
     resolver = build_server_secret_resolver(settings, backend=backend)
-    provider = FixtureProviderHttp()
+    # The provider must return a real typed target; static context is not its response.
+    from dataclasses import replace
+    import json
+
+    class TargetProvider(FixtureProviderHttp):
+        def complete(self, **kwargs):
+            result = super().complete(**kwargs)
+            return replace(result, content=json.dumps(_payload())) if kwargs["role"] == "healing" else result
+
+    provider = TargetProvider()
     gateway = ServerModelGateway(provider=provider, resolver=resolver)
 
     store = create_app(settings).state.open_store()

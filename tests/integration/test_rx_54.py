@@ -60,7 +60,7 @@ class _HealBridge:
 
     def complete_role(self, role: str, episode_id: object = None) -> str:
         self.roles.append(role)
-        return '{"status":"ok"}'
+        return json.dumps(_payload())
 
 
 def _png(width: int = 24, height: int = 48) -> bytes:

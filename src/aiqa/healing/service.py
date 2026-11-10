@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import math
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from aiqa.contracts.healing import HealingEpisodeReceipt, HealingTrigger
@@ -246,6 +248,39 @@ class ReplayVerifyHealResult:
     success: bool
 
 
+class _HealingResponseRejected(ValueError):
+    """Provider content did not contain one unambiguous JSON object."""
+
+
+def _healing_response_payload(content: object) -> dict[str, object]:
+    def invalid_constant(_value):
+        raise _HealingResponseRejected("healing response is invalid")
+
+    def finite_float(raw):
+        value = float(raw)
+        if not math.isfinite(value):
+            raise _HealingResponseRejected("healing response is invalid")
+        return value
+
+    def unique_object(pairs):
+        body = {}
+        for key, value in pairs:
+            if key in body:
+                raise _HealingResponseRejected("healing response is invalid")
+            body[key] = value
+        return body
+
+    if type(content) is not str:
+        raise _HealingResponseRejected("healing response is invalid")
+    try:
+        payload = json.loads(content, parse_constant=invalid_constant, parse_float=finite_float, object_pairs_hook=unique_object)
+    except (ValueError, RecursionError) as exc:
+        raise _HealingResponseRejected("healing response is invalid") from exc
+    if type(payload) is not dict:
+        raise _HealingResponseRejected("healing response is invalid")
+    return payload
+
+
 def run_replay_verify_and_heal(
     *,
     checks: tuple[object, ...],
@@ -327,13 +362,15 @@ def run_replay_verify_and_heal(
             and isinstance(healing_context, HealingContext)
         ):
             try:
+                proposal_context = healing_context
                 if worker_model_call is not None:
                     complete = getattr(worker_model_call, "complete_role", None)
                     if complete is None:
                         raise TypeError("worker model call is invalid")
-                    complete("healing", episode_id=getattr(healing_context.request, "episode_id", None))
+                    content = complete("healing", episode_id=getattr(healing_context.request, "episode_id", None))
                     healer_calls += 1
-                proposal = HealingService(broker).propose(healing_context)
+                    proposal_context = replace(healing_context, payload=_healing_response_payload(content))
+                proposal = HealingService(broker).propose(proposal_context)
                 proposal_admitted = bool(proposal.admitted)
                 screen = heal_observation if heal_observation is not None else observation
                 decision = validate_healing_proposal(proposal, screen)  # type: ignore[arg-type]
@@ -341,6 +378,9 @@ def run_replay_verify_and_heal(
                 attempt_result = "accepted" if proposal_accepted else ("proposed" if proposal_admitted else "rejected_policy")
                 if worker_model_call is None and proposal_admitted:
                     healer_calls = 1
+            except _HealingResponseRejected:
+                attempt_result = "invalid_response"
+                success = False
             except TimeoutError:
                 attempt_result = "timed_out"
                 success = False
@@ -350,7 +390,12 @@ def run_replay_verify_and_heal(
                 from aiqa.models.broker import ModelRequestDenied
 
                 if isinstance(exc, ModelRequestDenied):
-                    attempt_result = "rejected_policy"
+                    if exc.provider_dispatched:
+                        healer_calls = max(1, healer_calls)
+                        attempt_result = {"provider_timeout": "timed_out", "provider_response_invalid": "invalid_response"}.get(exc.reason, "provider_failed")
+                        success = False
+                    else:
+                        attempt_result = "rejected_policy"
                 else:
                     raise
         # Approved package digest is never rewritten by a healing proposal.

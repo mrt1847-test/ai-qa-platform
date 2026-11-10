@@ -116,6 +116,12 @@ def verify_job_snapshot(snapshot: object, prepared_adapters: frozenset[str]) -> 
         return SnapshotCheck(False, "digest_invalid", purpose)
     if purpose not in prepared_adapters:
         return SnapshotCheck(False, "unsupported_target", purpose)
+    if purpose in {"trial", "regression"}:
+        from aiqa.worker.healing_pin import resolve_claim_healing_pin
+        try:
+            resolve_claim_healing_pin(snapshot)
+        except ValueError:
+            return SnapshotCheck(False, "healing_pin_invalid", purpose)
     return SnapshotCheck(True, "ok", purpose)
 
 

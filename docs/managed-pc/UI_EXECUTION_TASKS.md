@@ -100,16 +100,16 @@
 **직접 선행** RX-54, RX-84, RX-93. **계약** C00/C01/C04/C08/C09/C14. **환경** local_python.
 **근거** preview_execution/_one_item/_snapshot_limits는 모든 요청을 OFF로 고정한다. 기존 resolver의 ON 기능을 정상 접수가 사용하지 않는다.
 
-- [ ] 기본 OFF·trial OFF를 유지하고 정식 regression/reverification의 명시 true만 해석한다. 잘못된 타입·승인 capability 없는 항목은 이유와 함께 차단한다.
-- [ ] 기존 resolve_healing_policy로 승인 scope/package와 서버의 binding revision·키 참조 존재/예산을 확인한다. client의 key_present 주장만 믿지 않고 secret 값을 UI/응답에 내보내지 않는다.
-- [ ] ITEM마다 resolved policy·binding·상한·ON/OFF를 preview hash/접수 snapshot/멱등 비교에 고정한다. running 변경 금지·legacy 재전송을 보존한다. RX-93의 request_caps는 내부 interface이며 기존 HTTP 계약에 자동으로 새 입력을 추가하지 않는다. OFF의 좁은 저장 한도와 과거 접수 receipt 재전송도 검사한다.
-- [ ] OFF 결정적 실행의 모델0, trial 강제OFF, 미승인/철회/키없음/예산/상한 초과, 복합 선택의 일부 불가, 변경된 preview를 fixture로 검증한다.
+- [x] 기본 OFF·trial OFF를 유지하고 정식 regression/reverification의 명시 true만 해석한다. 잘못된 타입·승인 capability 없는 항목은 이유와 함께 차단한다.
+- [x] 기존 resolve_healing_policy로 승인 scope/package와 서버의 binding revision·키 참조 존재/예산을 확인한다. client의 key_present 주장만 믿지 않고 secret 값을 UI/응답에 내보내지 않는다.
+- [x] ITEM마다 resolved policy·binding·상한·ON/OFF를 preview hash/접수 snapshot/멱등 비교에 고정한다. running 변경 금지·legacy 재전송을 보존한다. RX-93의 request_caps는 내부 interface이며 기존 HTTP 계약에 자동으로 새 입력을 추가하지 않는다. OFF의 좁은 저장 한도와 과거 접수 receipt 재전송도 검사한다.
+- [x] OFF 결정적 실행의 모델0, trial 강제OFF, 미승인/철회/키없음/예산/상한 초과, 복합 선택의 일부 불가, 변경된 preview를 fixture로 검증한다.
 **인계** docs/validation/tasks/RX-86.md. 운영 키 수용 RX-23/24는 별도다.
 
 <a id="rx-87"></a>
 ## RX-87 · Android worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
+**직접 선행** RX-86, RX-94, RX-95, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
 **파일** worker/android_jobs.py, replay/android_runner.py, worker/runtime.py 및 관련 healing 포트.
 
 - [ ] 정상 claim의 고정 policy를 Android replay context로 전달하고 OFF 정상 행동은 actor0으로 반복한다.
@@ -121,7 +121,7 @@
 <a id="rx-88"></a>
 ## RX-88 · Web worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
+**직접 선행** RX-86, RX-94, RX-95, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
 **파일** worker/web_jobs.py, worker/isolated_web.py, worker/web_vm_transport.py 및 기존 healing 포트.
 
 - [ ] 고정된 policy를 승인 CUAWright code replay context로 전달한다. 기존 신뢰 driver/guest 경계와 network policy를 유지한다.

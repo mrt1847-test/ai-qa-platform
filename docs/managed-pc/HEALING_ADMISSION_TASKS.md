@@ -1,6 +1,6 @@
 # Healing 접수 선행 작업
 
-Updated: 2026-11-09. 실행 순서는 NEXT_ACTION.md만 관리한다. 운영 키·독립 PC/VM 없이 로컬 fixture로 구현하며 실제 모델 수용 RX-23/24를 완료로 바꾸지 않는다.
+Updated: 2026-11-10. 실행 순서는 NEXT_ACTION.md만 관리한다. 운영 키·독립 PC/VM 없이 로컬 fixture로 구현하며 실제 모델 수용 RX-23/24를 완료로 바꾸지 않는다.
 
 근거: 구조화 editor API는 extension을 보존하지만 공통 settings normalizer는 복구 binding 참조/개정을 버리고, 설정 화면은 이를 입력할 수 없다. limits extension은 검증 없이 저장된다. RX-86의 정책 해석·접수·claim을 한 번에 바꾸지 않도록 아래로 나눈다.
 
@@ -33,8 +33,22 @@ Updated: 2026-11-09. 실행 순서는 NEXT_ACTION.md만 관리한다. 운영 키
 
 **선행** RX-86/RX-93. **계약** C00/C01/C08/C09/C14. **환경** local_python.
 
-- [ ] claim 전에 ON ITEM의 고정 binding/key 개정과 승인 policy/hash를 재검사한다. 접수 이후 폐기·역할/정책/개정 불일치면 행동 전에 fail closed한다.
-- [ ] OFF/legacy snapshot은 기존 결정적 경로와 같은 키 없는 동작을 유지한다. ON을 OFF로 조용히 낮추거나 최신 binding으로 갈아타지 않는다.
-- [ ] 정상 queue claim/변경 후 거절/임대·접수 불변을 임시 DB로 증명하고 Android/Web runtime 소비에 필요한 안전한 pin interface를 인계한다.
+- [x] claim 전에 ON ITEM의 고정 binding/key 개정과 승인 policy/hash를 재검사한다. 접수 이후 폐기·역할/정책/개정 불일치면 행동 전에 fail closed한다.
+- [x] OFF/legacy snapshot은 기존 결정적 경로와 같은 키 없는 동작을 유지한다. ON을 OFF로 조용히 낮추거나 최신 binding으로 갈아타지 않는다.
+- [x] 정상 queue claim/변경 후 거절/임대·접수 불변을 임시 DB로 증명하고 Android/Web runtime 소비에 필요한 안전한 pin interface를 인계한다.
 
 **인계** docs/validation/tasks/RX-94.md.
+
+<a id="rx-95"></a>
+## RX-95 · worker 공통 healing pin 검증과 typed 소비 경계
+
+**선행** RX-86/RX-94. **계약** C00/C01/C04/C08/C09/C14. **환경** local_python.
+
+근거: 실제 claim 응답은 snapshot.limits에 고정 정책을 이미 전송하지만 Android/Web은 ON boolean만 해석한다. 플랫폼 연결 전에 공통 worker preflight에서 정책·개정·한도를 검증해야 한다. HTTP/DB를 새로 만들지 않는다.
+
+- [x] resolve_claim_healing_pin(snapshot)에서 ON schema·policy hash·binding/key 개정·episode1/호출2/30초·전체 예산/호출과 package pin의 일치를 검증한다. 비밀 원문·서버 DB/모델에 접근하지 않는다.
+- [x] verify_job_snapshot을 거치는 공통 runtime에서 잘못된 ON pin을 adapter dispatch 전에 거절한다. OFF/legacy에는 healer metadata를 요구하지 않고 입력 alias로 한도를 바꾸지 않는다.
+- [x] 실제 API→접수→worker claim JSON을 입력으로 정상 pin·변조 거절·OFF를 확인한다. typed policy/binding을 RX-87/88이 소비하도록 인계한다.
+- [x] 이 작업만으로 실제 episode 예약·공급자 응답 소비·치유 행동/성공을 완료 처리하지 않는다. 해당 경로는 RX-87/88이며 운영 모델 수용은 RX-23/24다.
+
+**인계** docs/validation/tasks/RX-95.md.

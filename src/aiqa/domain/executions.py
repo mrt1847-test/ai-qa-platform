@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -14,9 +14,10 @@ from aiqa.contracts.jobs import IdempotencyKey
 from aiqa.domain.hashing import canonical_hash, canonical_json
 from aiqa.domain.resource_readiness import resource_readiness
 from aiqa.healing.policy import resolve_healing_policy
+from aiqa.healing.admission import resolve_execution_healing
 from aiqa.domain.projects import next_commit_seq
 from aiqa.domain.execution_metadata import item_created_seq, item_release_label, normalized_release_label
-from aiqa.store.models import Actor, Transaction
+from aiqa.store.models import Actor, JobSpec, Transaction
 from aiqa.store.queue import JobConflict
 
 _OPERATION = "enqueue_execution"
@@ -40,6 +41,7 @@ class ExecutionMissing(Exception):
 class ExecutionBlocker:
     code: str
     message: str
+    entry_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +59,8 @@ class ResolvedTrialItem:
     dataset_version_id: UUID | None
     approval_id: UUID | None
     limits: dict[str, object] = field(default_factory=dict)
+    healing_resolution: dict[str, object] = field(default_factory=dict)
+    healing_binding: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +122,7 @@ class CaseRunView:
 
 
 def preview_execution(tx: Transaction, actor: Actor, project_id: UUID, payload: dict[str, object]) -> ExecutionPreview:
-    """Resolve one trial without reserving a run. Healing is forced off."""
+    """Resolve exact immutable replay settings; trial always forces healing off."""
 
     _scope(actor, project_id)
     items, blockers, exclusions, silent = _resolve(tx, project_id, payload)
@@ -132,7 +136,7 @@ def preview_execution(tx: Transaction, actor: Actor, project_id: UUID, payload: 
         resolved_items=items,
         blockers=blockers,
         proposed_n=len(items),
-        self_healing_enabled=False,
+        self_healing_enabled=_healing_enabled(payload),
         ready=ready,
         exclusions=exclusions,
         silent_exclusions=silent,
@@ -163,7 +167,10 @@ def enqueue_execution(
     suite_version_id = _suite_version_ref(payload) if source == "suite" else None
     if source == "suite" and suite_version_id is None:
         raise ExecutionRejected("suite version is required")
-    body_hash = _request_hash(payload)
+    try:
+        body_hash = _request_hash(payload)
+    except ValueError as exc:
+        raise ExecutionRejected("invalid execution request") from exc
     existing = tx.connection.execute(
         """
         SELECT body_hash, job_id, execution_id, case_run_id
@@ -425,12 +432,33 @@ def preview_rerun(
     blockers: list[ExecutionBlocker] = []
     resolved: list[ResolvedTrialItem] = []
     for row in chosen:
+        parent = tx.connection.execute("SELECT purpose, case_run_id, payload_hash, source_refs, limits, status FROM jobs WHERE project_id=? AND job_id=?", (str(project_id), str(row[4]))).fetchone()
+        parent_job = None if parent is None else JobSpec(project_id, UUID(str(row[4])), str(parent[0]), None,
+                          UUID(str(parent[1])), str(parent[2]), str(parent[3]), str(parent[4]), str(parent[5]))
+        parent_limits = {} if parent is None else json.loads(str(parent[4]))
+        intact = parent_job is not None and _healing_claim_matches(tx.connection, parent_job, parent_limits)
+        if intact and parent_limits.get("self_healing_enabled") is True:
+            intact = validate_claim_snapshot(parent_job, tx.connection).status == "ALLOWED"
+        if not intact:
+            blockers.append(ExecutionBlocker("HEALING_SNAPSHOT_CHANGED", "original healing pin changed", str(row[0])))
+            continue
         environment = override if override != "" else _limit_text(row[5], "environment_revision_id")
         resource = _limit_text(row[5], "resource_id")
         approval = _limit_text(row[5], "approval_id")
         item_blockers = _rerun_blockers(tx, project_id, UUID(str(row[1])), UUID(str(row[2])), str(row[3]), environment, approval, resource)
         blockers.extend(item_blockers)
         if environment == "" or resource == "":
+            continue
+        if _limit_flag(row[5], "self_healing_enabled"):
+            prior = json.loads(str(row[5]))
+            raw = {"entry_id": str(row[0]), "case_version_id": str(row[2]), "approval_id": approval,
+                   "environment_revision_id": environment, "resource_id": resource,
+                   "dataset_version_id": prior.get("dataset_version_id")}
+            item, healing_blockers = _one_item(tx, project_id, raw, "reverification", True)
+            blockers.extend(healing_blockers)
+            if any(prior.get(name) != value for name, value in _healing_pins(item).items()):
+                blockers.append(ExecutionBlocker("HEALING_SNAPSHOT_CHANGED", "original healing pin changed", str(row[0])))
+            resolved.append(item)
             continue
         resolved.append(
             ResolvedTrialItem(
@@ -448,21 +476,26 @@ def preview_rerun(
                 _optional_uuid(approval),
             )
         )
+    label = normalized_release_label(_limit_text(chosen[0][5], "release_label")) if any(item.healing_resolution for item in resolved) else ""
     preview = ExecutionPreview(
         preview_hash="",
+        release_label=label,
+        release_floor_runs=30 if label else 0,
         resolved_items=tuple(resolved),
         blockers=tuple(blockers),
         proposed_n=len(resolved),
-        self_healing_enabled=False,
+        self_healing_enabled=any(item.healing_resolution.get("effective_enabled") is True for item in resolved),
         ready=blockers == [] and resolved != [],
         reserved=False,
     )
     stamped = ExecutionPreview(
         preview_hash=_rerun_hash(execution_id, reason.strip(), preview, changed),
+        release_label=preview.release_label,
+        release_floor_runs=preview.release_floor_runs,
         resolved_items=preview.resolved_items,
         blockers=preview.blockers,
         proposed_n=preview.proposed_n,
-        self_healing_enabled=False,
+        self_healing_enabled=preview.self_healing_enabled,
         ready=preview.ready,
         reserved=False,
     )
@@ -588,6 +621,7 @@ def _insert_rerun(
     )
     job_ids: list[str] = []
     item_ids: list[str] = []
+    commit_seq = next_commit_seq(tx, project_id) if preview.self_healing_enabled else 0
     for row, item in zip(chosen, preview.resolved_items, strict=True):
         case_run_id = str(uuid4())
         job_id = str(uuid4())
@@ -601,7 +635,10 @@ def _insert_rerun(
             """,
             (str(project_id), str(execution_id), case_run_id, str(item.case_id), str(item.case_version_id), requested_at),
         )
+        base_limits = json.loads(_snapshot_limits(tx, project_id, item, commit_seq,
+                                 _limit_text(row[5], "failure_policy") or "continue", _limit_text(row[5], "release_label"))) if item.healing_resolution else {}
         limits = {
+            **base_limits,
             "approval_id": "" if item.approval_id is None else str(item.approval_id),
             "configuration_changed": changed,
             "environment_revision_id": str(item.environment_revision_id),
@@ -620,9 +657,10 @@ def _insert_rerun(
             INSERT INTO jobs (
                 project_id, job_id, purpose, recording_id, case_run_id,
                 payload_hash, source_refs, limits, status
-            ) VALUES (?, ?, 'regression', NULL, ?, ?, '["source"]', ?, 'queued')
+            ) VALUES (?, ?, 'regression', NULL, ?, ?, ?, ?, 'queued')
             """,
-            (str(project_id), job_id, case_run_id, body_hash, canonical_json(limits)),
+            (str(project_id), job_id, case_run_id, body_hash,
+             canonical_json([str(item.replay_package_id)]) if item.healing_resolution else '["source"]', canonical_json(limits)),
         )
     tx.connection.execute(
         """
@@ -664,7 +702,7 @@ def _stored_rerun_preview(tx: Transaction, project_id: UUID, execution_id: str) 
     ).fetchall()
     items = tuple(
         ResolvedTrialItem(
-            str(row[0]),
+            (_limit_text(row[4], "original_case_run_id") or str(row[0])) if _limit_flag(row[4], "self_healing_enabled") else str(row[0]),
             UUID(str(row[1])),
             UUID(str(row[2])),
             str(row[3]),
@@ -674,20 +712,26 @@ def _stored_rerun_preview(tx: Transaction, project_id: UUID, execution_id: str) 
             _limit_text(row[4], "healing_snapshot"),
             UUID(_limit_text(row[4], "environment_revision_id")),
             UUID(_limit_text(row[4], "resource_id")),
-            None,
+            _optional_uuid(_limit_text(row[4], "dataset_version_id")) if _limit_flag(row[4], "self_healing_enabled") else None,
             _optional_uuid(_limit_text(row[4], "approval_id")),
+            {},
+            json.loads(str(row[4])).get("healing_resolution", {}),
+            json.loads(str(row[4])).get("healing_binding"),
         )
         for row in rows
     )
     reason = "" if rows == [] else _limit_text(rows[0][4], "rerun_reason")
     changed = False if rows == [] else _limit_flag(rows[0][4], "configuration_changed")
     original = "" if rows == [] else _limit_text(rows[0][4], "original_execution_id")
+    label = normalized_release_label(_limit_text(rows[0][4], "release_label")) if rows and any(item.healing_resolution for item in items) else ""
     preview = ExecutionPreview(
         preview_hash="",
         resolved_items=items,
         blockers=(),
         proposed_n=len(items),
-        self_healing_enabled=False,
+        release_label=label,
+        release_floor_runs=30 if label else 0,
+        self_healing_enabled=any(item.healing_resolution.get("effective_enabled") is True for item in items),
         ready=True,
         reserved=False,
     )
@@ -696,7 +740,9 @@ def _stored_rerun_preview(tx: Transaction, project_id: UUID, execution_id: str) 
         resolved_items=items,
         blockers=(),
         proposed_n=len(items),
-        self_healing_enabled=False,
+        release_label=label,
+        release_floor_runs=30 if label else 0,
+        self_healing_enabled=any(item.healing_resolution.get("effective_enabled") is True for item in items),
         ready=True,
         reserved=False,
     )
@@ -714,6 +760,7 @@ def _rerun_hash(execution_id: UUID, reason: str, preview: ExecutionPreview, chan
                     "case_version_id": str(item.case_version_id),
                     "environment_revision_id": str(item.environment_revision_id),
                     "resource_id": str(item.resource_id),
+                    **_healing_pins(item),
                 }
                 for item in preview.resolved_items
             ],
@@ -1000,6 +1047,7 @@ def _resolve(
         raise ExecutionRejected("trial and formal cannot be mixed")
     if payload.get("failure_policy") not in {"continue", "stop_on_non_pass"}:
         raise ExecutionRejected("failure policy is required")
+    healing_enabled = _healing_enabled(payload)
     raw_items = expand_execution_selection(tx, project_id, payload).items
     confirmed = _confirmed_exclusions(payload)
     resolved: list[ResolvedTrialItem] = []
@@ -1009,14 +1057,14 @@ def _resolve(
     for raw in raw_items:
         if type(raw) is not dict:
             raise ExecutionRejected("item is invalid")
-        item, item_blockers = _one_item(tx, project_id, raw, str(purpose))
+        item, item_blockers = _one_item(tx, project_id, raw, str(purpose), healing_enabled)
         requested.append(item.entry_id)
         reason = confirmed.get(item.entry_id)
         if reason is not None:
             exclusions.append(ExecutionExclusion(item.entry_id, reason))
             continue
         resolved.append(item)
-        blockers.extend(item_blockers)
+        blockers.extend(ExecutionBlocker(b.code, b.message, item.entry_id if healing_enabled else None) for b in item_blockers)
     kept = {item.entry_id for item in resolved}
     explicit = {item.entry_id for item in exclusions}
     silent = sum(1 for entry in requested if entry not in kept and entry not in explicit)
@@ -1159,7 +1207,7 @@ def _confirmed_exclusions(payload: dict[str, object]) -> dict[str, str]:
 
 
 def _one_item(
-    tx: Transaction, project_id: UUID, raw: dict[str, object], purpose: str
+    tx: Transaction, project_id: UUID, raw: dict[str, object], purpose: str, healing_enabled: bool = False
 ) -> tuple[ResolvedTrialItem, tuple[ExecutionBlocker, ...]]:
     version_id = _uuid(raw.get("case_version_id"), "case version is required")
     environment_id = _uuid(raw.get("environment_revision_id"), "environment is required")
@@ -1228,22 +1276,19 @@ def _one_item(
             tx, project_id, UUID(str(row[0])), version_id, str(row[3]), row[5], raw.get("approval_id")
         )
         blockers.extend(approval_blockers)
-    snapshot = resolve_healing_policy(
-        CaseVersion(
-            version_id,
-            project_id,
-            UUID(str(row[0])),
-            _EMPTY_DEFINITION,
-            package_id,
-            approval,
-            "recorded",
-            str(row[3]),
-            "",
-            approved_healing=_approved_healing(settings),
-        ),
-        HealingRequest(False, purpose="trial"),
-        _global_limits(settings),
-    )
+    version = CaseVersion(version_id, project_id, UUID(str(row[0])), _EMPTY_DEFINITION,
+                          package_id, approval, "recorded", str(row[3]), "", approved_healing=_approved_healing(settings))
+    healing_resolution = {}
+    healing_binding = None
+    if healing_enabled:
+        healing = resolve_execution_healing(tx.connection, project_id, version, settings,
+                                            requested_enabled=True, purpose=purpose)
+        snapshot = healing.policy
+        healing_resolution = asdict(snapshot)
+        healing_binding = healing.binding_pin
+        blockers.extend(ExecutionBlocker(code, "approved healing policy is unavailable") for code in healing.blockers)
+    else:
+        snapshot = resolve_healing_policy(version, HealingRequest(False, purpose="trial"), _global_limits(settings))
     item = ResolvedTrialItem(
         entry_id,
         UUID(str(row[0])),
@@ -1257,7 +1302,9 @@ def _one_item(
         resource_id,
         dataset_id,
         approval,
-        {"timeout_seconds":_timeout(settings),"budget":str(settings.get('limits',{}).get('budget','2.00')),"currency":str(settings.get('limits',{}).get('currency','USD')),"max_actions":_bounded(settings.get('limits',{}).get('max_actions'),50),"max_model_calls":_bounded(settings.get('limits',{}).get('max_model_calls'),80)},
+        _case_execution_limits(settings),
+        healing_resolution,
+        healing_binding,
     )
     return item, tuple(blockers)
 
@@ -1364,6 +1411,13 @@ def _has_check(definition: dict[str, object]) -> bool:
     return any(type(step) is dict and type(step.get("expected")) is list and step.get("expected") != [] for step in steps)
 
 
+def _case_execution_limits(settings: dict[str, object]) -> dict[str, object]:
+    raw = settings.get("limits", {})
+    return {"timeout_seconds": _timeout(settings), "budget": str(raw.get("budget", "2.00")),
+            "currency": str(raw.get("currency", "USD")), "max_actions": _bounded(raw.get("max_actions"), 50),
+            "max_model_calls": _bounded(raw.get("max_model_calls"), 80)}
+
+
 def _approved_healing(settings: dict[str, object]) -> ApprovedHealingPolicy:
     healing = settings.get("healing_policy")
     if type(healing) is not dict:
@@ -1424,6 +1478,7 @@ def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
             "purpose": payload.get("purpose"),
             "source": "suite",
             "selection": {"suite_version_id": suite_version_id},
+            "self_healing_enabled": _healing_enabled(payload),
             "failure_policy": payload.get("failure_policy"),
             "exclusions": payload.get("exclusions", []),
             "release_label": payload.get("release_label"),
@@ -1436,6 +1491,7 @@ def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
         "purpose": payload.get("purpose"),
         "source": payload.get("source"),
         "selection": {"items": items},
+        "self_healing_enabled": _healing_enabled(payload),
         "release_label": payload.get("release_label"),
         "failure_policy": payload.get("failure_policy"),
         "exclusions": payload.get("exclusions", []),
@@ -1520,7 +1576,82 @@ def validate_claim_snapshot(job: object, connection: sqlite3.Connection) -> Clai
         ).fetchone()
         if found is None or str(found[0]) != package_hash:
             return ClaimDecision("BLOCKED", pinned, False)
+    if job.purpose in {"trial", "regression"} and not _healing_claim_matches(connection, job, limits):
+        return ClaimDecision("BLOCKED", pinned, False)
     return ClaimDecision("ALLOWED", pinned, False)
+
+
+def _healing_claim_matches(connection, job, limits: dict[str, object]) -> bool:
+    enabled = limits.get("self_healing_enabled", False)
+    if type(enabled) is not bool:
+        return False
+    markers = any(name in limits for name in ("healing_schema", "healing_resolution", "healing_binding")) or str(limits.get("policy_ref", "")).startswith("healing-admission-v1:")
+    if not enabled:
+        return not markers and _legacy_off_healing_matches(connection, job, limits)
+    if job.purpose != "regression" or limits.get("healing_schema") != "healing-admission-v1":
+        return False
+    snapshot = limits.get("execution_snapshot")
+    if type(snapshot) is not dict or job.case_run_id is None:
+        return False
+    row = connection.execute(
+        """SELECT v.case_id, v.version_id, v.settings_json, v.content_hash, v.replay_package_id, r.purpose
+           FROM case_runs r JOIN case_versions v ON v.project_id=r.project_id AND v.version_id=r.case_version_id
+           WHERE r.project_id=? AND r.case_run_id=?""", (str(job.project_id), str(job.case_run_id)),
+    ).fetchone()
+    if row is None or snapshot.get("case_version_id") != str(row[1]) or snapshot.get("manifest_hash") != str(row[3]):
+        return False
+    if limits.get("replay_package_id") != str(row[4]):
+        return False
+    for name in ("approval_id", "environment_revision_id", "resource_id", "dataset_version_id"):
+        if snapshot.get(name) != limits.get(name):
+            return False
+    try:
+        if json.loads(job.source_refs) != [str(row[4])]:
+            return False
+        settings = json.loads(str(row[2]))
+        if type(settings) is not dict:
+            return False
+        expected_limits = _case_execution_limits(settings)
+        if any(type(limits.get(name)) is not type(value) or limits.get(name) != value for name, value in expected_limits.items()):
+            return False
+        approval, blockers = _formal_approval(Transaction(connection), job.project_id, UUID(str(row[0])),
+                                               UUID(str(row[1])), str(row[3]), None, limits.get("approval_id"))
+        if blockers or approval is None:
+            return False
+        version = CaseVersion(UUID(str(row[1])), job.project_id, UUID(str(row[0])), _EMPTY_DEFINITION,
+                              UUID(str(row[4])), approval, "recorded", str(row[3]), "")
+        healing = resolve_execution_healing(connection, job.project_id, version, settings,
+                                            requested_enabled=True, purpose=str(row[5]))
+        return (not healing.blockers and healing.policy.effective_enabled
+                and canonical_json(limits.get("healing_resolution")) == canonical_json(asdict(healing.policy))
+                and canonical_json(limits.get("healing_binding")) == canonical_json(healing.binding_pin)
+                and limits.get("healing_snapshot") == healing.policy.resolution_hash
+                and limits.get("healing_policy_hash") == healing.policy.resolution_hash
+                and limits.get("policy_ref") == _healing_policy_ref(asdict(healing.policy), healing.binding_pin, healing.policy.resolution_hash))
+    except (ValueError, TypeError):
+        return False
+
+
+def _legacy_off_healing_matches(connection, job, limits: dict[str, object]) -> bool:
+    digest = limits.get("healing_snapshot")
+    if type(digest) is not str or not digest.startswith("sha256:"):
+        # Old minimal reruns had no structured snapshot. Modern API snapshots do.
+        return "execution_snapshot" not in limits
+    row = connection.execute("""SELECT v.case_id,v.version_id,v.settings_json,v.content_hash,v.replay_package_id
+        FROM case_runs r JOIN case_versions v ON v.project_id=r.project_id AND v.version_id=r.case_version_id
+        WHERE r.project_id=? AND r.case_run_id=?""",(str(job.project_id),str(job.case_run_id))).fetchone()
+    if row is None:
+        return False
+    try:
+        settings = json.loads(str(row[2]))
+        version = CaseVersion(UUID(str(row[1])),job.project_id,UUID(str(row[0])),_EMPTY_DEFINITION,
+                              None if row[4] is None else UUID(str(row[4])),None,"recorded",str(row[3]),"",approved_healing=_approved_healing(settings))
+        caps = _global_limits(settings)
+        # Historical OFF used the per-episode cap without the total-model-call narrowing.
+        return digest in {resolve_healing_policy(version, HealingRequest(False,purpose="trial"), candidate).resolution_hash
+                          for candidate in (caps, replace(caps,max_model_calls=80))}
+    except (ValueError,TypeError,AttributeError):
+        return False
 
 
 def _stored_receipt(tx: Transaction, project_id: UUID, execution_id: str, job_id: str) -> ExecutionReceipt:
@@ -1586,7 +1717,8 @@ def _snapshot_limits(
             "healing_snapshot": item.healing_snapshot,
             "replay_package_hash": item.replay_package_hash,
             "replay_package_id": None if item.replay_package_id is None else str(item.replay_package_id),
-            "self_healing_enabled": False,
+            "self_healing_enabled": bool(item.healing_resolution.get("effective_enabled", False)),
+            **_healing_pins(item),
             "timeout_seconds": 600,
             "actor": 0,
             **item.limits,
@@ -1621,6 +1753,34 @@ def _require_item_pins(payload: dict[str, object], preview: ExecutionPreview) ->
             raise ExecutionRejected("item pin does not match")
         if raw.get("healing_policy_hash") != item.healing_policy_hash:
             raise ExecutionRejected("item pin does not match")
+        if item.healing_resolution:
+            try:
+                matches = (canonical_json(raw.get("healing_resolution")) == canonical_json(item.healing_resolution)
+                           and canonical_json(raw.get("healing_binding")) == canonical_json(item.healing_binding))
+            except ValueError:
+                matches = False
+            if not matches:
+                raise ExecutionRejected("healing pin does not match")
+
+
+def _healing_enabled(payload: dict[str, object]) -> bool:
+    value = payload.get("self_healing_enabled", False)
+    if type(value) is not bool:
+        raise ExecutionRejected("self_healing_enabled must be a boolean")
+    return value and payload.get("purpose") != "trial"
+
+
+def _healing_pins(item: ResolvedTrialItem) -> dict[str, object]:
+    if not item.healing_resolution:
+        return {}
+    return {"healing_schema": "healing-admission-v1", "healing_resolution": item.healing_resolution,
+            "healing_binding": item.healing_binding, "healing_policy_hash": item.healing_policy_hash,
+            "policy_ref": _healing_policy_ref(item.healing_resolution, item.healing_binding, item.healing_policy_hash)}
+
+
+def _healing_policy_ref(resolution, binding, digest) -> str:
+    return "healing-admission-v1:" + canonical_hash({"healing_schema":"healing-admission-v1", "healing_resolution":resolution,
+                   "healing_binding":binding,"healing_policy_hash":digest},"canon-json-v1")
 
 
 def _preview_hash(
@@ -1640,6 +1800,7 @@ def _preview_hash(
                     "case_version_id": str(item.case_version_id),
                     "environment_revision_id": str(item.environment_revision_id),
                     "healing_policy_hash": item.healing_policy_hash,
+                    **_healing_pins(item),
                     "manifest_hash": item.manifest_hash,
                     "replay_package_hash": item.replay_package_hash,
                     "replay_package_id": None if item.replay_package_id is None else str(item.replay_package_id),
@@ -1651,7 +1812,7 @@ def _preview_hash(
             ],
             "purpose": payload.get("purpose"),
             "release_label": normalized_release_label(payload.get("release_label")),
-            "self_healing_enabled": False,
+            "self_healing_enabled": _healing_enabled(payload),
             "source": payload.get("source"),
         },
         "canon-json-v1",
@@ -1661,7 +1822,7 @@ def _preview_hash(
 def _legacy_receipt_matches(
     tx: Transaction, project_id: UUID, job_id: str, body_hash: str, payload: dict[str, object]
 ) -> bool:
-    if body_hash != _request_hash(payload, legacy=True):
+    if _healing_enabled(payload) or body_hash != _request_hash(payload, legacy=True):
         return False
     row = tx.connection.execute(
         "SELECT limits FROM jobs WHERE project_id=? AND job_id=?", (str(project_id), job_id)
@@ -1683,7 +1844,7 @@ def _request_hash(payload: dict[str, object], *, legacy: bool = False) -> str:
         "items": payload.get("items"),
         "exclusions": payload.get("exclusions", []),
         "purpose": payload.get("purpose"),
-        "self_healing_enabled": False,
+        "self_healing_enabled": _healing_enabled(payload),
         "source": payload.get("source"),
         "suite_version_id": _suite_version_ref(payload),
     }

@@ -987,7 +987,7 @@ def _preview_json(preview: object) -> dict[str, object]:
         "release_label": preview.release_label,
         "release_floor_runs": preview.release_floor_runs,
         "exclusions": [{"entry_id": item.entry_id, "reason": item.reason} for item in preview.exclusions],
-        "blockers": [{"code": blocker.code, "message": blocker.message} for blocker in preview.blockers],
+        "blockers": [{"code": blocker.code, "message": blocker.message, **({"entry_id": blocker.entry_id} if blocker.entry_id is not None else {})} for blocker in preview.blockers],
         "resolved_items": [
             {
                 "entry_id": item.entry_id,
@@ -996,6 +996,7 @@ def _preview_json(preview: object) -> dict[str, object]:
                 "replay_package_id": None if item.replay_package_id is None else str(item.replay_package_id),
                 "replay_package_hash": item.replay_package_hash,
                 "healing_policy_hash": item.healing_policy_hash,
+                **({"healing_resolution": item.healing_resolution, "healing_binding": item.healing_binding} if item.healing_resolution else {}),
                 "environment_revision_id": str(item.environment_revision_id),
                 "dataset_version_id":None if item.dataset_version_id is None else str(item.dataset_version_id),
                 "resource_id": str(item.resource_id),

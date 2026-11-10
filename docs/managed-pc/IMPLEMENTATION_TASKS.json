@@ -1,6 +1,6 @@
 {
   "schema_version": "managed-pc-runtime-v1",
-  "date": "2026-11-09",
+  "date": "2026-11-10",
   "scope": "managed_execution_mvp",
   "schedule_owner": "NEXT_ACTION.md",
   "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",
@@ -1747,7 +1747,7 @@
         "RX-84",
         "RX-93"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1769,7 +1769,8 @@
         "RX-86",
         "RX-54",
         "RX-75",
-        "RX-94"
+        "RX-94",
+        "RX-95"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1792,7 +1793,8 @@
         "RX-86",
         "RX-54",
         "RX-76",
-        "RX-94"
+        "RX-94",
+        "RX-95"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1926,7 +1928,7 @@
         "RX-86",
         "RX-93"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -1940,6 +1942,28 @@
       ],
       "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-94",
       "evidence_path": "docs/validation/tasks/RX-94.md"
+    },
+    {
+      "id": "RX-95",
+      "title": "Worker 공통 healing pin 검증과 typed 소비 경계",
+      "deps": [
+        "RX-86",
+        "RX-94"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-95",
+      "evidence_path": "docs/validation/tasks/RX-95.md"
     }
   ]
 }

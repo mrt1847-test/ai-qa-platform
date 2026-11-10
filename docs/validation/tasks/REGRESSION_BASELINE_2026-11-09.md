@@ -21,3 +21,5 @@
 기계 출력은 git-ignored .review-work/healing-admission/{full-pytest,baseline-failures,baseline-order,final-pytest}.log에 있다. 실제 모델/기기 수용 SKIP을 PASS로 셈하지 않는다.
 
 최종 리뷰 수정 후 전체 명령도 동일하게 실행: **9 failed, 534 passed, 1 skipped (342.36s)**. 실패 node 집합이 위 기준 재현의 9개와 정확히 일치한다. 새 RX-92/93 검사56개는 이 최종 전체 실행에 포함되어 통과했다. 별도 집중 묶음67개/JS32개도 통과했다. 최종 로그: `.review-work/healing-admission/post-review-pytest.log`.
+
+2026-11-10 RX-86/94/95 후 전체 회귀: 9 failed,603 passed,1 skipped (339.79s). 실패 node 집합은 기존9개와 정확히 같다. `.review-work/healing-execution/verified-pytest.log`에 최종 출력이 있다. 새 모델/장치 수용은 수행하지 않았다.

@@ -237,6 +237,8 @@ def _binding(database: Path, project_id: str, actor_id: str) -> None:
             """,
             (project_id, actor_id),
         )
+        from authoring_metadata_support import seed_authoring_key_metadata
+        seed_authoring_key_metadata(connection,project_id)
 
 
 def test_w16_03(tmp_path: Path) -> None:
@@ -809,6 +811,8 @@ async def _start(app: object, project_id: str, database: Path, actor_id: str):
                 """,
                 (project_id, actor_id),
             )
+            from authoring_metadata_support import seed_authoring_key_metadata
+            seed_authoring_key_metadata(connection,project_id)
         saved = await client.post(f"/api/v1/projects/{project_id}/recordings", json=body, headers=headers)
         with sqlite3.connect(database) as connection:
             connection.execute("UPDATE resource_inventory SET state = 'busy' WHERE physical_key_id = 'key-a'")

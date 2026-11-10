@@ -109,10 +109,11 @@
 <a id="rx-87"></a>
 ## RX-87 · Android worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
+**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
 **파일** worker/android_jobs.py, replay/android_runner.py, worker/runtime.py 및 관련 healing 포트.
 
 - [ ] 정상 claim의 고정 policy를 Android replay context로 전달하고 OFF 정상 행동은 actor0으로 반복한다.
+- [ ] RX-97의 녹화 action/timeout pin을 claim별 runtime cap으로 좁혀 소비하고 handler 재사용 시 이전 작업 한도/clock을 누적하지 않는다. 모델 호출량은 RX-98 서버 gate와 일치시킨다.
 - [ ] 허용된 locator/레이아웃 실패만 기존 healing episode 포트로 연결한다. 실제 검증 실패·불명 dispatch·목표/expected 변경은 치유하지 않는다.
 - [ ] episode1/모델2호출/30초·전체 상한과 중단·취소·임대·정리를 유지한다. 원본 package/FAIL 불변·성공 제안 분리.
 - [ ] 모의 ADB/모델의 정상 API→claim→runtime으로 OFF0/ON허용/ON차단/소진/실패/정리 재사용을 검증한다.
@@ -121,10 +122,11 @@
 <a id="rx-88"></a>
 ## RX-88 · Web worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
+**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
 **파일** worker/web_jobs.py, worker/isolated_web.py, worker/web_vm_transport.py 및 기존 healing 포트.
 
 - [ ] 고정된 policy를 승인 CUAWright code replay context로 전달한다. 기존 신뢰 driver/guest 경계와 network policy를 유지한다.
+- [ ] Web 녹화/재생의 행동·시간 한도를 claim별 고정값으로 좁히고 모델 호출은 RX-98 또는 episode/check 전용 서버 gate를 사용한다. 녹화 authoring 권한을 replay actor로 재사용하지 않는다.
 - [ ] selector/레이아웃의 허용 실패만 제한 episode에 연결한다. 임의 source 실행·target/expected 변경·불명 재클릭 금지.
 - [ ] OFF0/검증 전용 호출/ON한도·실패·제안 분리·종료/정리/재접속을 정상 worker entry의 테스트 브라우저로 검증한다.
 **인계** docs/validation/tasks/RX-88.md. VM 격리·운영 모델 수용은 RX-24.

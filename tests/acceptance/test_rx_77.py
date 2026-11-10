@@ -213,6 +213,8 @@ class _Journey:
                 """,
                 (self.project_id, str(owner.actor_id)),
             )
+            from authoring_metadata_support import seed_authoring_key_metadata
+            seed_authoring_key_metadata(connection,self.project_id)
         self.artifacts_dir = store.config.artifacts_dir
         store.close()
 

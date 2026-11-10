@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 import hashlib
 
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
-from aiqa.domain.hashing import canonical_hash
+from aiqa.domain.hashing import canonical_hash, execution_snapshot_hash
 from aiqa.replay.android_plan import (
     PlanRejected,
     android_mapping_digest,
@@ -108,14 +108,18 @@ def start_recording(
     settings = json.loads(settings_json)
     base_id = _rerecord_base(connection, project_id, spec.case_id, settings)
     existing = connection.execute(
-        "SELECT 1 FROM job_receipts WHERE project_id=? AND actor_id=? AND operation='enqueue_job' AND request_key=?",
+        "SELECT job_id FROM job_receipts WHERE project_id=? AND actor_id=? AND operation='enqueue_job' AND request_key=?",
         (str(project_id),str(actor.actor_id),request_key),
     ).fetchone()
     if existing is None:
         _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
         _require_secrets(connection, project_id, settings.get("secret_refs", {}))
-        _require_authoring(connection, project_id)
-        _require_budget(settings.get("limits", {}))
+        limits = _recording_limits(connection, project_id, settings, spec.input_case_version_id, stored_hash)
+    else:
+        row = connection.execute("SELECT limits FROM jobs WHERE project_id=? AND job_id=?",(str(project_id),str(existing[0]))).fetchone()
+        if row is None:
+            raise JobConflict("idempotency body does not match")
+        limits = json.loads(str(row[0]))
     receipt = enqueue_job(
         Transaction(connection),  # type: ignore[arg-type]
         JobSubmission(
@@ -125,7 +129,7 @@ def start_recording(
             case_version_id=spec.input_case_version_id,
             base_case_version_id=base_id,
             source_refs=(spec.resource_id,),
-            limits=json.dumps({"timeout_seconds": int(settings["limits"]["timeout_seconds"])}, sort_keys=True),
+            limits=json.dumps(limits, sort_keys=True),
         ),
         IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
     )
@@ -194,17 +198,22 @@ def _require_secrets(connection: object, project_id: UUID, refs: object) -> None
             raise PreflightRejected("secret ref is missing")
 
 
-def _require_authoring(connection: object, project_id: UUID) -> None:
-    row = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT 1 FROM binding_revisions
-        WHERE project_id = ? AND role = 'authoring'
-        LIMIT 1
-        """,
-        (str(project_id),),
-    ).fetchone()
-    if row is None:
-        raise PreflightRejected("authoring binding is missing")
+def _require_authoring(connection: object, project_id: UUID) -> dict[str, object]:
+    from aiqa.recording.model_pin import current_authoring_binding
+    try:
+        return current_authoring_binding(connection, project_id)
+    except ValueError as exc:
+        raise PreflightRejected(str(exc)) from exc
+
+
+def _recording_limits(connection, project_id, settings, version_id, version_hash):
+    from aiqa.recording.model_pin import freeze_authoring_limits
+    from aiqa.domain.versions import SettingsRejected
+    binding = _require_authoring(connection, project_id)
+    try:
+        return freeze_authoring_limits(binding,settings.get("limits",{}),version_id,version_hash)
+    except (ValueError, SettingsRejected) as exc:
+        raise PreflightRejected("authoring budget is unavailable") from exc
 
 
 def start_rerecording(
@@ -229,8 +238,7 @@ def start_rerecording(
     settings = json.loads(version[1])
     _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
     _require_secrets(connection, project_id, settings.get("secret_refs", {}))
-    _require_authoring(connection, project_id)
-    _require_budget(settings.get("limits", {}))
+    limits = _recording_limits(connection, project_id, settings, version_id, content_hash)
     queued = enqueue_job(
         Transaction(connection),  # type: ignore[arg-type]
         JobSubmission(
@@ -239,7 +247,7 @@ def start_rerecording(
             case_id=spec.case_id,
             case_version_id=version_id,
             source_refs=(spec.resource_id,),
-            limits=json.dumps({"timeout_seconds": int(settings["limits"]["timeout_seconds"])}, sort_keys=True),
+            limits=json.dumps(limits, sort_keys=True),
             base_case_version_id=spec.base_version_id,
         ),
         IdempotencyKey(actor.actor_id, project_id, "enqueue_job", request_key),
@@ -314,11 +322,8 @@ def _copy_rerecord_input(connection: object, actor: Actor, project_id: UUID, spe
     settings["web_url"] = spec.web_url
     settings["data_name"] = spec.data_name
     settings["reset_policy"] = spec.reset_policy
-    settings["limits"] = {"timeout_seconds": 30}
     settings["objective_diff"] = spec.objective_diff or ""
-    content_hash = str(source[3])
-    if spec.objective_diff not in {None, ""}:
-        content_hash = canonical_hash(definition, "canon-json-v1")
+    content_hash = execution_snapshot_hash(definition, settings, json.loads(str(source[2])))
     version_id = uuid4()
     head = None if source[7] is None else str(source[7])
     branch = head != str(spec.expected_head)
@@ -858,14 +863,12 @@ def _fallback_draft(
 
 
 def _require_budget(limits: object) -> None:
-    if type(limits) is not dict:
-        raise PreflightRejected("budget is missing")
+    from aiqa.recording.model_pin import recording_caps
+    from aiqa.domain.versions import SettingsRejected
     try:
-        timeout = int(limits.get("timeout_seconds", 0))
-    except (TypeError, ValueError) as exc:
-        raise PreflightRejected("budget is missing") from exc
-    if timeout < 1:
-        raise PreflightRejected("budget is missing")
+        recording_caps(limits)
+    except (ValueError, SettingsRejected) as exc:
+        raise PreflightRejected("authoring budget is unavailable") from exc
 
 
 def inspect_recording(connection: object, project_id: UUID, spec: RecordingStartInput) -> dict[str, object]:

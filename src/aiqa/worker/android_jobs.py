@@ -1645,6 +1645,9 @@ def server_model_plan_provider(
             raise MobileAgentRejected("model request context missing")
         call_id = str(uuid4())
         snapshot = claim.get("snapshot") if type(claim.get("snapshot")) is dict else {}
+        from aiqa.contracts.authoring import validate_authoring_pin
+        pin = validate_authoring_pin(snapshot)
+        revision = pin["authoring_binding"]["revision"] if pin is not None else binding_revision
         intent_hash = str(snapshot.get("intent_hash") or "").strip()
         observation = claim.get("observation")
         previous_result = str(claim.get("previous_result") or "")
@@ -1660,7 +1663,7 @@ def server_model_plan_provider(
             "role": "authoring",
             "owner_kind": "authoring",
             "owner_id": attempt_id,
-            "binding_revision": binding_revision,
+            "binding_revision": revision,
             "sanitized_inputs": sanitized_inputs,
             "token_output_limit": token_output_limit,
             "deadline": "2099-01-01T00:00:00+00:00",

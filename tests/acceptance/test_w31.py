@@ -291,6 +291,8 @@ def _graph(database: Path, project_id: str, case_id: str, actor_id: str) -> dict
             """,
             (project_id, actor_id),
         )
+        from authoring_metadata_support import seed_authoring_key_metadata
+        seed_authoring_key_metadata(connection,project_id)
         connection.execute(
             """
             INSERT INTO case_versions (

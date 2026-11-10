@@ -248,6 +248,8 @@ def test_rx_71_browser_recording_trial_approve_suite_regression(tmp_path: Path, 
             """,
             (project_id, str(owner.actor_id)),
         )
+        from authoring_metadata_support import seed_authoring_key_metadata
+        seed_authoring_key_metadata(connection,project_id)
     artifacts_dir = store.config.artifacts_dir
     store.close()
 

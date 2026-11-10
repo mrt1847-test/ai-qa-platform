@@ -1771,7 +1771,8 @@
         "RX-75",
         "RX-94",
         "RX-95",
-        "RX-96"
+        "RX-96",
+        "RX-98"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1796,7 +1797,8 @@
         "RX-76",
         "RX-94",
         "RX-95",
-        "RX-96"
+        "RX-96",
+        "RX-98"
       ],
       "status": "not_started",
       "execution_scope": "managed_execution_mvp",
@@ -1988,6 +1990,50 @@
       ],
       "doc_file": "docs/managed-pc/HEALING_ADMISSION_TASKS.md#rx-96",
       "evidence_path": "docs/validation/tasks/RX-96.md"
+    },
+    {
+      "id": "RX-97",
+      "title": "녹화 시작·재녹화의 모델 및 한도 고정",
+      "deps": [
+        "RX-91",
+        "RX-95"
+      ],
+      "status": "complete",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/MODEL_REQUEST_TASKS.md#rx-97",
+      "evidence_path": "docs/validation/tasks/RX-97.md"
+    },
+    {
+      "id": "RX-98",
+      "title": "정상 임대 녹화의 서버 모델 권한 준비",
+      "deps": [
+        "RX-97",
+        "RX-96"
+      ],
+      "status": "not_started",
+      "execution_scope": "managed_execution_mvp",
+      "track": "feature_implementation",
+      "work_kind": "core",
+      "environment_requirements": [
+        "local_python"
+      ],
+      "verification_scope": "core_contract",
+      "live_acceptance_tasks": [
+        "RX-23",
+        "RX-24"
+      ],
+      "doc_file": "docs/managed-pc/MODEL_REQUEST_TASKS.md#rx-98",
+      "evidence_path": "docs/validation/tasks/RX-98.md"
     }
   ]
 }

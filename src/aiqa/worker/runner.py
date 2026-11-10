@@ -116,6 +116,11 @@ def verify_job_snapshot(snapshot: object, prepared_adapters: frozenset[str]) -> 
         return SnapshotCheck(False, "digest_invalid", purpose)
     if purpose not in prepared_adapters:
         return SnapshotCheck(False, "unsupported_target", purpose)
+    from aiqa.contracts.authoring import validate_authoring_pin
+    try:
+        validate_authoring_pin(snapshot)
+    except ValueError:
+        return SnapshotCheck(False, "authoring_pin_invalid", purpose)
     if purpose in {"trial", "regression"}:
         from aiqa.worker.healing_pin import resolve_claim_healing_pin
         try:

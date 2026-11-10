@@ -201,6 +201,12 @@ input/output/cache/image usage는 nullable, measured/estimated/unreported다. �
 복수 통화는 분리하고 늦은 청구/보정은 commit_seq가 있는 append ledger다. 취소 후 응답은 기록해도 행동은 금지다.
 healer는 ITEM당 episode1/모든 전송 최대2회/30초가 더 엄격한 상한이며 transport retry도2에 포함한다.
 
+### 녹화 모델 접수 고정
+
+녹화 접수의 모델 pin (RX-97): 새 start/rerecord는 동일 프로젝트 logical binding의 latest revision 중 현재 authoring 역할을 결정적으로 선택하고 그 고정 key ref/revision의 available 메타데이터를 검사한다. 선택된 최신 후보의 부적합/키 없음은 과거 정상 후보로 우회하지 않는다. 작업 limits에 authoring-admission-v1·binding/key 개정·입력 version/hash·timeout/actions/model_calls/budget/USD를 고정하며 policy_ref의 canonical hash를 claim digest에 포함한다. 전역 600초/50행동/80호출/2USD를 확대하지 않으며 저장된 좁은 한도는 유지한다. 키/endpoint 원문은 pin에 포함하지 않고 credential/provider probe도 실행하지 않는다. 예산0·모델 호출0이면 새 녹화는 거절한다.
+
+같은 시작 요청은 저장 job limits를 재사용하므로 키 폐기/모델 회전 후에도 영수증을 읽는다. 재녹화 실패는 새 버전/head/녹화/job/receipt 전체 rollback이며 같은 재녹화의 재전송은 새 작업을 만들지 않는다. 과거 timeout-only job/receipt는 유지한다. worker는 새 pin의 외부 policy_ref·내부 hash·typed caps·동결 intent의 입력 버전/hash 일치를 공통 gate에서 검증하며 Android authoring은 고정 revision을 전송한다. 이는 서버 모델 권한/호출량(RX-98) 또는 플랫폼별 시간·행동 cap 소비(RX-87/88)의 완료를 뜻하지 않는다.
+
 ## C07 · source→package→trial→repair
 
 `RecordingStartInput = {case_id, input_case_version_id, input_manifest_hash, resource_id}`다. input_manifest_hash는 저장된 입력 CaseVersion.content_hash와 비교하는 wire 이름이다. `RecordingReceipt = {recording_id, job_id, input_case_version_id, input_manifest_hash, status_href}`다.

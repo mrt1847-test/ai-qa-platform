@@ -7,7 +7,7 @@ import json
 import struct
 import subprocess
 import zlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -199,6 +199,15 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
             # Authoring must not have run yet — handler runs after ACK.
             authoring_before_ack["n"] = recording.broker.authoring_calls
             return httpx.Response(200, json={"acked": True})
+        if request.url.path.endswith("/checkpoints"):
+            # Explicit protocol fixture: an unknown route must not stand in for a live fence.
+            body = json.loads(request.content)
+            now = datetime.now(timezone.utc)
+            return httpx.Response(200, json={
+                **body, "allowed": True, "server_time": now.isoformat(),
+                "job_deadline": (now + timedelta(seconds=600)).isoformat(),
+                "lease_remaining_seconds": 45,
+            })
         if request.url.path.endswith("/evidence-commits"):
             body = json.loads(request.content.decode("utf-8"))
             events = body.get("events") or []

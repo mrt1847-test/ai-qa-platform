@@ -440,3 +440,7 @@ known_environment는 **문서상의 환경 관찰 메모**이지 실행 worker c
 - 서버 model_observations는 migration0050의 불변 metadata이며 기존 artifact bytes를 참조한다. 파일 크기/hash·PNG CRC/해상도·전체 CaptureGeometry와 captured_at(30초·미래 skew5초)을 검증한다. 파일 I/O 동안 DB write transaction을 유지하지 않는다. credential/lock 대기 후 전송 직전 및 응답 후 현재 권한·관찰을 재검사한다.
 - worker는 filter_capture 후 기존 evidence ACK→관찰 등록→모델 요청 순서다. 모델 입력은 서버가 읽은 PNG bytes와 geometry다. worker URL/images를 신뢰하거나 임의 fetch하지 않는다. 알려진 대상 SecretRef의 pixel coverage 미증명은 업로드/provider0이며 raw DOM/XML·숨은 reasoning은 추가 전송하지 않는다.
 - custom /v1/complete images=[{media_type,data_base64,hash,geometry}] 포트의 로컬 HTTP 검증이다. 실제 vendor adapter/모델 화면 이해·운영 기기 수용을 대체하지 않는다. 저장 receipt/사후 승인은 현재 프레임 수명과 독립이며 과거 receipt의 action_allowed는 현재 권한/관찰로 재판정한다.
+
+### RX87 B0 · 현재 worker 실행 fence (C00/C01/C04/C05/C14)
+
+POST worker/checkpoints는 현재 인증 project/purpose/worker·job/attempt/ACK·최신 세대·incarnation/lease margin·취소/상태·고정 job deadline을 조회한다. worker now/과거 allowed/같은 key 캐시는 권한이 아니다. thread/DB lock 대기 뒤 서버 시각을 읽고 Cache-Control:no-store로 응답한다. worker는 응답 소유·phase·타입과 전체 왕복 지연을 검사하며 recording runtime이 모델 전/실제 native 전송 직전에 소비한다. 이 포트는 model grant/호출 quota 차감/임대 갱신/장기 keepalive/자동 재개를 제공하지 않는다. B0.3 lifecycle과 B/C/D는 별도다.

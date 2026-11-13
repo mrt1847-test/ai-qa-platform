@@ -194,6 +194,14 @@ class WorkerHttpClient:
             idempotency_key=idempotency_key,
         )
 
+    def checkpoint(self, *, project_id: str, job_id: str, attempt_id: str,
+                   generation: int, phase: str, idempotency_key: str) -> dict[str, Any]:
+        """Always ask for the current fence; a prior allowed response is not reusable."""
+        return self._json("POST", "/api/v1/worker/checkpoints", json_body={
+            "project_id":project_id,"job_id":job_id,"attempt_id":attempt_id,
+            "generation":generation,"phase":phase,
+        }, idempotency_key=idempotency_key)
+
     def renew(
         self,
         *,

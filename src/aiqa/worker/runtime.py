@@ -291,6 +291,7 @@ class WorkerRuntime:
 
         bound = self._bind_claim_targets(claimed)
         self._bind_step_evidence_commit(bound)
+        self._bind_attempt_checkpoint(bound)
         result = self._handler.handle(bound)
         try:
             result = self._commit_evidence(bound, result)
@@ -478,6 +479,18 @@ class WorkerRuntime:
                 approved_origin=str(self._approved_web_origin),
             )
         return bound
+
+    def _bind_attempt_checkpoint(self, claimed: dict[str, Any]) -> None:
+        from aiqa.worker.android_jobs import bind_attempt_checkpoint
+        from aiqa.worker.checkpoints import WorkerAttemptCheckpoint
+        from aiqa.contracts.jobs import ControlDecision
+
+        try:
+            control = WorkerAttemptCheckpoint(self._client, claimed, clock=self._mono)
+            checkpoint = control.checkpoint
+        except (ValueError,TypeError,KeyError):
+            checkpoint = lambda phase: ControlDecision(False, "checkpoint_claim_invalid")
+        bind_attempt_checkpoint(self._handler, checkpoint)
 
     def _bind_step_evidence_commit(self, claimed: dict[str, Any]) -> None:
         """Wire per-action evidence commit so the timeline updates before the attempt finishes."""

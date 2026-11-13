@@ -445,3 +445,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-13: [RX-99](docs/validation/tasks/RX-99.md) 정제 관찰 artifact/receipt와 실제 PNG·전체 geometry의 custom provider 입력을 연결했다. 응답 유실 복구·영속 모델 quota를 검증했으며 실제 모델 화면 이해/기기 수용은 별도다. 다음 RX87은 [세부 단위](docs/managed-pc/ANDROID_RUNTIME_TASKS.md) A→B→C→D로 진행한다.
 
 2026-11-14: RX87 A의 Android 녹화 고정 action/model/time cap·claim별 시계/guard·실제 native 전송 gate와 local not_sent를 구현했다. 집중44·JS32, 전체9failed749passed1skipped(기존9개 기준선). 상위 RX87은 in_progress이며 전체 완료 수는 추가하지 않는다. 다음 B0 fresh worker control 연결.
+
+2026-11-14: [RX87 B0.1/B0.2](docs/validation/tasks/RX-87-B0.md) 현재 서버 fence/취소·세대·기한 확인과 runtime 모델/native 전송 경계 연결을 완료했다. 신규40·집중62, 전체9failed789passed1skipped(기존9). 다음 B0.3. 상위 완료 수는 그대로다.

@@ -191,6 +191,40 @@ def install_worker(application: FastAPI) -> None:
             "offline_after_seconds": int(OFFLINE_AFTER.total_seconds()),
         })
 
+    async def post_checkpoint(request: Request) -> Response:
+        rejected = _idempotency(request)
+        if rejected is not None:
+            return rejected
+        header = request.headers.get("authorization", "")
+        if not header.startswith("Bearer "):
+            return _error(401,"unauthorized","worker token is missing",{})
+        payload = await _body(request)
+        if isinstance(payload,JSONResponse):
+            return payload
+        from aiqa.domain.worker_checkpoints import PHASES, checkpoint_http
+        try:
+            project_id = _uuid(payload.get("project_id"))
+            job_id = _uuid(payload.get("job_id"))
+            attempt_id = _uuid(payload.get("attempt_id"))
+            generation = _generation(payload.get("generation"))
+            phase = payload.get("phase")
+            if type(phase) is not str or phase not in PHASES:
+                raise ValueError("invalid checkpoint phase")
+        except (ValueError,TypeError):
+            return _error(422,"validation","invalid checkpoint",{})
+        with _bound(request):
+            try:
+                worker = worker_scope_from_token(header.removeprefix("Bearer ").strip())
+            except AuthRequired:
+                return _error(401,"unauthorized","worker token is missing",{})
+            except WorkerDenied:
+                return _error(403,"permission","worker cannot check this attempt",{})
+        from starlette.concurrency import run_in_threadpool
+        status,body = await run_in_threadpool(checkpoint_http,request.app.state.open_store,
+            worker,project_id,job_id,attempt_id,generation,phase,_server_now)
+        # Even the same request key must observe a cancellation made after a prior allow.
+        return JSONResponse(status_code=status,content=body,headers={"Cache-Control":"no-store"})
+
     async def post_renewal(request: Request) -> Response:
         return await _lease_call(request, renew=True)
 
@@ -551,6 +585,7 @@ def install_worker(application: FastAPI) -> None:
     application.add_api_route("/api/v1/worker/cleanup-confirmations", post_cleanup, methods=["POST"])
     application.add_api_route("/api/v1/worker/evidence-commits", post_evidence_commit, methods=["POST"])
     application.add_api_route("/api/v1/worker/attempt-finishes", post_attempt_finish, methods=["POST"])
+    application.add_api_route("/api/v1/worker/checkpoints", post_checkpoint, methods=["POST"])
     application.add_api_route("/api/v1/worker/model-observations", post_model_observations, methods=["POST"])
     application.add_api_route("/api/v1/worker/model-requests", post_model_requests, methods=["POST"])
     application.state.worker_installed = True

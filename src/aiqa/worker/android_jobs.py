@@ -462,6 +462,7 @@ class AndroidRecordingContext:
     max_seconds: float | None = None
     cancelled: bool | Callable[[], bool] = False
     step_evidence_commit: StepEvidenceCommit | None = None
+    remote_checkpoint: Callable[[str], object] | None = None
 
 
 @dataclass
@@ -834,6 +835,15 @@ class AndroidRecordingHandler:
     def _recording_gate(self, claim: dict[str, Any], *, phase: str) -> None:
         if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
             raise _CaptureFailed("cancelled")
+        remote = self.context.remote_checkpoint
+        if remote is not None and phase in {"before_model", "before_dispatch"}:
+            decision = remote(phase)
+            if getattr(decision, "allowed", None) is not True:
+                raise _CaptureFailed("remote_checkpoint_blocked")
+            if self._is_cancelled():
+                raise _CaptureFailed("cancelled")
+            # A fresh authenticated server fence also proves the current worker incarnation.
+            self.guard.note_heartbeat(self._mono_now())
         now = self._mono_now()
         seconds = self._limits.timeout_seconds if self._limits is not None else self.context.max_seconds
         if seconds is not None and now.seconds >= seconds:
@@ -1039,6 +1049,17 @@ def bind_step_evidence_commit(handler: object, committer: StepEvidenceCommit | N
     for route in routes.values():
         if isinstance(route, AndroidRecordingHandler):
             route.context.step_evidence_commit = committer
+
+
+def bind_attempt_checkpoint(handler: object, checkpoint: Callable[[str], object]) -> None:
+    """Bind the current HTTPS claim fence without sharing a previous attempt's callback."""
+    if isinstance(handler, AndroidRecordingHandler):
+        handler.context.remote_checkpoint = checkpoint
+        return
+    routes = getattr(handler, "routes", None)
+    if type(routes) is dict:
+        for route in routes.values():
+            bind_attempt_checkpoint(route, checkpoint)
 
 
 @dataclass

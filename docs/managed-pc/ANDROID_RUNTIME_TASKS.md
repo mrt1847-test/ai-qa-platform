@@ -18,9 +18,11 @@
 
 ## B0. 현재 worker fence와 장기 실행 control
 
-- [ ] B0.1: POST worker/checkpoints에 현재 project/worker/purpose/job/attempt/ACK·generation·incarnation/lease margin·취소/종료·고정 job deadline 검사를 연결한다. worker now/과거 allowed receipt를 권한으로 믿지 않는다. 같은 key도 현재 상태를 새로 읽으며 model grant/실제 실행 quota가 아니다.
-- [ ] B0.2: worker client는 응답 소유/세대/phase·시간/lease 형식을 검증하고 전체 HTTP 왕복 시간을 빼고 판정한다. runtime이 handler의 모델 전/실제 native 전송 직전에 이 callback을 연결한다. 서버 취소가 모델/파일 I/O 중 생겨도 다음 gesture0이며 저장 증거/제안은 보존한다.
+- [x] B0.1: POST worker/checkpoints에 현재 project/worker/purpose/job/attempt/ACK·generation·incarnation/lease margin·취소/종료·고정 job deadline 검사를 연결한다. worker now/과거 allowed receipt를 권한으로 믿지 않는다. 같은 key도 현재 상태를 새로 읽으며 model grant/실제 실행 quota가 아니다.
+- [x] B0.2: worker client는 응답 소유/세대/phase·시간/lease 형식을 검증하고 전체 HTTP 왕복 시간을 빼고 판정한다. runtime이 handler의 모델 전/실제 native 전송 직전에 이 callback을 연결한다. 서버 취소가 모델/파일 I/O 중 생겨도 다음 gesture0이며 저장 증거/제안은 보존한다.
 - [ ] B0.3: 장기 모델 대기/실행 중 heartbeat/renew/cancel poll과 종료·연결 유실·재접속을 연결한다. handler가 반환하기 전까지 초기 lease 상수를 계속 믿지 않는다. 자동 action/attempt 재개0이다.
+
+B0.1/B0.2 완료2026-11-14, [인계](../validation/tasks/RX-87-B0.md). 신규40건·집중62, 최종 전체 기존9failed/789passed/1skipped. 현재 B0.3이며 상위 RX87 미완료다.
 
 ## B. replay의 고정 정책과 한도
 

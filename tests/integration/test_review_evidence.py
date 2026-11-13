@@ -182,10 +182,28 @@ def test_concurrent_same_object_writers_use_independent_partial_files(tmp_path, 
     def sync(fd):
         fsync(fd)
         barrier.wait(timeout=5)
-    monkeypatch.setattr(artifacts.os, 'fsync', sync)
+    real_os = artifacts.os
+    class ArtifactOS:
+        def __getattr__(self, name):
+            return sync if name == 'fsync' else getattr(real_os, name)
+    monkeypatch.setattr(artifacts, 'os', ArtifactOS())
+    # Synchronize only artifact writers: unrelated durability I/O must not join this barrier.
+    import os
+    with (tmp_path / 'unrelated-durability.bin').open('wb') as unrelated:
+        unrelated.write(b'other I/O')
+        unrelated.flush()
+        os.fsync(unrelated.fileno())
     def write(_): return artifacts.place_ready(tmp_path, project, ident, '.png', body)
+    errors = []
+    keys = []
     with ThreadPoolExecutor(max_workers=2) as executor:
-        keys = list(executor.map(write, range(2)))
+        futures = [executor.submit(write, index) for index in range(2)]
+        for future in futures:
+            try:
+                keys.append(future.result())
+            except Exception as exc:
+                errors.append((type(exc).__name__, str(exc)))
+    assert not errors, errors
     assert keys[0] == keys[1]
     assert (tmp_path / keys[0]).read_bytes() == body
     assert not list((tmp_path / str(project) / 'tmp').iterdir())

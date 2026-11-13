@@ -28,10 +28,26 @@ B0.1/B0.2 완료2026-11-14, [인계](../validation/tasks/RX-87-B0.md). 신규40�
 
 확인한 코드 결함: runtime의 commit_step은 같은 step key에 매 호출 새 now를 넣는다. 실제 action/evidence commit 뒤 ACK가 유실되면 helper 재조회409, handler는 중단하고 저장된 prefix와 finish가 어긋날 수 있다. 현재 API는 원본문의 같은 key 재요청을 이미 지원하므로 새 저장소/gesture 재실행으로 해결하지 않는다.
 
-- [ ] 실제 API/정제 PNG에서 같은 step 재확인409와 commit 후 응답 유실을 RED로 확인한다.
-- [ ] worker 단일 소유 committer가 key/본문/최초 시각을 고정한다. 확인된 ACK는 작은 receipt만 보관하고 큰 PNG payload는 비운다. 미확인 pending step이 있으면 다음 step을 전송하지 않는다.
-- [ ] timeout/명시 transient 전송만 같은 본문으로 추가1회 확인한다. auth/TLS/409/422/429는 반복하지 않는다. body가 바뀐 같은 key는 거절하고 ACK 소유/late/연속 prefix를 확인한다.
-- [ ] 실제 runtime/handler에서 native1·모델2(click→finish)를 유지하면서 saved prefix를 회복한다. source commit/응답 유실·한도·중단·재사용과 RX67/RX33/전체 회귀를 검증하고 인계한다. 자동 gesture/attempt 재시작0이다.
+- [x] 실제 API/정제 PNG에서 같은 step 재확인409와 commit 후 응답 유실을 RED로 확인한다.
+- [x] worker 단일 소유 committer가 key/본문/최초 시각을 고정한다. 확인된 ACK는 작은 receipt만 보관하고 큰 PNG payload는 비운다. 미확인 pending step이 있으면 다음 step을 전송하지 않는다.
+- [x] timeout/명시 transient 전송만 같은 본문으로 추가1회 확인한다. auth/TLS/409/422/429는 반복하지 않는다. body가 바뀐 같은 key는 거절하고 ACK 소유/late/연속 prefix를 확인한다.
+- [x] 실제 runtime/handler에서 native1·모델2(click→finish)를 유지하면서 saved prefix를 회복한다. source commit/응답 유실·한도·중단·재사용과 RX67/RX33/전체 회귀를 검증하고 인계한다. 자동 gesture/attempt 재시작0이다.
+
+B0.4 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-EVIDENCE.md). 집중39·전체 기존9failed/819passed/1skipped. 현재 B0.5.
+
+## B0.5. 증거 저장의 서버 시각·용도 권한
+
+- [ ] 새 업로드에 worker의 과거 now를 넣어 만료 임대가 active로 보이는 경로와 같은 worker ID/다른 purpose 토큰의 저장 허용을 실제 API에서 RED로 확인한다.
+- [ ] 서버 commit writer transaction을 얻은 뒤의 시각만 late/임대 권한에 사용한다. worker now는 요청 식별/기록 시각이며 실행 권한이 아니다. token의 project/purpose가 실제 job과 일치해야 한다.
+- [ ] 이미 commit한 같은 key/본문 receipt는 현재 임대와 독립 재조회한다. 새 late evidence를 ready/승인 근거로 승격하지 않는다. timestamp/토큰·다른 generation/반려·결과 불변성 회귀를 확인한다.
+
+## B0.6. 증거 I/O와 control 응답성
+
+기존 post_evidence_commit은 파일 작업을 ASGI loop에서 수행하고, active artifact 게시도 SQLite writer transaction 안에 있다. 단순 thread 이동만으로 DB write 대기 중인 heartbeat까지 해결했다고 보고하지 않는다.
+
+- [ ] 느린 실제 artifact 게시 동안 heartbeat/취소·checkpoint 응답을 재현한다. API event-loop와 DB writer 대기를 각각 구분한다.
+- [ ] body 검증/임시 파일 durable staging을 writer transaction 밖에서 처리하고 현재 scope/lease/receipt를 짧은 transaction에서 재검사해 게시한다. 같은 key/동시 응답 유실·orphan·실패 정리와 불변 ready bytes를 보존한다.
+- [ ] 서버 store는 사용 thread에서 열고 닫는다. event-loop 차단/같은 요청 중복 파일·권한 변경·late 저장/중간 파일 노출 부정 경로를 검증한다. 외부 환경 대기로 처리하지 않는다.
 
 ## B. replay의 고정 정책과 한도
 

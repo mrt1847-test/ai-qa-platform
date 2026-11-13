@@ -520,35 +520,12 @@ class WorkerRuntime:
         return None
 
     def _bind_step_evidence_commit(self, claimed: dict[str, Any]) -> None:
-        """Wire per-action evidence commit so the timeline updates before the attempt finishes."""
-
+        """Bind one immutable, evidence-only confirmation stream to this attempt."""
         from aiqa.worker.android_jobs import bind_step_evidence_commit
+        from aiqa.worker.step_evidence import StepEvidenceCommitter
 
-        attempt_id = str(claimed.get("attempt_id") or "")
-        project_id = str(claimed.get("project_id") or "")
-        job_id = str(claimed.get("job_id") or "")
-        generation = int(claimed.get("generation") or 0)
-
-        def commit_step(
-            *,
-            action_seq: int,
-            action_id: str,
-            events: list[dict[str, Any]],
-            artifacts: list[dict[str, Any]],
-        ) -> dict[str, Any]:
-            del action_id  # identity is carried inside event/artifact payloads
-            return self._client.commit_evidence(
-                sanitized=True,
-                project_id=project_id,
-                job_id=job_id,
-                generation=generation,
-                now=self._now().isoformat(),
-                events=events,
-                artifacts=artifacts,
-                idempotency_key=f"evidence-{attempt_id}-step-{int(action_seq)}",
-            )
-
-        bind_step_evidence_commit(self._handler, commit_step)
+        bind_step_evidence_commit(self._handler,
+            StepEvidenceCommitter(self._client, claimed, clock=self._now))
 
     def _commit_evidence(self, claimed: dict[str, Any], result: HandlerResult) -> HandlerResult:
         events = list(result.evidence_events)

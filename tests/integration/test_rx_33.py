@@ -177,6 +177,7 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
 
     authoring_before_ack = {"n": 0}
     finishes: list[dict] = []
+    mock_prefix = {"seq": 0, "attempt_id": None}
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/heartbeats"):
@@ -194,6 +195,7 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
                     "action_id": "runtime-1",
                 },
             }
+            mock_prefix["attempt_id"] = body["attempt_id"]
             return httpx.Response(200, json=body)
         if request.url.path.endswith("/attempt-acks"):
             # Authoring must not have run yet — handler runs after ACK.
@@ -212,12 +214,13 @@ def test_rx_33_authoring_only_after_ack_in_runtime(tmp_path: Path) -> None:
             body = json.loads(request.content.decode("utf-8"))
             events = body.get("events") or []
             artifacts = body.get("artifacts") or []
-            seq = len(events)
+            seq = max([mock_prefix["seq"]] + [event["local_seq"] for event in events])
+            mock_prefix["seq"] = seq
             ids = [str(uuid4()) for _ in artifacts]
             return httpx.Response(
                 200,
                 json={
-                    "attempt_id": body.get("job_id"),
+                    "attempt_id": mock_prefix["attempt_id"],
                     "contiguous_seq": seq,
                     "prefix_hash": "sha256:" + ("ab" * 32),
                     "stale_count": 0,

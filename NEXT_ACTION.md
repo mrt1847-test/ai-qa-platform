@@ -10,7 +10,7 @@ Updated: **2026-11-14 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 **RX-87 — Android worker의 고정 한도·정책·제한 healing 연결.** 다음 RX-88.
 
-[RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. 현재 B0.4의 단계별 증거 ACK 유실을 동작/모델 반복 없이 복구하는 작업이며, 이후 B/C/D를 이어간다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
+[RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. B0.4의 단계별 증거 ACK 복구도 검증했다. 현재 B0.5의 증거 저장 서버 시각·job purpose 권한을 보완하고, B0.6 I/O 응답성과 B/C/D를 이어간다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
 
 ## Next
 

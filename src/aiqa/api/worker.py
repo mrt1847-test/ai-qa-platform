@@ -424,6 +424,35 @@ def install_worker(application: FastAPI) -> None:
             },
         )
 
+    async def post_model_observations(request: Request) -> Response:
+        rejected = _idempotency(request)
+        if rejected is not None:
+            return rejected
+        header = request.headers.get("authorization", "")
+        if not header.startswith("Bearer "):
+            return _model_error(401,"unauthorized","worker token is missing",{})
+        payload = await _body(request)
+        if isinstance(payload,JSONResponse):
+            return payload
+        try:
+            project_id = _uuid(payload.get("project_id"))
+            item_id = _text(payload.get("item_id"),"item_id")
+            model_request = _model_request(payload)
+        except (ValueError,TypeError):
+            return _model_error(422,"validation","invalid observation",{})
+        with _bound(request):
+            try:
+                worker = worker_scope_from_token(header.removeprefix("Bearer ").strip())
+            except AuthRequired:
+                return _model_error(401,"unauthorized","worker token is missing",{})
+            except WorkerDenied:
+                return _model_error(403,"permission","worker cannot register observation",{})
+            from starlette.concurrency import run_in_threadpool
+            from aiqa.models.model_observations import register_observation_http
+            status,body = await run_in_threadpool(register_observation_http,request.app.state.open_store,
+                worker,model_request,project_id,item_id,request.headers.get("idempotency-key","").strip(),payload)
+            return JSONResponse(status_code=status,content=body)
+
     async def post_model_requests(request: Request) -> Response:
         rejected = _idempotency(request)
         if rejected is not None:
@@ -522,6 +551,7 @@ def install_worker(application: FastAPI) -> None:
     application.add_api_route("/api/v1/worker/cleanup-confirmations", post_cleanup, methods=["POST"])
     application.add_api_route("/api/v1/worker/evidence-commits", post_evidence_commit, methods=["POST"])
     application.add_api_route("/api/v1/worker/attempt-finishes", post_attempt_finish, methods=["POST"])
+    application.add_api_route("/api/v1/worker/model-observations", post_model_observations, methods=["POST"])
     application.add_api_route("/api/v1/worker/model-requests", post_model_requests, methods=["POST"])
     application.state.worker_installed = True
 
@@ -862,6 +892,7 @@ def _model_request(payload: dict[str, object]) -> WorkerModelRequest:
         check_id=check_id,
         episode_id=episode_id,
         generation=generation,
+        model_observation_id=None if payload.get("model_observation_id") is None else str(_uuid(payload["model_observation_id"])),
     )
 
 

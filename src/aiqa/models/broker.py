@@ -176,6 +176,7 @@ class WorkerModelRequest:
     check_id: str | None = None
     episode_id: str | None = None
     generation: int | None = None
+    model_observation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,6 +281,7 @@ class ServerModelGateway:
         actor_id: UUID,
         store: object | None = None,
         before_provider=None,
+        observation=None,
     ) -> ModelRequestReceipt:
         fingerprint = _fingerprint(request, project_id, item_id)
         with self._lock:
@@ -303,10 +305,10 @@ class ServerModelGateway:
                     prior[1].generation,
                 )
             if store is None:
-                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider)
+                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation)
             else:
                 with bind_secret_store(store):  # type: ignore[arg-type]
-                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider)
+                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation)
             self._receipts[idempotency_key] = (fingerprint, receipt)
             self._attempt_receipts.setdefault((project_id, item_id), []).append(receipt)
             return receipt
@@ -359,7 +361,7 @@ class ServerModelGateway:
         project_id: UUID,
         item_id: str,
         actor_id: UUID,
-        *, before_provider=None,
+        *, before_provider=None, observation=None,
     ) -> ModelRequestReceipt:
         if project_id not in worker.permitted_projects:
             raise ModelRequestDenied("project")
@@ -435,6 +437,10 @@ class ServerModelGateway:
             before_provider()
         try:
             call_options = {"request_key":f"{project_id}:{item_id}:{request.call_id}"} if isinstance(self.provider,OperationalProviderHttp) else {}
+            if observation is not None:
+                if not getattr(self.provider, 'supports_observation', False):
+                    raise ModelRequestDenied('provider_observation_unsupported', status=503)
+                call_options['observation'] = observation
             result = self.provider.complete(
                 model=binding.model,
                 role=request.role,
@@ -651,4 +657,4 @@ def _fingerprint(request: WorkerModelRequest, project_id: UUID, item_id: str) ->
             request.episode_id or "",
             "" if request.generation is None else str(request.generation),
         )
-    )
+    ) + ("|observation:" + request.model_observation_id if request.model_observation_id is not None else "")

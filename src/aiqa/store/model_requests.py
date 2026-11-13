@@ -8,8 +8,11 @@ from aiqa.models.broker import ModelRequestConflict,ModelRequestDenied
 
 
 def request_fingerprint(request,project_id,item_id):
+    fields = asdict(request)
+    if fields.get('model_observation_id') is None:
+        fields.pop('model_observation_id', None)
     return canonical_hash({'project_id':str(project_id),'item_id':item_id,**{
-        **asdict(request),'call_id':str(request.call_id),'sanitized_inputs':list(request.sanitized_inputs)}},'canon-json-v1')
+        **fields,'call_id':str(request.call_id),'sanitized_inputs':list(request.sanitized_inputs)}},'canon-json-v1')
 
 
 def prior_request(connection,project_id,item_id,key,fingerprint,worker_id):

@@ -1672,6 +1672,11 @@ def server_model_plan_provider(
             payload["generation"] = claim.get("generation")
         if intent_hash != "":
             payload["intent_hash"] = intent_hash
+        if pin is not None:
+            from aiqa.worker.model_observations import upload_authoring_observation
+            frame = upload_authoring_observation(client, claim, observation, payload)
+            payload["model_observation_id"] = frame["observation_id"]
+            payload["sanitized_inputs"] = frame["sanitized_inputs"]
         request = getattr(client, "request_model")
         receipt = request(
             project_id=project_id,

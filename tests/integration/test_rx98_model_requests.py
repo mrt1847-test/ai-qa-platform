@@ -77,9 +77,18 @@ def model_job(recording,request):
 
 
 def post(f,payload=None,key="model-call",token=None,path="/api/v1/worker/model-requests"):
+    body=dict(payload or f["payload"])
+    if (path=="/api/v1/worker/model-requests" and f.get("_auto_observations",True)
+        and "model_observation_id" not in body and body.get("item_id")==f["job"]["attempt_id"]
+        and body.get("project_id")==f["project"] and body.get("role")=="authoring"
+        and body.get("purpose")=="recording" and body.get("owner_id")==f["job"]["attempt_id"]
+        and body.get("generation")==f["job"]["generation"] and body.get("binding_revision")==f["binding"]["revision"]):
+        from model_observation_support import prepare_frame
+        try:body["model_observation_id"]=prepare_frame(f,body)
+        except WorkerHttpError:pass  # Still test the real model endpoint's independent denial.
     async def run():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=f["app"]),base_url="http://127.0.0.1") as c:
-            return await c.post(path,json=payload or f["payload"],headers={"Authorization":"Bearer "+(token or f["token"]),"Idempotency-Key":key})
+            return await c.post(path,json=body,headers={"Authorization":"Bearer "+(token or f["token"]),"Idempotency-Key":key})
     return asyncio.run(run())
 
 
@@ -179,7 +188,8 @@ def test_http_worker_uses_claim_generation_and_error_accounting(model_job):
     f=model_job;ack(f);f["provider"].mode="timeout"
     client=WorkerHttpClient(WorkerClientSettings(base_url="https://127.0.0.1",token=f["token"]),transport=SyncASGITransport(f["app"]))
     try:
-        with pytest.raises(WorkerHttpError) as caught:server_model_plan_provider(client)(f["job"])
+        from test_rx_65 import _observation
+        with pytest.raises(WorkerHttpError) as caught:server_model_plan_provider(client)({**f["job"],"observation":_observation()})
         assert caught.value.provider_dispatched is True
         assert caught.value.reason=="provider_timeout" and f["provider"].sent==1
     finally:client.close()
@@ -275,13 +285,18 @@ def test_price_mode_is_explicit_server_configuration(tmp_path,mode):
 @pytest.mark.parametrize("action_allowed",[False,None])
 def test_worker_rejects_historical_response_without_live_action_permission(model_job,action_allowed):
     from aiqa.adapters.mobile_agent_android import MobileAgentRejected
-    f=model_job
-    class Client:
-        def request_model(self,**kwargs):
+    from test_rx_65 import _observation
+    f=model_job;ack(f);inner=SyncASGITransport(f["app"])
+    def respond(request):
+        if request.url.path=="/api/v1/worker/model-requests":
             body={"allowed":True,"content":"finish()"}
             if action_allowed is not None:body["action_allowed"]=action_allowed
-            return body
-    with pytest.raises(MobileAgentRejected):server_model_plan_provider(Client())(f["job"])
+            return httpx.Response(200,json=body)
+        return inner.handle_request(request)
+    with WorkerHttpClient(WorkerClientSettings("https://127.0.0.1",f["token"]),transport=httpx.MockTransport(respond)) as client:
+        with pytest.raises(MobileAgentRejected):
+            server_model_plan_provider(client)({**f["job"],"observation":_observation()})
+    assert f["provider"].sent==0
 
 
 @pytest.mark.parametrize("change",["deadline","foreign_project","expired_response"])
@@ -321,6 +336,8 @@ def test_provider_wait_does_not_block_worker_heartbeats(model_job):
     def wait():
         started.set();release.wait(timeout=2);finished.set()
     f["provider"].after=wait
+    from model_observation_support import prepare_frame
+    f["payload"]={**f["payload"],"model_observation_id":prepare_frame(f,f["payload"])}
     async def scenario():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=f["app"]),base_url="http://127.0.0.1") as c:
             headers={"Authorization":"Bearer "+f["token"],"Idempotency-Key":"waiting-provider"}
@@ -369,6 +386,8 @@ def test_unknown_owner_request_cannot_block_heartbeat_during_model_send(model_jo
     def wait():
         started.set();release.wait(timeout=2);finished.set()
     f["provider"].after=wait
+    from model_observation_support import prepare_frame
+    f["payload"]={**f["payload"],"model_observation_id":prepare_frame(f,f["payload"])}
     async def scenario():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=f["app"]),base_url="http://127.0.0.1") as c:
             headers={"Authorization":"Bearer "+f["token"],"Idempotency-Key":"slow-owner"}

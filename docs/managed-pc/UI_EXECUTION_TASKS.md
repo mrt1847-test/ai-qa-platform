@@ -109,6 +109,8 @@
 <a id="rx-87"></a>
 ## RX-87 · Android worker의 승인 healing snapshot 소비
 
+세부 구현은 [Android runtime 작업 단위](ANDROID_RUNTIME_TASKS.md)의 A→B→C→D 순서다. 부분 구현으로 상위 완료하지 않는다.
+
 **직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-99, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
 **파일** worker/android_jobs.py, replay/android_runner.py, worker/runtime.py 및 관련 healing 포트.
 

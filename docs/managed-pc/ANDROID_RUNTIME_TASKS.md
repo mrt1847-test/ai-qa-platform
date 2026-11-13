@@ -1,0 +1,38 @@
+# RX-87 · Android 실행 연결의 작업 단위
+
+기존 [RX-87](UI_EXECUTION_TASKS.md#rx-87)의 구현 순서다. Current/Next는 NEXT_ACTION.md 하나만 관리한다. 상위 RX-87은 아래 모든 필수 단위의 증거가 있을 때만 완료한다. 실제 AVD/유료 모델 수용은 RX-23이다.
+
+## A. 녹화의 고정 action/시간 한도
+
+**계약:** RX-97 validate_authoring_pin(snapshot) 반환 한도를 사용한다. worker 전역 설정은 한도를 좁히기만 한다. 기존 pin 없는 개발 fixture는 호환한다. **파일:** worker/android_jobs.py, tests/integration/test_rx87_android_runtime.py.
+
+- [ ] 정상 API→claim의 pin을 AndroidRecordingHandler에 넣어 max_actions가 worker 기본50보다 작으면 그 수 이후 모델/gesture가 발생하지 않는 RED를 확인한다.
+- [ ] 모델 대기 동안 timeout 경과/취소를 재현한다. 응답 도착 뒤 제스처0이어야 한다. handler를 다른 claim에서 재사용해 한도·시계·호출량이 누적되지 않는지 확인한다.
+- [ ] worker의 더 작은 한도와 pin의 model-call 상한을 각각 지킨다. 잘못된 pin은 capture/model/gesture 전 거절한다. 서버 RX-98 영속 모델 quota를 대체하지 않는다.
+- [ ] 시간/취소 재검사를 실제 dispatch 직전에 둔다. 아직 실행하지 않은 모델/정제 실패를 불명 기기 실행으로 기록하지 않도록 journal 경계를 확인한다. 실제 전송 이후 불명은 재클릭하지 않는다.
+- [ ] RX48/RX65/RX67/RX97~99 및 새 테스트를 확인하고 부분 인계를 남긴다. A만으로 RX87 완료하지 않는다.
+
+## B. replay의 고정 정책과 한도
+
+**입력:** resolve_claim_healing_pin(snapshot)의 detached WorkerHealingPin, 승인 package hash/plan. **파일:** android_jobs.py, worker/healing_pin.py, tests/integration/test_rx87_android_runtime.py.
+
+- [ ] OFF/trial은 actor0, 정상 승인 code/좌표 반복을 보존한다. ON의 typed policy를 runtime에 전달하고 worker 환경 boolean/budget으로 대체하지 않는다.
+- [ ] replay의 claim별 action/timeout·episode caps와 handler 재사용을 검증한다. 지원하지 않는 정상 ON 경로는 명시 실패로 남기며 fixture 성공을 넣지 않는다.
+- [ ] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다.
+
+## C. 서버 check/episode 전용 권한
+
+**문제:** RX98 recording authoring grant는 replay의 verifier/healer 권한이 아니다. **파일:** worker model API, server model authorization/receipts, 기존 healing service, HTTP client.
+
+- [ ] 실제 regression claim/ACK·고정 package/check·healing policy·binding/key·현재 lease/취소를 확인하는 서버 포트를 연결한다. worker가 episode ID/allowed=true만 만들어 호출할 수 없게 한다.
+- [ ] episode 예약1/호출2/30초와 전체 job 상한, 동일 key/응답 유실·pending 불명·재시도 차감을 영속화한다. authoring 권한 재사용0이다.
+- [ ] 원본 FAIL/승인 package는 불변이고 episode/제안/검증은 별도 소유 기록이다. 저장된 근거 조회·사후 승인은 worker offline과 독립이다.
+
+## D. 허용 실패에서 native 복구·제안까지
+
+**입력:** B의 고정 정책, C의 실제 서버 episode/model port, RX96의 실제 응답 파서/unique locator proof.
+
+- [ ] locator/레이아웃 실패만 진입한다. 제품 assertion 실패·불명 dispatch·expected/목표 변경은 제외한다.
+- [ ] 현재 관찰/타깃 identity·유일성·동일 action/path를 증명한 후보만 native 제한 재동작한다. 취소/임대/시간/cleanup은 재검사한다.
+- [ ] OFF0/ON허용/ON차단/소진/late/실패/재사용을 정상 API→claim→handler에서 확인한다. 성공 제안과 원본 QA를 분리한다.
+- [ ] 전체 회귀·review 및 RX87 인계/색인/진행표를 갱신한다. 기존 기준선 실패와 실제 모델/AVD 미수용은 그대로 공개한다.

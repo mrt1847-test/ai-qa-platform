@@ -1775,7 +1775,7 @@
         "RX-98",
         "RX-99"
       ],
-      "status": "not_started",
+      "status": "in_progress",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",
@@ -2045,7 +2045,7 @@
         "RX-65",
         "RX-67"
       ],
-      "status": "not_started",
+      "status": "complete",
       "execution_scope": "managed_execution_mvp",
       "track": "feature_implementation",
       "work_kind": "core",

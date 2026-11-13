@@ -329,6 +329,12 @@ class WorkerHttpClient:
             idempotency_key=idempotency_key,
         )
 
+    def register_model_observation(self, *, project_id, item_id, payload, idempotency_key):
+        if type(payload) is not dict or not idempotency_key:
+            raise WorkerHttpError("observation request is invalid",retry_class=RetryClass.fatal)
+        return self._json("POST","/api/v1/worker/model-observations",
+            json_body={**payload,"project_id":project_id,"item_id":item_id},idempotency_key=idempotency_key)
+
     def request_model(
         self,
         *,
@@ -489,7 +495,8 @@ class WorkerHttpClient:
                             "provider_response_invalid","provider_transport","provider_unreachable","dispatch_unknown","quota","secret",
                             "lease_unavailable","stale_generation","deadline","response_late","unknown_price","recording_authorization",
                             "recording_policy_invalid","binding_unavailable","binding_revision","intent_invalid","intent_hash_required",
-                            "provider_endpoint","provider_unavailable","policy_conflict","idempotency_conflict","recording_policy_missing","cancelled"}:
+                            "provider_endpoint","provider_unavailable","policy_conflict","idempotency_conflict","recording_policy_missing","cancelled",
+                            "observation_required","observation_unavailable","provider_observation_unsupported","pixel_coverage_unavailable"}:
                             reason=value
                         replayed=error.get("replayed") is True
                 except (ValueError,AttributeError):pass

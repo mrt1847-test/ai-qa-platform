@@ -26,7 +26,7 @@ from aiqa.domain.versions import bind_case_store, create_case, save_case_revisio
 from aiqa.domain.model_bindings import bind_model_store, save_model_binding_revision
 from aiqa.recording.service import RecordingStartInput, start_recording
 from aiqa.models.provider_http import FixtureProviderHttp
-from aiqa.recording.intent import authoring_inputs, load_recording_intent
+from aiqa.recording.intent import authoring_inputs, load_recording_intent, bind_authoring_sanitized_inputs
 from aiqa.security.secrets import (
     MemorySecretBackend,
     bind_secret_store,
@@ -211,29 +211,40 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
         client.acknowledge(project_id=str(project.project_id), job_id=claimed["job_id"],
             generation=claimed["generation"], runner_nonce=str(uuid4()), now=now.isoformat(), idempotency_key="ack-rx47")
 
-        receipt = client.request_model(
-            project_id=str(project.project_id),
-            item_id=attempt_id,
-            payload={
-                "call_id": str(uuid4()),
-                "purpose": "recording",
-                "role": "authoring",
-                "owner_kind": "authoring",
-                "owner_id": attempt_id,
-                "binding_revision": 1,
-                "generation": claimed["generation"],
-                "sanitized_inputs": ["worker-ignored"],
-                "token_output_limit": 64,
-                "deadline": "2099-01-01T00:00:00+00:00",
-                "intent_hash": frozen.intent_hash,
-            },
-            idempotency_key=f"author-{attempt_id}",
-        )
-        assert receipt["allowed"] is True
-        expected_inputs = authoring_inputs(frozen)
-        assert provider.last_inputs == expected_inputs
-        assert any(item.startswith(f"objective:{objective}") for item in provider.last_inputs)
-        assert not any("model-secret" in item for item in provider.last_inputs)
+        # Frozen intent binding stays testable independently of sensitive pixel coverage.
+        store = app.state.open_store()
+        try:
+            with store.transaction() as connection:
+                bound = bind_authoring_sanitized_inputs(connection, project_id=project.project_id,
+                    attempt_id=attempt_id, presented_hash=frozen.intent_hash, worker_inputs=("worker-ignored",))
+            assert bound == authoring_inputs(frozen)
+            assert any(item.startswith(f"objective:{objective}") for item in bound)
+            assert not any("model-secret" in item for item in bound)
+        finally:
+            store.close()
+        # A target SecretRef cannot authorize sending unverified sensitive pixels.
+        with pytest.raises(WorkerHttpError) as unproven_frame:
+            client.request_model(
+                project_id=str(project.project_id),
+                item_id=attempt_id,
+                payload={
+                    "call_id": str(uuid4()),
+                    "purpose": "recording",
+                    "role": "authoring",
+                    "owner_kind": "authoring",
+                    "owner_id": attempt_id,
+                    "binding_revision": 1,
+                    "generation": claimed["generation"],
+                    "sanitized_inputs": ["worker-ignored"],
+                    "token_output_limit": 64,
+                    "deadline": "2099-01-01T00:00:00+00:00",
+                    "intent_hash": frozen.intent_hash,
+                },
+                idempotency_key=f"author-{attempt_id}",
+            )
+        assert unproven_frame.value.status_code == 403
+        assert unproven_frame.value.provider_dispatched is False
+        assert provider.call_count == 0
 
         with pytest.raises(WorkerHttpError) as forged:
             client.request_model(

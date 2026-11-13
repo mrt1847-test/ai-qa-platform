@@ -568,4 +568,4 @@ RX-98은 고정 녹화 모델/키를 실제 worker→관리 API→provider 포�
 
 [서버 가격 모드](docs/managed-pc/MODEL_REQUEST_CONFIGURATION.md)의 기본 strict는 가격 미상일 때 새 전송을 거절한다. 운영자가 명시 estimate를 고르면 비용/토큰은 미측정으로 남으며 호출 수 cap이 USD 청구 hard cap을 보장하지 않는다. 운영 모델 실제 수용과 월3000건 실측은 RX23/24/29다.
 
-현재 authoring 입력은 관찰 해시/geometry/직전 결과만 포함하므로 화면을 실제 모델에 공급하는 구현은 [RX-99](docs/managed-pc/MODEL_OBSERVATION_TASKS.md)로 분리한다. 정제·권한 있는 서버 artifact의 bytes와 전체 좌표계가 모델 요청에 고정되기 전, HTTP 응답 성공을 화면 기반 에이전트 성공으로 보지 않는다. 이후 RX87/88이 플랫폼별 고정 한도와 check/episode/치유 동작을 연결한다.
+[RX-99](docs/managed-pc/MODEL_OBSERVATION_TASKS.md)는 정제 PNG를 기존 evidence API에 ACK한 뒤 immutable observation ID를 모델 요청에 고정한다. 서버가 현재 권한·artifact 소유/bytes/hash·전체 CaptureGeometry·프레임 수명을 검사하고 custom /v1/complete에 실제 PNG bytes와 geometry를 보낸다. worker 임의 URL을 fetch하지 않으며 알려진 대상 SecretRef의 픽셀 정제가 증명되지 않으면 업로드/모델 전송을 차단한다. vendor 직접 API·실 모델 화면 이해 수용은 별도이며 HTTP 모의 전송 성공으로 대신하지 않는다. 이후 RX87/88이 플랫폼별 고정 한도와 check/episode/치유 동작을 연결한다.

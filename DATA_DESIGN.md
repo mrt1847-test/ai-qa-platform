@@ -419,4 +419,4 @@ CaseListRow/CursorPage의 additive projection은 최신 초안/승인 개정·�
 
 실제 전송 횟수와 보수적 한도 차감을 혼동하지 않는다. authoring_calls는 영속 한도 차감 수이며 불명 전송도 포함할 수 있다. 미확정/예약을 실제 청구로 확정하지 않고 RX29에서 실제 모델 usage와 대조한다. credential 원문/원문 hash는 저장하지 않으며 provider echo도 제거한다. 완료 receipt 전체를 UPDATE/DELETE하거나 pending을 지워 quota를 되돌리지 않는다. 장애 뒤 pending은 불명으로 조회하며 자동 재전송/중간 재개하지 않는다.
 
-원 worker가 과거 성공 receipt를 읽어도 action_allowed는 현재 lease/session·목적·취소·만료·고정 key 상태로 다시 판정한다. 조회 권한과 실행 권한은 별개다. 파일/픽셀의 모델 입력은 아직 해시만 전송되는 누락이 있어 RX99에서 정제 관찰 artifact/receipt 소유를 연결한다. RX98 완료는 실제 시각 에이전트/운영 모델·기기 수용 완료가 아니다.
+원 worker가 과거 성공 receipt를 읽어도 action_allowed는 현재 lease/session·목적·취소·만료·고정 key 상태로 다시 판정한다. 조회 권한과 실행 권한은 별개다. RX99는 migration0050의 immutable model_observations로 기존 ready/ACK된 REC/attempt PNG artifact를 project/worker/attempt/call/policy 및 모델 요청 fingerprint·geometry/hash에 고정한다. 새 blob 저장소나 가짜 action/check를 만들지 않는다. 서버가 소유·파일 길이/hash/PNG·좌표계·30초 수명(미래 skew5초)을 검사하고 실제 bytes를 provider에 전달한다. 관찰 receipt 재조회와 사후 승인은 실행 수명과 분리하며 새 전송/행동 권한은 재검사한다. RX98 완료는 실제 시각 에이전트/운영 모델·기기 수용 완료가 아니다.

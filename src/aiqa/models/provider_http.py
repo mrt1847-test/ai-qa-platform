@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import ssl
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
+
+from aiqa.contracts.model_observations import ProviderObservation
 
 from aiqa.config import (
     MODEL_PROVIDER_FIXTURE,
@@ -34,6 +37,7 @@ class ProviderHttpCall:
     secret_present: bool
     token_output_limit: int
     sanitized_inputs: tuple[str, ...] = ()
+    observation_hash: str | None = None
 
 
 class ProviderHttpPort(Protocol):
@@ -45,6 +49,7 @@ class ProviderHttpPort(Protocol):
         secret: str,
         sanitized_inputs: tuple[str, ...],
         token_output_limit: int,
+        observation: ProviderObservation | None = None,
     ) -> ProviderHttpResult: ...
 
 
@@ -100,6 +105,7 @@ class FixtureProviderHttp:
     """In-process provider. Counts admissions; secret material is never stored."""
 
     kind = "fixture"
+    supports_observation = True
 
     def __init__(self) -> None:
         self.calls: list[ProviderHttpCall] = []
@@ -112,6 +118,7 @@ class FixtureProviderHttp:
         secret: str,
         sanitized_inputs: tuple[str, ...],
         token_output_limit: int,
+        observation: ProviderObservation | None = None,
     ) -> ProviderHttpResult:
         if type(secret) is not str or secret.strip() == "":
             raise ValueError("provider secret is missing")
@@ -125,6 +132,7 @@ class FixtureProviderHttp:
                 secret_present=True,
                 token_output_limit=token_output_limit,
                 sanitized_inputs=inputs,
+                observation_hash=None if observation is None else observation.image_hash,
             )
         )
         seq = len(self.calls)
@@ -147,6 +155,7 @@ class OperationalProviderHttp:
     """Live HTTPS provider. Disabled unless explicitly enabled with an approved origin."""
 
     kind = "operational"
+    supports_observation = True
 
     def __init__(
         self,
@@ -178,6 +187,7 @@ class OperationalProviderHttp:
         sanitized_inputs: tuple[str, ...],
         token_output_limit: int,
         request_key: str | None = None,
+        observation: ProviderObservation | None = None,
     ) -> ProviderHttpResult:
         if type(secret) is not str or secret.strip() == "":
             raise ValueError("provider secret is missing")
@@ -194,6 +204,9 @@ class OperationalProviderHttp:
             "sanitized_inputs": list(inputs),
             "token_output_limit": token_output_limit,
         }
+        if observation is not None:
+            body["images"] = [{"media_type":"image/png","data_base64":base64.b64encode(observation.png).decode("ascii"),
+                "hash":observation.image_hash,"geometry":observation.geometry}]
         idempotency_key = _request_key(body if request_key is None else {**body,"request_key":request_key})
         cached = self._idempotent.get(idempotency_key)
         if cached is not None:
@@ -205,6 +218,7 @@ class OperationalProviderHttp:
                 secret_present=True,
                 token_output_limit=token_output_limit,
                 sanitized_inputs=inputs,
+                observation_hash=None if observation is None else observation.image_hash,
             )
         )
         verify: bool | ssl.SSLContext = False

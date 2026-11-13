@@ -43,8 +43,16 @@ def recording(ux_app,request):
                   (project,datetime.now(timezone.utc).isoformat(),str(uuid4())))
         _new_revision(c,project,revision_id="rev-seven",revision=7)
     caps={"timeout_seconds":31,"max_actions":4,"max_model_calls":3,"budget":"0.70","currency":"USD"}
+    target_refs={}
     if hasattr(request,"param"):
-        field,value=request.param;caps[field]=value
+        field,value=request.param
+        if field=="target_secret":
+            ref_id=str(uuid4())
+            with sqlite3.connect(database) as c:
+                c.execute("INSERT INTO secret_refs VALUES (?, ?, 1, 'target secret', 'available', ?, ?)",
+                    (project,ref_id,datetime.now(timezone.utc).isoformat(),str(uuid4())))
+            target_refs={"target":{"project_id":project,"ref_id":ref_id,"revision":1}}
+        else:caps[field]=value
     async def prepare():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url="http://127.0.0.1") as client:
             headers=await session(client,project)
@@ -52,7 +60,7 @@ def recording(ux_app,request):
             assert case.status_code==201,case.text
             case_id=case.json()["case_id"]
             version=await client.post(f"/api/v1/projects/{project}/cases/{case_id}/versions",
-                json={"definition":{"objective":"Check saved target","steps":[],"final_expected":[]},
+                json={"definition":{"objective":"Check saved target","steps":[],"final_expected":[],"secret_refs":target_refs},
                       "settings":{"target_kind":"web","limits":caps}},
                 headers={**headers,"Idempotency-Key":"pin-version"})
             assert version.status_code==201,version.text
@@ -185,8 +193,15 @@ def test_actual_claim_fixes_policy_and_android_provider_revision(recording):
     assert verify_job_snapshot(snapshot,frozenset({"recording"})).supported
     calls=[]
     class Client:
+        def commit_evidence(self,**kwargs):
+            return {"late":False,"attempt_id":job["attempt_id"],"artifact_ids":[str(uuid4())]}
+        def register_model_observation(self,**kwargs):
+            payload=kwargs["payload"]
+            return {"observation_id":str(uuid4()),"artifact_id":payload["artifact_id"],"image_hash":payload["image_hash"],
+                "geometry_hash":canonical_hash(payload["geometry"],"canon-json-v1")}
         def request_model(self,**kwargs):calls.append(kwargs);return {"allowed":True,"action_allowed":True,"content":"finish()"}
-    assert server_model_plan_provider(Client(),binding_revision=1)(job)=="finish()"
+    from test_rx_65 import _observation
+    assert server_model_plan_provider(Client(),binding_revision=1)({**job,"observation":_observation()})=="finish()"
     assert calls[0]["payload"]["binding_revision"]==7
     for mutation in ["binding","budget","remove_pin","typed_revision","input_hash"]:
         bad=copy.deepcopy(snapshot)

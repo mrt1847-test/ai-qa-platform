@@ -433,3 +433,10 @@ W31-06은 관리 UI/기록 계약, W31-07은 실제 치유 gate다. 일반 actor
 상위 W 완료는 소속 leaf 전부 + `parent_gate_tasks` + 원래 상위 통합 조건을 만족해야 한다.
 따라서 core leaf가 진척되어도 live gate가 남은 parent와 MVP는 미완료다.
 known_environment는 **문서상의 환경 관찰 메모**이지 실행 worker capability 증명/설정이 아니다. 실제 실행 전 preflight/claim 재검증을 그대로 수행한다.
+
+### RX-99 · 녹화 관찰 참조와 provider 이미지 경계 (C00/C04/C05/C06/C14)
+
+- 정상 녹화 모델 요청은 model_observation_id를 요구한다. POST worker/model-observations는 기존 ready/ACK REC/attempt image/png artifact를 현재 worker/세대/ACK·lease·intent·고정 policy와 같은 call/request fingerprint에 묶는다. project/attempt/key 동일 본문 재조회는 동일 receipt, 바뀐 본문은409다. 화면 등록 자체는 action/check가 아니다.
+- 서버 model_observations는 migration0050의 불변 metadata이며 기존 artifact bytes를 참조한다. 파일 크기/hash·PNG CRC/해상도·전체 CaptureGeometry와 captured_at(30초·미래 skew5초)을 검증한다. 파일 I/O 동안 DB write transaction을 유지하지 않는다. credential/lock 대기 후 전송 직전 및 응답 후 현재 권한·관찰을 재검사한다.
+- worker는 filter_capture 후 기존 evidence ACK→관찰 등록→모델 요청 순서다. 모델 입력은 서버가 읽은 PNG bytes와 geometry다. worker URL/images를 신뢰하거나 임의 fetch하지 않는다. 알려진 대상 SecretRef의 pixel coverage 미증명은 업로드/provider0이며 raw DOM/XML·숨은 reasoning은 추가 전송하지 않는다.
+- custom /v1/complete images=[{media_type,data_base64,hash,geometry}] 포트의 로컬 HTTP 검증이다. 실제 vendor adapter/모델 화면 이해·운영 기기 수용을 대체하지 않는다. 저장 receipt/사후 승인은 현재 프레임 수명과 독립이며 과거 receipt의 action_allowed는 현재 권한/관찰로 재판정한다.

@@ -23,7 +23,8 @@ from aiqa.contracts.cases import (
 from aiqa.contracts.jobs import IdempotencyKey, JobSubmission
 from aiqa.domain.projects import bind_store, create_project
 from aiqa.domain.versions import bind_case_store, create_case, save_case_revision
-from aiqa.models.broker import recording_authoring_policy
+from aiqa.domain.model_bindings import bind_model_store, save_model_binding_revision
+from aiqa.recording.service import RecordingStartInput, start_recording
 from aiqa.models.provider_http import FixtureProviderHttp
 from aiqa.recording.intent import authoring_inputs, load_recording_intent
 from aiqa.security.secrets import (
@@ -32,7 +33,7 @@ from aiqa.security.secrets import (
     build_server_secret_resolver,
 )
 from aiqa.store.database import migrate_store
-from aiqa.store.models import Actor, ProjectCreate, SecretInput, SecretRef, Transaction
+from aiqa.store.models import Actor, ModelBindingInput, ProjectCreate, SecretInput, SecretRef, Transaction
 from aiqa.store.queue import enqueue_job
 from aiqa.worker.http_client import SyncASGITransport, WorkerHttpClient, WorkerHttpError
 
@@ -42,6 +43,7 @@ def _env(root: Path) -> dict[str, str]:
         "AIQA_HOST": "127.0.0.1",
         "AIQA_PORT": "8000",
         "AIQA_RUNTIME_ROOT": str(root),
+        "AIQA_MODEL_PRICE_MODE": "estimate",
     }
 
 
@@ -73,6 +75,10 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
     with bind_secret_store(store):
         created = resolver.put(actor, SecretInput(value="model-secret", name="login"))
         secret_ref = SecretRef(project.project_id, created.ref_id, created.revision)
+    with bind_model_store(store):
+        save_model_binding_revision(ModelBindingInput(project.project_id, actor.actor_id, "author", "authoring",
+            "fixture", "loopback", "http://127.0.0.1", "fixture-author", secret_ref,
+            "sha256:"+"a"*64, "fixture-tariff", "compatible"))
 
     objective = "설정 화면에서 알림 항목을 연다"
     with bind_case_store(store):
@@ -97,7 +103,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                     (CheckSpec("f1", "visible", "알림"),),
                     PathPolicy(must_use=("settings",), forbidden=("factory",)),
                 ),
-                CaseSettings("android"),
+                CaseSettings("android", document={"limits":{"timeout_seconds":60,"max_model_calls":3,"budget":"1.00","currency":"USD"}}),
             ),
             None,
         )
@@ -108,7 +114,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
         token = enroll_worker(actor, worker_id, "recording")
 
     physical = str(uuid4())
-    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
     monkeypatch.setattr("aiqa.api.worker._server_now", lambda: now)
     with store.transaction() as connection:
         connection.execute(
@@ -142,19 +148,8 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
         store = app.state.open_store()
         try:
             with store.transaction() as connection:
-                receipt = enqueue_job(
-                    Transaction(connection),
-                    JobSubmission(
-                        project.project_id,
-                        "recording",
-                        case.case_id,
-                        version.id,
-                        (physical,),
-                        "{}",
-                    ),
-                    IdempotencyKey(actor.actor_id, project.project_id, "enqueue_job", "rx47-rec"),
-                    now=now,
-                )
+                receipt = start_recording(connection, actor, project.project_id,
+                    RecordingStartInput(case.case_id, version.id, version.content_hash, physical), "rx47-rec")
                 frozen = load_recording_intent(connection, project.project_id, receipt.recording_id)
             assert frozen is not None
             assert frozen.objective == objective
@@ -178,7 +173,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                             (),
                             PathPolicy(),
                         ),
-                        CaseSettings("android"),
+                        CaseSettings("android", document={"limits":{"timeout_seconds":60,"max_model_calls":3,"budget":"1.00","currency":"USD"}}),
                         parent_version_id=version.id,
                     ),
                     version.id,
@@ -213,9 +208,8 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
         assert again["snapshot"]["digest"] == snapshot["digest"]
 
         attempt_id = str(claimed["attempt_id"])
-        app.state.model_gateway.ensure_policy(
-            recording_authoring_policy(project.project_id, attempt_id, secret_ref, max_calls=3)
-        )
+        client.acknowledge(project_id=str(project.project_id), job_id=claimed["job_id"],
+            generation=claimed["generation"], runner_nonce=str(uuid4()), now=now.isoformat(), idempotency_key="ack-rx47")
 
         receipt = client.request_model(
             project_id=str(project.project_id),
@@ -227,6 +221,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                 "owner_kind": "authoring",
                 "owner_id": attempt_id,
                 "binding_revision": 1,
+                "generation": claimed["generation"],
                 "sanitized_inputs": ["worker-ignored"],
                 "token_output_limit": 64,
                 "deadline": "2099-01-01T00:00:00+00:00",
@@ -251,6 +246,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                     "owner_kind": "authoring",
                     "owner_id": attempt_id,
                     "binding_revision": 1,
+                "generation": claimed["generation"],
                     "sanitized_inputs": ["ok"],
                     "token_output_limit": 16,
                     "deadline": "2099-01-01T00:00:00+00:00",
@@ -271,6 +267,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                     "owner_kind": "authoring",
                     "owner_id": attempt_id,
                     "binding_revision": 1,
+                "generation": claimed["generation"],
                     "sanitized_inputs": ["password=hunter2"],
                     "token_output_limit": 16,
                     "deadline": "2099-01-01T00:00:00+00:00",
@@ -292,6 +289,7 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
                     "owner_kind": "authoring",
                     "owner_id": attempt_id,
                     "binding_revision": 1,
+                "generation": claimed["generation"],
                     "sanitized_inputs": ["ok"],
                     "token_output_limit": 16,
                     "deadline": "2099-01-01T00:00:00+00:00",

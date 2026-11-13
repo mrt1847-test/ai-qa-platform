@@ -185,7 +185,7 @@ def test_actual_claim_fixes_policy_and_android_provider_revision(recording):
     assert verify_job_snapshot(snapshot,frozenset({"recording"})).supported
     calls=[]
     class Client:
-        def request_model(self,**kwargs):calls.append(kwargs);return {"allowed":True,"content":"finish()"}
+        def request_model(self,**kwargs):calls.append(kwargs);return {"allowed":True,"action_allowed":True,"content":"finish()"}
     assert server_model_plan_provider(Client(),binding_revision=1)(job)=="finish()"
     assert calls[0]["payload"]["binding_revision"]==7
     for mutation in ["binding","budget","remove_pin","typed_revision","input_hash"]:

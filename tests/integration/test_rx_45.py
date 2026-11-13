@@ -161,7 +161,7 @@ def test_rx_45_mock_https_request_response_quota_idempotency_and_secret(tmp_path
     )
     assert first.provider_request_id == "ops-1"
     assert again.provider_request_id == first.provider_request_id
-    assert provider.call_count == 2
+    assert provider.call_count == 1  # count real sends, not cached method invocations
     assert len(hits) == 1  # client-side idempotent cache avoids second HTTP
 
     with pytest.raises(ValueError, match="secret"):
@@ -172,7 +172,7 @@ def test_rx_45_mock_https_request_response_quota_idempotency_and_secret(tmp_path
             sanitized_inputs=("ok",),
             token_output_limit=16,
         )
-    assert provider.call_count == 2
+    assert provider.call_count == 1  # count real sends, not cached method invocations
 
     other = provider.complete(
         model="ops-v",

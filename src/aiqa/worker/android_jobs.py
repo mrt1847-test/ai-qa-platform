@@ -1668,6 +1668,8 @@ def server_model_plan_provider(
             "token_output_limit": token_output_limit,
             "deadline": "2099-01-01T00:00:00+00:00",
         }
+        if pin is not None:
+            payload["generation"] = claim.get("generation")
         if intent_hash != "":
             payload["intent_hash"] = intent_hash
         request = getattr(client, "request_model")
@@ -1679,6 +1681,8 @@ def server_model_plan_provider(
         )
         if type(receipt) is not dict or receipt.get("allowed") is not True:
             raise MobileAgentRejected("authoring refused")
+        if pin is not None and receipt.get("action_allowed") is not True:
+            raise MobileAgentRejected("authoring response is not executable")
         content = receipt.get("content")
         if type(content) is not str or content.strip() == "":
             raise MobileAgentRejected("authoring content missing")

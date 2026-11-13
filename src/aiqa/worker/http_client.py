@@ -25,10 +25,14 @@ class RetryClass(str, Enum):
 class WorkerHttpError(Exception):
     """Outbound worker HTTP failed. Message must not include the bearer token."""
 
-    def __init__(self, message: str, *, retry_class: RetryClass, status_code: int | None = None) -> None:
+    def __init__(self, message: str, *, retry_class: RetryClass, status_code: int | None = None,
+                 provider_dispatched: bool | None = None, reason: str | None = None, replayed: bool = False) -> None:
         super().__init__(_redact(message))
         self.retry_class = retry_class
         self.status_code = status_code
+        self.provider_dispatched = provider_dispatched
+        self.reason = reason
+        self.replayed = replayed
 
 
 class SanitizationRequired(WorkerHttpError):
@@ -473,10 +477,27 @@ class WorkerHttpClient:
             return WorkerHttpResult(204, None, RetryClass.fatal)
         if response.status_code >= 400:
             retry = classify_status(response.status_code)
+            dispatched=None;reason=None;replayed=False
+            if path == "/api/v1/worker/model-requests":
+                try:
+                    error=response.json().get("error",{})
+                    if type(error) is dict:
+                        value=error.get("provider_dispatched")
+                        dispatched=value if type(value) is bool else None
+                        value=error.get("message")
+                        if type(value) is str and value in {"provider_timeout","provider_quota","provider_unauthorized","provider_http_error",
+                            "provider_response_invalid","provider_transport","provider_unreachable","dispatch_unknown","quota","secret",
+                            "lease_unavailable","stale_generation","deadline","response_late","unknown_price","recording_authorization",
+                            "recording_policy_invalid","binding_unavailable","binding_revision","intent_invalid","intent_hash_required",
+                            "provider_endpoint","provider_unavailable","policy_conflict","idempotency_conflict","recording_policy_missing","cancelled"}:
+                            reason=value
+                        replayed=error.get("replayed") is True
+                except (ValueError,AttributeError):pass
             raise WorkerHttpError(
                 f"worker request rejected with status {response.status_code}",
                 retry_class=retry,
                 status_code=response.status_code,
+                provider_dispatched=dispatched,reason=reason,replayed=replayed,
             )
         if not response.content:
             return WorkerHttpResult(response.status_code, None, RetryClass.fatal)

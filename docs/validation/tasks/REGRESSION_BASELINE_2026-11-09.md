@@ -27,3 +27,5 @@
 2026-11-10 RX96 후 전체:9 failed,635 passed,1 skipped (315.44s). 실패 node 집합은 동일9개다. 최종 로그 `.review-work/healing-provider/verified-full.log`; 실제 AI 토큰/기기 수용은 수행하지 않았다.
 
 2026-11-10 RX97 후 최종 전체: **9 failed, 652 passed, 1 skipped in 382.05s (0:06:22)**. 실패 node 집합은 기존9개와 정확히 같다. 집중31/JS32 passed. `.review-work/recording-model-pin/verified-full.log`. 새 실제 AI/장치 수용은 수행하지 않았다.
+
+2026-11-13 RX98 최종 전체: **9 failed, 696 passed, 1 skipped in 487.17s (0:08:07)**. 기존9개 failure node와 정확히 같다. 집중105/JS32 passed. 최초 새2개 RX45/RX47은 실제 전송 수와 정상 admission/ACK/generation fixture 계약 보완 후 해소했다. `.review-work/recording-model-requests/final-full.log`. 실제 모델/기기 수용 없음.

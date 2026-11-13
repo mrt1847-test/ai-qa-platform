@@ -403,3 +403,20 @@ CaseListRow/CursorPage의 additive projection은 최신 초안/승인 개정·�
 재녹화 초안은 CaseVersion.parent_version_id/base_version_id와 저장 설정의 기준/사유/확인 메타데이터, 새 REC의 base_case_version_id를 유지한다. 기존 CaseVersion/REC/approval를 갱신하지 않는다. 저장된 검토 화면은 review_evidence_entries의 artifact ID 집합을 사용하며 다른 캡처로 대체하지 않는다.
 
 비용 UI는 item_usage_facts/usage_adjustments의 원본·보정 개수와 최근10개를 읽는다. 미보고 금액은 null이며 최종 통화별/as_of 합계를 임의 산출하지 않는다. 실제 계측/최종 집계는 기존 분석 작업의 별도 완료 조건이다. [실제 검증·미실시 경계](docs/validation/ux/README.md).
+
+
+## 2026-11-13 · RX-98 녹화 모델 요청의 영속 예약
+
+실제 schema는 migration0049의 model_request_receipts다. 기존 action/check FK가 필수인 model_call_facts에 녹화 전 모델 호출을 넣기 위해 가짜 행동/검증을 생성하지 않는다. 이 표는 API 관리 DB가 소유하며 worker는 인증 HTTP만 쓴다.
+
+| 필드/제약 | 저장 계약 |
+|---|---|
+| project_id/attempt_id/request_key PK | 서버 접수/claim에 속한 동일 요청, body fingerprint 불일치는409 |
+| project_id/call_id UNIQUE | 같은 call ID를 다른 key로 보내 중복 과금하지 못함 |
+| worker_id/fingerprint/policy_ref/price_mode/created_at | 고정 요청 정체성. fingerprint는 원 요청·동결 intent hash, 정책은 RX97 pin의 policy_ref. 식별 필드는 수정 불가 |
+| state=pending/completed, charged | provider 전에 pending+charged1 원자 commit. 사전 미전송 거절만0, 전송 후 실패/성공1, 불명은 보수적1. attempt당 pending1의 unique partial index |
+| status_code/response_json/completed_at | 단일 정착 뒤 불변. 재전송은 저장 receipt. 가격/토큰 미측정은 null/unreported/incomplete이며0원으로 변환하지 않음 |
+
+실제 전송 횟수와 보수적 한도 차감을 혼동하지 않는다. authoring_calls는 영속 한도 차감 수이며 불명 전송도 포함할 수 있다. 미확정/예약을 실제 청구로 확정하지 않고 RX29에서 실제 모델 usage와 대조한다. credential 원문/원문 hash는 저장하지 않으며 provider echo도 제거한다. 완료 receipt 전체를 UPDATE/DELETE하거나 pending을 지워 quota를 되돌리지 않는다. 장애 뒤 pending은 불명으로 조회하며 자동 재전송/중간 재개하지 않는다.
+
+원 worker가 과거 성공 receipt를 읽어도 action_allowed는 현재 lease/session·목적·취소·만료·고정 key 상태로 다시 판정한다. 조회 권한과 실행 권한은 별개다. 파일/픽셀의 모델 입력은 아직 해시만 전송되는 누락이 있어 RX99에서 정제 관찰 artifact/receipt 소유를 연결한다. RX98 완료는 실제 시각 에이전트/운영 모델·기기 수용 완료가 아니다.

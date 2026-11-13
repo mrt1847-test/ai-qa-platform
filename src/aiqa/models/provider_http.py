@@ -177,6 +177,7 @@ class OperationalProviderHttp:
         secret: str,
         sanitized_inputs: tuple[str, ...],
         token_output_limit: int,
+        request_key: str | None = None,
     ) -> ProviderHttpResult:
         if type(secret) is not str or secret.strip() == "":
             raise ValueError("provider secret is missing")
@@ -187,6 +188,16 @@ class OperationalProviderHttp:
         if self.base_url is None or self.base_url.strip() == "":
             raise ValueError("live provider endpoint is not configured")
         inputs = tuple(sanitized_inputs) if type(sanitized_inputs) is tuple else ()
+        body = {
+            "model": model,
+            "role": role,
+            "sanitized_inputs": list(inputs),
+            "token_output_limit": token_output_limit,
+        }
+        idempotency_key = _request_key(body if request_key is None else {**body,"request_key":request_key})
+        cached = self._idempotent.get(idempotency_key)
+        if cached is not None:
+            return cached
         self.calls.append(
             ProviderHttpCall(
                 model=model,
@@ -196,16 +207,6 @@ class OperationalProviderHttp:
                 sanitized_inputs=inputs,
             )
         )
-        body = {
-            "model": model,
-            "role": role,
-            "sanitized_inputs": list(inputs),
-            "token_output_limit": token_output_limit,
-        }
-        idempotency_key = _request_key(body)
-        cached = self._idempotent.get(idempotency_key)
-        if cached is not None:
-            return cached
         verify: bool | ssl.SSLContext = False
         if self.verify_tls:
             if self.ca_bundle is not None:

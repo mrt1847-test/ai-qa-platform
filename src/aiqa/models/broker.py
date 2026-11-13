@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from threading import Lock
 from uuid import UUID, uuid4
 
 from aiqa.contracts.models import MODEL_ROLES, ModelRequest, OwnedCheck, OwnedEpisode, RoleBinding
 from aiqa.models.budget import CallBudget
-from aiqa.models.provider_http import FixtureProviderHttp, ProviderHttpError, ProviderHttpPort
+from aiqa.models.provider_http import FixtureProviderHttp, OperationalProviderHttp, ProviderHttpError, ProviderHttpPort
 from aiqa.models.usage import bind_usage, record_model_usage, reset_usage
 from aiqa.security.secrets import (
     SecretScopeDenied,
@@ -257,6 +257,10 @@ class ServerModelGateway:
                 "maintenance": 0,
             }
 
+    def has_policy(self, project_id: UUID, item_id: str) -> bool:
+        """A nonblocking absence check; handle still authorizes under its lock."""
+        return (project_id, item_id) in self._policies
+
     def ensure_policy(self, policy: AttemptModelPolicy) -> None:
         """Register once. Later recording/replay attempts keep the first sealed policy."""
 
@@ -275,6 +279,7 @@ class ServerModelGateway:
         idempotency_key: str,
         actor_id: UUID,
         store: object | None = None,
+        before_provider=None,
     ) -> ModelRequestReceipt:
         fingerprint = _fingerprint(request, project_id, item_id)
         with self._lock:
@@ -298,10 +303,10 @@ class ServerModelGateway:
                     prior[1].generation,
                 )
             if store is None:
-                receipt = self._admit(worker, request, project_id, item_id, actor_id)
+                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider)
             else:
                 with bind_secret_store(store):  # type: ignore[arg-type]
-                    receipt = self._admit(worker, request, project_id, item_id, actor_id)
+                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider)
             self._receipts[idempotency_key] = (fingerprint, receipt)
             self._attempt_receipts.setdefault((project_id, item_id), []).append(receipt)
             return receipt
@@ -354,6 +359,7 @@ class ServerModelGateway:
         project_id: UUID,
         item_id: str,
         actor_id: UUID,
+        *, before_provider=None,
     ) -> ModelRequestReceipt:
         if project_id not in worker.permitted_projects:
             raise ModelRequestDenied("project")
@@ -425,23 +431,31 @@ class ServerModelGateway:
         except SecretUnavailable as exc:
             raise ModelRequestDenied("secret", status=503) from exc
 
+        if before_provider is not None:
+            before_provider()
         try:
+            call_options = {"request_key":f"{project_id}:{item_id}:{request.call_id}"} if isinstance(self.provider,OperationalProviderHttp) else {}
             result = self.provider.complete(
                 model=binding.model,
                 role=request.role,
                 secret=secret.value,
                 sanitized_inputs=request.sanitized_inputs,
                 token_output_limit=request.token_output_limit,
+                **call_options,
             )
         except ProviderHttpError as exc:
             # A completed HTTP failure or uncertain send still consumes a call.
             broker.meter(model_request)
             ledger[request.role] = ledger.get(request.role, 0) + 1
-            raise ModelRequestDenied(exc.reason, status=exc.status or 502, provider_dispatched=True) from exc
+            raise ModelRequestDenied(exc.reason, status=exc.status or (504 if exc.reason=="provider_timeout" else 502), provider_dispatched=True) from exc
         except TimeoutError as exc:
             broker.meter(model_request)
             ledger[request.role] = ledger.get(request.role, 0) + 1
             raise ModelRequestDenied("provider_timeout", status=504, provider_dispatched=True) from exc
+        # A provider may echo its credential. Never cache or persist that value.
+        result = replace(result,content=result.content.replace(secret.value,"[redacted]"),
+            actual_model=result.actual_model.replace(secret.value,"[redacted]"),
+            provider_request_id=result.provider_request_id.replace(secret.value,"[redacted]"))
         broker.meter(model_request)
         ledger[request.role] = ledger.get(request.role, 0) + 1
         token = bind_usage(self._usage)

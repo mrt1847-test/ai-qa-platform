@@ -560,3 +560,12 @@ core는 실제 backend/DB/파일/브라우저에서 명시 test-only 외부 입�
 실제 capture/replay/trial/승인/치유·정확성/비용 수용은 해당 live task에서 그대로 요구한다. W31-06은 UI 계약, W31-07은 실제 치유 수용이다. parent_gate_tasks/원래 상위 조건과 전체 MVP gate를 지우지 않는다.
 
 초기 GET /api/v1/health는 API liveness일 뿐 engine 준비/QA PASS가 아니다. 인증 전 업무 데이터/mutation을 열지 않는다. 실제 기능은 같은 factory/layout을 W04/W10/W12에서 확장한다.
+
+
+## 2026-11-13 · 정상 녹화 모델 요청 연결의 경계
+
+RX-98은 고정 녹화 모델/키를 실제 worker→관리 API→provider 포트로 연결하고 서버 임대·소유·세대·취소/만료 검사와 DB 영속 예약/재요청/정착을 처리한다. 모델 I/O 중 관리 API heartbeat/취소와 DB writer를 점유하지 않는다. fixture는 명시 fixture 연결에서만 동작하며 운영 연결의 모의 성공을 허용하지 않는다.
+
+[서버 가격 모드](docs/managed-pc/MODEL_REQUEST_CONFIGURATION.md)의 기본 strict는 가격 미상일 때 새 전송을 거절한다. 운영자가 명시 estimate를 고르면 비용/토큰은 미측정으로 남으며 호출 수 cap이 USD 청구 hard cap을 보장하지 않는다. 운영 모델 실제 수용과 월3000건 실측은 RX23/24/29다.
+
+현재 authoring 입력은 관찰 해시/geometry/직전 결과만 포함하므로 화면을 실제 모델에 공급하는 구현은 [RX-99](docs/managed-pc/MODEL_OBSERVATION_TASKS.md)로 분리한다. 정제·권한 있는 서버 artifact의 bytes와 전체 좌표계가 모델 요청에 고정되기 전, HTTP 응답 성공을 화면 기반 에이전트 성공으로 보지 않는다. 이후 RX87/88이 플랫폼별 고정 한도와 check/episode/치유 동작을 연결한다.

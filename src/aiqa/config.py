@@ -105,6 +105,7 @@ class AppSettings:
     oidc: OidcHostedSettings | None = None
     model_provider: ModelProviderSettings = field(default_factory=ModelProviderSettings)
     max_active_slots: int = DEFAULT_MAX_ACTIVE_SLOTS
+    model_price_mode: str = "strict"
 
     @property
     def artifacts_dir(self) -> Path:
@@ -119,6 +120,8 @@ class AppSettings:
         return self.runtime_root / "backups"
 
     def __post_init__(self) -> None:
+        if self.model_price_mode not in {"strict","estimate"}:
+            raise SettingsError("AIQA_MODEL_PRICE_MODE must be strict or estimate")
         if type(self.host) is not str or self.host != LOOPBACK_HOST:
             raise SettingsError(f"AIQA_HOST must be {LOOPBACK_HOST}; refused {self.host!r}")
         if type(self.port) is not int or not 1 <= self.port <= 65535:
@@ -265,6 +268,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
         oidc=oidc,
         model_provider=model_provider,
         max_active_slots=max_active_slots,
+        model_price_mode=source.get("AIQA_MODEL_PRICE_MODE","strict"),
     )
 
 

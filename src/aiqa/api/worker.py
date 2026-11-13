@@ -430,7 +430,7 @@ def install_worker(application: FastAPI) -> None:
             return rejected
         header = request.headers.get("authorization", "")
         if not header.startswith("Bearer ") or header.removeprefix("Bearer ").strip() == "":
-            return _error(401, "unauthorized", "worker token is missing", {})
+            return _model_error(401, "unauthorized", "worker token is missing", {})
         key = request.headers.get("idempotency-key", "").strip()
         payload = await _body(request)
         if isinstance(payload, JSONResponse):
@@ -445,14 +445,25 @@ def install_worker(application: FastAPI) -> None:
             if presented_intent is not None and type(presented_intent) is not str:
                 raise ValueError("intent_hash is invalid")
         except (TypeError, ValueError):
-            return _error(422, "validation", "invalid model request", {})
+            return _model_error(422, "validation", "invalid model request", {})
         token = header.removeprefix("Bearer ").strip()
         gateway = request.app.state.model_gateway
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
                 if project_id not in worker.permitted_projects:
-                    return _error(403, "permission", "worker cannot request model", {})
+                    return _model_error(403, "permission", "worker cannot request model", {})
+                from aiqa.models.recording_authorization import is_recording_attempt
+                with store.transaction() as connection:
+                    recording_owned = is_recording_attempt(connection,project_id,item_id)
+                if recording_owned:
+                    from aiqa.models.recording_requests import handle_recording_http
+                    from starlette.concurrency import run_in_threadpool
+                    status,body=await run_in_threadpool(handle_recording_http,request.app.state.open_store,
+                        gateway,request.app.state.settings,worker,model_request,project_id,item_id,key,presented_intent)
+                    return JSONResponse(status_code=status,content=body)
+                if not gateway.has_policy(project_id, item_id):
+                    return _model_error(404, "permission", "policy", {})
                 if model_request.purpose == "recording" and model_request.role == "authoring":
                     from dataclasses import replace
 
@@ -468,28 +479,22 @@ def install_worker(application: FastAPI) -> None:
                                 worker_inputs=model_request.sanitized_inputs,
                             )
                         except IntentRejected as exc:
-                            return _error(403, "permission", exc.reason, {})
+                            return _model_error(403, "permission", exc.reason, {})
                     model_request = replace(model_request, sanitized_inputs=bound_inputs)
-                receipt = gateway.handle(
-                    worker,
-                    model_request,
-                    project_id=project_id,
-                    item_id=item_id,
-                    idempotency_key=key,
-                    actor_id=actor_id,
-                    store=store,
-                )
+                from starlette.concurrency import run_in_threadpool
+                receipt = await run_in_threadpool(_legacy_model_request, request.app.state.open_store,
+                    gateway, worker, model_request, project_id, item_id, key, actor_id)
             except AuthRequired:
-                return _error(401, "unauthorized", "worker token is missing", {})
+                return _model_error(401, "unauthorized", "worker token is missing", {})
             except WorkerDenied:
-                return _error(403, "permission", "worker cannot request model", {})
+                return _model_error(403, "permission", "worker cannot request model", {})
             except ModelRequestConflict:
-                return _error(409, "conflict", "model request idempotency conflict", {})
+                return _model_error(409, "conflict", "model request idempotency conflict", {})
             except ModelRequestDenied as exc:
                 status = 404 if exc.status == 404 else 403 if exc.status == 403 else exc.status
-                return _error(status, "permission" if status in {403, 404} else "unavailable", exc.reason, {})
+                return _model_error(status, "permission" if status in {403, 404} else "unavailable", exc.reason, {},provider_dispatched=exc.provider_dispatched)
             except ValueError:
-                return _error(422, "validation", "invalid model request", {})
+                return _model_error(422, "validation", "invalid model request", {})
         content = scrub_worker_dto(
             {
                 "call_id": str(receipt.call_id),
@@ -962,3 +967,20 @@ def _error(status: int, code: str, message: str, fields: dict[str, list[str]]) -
             }
         },
     )
+
+
+def _model_error(status,code,message,fields,*,provider_dispatched=False):
+    response=_error(status,code,message,fields)
+    body=json.loads(response.body)
+    body["error"].update(provider_dispatched=provider_dispatched,replayed=False)
+    return JSONResponse(status_code=status,content=body)
+
+
+def _legacy_model_request(open_store, gateway, worker, request, project_id, item_id, key, actor_id):
+    # Legacy registered policies also wait for the gateway lock outside ASGI.
+    store = open_store()
+    try:
+        return gateway.handle(worker, request, project_id=project_id, item_id=item_id,
+            idempotency_key=key, actor_id=actor_id, store=store)
+    finally:
+        store.close()

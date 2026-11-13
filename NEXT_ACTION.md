@@ -1,23 +1,23 @@
 # Next Actions
 
-Updated: **2026-11-10 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
+Updated: **2026-11-13 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
-기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~86·RX-91~97 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
+기존 W 완료126/163·상위6/33, AD-01·UX-01~03 완료(4/7), RX-01~20·RX-28·RX-30~86·RX-91~98 완료는 보존한다. 현재 PC HTTPS/AVD 녹화·모의 HTTPS operational·목표 고정·Android 다스텝·타임라인·재생 패키지·claim 고정 시범/회귀·시범 승인·묶음 회귀·Check/제한 healing·자연어 구조화·Android 설치 앱 조회·명시 설치/초기화·모델 연결 검사·운영 브라우저 OIDC 로그인·Web guest 실행 연결·복수 워커 물리 자원 임대·Web 녹화/승인 패키지 재생 공통 계약·앱 조회/설치 워커 등록·구조화 모델 binding·TrustedWebDriver 로컬 실행 포트·브라우저 접수→승인본 회귀·실행 finish→ITEM QA·워커 cleanup 임대 반환·APK 영속 저장·ADB 설치 driver·실 브라우저 CDP 포트·QA·자원 복귀 여정·W11/W12 launcher 회귀까지 확인했다. 이 수는 새 분리 배치의 완료율이 아니다. 문서 수정으로 제품 완료를 추가하지 않는다. 실행 순서는 이 파일만 관리한다. 기능 구현과 실환경 수용을 별도 트랙으로 추적한다.
 
 ## Current
 
-**RX-98 — 정상 임대 녹화의 서버 모델 권한 준비.** 다음 RX-87.
+**RX-99 — 정제된 관찰의 서버 고정·실제 모델 이미지 입력.** 다음 RX-87.
 
-[RX-97](docs/validation/tasks/RX-97.md)에서 녹화 모델·키 개정/한도·입력 hash를 고정했다. 실제 model-requests의 서버 정책·임대 소유 검사·영속 호출량은 아직 연결되지 않았다. [RX-98 카드와 6단계 실행 순서](docs/managed-pc/MODEL_REQUEST_TASKS.md#rx-98)를 따라 구현한다. 운영 키·독립 장비 없이 로컬 fixture로 진행하며 callback 주입만으로 완료하지 않는다.
+[RX-98](docs/validation/tasks/RX-98.md)에서 정상 worker 모델 요청·영속 한도·재요청/늦은 행동 차단을 구현했다. 현재 관찰은 해시/geometry만 전송되어 모델에 화면 bytes가 전달되지 않는다. [RX-99 계획](docs/managed-pc/MODEL_OBSERVATION_TASKS.md)의 서버 관찰 receipt→worker 업로드→provider 이미지 입력 순서로 연결한다. 운영 키 없이 실제 bytes를 검사하는 MockTransport로 진행하며 민감 픽셀 정제 gate를 우회하지 않는다.
 
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) | Android 고정 정책·episode·허용 치유·한도 소비 | RX-98 및 기존 선행 |
-| 2 | [RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88) | Web 고정 정책·episode·허용 치유·한도 소비 | RX-98 및 기존 선행 |
+| 1 | [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) | Android 고정 정책·episode·허용 치유·한도 소비 | RX-98/RX-99 및 기존 선행 |
+| 2 | [RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88) | Web 고정 정책·episode·허용 치유·한도 소비 | RX-98/RX-99 및 기존 선행 |
 | 3 | [RX-89](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-89) | 정식 준비 ON/OFF와 이유 | RX-87/88 등 카드 |
 | 4 | [RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90) | 공통4단계·최종 버전/한도/호출 확인 | RX-89 |
 | 별도 | 실환경 수용 | 독립 서버·OIDC·AVD/브라우저·비용 계측 | 외부 대기 표 |

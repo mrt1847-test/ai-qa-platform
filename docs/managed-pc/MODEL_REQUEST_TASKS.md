@@ -1,8 +1,8 @@
 # 정상 녹화 모델 요청 연결
 
-Updated: 2026-11-10. 기존 C00/C04/C08/C14의 구현 누락을 나눈 카드다. 실행 순서는 NEXT_ACTION.md다. 운영 키 없이 임시 DB/모의 provider로 구현하고 실제 모델 수용 RX-23/24는 별도로 남긴다.
+Updated: 2026-11-13. 기존 C00/C04/C08/C14의 구현 누락을 나눈 카드다. 실행 순서는 NEXT_ACTION.md다. 운영 키 없이 임시 DB/모의 provider로 구현하고 실제 모델 수용 RX-23/24는 별도로 남긴다.
 
-근거: start_recording은 authoring revision의 존재만 확인하고 timeout만 저장한다. server_model_plan_provider는 revision=1을 기본 전송하며, 실제 API에는 AttemptModelPolicy 등록 호출이 없어 테스트가 직접 등록한 정책만 동작한다.
+분해 당시(수정 전) 근거: start_recording은 authoring revision의 존재만 확인하고 timeout만 저장한다. server_model_plan_provider는 revision=1을 기본 전송하며, 실제 API에는 AttemptModelPolicy 등록 호출이 없어 테스트가 직접 등록한 정책만 동작한다.
 
 <a id="rx-97"></a>
 ## RX-97 · 녹화 시작·재녹화의 모델 및 한도 고정
@@ -22,12 +22,12 @@ Updated: 2026-11-10. 기존 C00/C04/C08/C14의 구현 누락을 나눈 카드다
 
 **선행** RX-97/RX-96. **계약** C00/C01/C04/C08/C14. **환경** local_python.
 
-- [ ] worker/model-requests에서 서버 DB의 현재 임대·worker/project/attempt/generation/purpose·동결 intent를 확인하고 RX-97의 정확한 binding/key revision만 해석해 attempt 정책을 준비한다. client actor_id/role/owner/최신 revision 대체를 권한으로 믿지 않는다.
-- [ ] 재요청이 메모리 정책 호출량을 초기화하지 않게 하며 만료·취소·키 폐기·한도 초과는 provider 전에 차단한다. 프로세스 재시작 후 quota 복원/영속 계측 경계를 명시하고 해결한다. 비밀은 서버 secret resolver만 읽는다.
-- [ ] HTTP 오류에 provider_dispatched의 신뢰 가능한 상태를 전달하고 worker가 정책 거절0/실제 전송 실패1을 구별한다. 자체 provider mock만으로 실제 vendor API 수용이라고 표시하지 않는다.
-- [ ] 테스트에서 register_policy를 호출하지 않는 실제 browser 시작→worker claim/ACK→authoring HTTP 요청·응답·한도·재시도·거절 여정을 확인한다. Android/Web healing episode/verifier 권한은 RX-87/88의 별도 소유·예약 계약으로 연결하며 recording 권한을 재사용하지 않는다.
+- [x] worker/model-requests에서 서버 DB의 현재 임대·worker/project/attempt/generation/purpose·동결 intent를 확인하고 RX-97의 정확한 binding/key revision만 해석해 attempt 정책을 준비한다. client actor_id/role/owner/최신 revision 대체를 권한으로 믿지 않는다.
+- [x] 재요청이 메모리 정책 호출량을 초기화하지 않게 하며 만료·취소·키 폐기·한도 초과는 provider 전에 차단한다. 프로세스 재시작 후 quota 복원/영속 계측 경계를 명시하고 해결한다. 비밀은 서버 secret resolver만 읽는다.
+- [x] HTTP 오류에 provider_dispatched의 신뢰 가능한 상태를 전달하고 worker가 정책 거절0/실제 전송 실패1을 구별한다. 자체 provider mock만으로 실제 vendor API 수용이라고 표시하지 않는다.
+- [x] 테스트에서 register_policy를 호출하지 않는 실제 browser 시작→worker claim/ACK→authoring HTTP 요청·응답·한도·재시도·거절 여정을 확인한다. Android/Web healing episode/verifier 권한은 RX-87/88의 별도 소유·예약 계약으로 연결하며 recording 권한을 재사용하지 않는다.
 
-**인계** docs/validation/tasks/RX-98.md (완료 시 작성).
+**인계** docs/validation/tasks/RX-98.md (완료).
 
 ### RX-98의 실행 순서와 중간 확인
 
@@ -41,3 +41,5 @@ Updated: 2026-11-10. 기존 C00/C04/C08/C14의 구현 누락을 나눈 카드다
 6. **통합 증거와 인계**: 테스트의 register_policy 호출 없이 browser start→claim→ACK→model 요청을 실제 ASGI/MockTransport/MemorySecretBackend로 수행한다. 한도/재시도/키 회전·폐기/서버 gateway 재생성·정리/거절·원본 기록 보존을 확인한다. binding endpoint와 실제 provider port의 대상이 일치해야 하며 무조건 다른 global endpoint로 보내지 않는다. vendor protocol 지원은 실제 어댑터 근거로만 주장하고 현재 custom /v1/complete fixture로 대체하지 않는다.
 
 금액은 호출 수와 별개다. tariff 기반 사전 비용 상한을 적용하거나 미측정/추정 모드를 명시적으로 모델링해야 한다. max_calls만으로 budget USD를 지켰다고 보고하지 않는다. RX-29는 구현 후 실제 모델 토큰·비용·처리량 계측이다.
+
+RX98의 현재 구현·검증은 [인계](../validation/tasks/RX-98.md), 가격/endpoint 설정은 [운영 경계](MODEL_REQUEST_CONFIGURATION.md)를 따른다. 실제 화면 bytes 입력은 RX99가 연결한다.

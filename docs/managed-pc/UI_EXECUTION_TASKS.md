@@ -109,7 +109,7 @@
 <a id="rx-87"></a>
 ## RX-87 · Android worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
+**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-99, RX-54, RX-75. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python.
 **파일** worker/android_jobs.py, replay/android_runner.py, worker/runtime.py 및 관련 healing 포트.
 
 - [ ] 정상 claim의 고정 policy를 Android replay context로 전달하고 OFF 정상 행동은 actor0으로 반복한다.
@@ -122,7 +122,7 @@
 <a id="rx-88"></a>
 ## RX-88 · Web worker의 승인 healing snapshot 소비
 
-**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
+**직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-99, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
 **파일** worker/web_jobs.py, worker/isolated_web.py, worker/web_vm_transport.py 및 기존 healing 포트.
 
 - [ ] 고정된 policy를 승인 CUAWright code replay context로 전달한다. 기존 신뢰 driver/guest 경계와 network policy를 유지한다.

@@ -201,6 +201,16 @@ input/output/cache/image usage는 nullable, measured/estimated/unreported다. �
 복수 통화는 분리하고 늦은 청구/보정은 commit_seq가 있는 append ledger다. 취소 후 응답은 기록해도 행동은 금지다.
 healer는 ITEM당 episode1/모든 전송 최대2회/30초가 더 엄격한 상한이며 transport retry도2에 포함한다.
 
+### 정상 녹화 모델 호출 (RX-98)
+
+DB recording attempt의 모델 요청은 고정 authoring pin/동결 intent와 실제 claim·ACK·lease/worker session·generation·owner·purpose를 서버에서 확인한다. client actor_id나 다른 역할/owner를 권한으로 쓰지 않는다. 정확한 binding/key revision과 현재 key availability를 재검사하며 endpoint·provider·endpoint_kind가 실제 adapter와 일치해야 한다. fixture는 명시 fixture/loopback 연결에만 사용하고 운영 연결의 대체 성공을 만들지 않는다. 키는 서버 resolver만 읽으며 provider가 키를 응답에 되돌려도 worker/영속 receipt에 원문을 남기지 않는다. vendor protocol 수용은 별도다.
+
+model_request_receipts는 action/check와 독립된 authoring 전송 예약과 정착을 소유한다. SQLite 단일 원자 예약을 commit한 뒤 provider I/O를 하며 같은 attempt의 미정착 호출은 하나뿐이다. project/attempt/요청 key와 call_id·목적·역할·owner·generation·고정 revision·원 요청 내용·intent hash를 묶고 같은 요청 재수신은 provider를 다시 호출하지 않는다. 서버 메모리 유실 후에도 예약/실패/성공/불명 호출의 한도를 복구한다. 전송 전 거절은0, 실제 전송 후 실패는1, 불명/미정착은 보수적으로1이며 자동 재전송하지 않는다. 불명 예약을 지우거나 같은 attempt를 자동 재개하지 않는다.
+
+기본 AIQA_MODEL_PRICE_MODE=strict는 운영 tariff quote가 없으면 unknown_price로 전송을 거절한다. 명시 estimate를 선택한 정상 녹화만 미측정 비용으로 진행한다. measurement_status=unreported, price_mode=estimate, cost_status=unknown, reserved_cost/토큰=null, incomplete=true를 남긴다. 저장 budget USD 준수나 청구 hard cap/실제 토큰 계측을 호출 수로 대신하지 않는다. 다른 모델 역할의 가격·episode 권한은 해당 소비 카드가 연결해야 한다.
+
+전송 직전(credential 해석/대기 후)과 응답 후에도 서버 제어 gate를 확인한다. 뒤늦은 응답은 기록하되 행동 근거로 반환하지 않는다. 정상/기존 등록 정책의 모델 I/O와 gateway lock 대기는 event loop 밖에서 수행해 heartbeat/취소를 처리하며 관리 DB transaction을 유지하지 않는다. 알 수 없는 기존 정책은 lock 전에 비차단 조회로 거절한다. 과거 성공 receipt는 원 worker의 recording 목적 토큰으로 읽되 action_allowed를 현재 gate로 다시 판정한다. 새 pin의 Android provider는 action_allowed=true일 때만 내용을 사용한다. ErrorResponse는 provider_dispatched=true/false/null(불명)·replayed를 추가하며 다른 worker API 계약을 유지한다.
+
 ### 녹화 모델 접수 고정
 
 녹화 접수의 모델 pin (RX-97): 새 start/rerecord는 동일 프로젝트 logical binding의 latest revision 중 현재 authoring 역할을 결정적으로 선택하고 그 고정 key ref/revision의 available 메타데이터를 검사한다. 선택된 최신 후보의 부적합/키 없음은 과거 정상 후보로 우회하지 않는다. 작업 limits에 authoring-admission-v1·binding/key 개정·입력 version/hash·timeout/actions/model_calls/budget/USD를 고정하며 policy_ref의 canonical hash를 claim digest에 포함한다. 전역 600초/50행동/80호출/2USD를 확대하지 않으며 저장된 좁은 한도는 유지한다. 키/endpoint 원문은 pin에 포함하지 않고 credential/provider probe도 실행하지 않는다. 예산0·모델 호출0이면 새 녹화는 거절한다.

@@ -20,9 +20,18 @@
 
 - [x] B0.1: POST worker/checkpoints에 현재 project/worker/purpose/job/attempt/ACK·generation·incarnation/lease margin·취소/종료·고정 job deadline 검사를 연결한다. worker now/과거 allowed receipt를 권한으로 믿지 않는다. 같은 key도 현재 상태를 새로 읽으며 model grant/실제 실행 quota가 아니다.
 - [x] B0.2: worker client는 응답 소유/세대/phase·시간/lease 형식을 검증하고 전체 HTTP 왕복 시간을 빼고 판정한다. runtime이 handler의 모델 전/실제 native 전송 직전에 이 callback을 연결한다. 서버 취소가 모델/파일 I/O 중 생겨도 다음 gesture0이며 저장 증거/제안은 보존한다.
-- [ ] B0.3: 장기 모델 대기/실행 중 heartbeat/renew/cancel poll과 종료·연결 유실·재접속을 연결한다. handler가 반환하기 전까지 초기 lease 상수를 계속 믿지 않는다. 자동 action/attempt 재개0이다.
+- [x] B0.3: Android recording의 장기 모델 대기/실행 중 heartbeat/renew/cancel poll과 종료·연결 유실·재접속을 연결한다. handler가 반환하기 전까지 초기 lease 상수를 계속 믿지 않는다. 자동 action/attempt 재개0이다.
 
-B0.1/B0.2 완료2026-11-14, [인계](../validation/tasks/RX-87-B0.md). 신규40건·집중62, 최종 전체 기존9failed/789passed/1skipped. 현재 B0.3이며 상위 RX87 미완료다.
+B0.1/B0.2 완료2026-11-14, [인계](../validation/tasks/RX-87-B0.md). 신규40건·집중62, 최종 전체 기존9failed/789passed/1skipped. B0.3 Android recording lifecycle도 [인계](../validation/tasks/RX-87-B0-KEEPALIVE.md)로 완료했다. replay/Web 연결은 B/RX88이며 상위 RX87 미완료다. 현재 B0.4다.
+
+## B0.4. 단계별 증거 ACK 유실의 안전한 재확인
+
+확인한 코드 결함: runtime의 commit_step은 같은 step key에 매 호출 새 now를 넣는다. 실제 action/evidence commit 뒤 ACK가 유실되면 helper 재조회409, handler는 중단하고 저장된 prefix와 finish가 어긋날 수 있다. 현재 API는 원본문의 같은 key 재요청을 이미 지원하므로 새 저장소/gesture 재실행으로 해결하지 않는다.
+
+- [ ] 실제 API/정제 PNG에서 같은 step 재확인409와 commit 후 응답 유실을 RED로 확인한다.
+- [ ] worker 단일 소유 committer가 key/본문/최초 시각을 고정한다. 확인된 ACK는 작은 receipt만 보관하고 큰 PNG payload는 비운다. 미확인 pending step이 있으면 다음 step을 전송하지 않는다.
+- [ ] timeout/명시 transient 전송만 같은 본문으로 추가1회 확인한다. auth/TLS/409/422/429는 반복하지 않는다. body가 바뀐 같은 key는 거절하고 ACK 소유/late/연속 prefix를 확인한다.
+- [ ] 실제 runtime/handler에서 native1·모델2(click→finish)를 유지하면서 saved prefix를 회복한다. source commit/응답 유실·한도·중단·재사용과 RX67/RX33/전체 회귀를 검증하고 인계한다. 자동 gesture/attempt 재시작0이다.
 
 ## B. replay의 고정 정책과 한도
 

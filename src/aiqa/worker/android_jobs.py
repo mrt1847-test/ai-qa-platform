@@ -1051,15 +1051,17 @@ def bind_step_evidence_commit(handler: object, committer: StepEvidenceCommit | N
             route.context.step_evidence_commit = committer
 
 
-def bind_attempt_checkpoint(handler: object, checkpoint: Callable[[str], object]) -> None:
+def bind_attempt_checkpoint(handler: object, checkpoint: Callable[[str], object]) -> bool:
     """Bind the current HTTPS claim fence without sharing a previous attempt's callback."""
     if isinstance(handler, AndroidRecordingHandler):
         handler.context.remote_checkpoint = checkpoint
-        return
+        return True
+    found = False
     routes = getattr(handler, "routes", None)
     if type(routes) is dict:
         for route in routes.values():
-            bind_attempt_checkpoint(route, checkpoint)
+            found = bind_attempt_checkpoint(route, checkpoint) or found
+    return found
 
 
 @dataclass

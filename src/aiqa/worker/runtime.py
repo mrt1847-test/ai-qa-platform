@@ -291,8 +291,27 @@ class WorkerRuntime:
 
         bound = self._bind_claim_targets(claimed)
         self._bind_step_evidence_commit(bound)
-        self._bind_attempt_checkpoint(bound)
-        result = self._handler.handle(bound)
+        control = self._bind_attempt_checkpoint(bound)
+        control_stopped = True
+        try:
+            if control is not None:
+                control.start()
+            result = self._handler.handle(bound)
+        finally:
+            if control is not None:
+                control_stopped = control.close()
+                if not control_stopped:
+                    # An in-flight renewal must not outlive a claimed cleanup/release.
+                    self._stopping = True
+                    self._active_attempt = None
+                    self._state = "offline"
+                    self._last_reason = "control_shutdown_failed"
+        if not control_stopped:
+            self._total_actions += int(result.actions)
+            return CycleReport("offline", True, int(result.actions), False, "control_shutdown_failed")
+        if control is not None and control.failed and result.outcome == "completed":
+            result = replace(result, outcome="error", evidence_complete=False,
+                review_pending=False, action_mapping="{}")
         try:
             result = self._commit_evidence(bound, result)
         except WorkerHttpError:
@@ -480,17 +499,25 @@ class WorkerRuntime:
             )
         return bound
 
-    def _bind_attempt_checkpoint(self, claimed: dict[str, Any]) -> None:
+    def _bind_attempt_checkpoint(self, claimed: dict[str, Any]) -> object | None:
+        # Replay/Web control lifecycle is connected in its owning follow-up; do not
+        # start a recording controller merely because a router contains that route.
+        snapshot = claimed.get("snapshot")
+        if type(snapshot) is not dict or snapshot.get("purpose") != "recording":
+            return None
         from aiqa.worker.android_jobs import bind_attempt_checkpoint
-        from aiqa.worker.checkpoints import WorkerAttemptCheckpoint
+        from aiqa.worker.keepalive import WorkerAttemptKeepalive
         from aiqa.contracts.jobs import ControlDecision
 
         try:
-            control = WorkerAttemptCheckpoint(self._client, claimed, clock=self._mono)
-            checkpoint = control.checkpoint
+            control = WorkerAttemptKeepalive(self._client, claimed, self._config.boot_id, clock=self._mono)
         except (ValueError,TypeError,KeyError):
-            checkpoint = lambda phase: ControlDecision(False, "checkpoint_claim_invalid")
-        bind_attempt_checkpoint(self._handler, checkpoint)
+            bind_attempt_checkpoint(self._handler,
+                lambda phase: ControlDecision(False, "checkpoint_claim_invalid"))
+            return None
+        if bind_attempt_checkpoint(self._handler, control.checkpoint):
+            return control
+        return None
 
     def _bind_step_evidence_commit(self, claimed: dict[str, Any]) -> None:
         """Wire per-action evidence commit so the timeline updates before the attempt finishes."""
@@ -583,6 +610,11 @@ class WorkerRuntime:
         )
 
     def _submit_finish(self, claimed: dict[str, Any], result: HandlerResult) -> dict[str, Any] | None:
+        prefix_hash = result.last_ack_hash
+        if result.final_seq == 0 and result.last_ack_seq == 0 and prefix_hash == "":
+            # Empty evidence has a canonical empty prefix, not a missing hash.
+            # The server still compares it with its actual committed prefix.
+            prefix_hash = _empty_ack_hash()
         payload = {
             "project_id": claimed["project_id"],
             "job_id": claimed["job_id"],
@@ -591,7 +623,7 @@ class WorkerRuntime:
             "outcome": result.outcome,
             "final_seq": result.final_seq,
             "last_ack_seq": result.last_ack_seq,
-            "last_ack_hash": result.last_ack_hash,
+            "last_ack_hash": prefix_hash,
             "manifest_digest": claimed["snapshot"]["digest"],
             "evidence_complete": result.evidence_complete,
             "ambiguous_dispatch": result.ambiguous_dispatch,

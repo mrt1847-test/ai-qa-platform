@@ -6,11 +6,21 @@
 
 **계약:** RX-97 validate_authoring_pin(snapshot) 반환 한도를 사용한다. worker 전역 설정은 한도를 좁히기만 한다. 기존 pin 없는 개발 fixture는 호환한다. **파일:** worker/android_jobs.py, tests/integration/test_rx87_android_runtime.py.
 
-- [ ] 정상 API→claim의 pin을 AndroidRecordingHandler에 넣어 max_actions가 worker 기본50보다 작으면 그 수 이후 모델/gesture가 발생하지 않는 RED를 확인한다.
-- [ ] 모델 대기 동안 timeout 경과/취소를 재현한다. 응답 도착 뒤 제스처0이어야 한다. handler를 다른 claim에서 재사용해 한도·시계·호출량이 누적되지 않는지 확인한다.
-- [ ] worker의 더 작은 한도와 pin의 model-call 상한을 각각 지킨다. 잘못된 pin은 capture/model/gesture 전 거절한다. 서버 RX-98 영속 모델 quota를 대체하지 않는다.
-- [ ] 시간/취소 재검사를 실제 dispatch 직전에 둔다. 아직 실행하지 않은 모델/정제 실패를 불명 기기 실행으로 기록하지 않도록 journal 경계를 확인한다. 실제 전송 이후 불명은 재클릭하지 않는다.
-- [ ] RX48/RX65/RX67/RX97~99 및 새 테스트를 확인하고 부분 인계를 남긴다. A만으로 RX87 완료하지 않는다.
+- [x] 정상 API→claim의 pin을 AndroidRecordingHandler에 넣어 max_actions가 worker 기본50보다 작으면 그 수 이후 모델/gesture가 발생하지 않는 RED를 확인한다.
+- [x] 모델 대기 동안 timeout 경과/취소를 재현한다. 응답 도착 뒤 제스처0이어야 한다. handler를 다른 claim에서 재사용해 한도·시계·호출량이 누적되지 않는지 확인한다.
+- [x] worker의 더 작은 한도와 pin의 model-call 상한을 각각 지킨다. 잘못된 pin은 capture/model/gesture 전 거절한다. 서버 RX-98 영속 모델 quota를 대체하지 않는다.
+- [x] 시간/취소 재검사를 실제 dispatch 직전에 둔다. 아직 실행하지 않은 모델/정제 실패를 불명 기기 실행으로 기록하지 않도록 journal 경계를 확인한다. 실제 전송 이후 불명은 재클릭하지 않는다.
+- [x] RX48/RX65/RX67/RX97~99 및 새 테스트를 확인하고 부분 인계를 남긴다. A만으로 RX87 완료하지 않는다.
+
+## A의 검증 상태
+
+2026-11-14: A complete(core_contract), native-send callback/한도·journal 경계와 집중44/JS32 통과. 최종 전체9failed/749passed/1skipped는 기존9개 기준선과 같다. [부분 인계](../validation/tasks/RX-87.md)를 따른다. B/C/D 미완료다.
+
+## B0. 현재 worker fence와 장기 실행 control
+
+- [ ] B0.1: POST worker/checkpoints에 현재 project/worker/purpose/job/attempt/ACK·generation·incarnation/lease margin·취소/종료·고정 job deadline 검사를 연결한다. worker now/과거 allowed receipt를 권한으로 믿지 않는다. 같은 key도 현재 상태를 새로 읽으며 model grant/실제 실행 quota가 아니다.
+- [ ] B0.2: worker client는 응답 소유/세대/phase·시간/lease 형식을 검증하고 전체 HTTP 왕복 시간을 빼고 판정한다. runtime이 handler의 모델 전/실제 native 전송 직전에 이 callback을 연결한다. 서버 취소가 모델/파일 I/O 중 생겨도 다음 gesture0이며 저장 증거/제안은 보존한다.
+- [ ] B0.3: 장기 모델 대기/실행 중 heartbeat/renew/cancel poll과 종료·연결 유실·재접속을 연결한다. handler가 반환하기 전까지 초기 lease 상수를 계속 믿지 않는다. 자동 action/attempt 재개0이다.
 
 ## B. replay의 고정 정책과 한도
 
@@ -20,10 +30,17 @@
 - [ ] replay의 claim별 action/timeout·episode caps와 handler 재사용을 검증한다. 지원하지 않는 정상 ON 경로는 명시 실패로 남기며 fixture 성공을 넣지 않는다.
 - [ ] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다.
 
+### B 구현 전 확인한 실제 코드 누락
+
+- worker/runtime.py는 handler.handle 중 heartbeat/renew/cancel poll을 연결하지 않는다. 단순 context boolean이나 초기 lease_remaining 상수를 원격 현재 권한으로 사용하지 않는다. native 전송 전 현재 서버 fence와 장기 모델 대기 중 heartbeat/lease 갱신이 필요하다.
+- Android builder의 _live_android_capture_pair.prepare는 선택 package 대신 Android Settings를 연다. 고정 case version의 선택 target을 서버 claim에 결합하고 allowlist된 launch 경계에서 소비할 후속 단위가 필요하다. 새 target schema/authority를 임의 원문 문자열로 대체하지 않는다.
+- replay handler checks는 전역 context tuple뿐이다. 승인된 check/expected/target metadata를 package/현재 case-run과 묶어 공급해야 한다. 고정 plan 문자열만으로 이 부분이 완료되지 않는다.
+
 ## C. 서버 check/episode 전용 권한
 
 **문제:** RX98 recording authoring grant는 replay의 verifier/healer 권한이 아니다. **파일:** worker model API, server model authorization/receipts, 기존 healing service, HTTP client.
 
+- [ ] reserve_healing_episode의 현재 attempt 전체 dispatch_started 검사는 앞 step을 실행한 뒤의 정상 locator 실패까지 막는다. 실제 실패 action의 미전송 증거와 episode 소유를 먼저 고정해, 다른 action 실행 기록을 해당 action 불명 전송으로 혼동하지 않는다.
 - [ ] 실제 regression claim/ACK·고정 package/check·healing policy·binding/key·현재 lease/취소를 확인하는 서버 포트를 연결한다. worker가 episode ID/allowed=true만 만들어 호출할 수 없게 한다.
 - [ ] episode 예약1/호출2/30초와 전체 job 상한, 동일 key/응답 유실·pending 불명·재시도 차감을 영속화한다. authoring 권한 재사용0이다.
 - [ ] 원본 FAIL/승인 package는 불변이고 episode/제안/검증은 별도 소유 기록이다. 저장된 근거 조회·사후 승인은 worker offline과 독립이다.

@@ -12,6 +12,11 @@ from aiqa.worker.files import file_lock
 from aiqa.worker.runner import ACTION_LIMIT, ATTEMPT_LIMIT_SECONDS
 
 
+def _local_state(state: str) -> str:
+    # not_sent is a local terminal proof, never a wire evidence dispatch state.
+    return state if state == "not_sent" else require_dispatch_state(state)
+
+
 class JournalWriteError(OSError):
     """The next state was not flushed, so the command must not run."""
 
@@ -24,10 +29,10 @@ class DispatchJournal:
         self._fail_state: str | None = None
 
     def fail_on(self, state: str) -> None:
-        self._fail_state = require_dispatch_state(state)
+        self._fail_state = _local_state(state)
 
     def append(self, attempt_id: str, action_id: str, state: str) -> None:
-        checked = require_dispatch_state(state)
+        checked = _local_state(state)
         if not attempt_id or not action_id:
             raise JournalWriteError("dispatch identity is required")
         if checked == self._fail_state:
@@ -45,6 +50,7 @@ class DispatchJournal:
                     'dispatch_started': last == 'planned',
                     'acknowledged': last == 'dispatch_started',
                     'unknown': last == 'dispatch_started',
+                    'not_sent': last == 'dispatch_started',
                     'observed': last in {'acknowledged', 'unknown'},
                 }
                 if not allowed[checked]:

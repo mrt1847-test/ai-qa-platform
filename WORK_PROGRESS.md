@@ -443,3 +443,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-13: [RX-98](docs/validation/tasks/RX-98.md) 정상 녹화의 서버 권한·고정 binding/key·영속 예약/quota·늦은 행동 차단을 구현했다. 정제 관찰 bytes 연결 RX99는 미완료이며 실제 시각 에이전트 수용으로 셈하지 않는다.
 
 2026-11-13: [RX-99](docs/validation/tasks/RX-99.md) 정제 관찰 artifact/receipt와 실제 PNG·전체 geometry의 custom provider 입력을 연결했다. 응답 유실 복구·영속 모델 quota를 검증했으며 실제 모델 화면 이해/기기 수용은 별도다. 다음 RX87은 [세부 단위](docs/managed-pc/ANDROID_RUNTIME_TASKS.md) A→B→C→D로 진행한다.
+
+2026-11-14: RX87 A의 Android 녹화 고정 action/model/time cap·claim별 시계/guard·실제 native 전송 gate와 local not_sent를 구현했다. 집중44·JS32, 전체9failed749passed1skipped(기존9개 기준선). 상위 RX87은 in_progress이며 전체 완료 수는 추가하지 않는다. 다음 B0 fresh worker control 연결.

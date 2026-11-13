@@ -38,6 +38,13 @@ class RemoteLeaseGuard:
 
     def __init__(self, runner: AttemptRunner | None = None) -> None:
         self._runner = AttemptRunner() if runner is None else runner
+        self._attempt_id: str | None = None
+
+    def begin_attempt(self, attempt_id: str) -> None:
+        """New claims have fresh counters; repeated same-claim work keeps its ceiling."""
+        if self._attempt_id is not None and self._attempt_id != attempt_id:
+            self._runner = AttemptRunner()
+        self._attempt_id = attempt_id
 
     def note_heartbeat(self, now: MonotonicInstant) -> None:
         self._runner.note_heartbeat(now)

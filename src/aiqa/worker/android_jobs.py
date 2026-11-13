@@ -34,6 +34,7 @@ from aiqa.replay.android_runner import AndroidDeterministicDriver, require_appro
 from aiqa.worker.control import RemoteLeaseGuard
 from aiqa.worker.dispatch_journal import DispatchJournal, JournalWriteError
 from aiqa.worker.runner import MonotonicInstant
+from aiqa.worker.recording_limits import RecordingLimits, resolve_recording_limits
 from aiqa.worker.runtime import HandlerResult, InertHandler, JobHandler
 from aiqa.worker.spool import EvidenceSpool
 
@@ -481,6 +482,7 @@ class AndroidRecordingHandler:
     finished_by_model: bool = False
     stopped_reason: str = ""
     _mono_origin: float | None = field(default=None, init=False, repr=False)
+    _limits: RecordingLimits | None = field(default=None, init=False, repr=False)
     _plan_index: int = field(default=0, init=False, repr=False)
     _device_prepared: bool = field(default=False, init=False, repr=False)
     _previous_result: str = field(default="", init=False, repr=False)
@@ -505,11 +507,17 @@ class AndroidRecordingHandler:
         except (TypeError, ValueError):
             return _fail_closed("attempt_missing")
 
+        try:
+            self._limits = resolve_recording_limits(snapshot,
+                worker_actions=self.context.max_actions, worker_seconds=self.context.max_seconds)
+        except ValueError:
+            return _fail_closed("authoring_pin_invalid")
         multi = self.context.plan_provider is not None or len(self.context.fixture_responses) > 0
         max_actions = int(self.context.max_actions) if multi else 1
-        if max_actions < 1:
-            return _fail_closed("action_budget")
+        if self._limits is not None:
+            max_actions = min(max_actions, self._limits.max_actions)
 
+        self.guard.begin_attempt(attempt_id)
         # Each claim/attempt starts clean so a reused handler cannot accumulate taps or clocks.
         all_events: list[dict[str, Any]] = []
         all_artifacts: list[dict[str, Any]] = []
@@ -528,6 +536,9 @@ class AndroidRecordingHandler:
         last_ack_hash = ""
         acked_artifact_ids: list[str] = []
         step_commit = self.context.step_evidence_commit
+        if max_actions < 1:
+            self.stopped_reason = "action_budget"
+            return _fail_closed("action_budget")
 
         for action_seq in range(1, max_actions + 1):
             if self._is_cancelled():
@@ -538,14 +549,14 @@ class AndroidRecordingHandler:
             decision = self.guard.authorize(
                 now,
                 self.context.lease_remaining_seconds,
-                phase="before_dispatch",
+                phase="before_lookup",
             )
             if not decision.allowed:
                 self.stopped_reason = str(decision.reason or "lease_expired")
                 if self.tap_count == 0:
                     return _fail_closed(self.stopped_reason, evidence_complete=False)
                 break
-            if self.context.max_seconds is not None and now.seconds >= float(self.context.max_seconds):
+            if self._limits is None and self.context.max_seconds is not None and now.seconds >= float(self.context.max_seconds):
                 self.stopped_reason = "time_budget"
                 if self.tap_count == 0:
                     return _fail_closed("time_budget", evidence_complete=False)
@@ -567,7 +578,6 @@ class AndroidRecordingHandler:
 
             try:
                 self.journal.append(attempt_id, action_id, "planned")
-                self.journal.append(attempt_id, action_id, "dispatch_started")
             except JournalWriteError:
                 if self.tap_count == 0:
                     return _fail_closed("journal_blocked", evidence_complete=False)
@@ -579,24 +589,22 @@ class AndroidRecordingHandler:
             except _RecordingFinished:
                 self.finished_by_model = True
                 self.stopped_reason = "model_finish"
-                try:
-                    self.journal.append(attempt_id, action_id, "acknowledged")
-                except JournalWriteError:
-                    pass
+                # Model finish is not a device dispatch and has no dispatch ACK.
                 break
             except _PlanExhausted:
                 self.stopped_reason = "plan_exhausted"
                 break
             except MobileAgentRejected:
-                self.journal.mark_started_only_unknown(attempt_id, action_id)
+                ambiguous = self.journal.mark_started_only_unknown(attempt_id, action_id) == "unknown"
+                self.stopped_reason = "ambiguous_dispatch" if ambiguous else "recording_rejected"
                 if self.tap_count == 0:
-                    return _fail_closed("recording_rejected", evidence_complete=False, ambiguous=True)
-                self.stopped_reason = "recording_rejected"
+                    return _fail_closed(self.stopped_reason, evidence_complete=False, ambiguous=ambiguous)
                 break
             except _CaptureFailed as exc:
+                uncertain = self.journal.is_ambiguous(attempt_id, action_id)
+                self.stopped_reason = "ambiguous_dispatch" if uncertain else exc.reason
                 if self.tap_count == 0:
-                    return _fail_closed(exc.reason, evidence_complete=False)
-                self.stopped_reason = exc.reason
+                    return _fail_closed(exc.reason, evidence_complete=False, ambiguous=uncertain)
                 break
 
             before, after, before_ref, after_ref, typed_action = step
@@ -776,6 +784,10 @@ class AndroidRecordingHandler:
         else:
             # Tests may bump mono_seconds between steps to exercise budgets.
             mono_value = float(self.context.mono_seconds)
+            if self._limits is not None:
+                if self._mono_origin is None:
+                    self._mono_origin = mono_value
+                mono_value = max(0.0, mono_value - self._mono_origin)
         return MonotonicInstant(mono_value)
 
     def _authoring_content(
@@ -785,13 +797,21 @@ class AndroidRecordingHandler:
         observation: Observation,
         previous_result: str = "",
     ) -> str:
+        self._recording_gate(claim, phase="before_model")
+        if self._limits is not None and self._plan_index >= self._limits.max_model_calls:
+            raise _CaptureFailed("model_budget")
         provider = self.context.plan_provider
         if provider is not None:
             step_claim = dict(claim)
             step_claim["action_seq"] = self._plan_index + 1
             step_claim["observation"] = observation
             step_claim["previous_result"] = previous_result
-            content = provider(step_claim)
+            from aiqa.worker.http_client import WorkerHttpError
+            try:
+                content = provider(step_claim)
+            except WorkerHttpError as exc:
+                # A model transport failure does not imply a device command was sent.
+                raise _CaptureFailed("model_request_failed") from exc
             if type(content) is not str or content.strip() == "":
                 raise MobileAgentRejected("authoring content missing")
             self._plan_index += 1
@@ -810,6 +830,34 @@ class AndroidRecordingHandler:
             raise MobileAgentRejected("authoring content missing")
         self._plan_index += 1
         return text
+
+    def _recording_gate(self, claim: dict[str, Any], *, phase: str) -> None:
+        if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
+            raise _CaptureFailed("cancelled")
+        now = self._mono_now()
+        seconds = self._limits.timeout_seconds if self._limits is not None else self.context.max_seconds
+        if seconds is not None and now.seconds >= seconds:
+            raise _CaptureFailed("time_budget")
+        decision = self.guard.authorize(now, self.context.lease_remaining_seconds, phase=phase)
+        if not decision.allowed:
+            raise _CaptureFailed(str(decision.reason or "lease_expired"))
+
+    def _before_native_recording_send(self, claim: dict[str, Any], action_seq: int) -> None:
+        # Driver has completed preflight, argv validation and sanitized spool I/O.
+        self._recording_gate(claim, phase="before_lookup")
+        snapshot = claim["snapshot"]
+        attempt_id = str(claim["attempt_id"])
+        action_id = str(snapshot.get("action_id") or f"rec-{attempt_id}-{action_seq}")
+        try:
+            self.journal.append(attempt_id, action_id, "dispatch_started")
+            try:
+                # Charge once after blocking journal I/O, immediately before native send.
+                self._recording_gate(claim, phase="before_dispatch")
+            except _CaptureFailed:
+                self.journal.append(attempt_id, action_id, "not_sent")
+                raise
+        except JournalWriteError as exc:
+            raise _CaptureFailed("journal_blocked") from exc
 
     def _observations_for_step(self, action_seq: int) -> tuple[Observation, Observation]:
         steps = self.context.step_observations
@@ -856,7 +904,8 @@ class AndroidRecordingHandler:
             if action.kind == "finish":
                 self._previous_result = "finish"
                 raise _RecordingFinished()
-            dispatch = self.adapter._dispatch(self.driver, before, after, action)
+            dispatch = self.adapter._dispatch(self.driver, before, after, action,
+                before_native_send=lambda: self._before_native_recording_send(claim, action_seq))
             self._previous_result = _action_result_token(action)
             return before, after, dispatch.before_ref, dispatch.after_ref, action
 
@@ -885,7 +934,8 @@ class AndroidRecordingHandler:
         if action.kind == "finish":
             self._previous_result = "finish"
             raise _RecordingFinished()
-        dispatch = self.adapter._dispatch(self.driver, before, before, action)
+        dispatch = self.adapter._dispatch(self.driver, before, before, action,
+            before_native_send=lambda: self._before_native_recording_send(claim, action_seq))
         self._previous_result = _action_result_token(action)
         try:
             after = live()

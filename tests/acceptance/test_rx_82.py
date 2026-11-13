@@ -93,7 +93,8 @@ def test_release_label_persists_from_admission_through_skip_and_cancel(ux_app, s
             from aiqa.contracts.reports import AnalyticsQuery
             from aiqa.domain.analytics import read_analytics
             from aiqa.store.models import Actor, Transaction
-            today=datetime.now(timezone.utc).date()
+            # Analytics date boundaries are KST calendar days, including the UTC/KST midnight gap.
+            today=datetime.now(timezone(timedelta(hours=9))).date()
             with sqlite3.connect(database) as connection:
                 as_of=connection.execute("SELECT MAX(finalized_seq) FROM item_finalizations").fetchone()[0]
                 query=AnalyticsQuery(UUID(project),(today-timedelta(days=1)).isoformat(),

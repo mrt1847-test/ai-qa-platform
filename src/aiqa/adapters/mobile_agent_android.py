@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Protocol
+from typing import Callable, Protocol
 from uuid import UUID, uuid4
 
 from aiqa.contracts.actions import ActionProposal, CaptureGeometry, Observation
@@ -185,6 +185,8 @@ class MobileAgentAndroidAdapter:
         before: Observation,
         after: Observation,
         action: TypedAndroidAction,
+        *,
+        before_native_send: Callable[[], None] | None = None,
     ) -> AndroidDispatchResult:
         # After rescale, driver locks identity geometry in physical pixels.
         dispatch_before = _physical_identity(before)
@@ -198,6 +200,7 @@ class MobileAgentAndroidAdapter:
                 before=dispatch_before,
                 action=action,
                 after=dispatch_after,
+                before_native_send=before_native_send,
             )
         except AndroidDispatchError as exc:
             raise MobileAgentRejected(str(exc)) from exc

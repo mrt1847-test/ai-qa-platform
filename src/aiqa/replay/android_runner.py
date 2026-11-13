@@ -167,6 +167,7 @@ class AndroidDeterministicDriver:
         action: TypedAndroidAction,
         after: Observation | None = None,
         observed_serial: str | None = None,
+        before_native_send: Callable[[], None] | None = None,
     ) -> AndroidDispatchResult:
         """Preflight → sanitize before → one native call → optional after. Never retries."""
 
@@ -190,6 +191,8 @@ class AndroidDeterministicDriver:
 
         before_ref = self._sanitize_to_spool(before, phase="before")
         argv = self.build_argv(action)
+        if before_native_send is not None:
+            before_native_send()
         try:
             completed = self._runner(argv, self.command_timeout)
         except subprocess.TimeoutExpired as exc:

@@ -20,10 +20,15 @@ from aiqa.worker.service import bind_claim_store, claim_job
 
 @pytest.fixture
 def review_recording(tmp_path):
-    con = sqlite3.connect(':memory:', isolation_level=None)
+    database_uri = 'file:review-' + str(uuid4()) + '?mode=memory&cache=shared'
+    con = sqlite3.connect(database_uri, uri=True, isolation_level=None)
     con.execute('PRAGMA foreign_keys=ON')
     store = Store(StorageConfig(tmp_path, tmp_path / 'unused.sqlite', tmp_path / 'artifacts', tmp_path / 'spool'), con)
     migrate_store(store)
+    def open_thread_store():
+        connection = sqlite3.connect(database_uri, uri=True, isolation_level=None)
+        connection.execute('PRAGMA foreign_keys=ON')
+        return Store(store.config, connection)
     owner = Actor(uuid4(), None, True)
     with bind_store(store):
         project = create_project(owner, ProjectCreate('Review', 'review', 'r', 'web'))
@@ -46,6 +51,6 @@ def review_recording(tmp_path):
         job = claim_job(worker, now)
     assert job is not None
     try:
-        yield SimpleNamespace(store=store, con=con, project=project, actor=actor, case=case, version=version, recording_id=receipt.recording_id, job=job, lease=LeaseToken(job.project_id, job.job_id, job.generation), worker=worker, worker_token=worker_token, now=now)
+        yield SimpleNamespace(store=store, open_store=open_thread_store, con=con, project=project, actor=actor, case=case, version=version, recording_id=receipt.recording_id, job=job, lease=LeaseToken(job.project_id, job.job_id, job.generation), worker=worker, worker_token=worker_token, now=now)
     finally:
         store.close()

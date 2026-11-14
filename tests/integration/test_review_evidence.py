@@ -225,12 +225,11 @@ def test_worker_upload_http_key_replays_and_rejects_changed_body(review_recordin
     import base64
     import httpx
     from aiqa.api.app import create_app
-    from aiqa.api.mutations import _BorrowedStore
     from aiqa.config import load_settings
     f = review_recording
     f.con.execute('UPDATE leases SET expires_at=? WHERE job_id=?', ((datetime.now(timezone.utc)+timedelta(seconds=45)).isoformat(), str(f.job.job_id)))
     app = create_app(load_settings({'AIQA_RUNTIME_ROOT': str(f.store.config.runtime_root)}))
-    app.state.open_store = lambda: _BorrowedStore(f.store)
+    app.state.open_store = f.open_store
     data = b'http-fixture'
     payload = {'project_id':str(f.project.project_id),'job_id':str(f.job.job_id),'generation':1,
                'owner_id':str(f.recording_id),'filename':'shot.png','media_type':'image/png',

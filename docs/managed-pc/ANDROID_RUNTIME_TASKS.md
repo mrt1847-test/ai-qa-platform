@@ -45,11 +45,15 @@ B0.5 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-AUTHORITY.md). 최�
 
 ## B0.6. 증거 I/O와 control 응답성
 
+실행 단위/불변성/리뷰 초점: [EVIDENCE_IO_TASKS](EVIDENCE_IO_TASKS.md).
+
 기존 post_evidence_commit은 파일 작업을 ASGI loop에서 수행하고, active artifact 게시도 SQLite writer transaction 안에 있다. 단순 thread 이동만으로 DB write 대기 중인 heartbeat까지 해결했다고 보고하지 않는다.
 
-- [ ] 느린 실제 artifact 게시 동안 heartbeat/취소·checkpoint 응답을 재현한다. API event-loop와 DB writer 대기를 각각 구분한다.
-- [ ] body 검증/임시 파일 durable staging을 writer transaction 밖에서 처리하고 현재 scope/lease/receipt를 짧은 transaction에서 재검사해 게시한다. 같은 key/동시 응답 유실·orphan·실패 정리와 불변 ready bytes를 보존한다.
-- [ ] 서버 store는 사용 thread에서 열고 닫는다. event-loop 차단/같은 요청 중복 파일·권한 변경·late 저장/중간 파일 노출 부정 경로를 검증한다. 외부 환경 대기로 처리하지 않는다.
+- [x] 느린 실제 artifact 게시 동안 heartbeat/취소·checkpoint 응답을 재현한다. API event-loop와 DB writer 대기를 각각 구분한다.
+- [x] body 검증/임시 파일 durable staging을 writer transaction 밖에서 처리하고 현재 scope/lease/receipt를 짧은 transaction에서 재검사해 게시한다. 같은 key/동시 응답 유실·orphan·실패 정리와 불변 ready bytes를 보존한다.
+- [x] 서버 store는 사용 thread에서 열고 닫는다. event-loop 차단/같은 요청 중복 파일·권한 변경·late 저장/중간 파일 노출 부정 경로를 검증한다. 외부 환경 대기로 처리하지 않는다.
+
+B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전체 기존9failed/840passed/1skipped. 다음 [B1 제어·한도](ANDROID_REPLAY_CONTROL_TASKS.md), B2 승인 검사/대상과 C/D는 미완료다.
 
 ## B. replay의 고정 정책과 한도
 

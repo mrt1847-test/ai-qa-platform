@@ -46,6 +46,10 @@ from aiqa.security.receipt_digest import ReceiptKeyUnavailable
 from aiqa.web.routes import render_template
 
 
+def _server_now():
+    return datetime.now(timezone.utc)
+
+
 def install_artifacts(application: FastAPI) -> None:
     """Attach the artifact ingest route once. This does not open SQLite."""
 
@@ -61,9 +65,13 @@ def install_artifacts(application: FastAPI) -> None:
         payload = await _body(request)
         if isinstance(payload, JSONResponse):
             return payload
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(ingest_artifact_http, request,
+            header.removeprefix("Bearer ").strip(), payload)
+
+    def ingest_artifact_http(request, token, payload):
         try:
             # Worker-supplied timestamps cannot extend an expired generation.
-            now = datetime.now(timezone.utc)
             lease = LeaseToken(
                 _uuid(payload.get("project_id")),
                 _uuid(payload.get("job_id")),
@@ -72,16 +80,15 @@ def install_artifacts(application: FastAPI) -> None:
             upload = _upload(lease.project_id, payload)
         except (TypeError, ValueError):
             return _error(422, "validation", "invalid artifact", {})
-        token = header.removeprefix("Bearer ").strip()
         store = request.app.state.open_store()
         try:
             migrate_store(store)
             with bound_auth_store(store):
                 try:
                     worker = worker_scope_from_token(token)
-                    marker = bind_artifact_ingest(ArtifactBinding(store, worker, now))
+                    marker = bind_artifact_ingest(ArtifactBinding(store, worker, _server_now(), _server_now))
                     try:
-                        body = ingest_upload_request(ArtifactBinding(store, worker, now), lease, upload, request.headers['idempotency-key'].strip(), payload)
+                        body = ingest_upload_request(ArtifactBinding(store, worker, _server_now(), _server_now), lease, upload, request.headers['idempotency-key'].strip(), payload)
                     finally:
                         reset_artifact_ingest(marker)
                 except AuthRequired:

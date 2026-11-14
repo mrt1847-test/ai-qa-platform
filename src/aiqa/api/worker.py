@@ -341,6 +341,11 @@ def install_worker(application: FastAPI) -> None:
         payload = await _body(request)
         if isinstance(payload, JSONResponse):
             return payload
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(commit_evidence_http, request,
+            header.removeprefix("Bearer ").strip(), key, payload)
+
+    def commit_evidence_http(request, token, key, payload):
         try:
             _instant(payload.get("now"))  # Validate metadata; server clock supplies authority.
             lease = LeaseToken(
@@ -356,7 +361,6 @@ def install_worker(application: FastAPI) -> None:
             fingerprint = _commit_fingerprint(payload)
         except (TypeError, ValueError, EvidenceHashRejected):
             return _error(422, "validation", "invalid evidence commit", {})
-        token = header.removeprefix("Bearer ").strip()
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)

@@ -21,12 +21,13 @@ class ArtifactRequestConflict(ValueError):
 
 def ingest_upload_request(binding, lease, upload, request_key, payload):
     """Reserve key/body before I/O; a crash retries the same staged object."""
-    from aiqa.store.evidence import _require_artifact_lease
+    from aiqa.store.evidence import _require_artifact_lease, artifact_authority_now
     canonical = json.dumps(payload, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
     identity = (str(lease.project_id), str(lease.job_id), lease.generation, binding.worker.worker_id, request_key)
     lock_key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
     with file_lock(binding.store.config.spool_dir / 'upload-locks' / (lock_key + '.lock')):
         with binding.store.transaction() as connection:
+            binding = replace(binding, now=artifact_authority_now(binding))
             job = connection.execute('SELECT purpose FROM jobs WHERE project_id=? AND job_id=?', identity[:2]).fetchone()
             if lease.project_id not in binding.worker.permitted_projects or job is None or job[0] not in binding.worker.permitted_purposes:
                 raise LeaseDenied('worker cannot use this upload request')
@@ -121,13 +122,14 @@ def _quarantine(connection, upload, digest):
 
 def ingest_uploaded(binding, lease, upload: ArtifactUpload, *, fail_ready=False):
     # Import after the evidence module has installed its context-bound API.
-    from aiqa.store.evidence import _require_artifact_lease
+    from aiqa.store.evidence import _require_artifact_lease, artifact_authority_now
     if upload.project_id != lease.project_id or lease.project_id not in binding.worker.permitted_projects:
         raise LeaseDenied('worker cannot use this lease')
     started = time.monotonic()
     digest = content_hash(upload.body)
     suffix = suffix_for(upload.filename, upload.media_type)
     with binding.store.transaction() as connection:
+        binding = replace(binding, now=artifact_authority_now(binding))
         _require_artifact_lease(connection, binding.worker, lease, binding.now)
         upload = _owner(connection, lease, binding.worker, upload)
         if suffix is None or not acceptable_size(upload.declared_length, upload.body) or upload.declared_hash != digest:
@@ -169,8 +171,8 @@ def ingest_uploaded(binding, lease, upload: ArtifactUpload, *, fail_ready=False)
         )
     if fail_ready:
         return ArtifactReceipt(artifact_id, object_key, digest, len(upload.body), False, False, 'staged')
-    now = binding.now + timedelta(seconds=time.monotonic() - started)
     with binding.store.transaction() as connection:
+        now = artifact_authority_now(binding) if binding.authority_clock is not None else binding.now + timedelta(seconds=time.monotonic() - started)
         _require_artifact_lease(connection, binding.worker, lease, now)
         upload = _owner(connection, lease, binding.worker, upload)
         raced = _existing(connection, upload, digest)

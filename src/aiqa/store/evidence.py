@@ -20,6 +20,7 @@ from aiqa.store.artifacts import (
     ArtifactRejected,
     ArtifactStream,
     ArtifactUpload,
+    DurableObject,
     EvidenceUnavailable,
     acceptable_size,
     content_hash,
@@ -63,6 +64,14 @@ class ArtifactBinding:
     store: Store
     worker: WorkerScope
     now: datetime
+    authority_clock: Callable[[], datetime] | None = None
+
+
+def artifact_authority_now(binding: ArtifactBinding) -> datetime:
+    current = binding.now if binding.authority_clock is None else binding.authority_clock()
+    if not isinstance(current, datetime) or current.tzinfo is None:
+        raise ValueError("authority clock is invalid")
+    return current.astimezone(timezone.utc)
 
 
 _artifact_binding: ContextVar[ArtifactBinding] = ContextVar("aiqa_artifact_binding")
@@ -197,7 +206,7 @@ def commit_sanitized_evidence(
     body_fingerprint: str,
     authority_clock: Callable[[], datetime] | None = None,
 ) -> EvidenceCommitAck:
-    """Commit a contiguous sanitized event prefix and optional artifacts. Late work is recovery-only."""
+    """Stage bytes without a writer lock, then atomically publish evidence and ACK."""
 
     if sanitized is not True:
         raise UnsanitizedEvidence("unsanitized evidence cannot be committed")
@@ -212,6 +221,18 @@ def commit_sanitized_evidence(
         if not acceptable_size(part.declared_length, part.body):
             raise EvidenceHashRejected("artifact size is invalid")
 
+    from aiqa.store.evidence_io import commit_staged_evidence
+    clock = authority_clock or binding.authority_clock
+    return commit_staged_evidence(binding, lease, events=events, artifacts=artifacts,
+        request_key=request_key.strip(), body_fingerprint=body_fingerprint, authority_clock=clock)
+
+
+def _commit_evidence_metadata(
+    binding: ArtifactBinding, lease: LeaseToken, *, events: list[EventEnvelope],
+    artifacts: list[EvidenceArtifactPart], request_key: str, body_fingerprint: str,
+    prepared: tuple[DurableObject, ...], authority_clock: Callable[[], datetime] | None,
+) -> EvidenceCommitAck:
+    """Only metadata is written here; prepared objects came from server-side staging."""
     worker_id = binding.worker.worker_id
     identity = (
         str(lease.project_id),
@@ -349,7 +370,7 @@ def commit_sanitized_evidence(
         if artifacts:
             if late:
                 for part in artifacts:
-                    digest = content_hash(part.body)
+                    digest = part.declared_hash
                     connection.execute(
                         """
                         INSERT OR IGNORE INTO late_evidence_inbox (
@@ -378,6 +399,7 @@ def commit_sanitized_evidence(
                     lease,
                     attempt_id=attempt_id,
                     artifacts=artifacts,
+                    prepared=prepared,
                 )
 
         finish_after = connection.execute(
@@ -428,6 +450,7 @@ def _place_active_artifacts(
     *,
     attempt_id: str,
     artifacts: list[EvidenceArtifactPart],
+    prepared: tuple[DurableObject, ...],
 ) -> list[str]:
     """Publish ready PNG/log bytes, link actions, and return durable artifact ids."""
 
@@ -459,12 +482,8 @@ def _place_active_artifacts(
         case_version_id = None if job[6] is None else str(job[6])
     stored_ids: list[str] = []
     stamped = binding.now.astimezone(timezone.utc).isoformat()
-    for part in artifacts:
-        digest = content_hash(part.body)
-        if part.declared_hash != digest or part.declared_length != len(part.body):
-            raise EvidenceHashRejected("artifact hash does not match")
-        if not acceptable_size(part.declared_length, part.body):
-            raise ValueError("artifact is too large")
+    for index, part in enumerate(artifacts):
+        digest = part.declared_hash
         suffix = suffix_for(part.filename, part.media_type)
         if suffix is None:
             raise ValueError("artifact filename is invalid")
@@ -503,18 +522,10 @@ def _place_active_artifacts(
         if existing is not None:
             stored_ids.append(str(existing[0]))
             continue
-        artifact_id = uuid4()
-        try:
-            durable = publish_durable(
-                binding.store.config.artifacts_dir,
-                lease.project_id,
-                artifact_id,
-                suffix,
-                part.body,
-                declared_hash=digest,
-            )
-        except ArtifactRejected as exc:
-            raise ValueError(str(exc)) from exc
+        durable = prepared[index]
+        if durable.content_hash != digest or durable.byte_length != part.declared_length:
+            raise EvidenceHashRejected("staged artifact does not match")
+        artifact_id = durable.artifact_id
         if action_id is not None and action_id.strip() != "":
             connection.execute(  # type: ignore[attr-defined]
                 """
@@ -558,6 +569,8 @@ def _place_active_artifacts(
                 lease.generation,
             ),
         )
+        connection.execute("DELETE FROM artifact_staging WHERE project_id=? AND artifact_id=?",
+            (str(lease.project_id), str(artifact_id)))
         stored_ids.append(str(artifact_id))
     return stored_ids
 

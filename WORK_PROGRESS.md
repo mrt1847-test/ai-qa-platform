@@ -453,3 +453,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-14: [RX87 B0.4](docs/validation/tasks/RX-87-B0-EVIDENCE.md) 단계별 증거의 고정 key/body/time·ACK 재확인·pending/변조 차단을 구현했다. 증거 전송만 추가1회, 동작/모델 반복0. 집중39·전체9failed819passed1skipped(기존9). 다음 B0.5 권한, B0.6 I/O. 상위 RX87 미완료.
 
 2026-11-14: [RX87 B0.5](docs/validation/tasks/RX-87-B0-AUTHORITY.md) evidence/event의 서버 transaction 시각·purpose 권한을 구현했다. owning6·전체9failed825passed1skipped(기존9). 다음 B0.6 I/O와 별도 artifact 저장 경계. 상위 RX87 미완료.
+
+2026-11-14: [RX87 B0.6](docs/validation/tasks/RX-87-B0-IO.md) 증거 파일 I/O를 SQL writer/ASGI 밖으로 분리하고 실제 중복/rollback/lease 대기를 검증했다. 집중68·전체9failed840passed1skipped(기존9). 다음 B1 replay 제어, B2/C/D. 상위 RX87과 완료 수는 유지한다.

@@ -1,0 +1,12 @@
+# RX87 B0.6 · 증거 파일 I/O와 짧은 DB 게시 인계
+
+- 상태: complete(core_contract). 기준 master77d1c12, 2026-11-14. C00/C04/C05/C14. 새 migration/사용자 DB 변경·설치·배포·유료 모델/실제 AVD 수용 없음. 상위 RX87 in_progress.
+- evidence API와 별도 worker/artifacts의 동기 body decode/검증·인증·Store 생성/종료·파일 작업은 thread 안에서 실행한다. SQLite connection을 thread 간 공유하지 않는다. review_recording fixture도 살아 있는 shared-memory URI의 새 connection을 caller thread에서 연다.
+- store/evidence_io.py는 key/body reserve와 artifact_staging을 짧은 transaction에 둔다. 파일 쓰기·flush·기존 bytes hash 검사는 writer transaction 밖이다. 기존 evidence metadata commit이 현재 server clock/purpose/project/lease를 재검사하고 refs/ready/events/prefix/ACK를 함께 게시한다. 파일 작업 중 다른 writer/heartbeat/checkpoint가 진행되며 취소 checkpoint도 거절한다. worker now는 권한이 아니다.
+- 같은 key/본문은 request-key 파일 lock으로 직렬화하고 같은 stage UUID/bytes를 재사용한다. 이미 ready인 증거는 다시 publish하지 않는다. 서로 다른 key 경합에서 생긴 중복 stage는 성공한 metadata commit 뒤, 이 요청 소유이며 ready/ref가 없는 경우에만 파일을 SQL 밖에서 삭제한다. 기존 ready/승인/source/FAIL bytes를 보상 삭제하지 않는다.
+- cached ACK는 readonly receipt다. 새 upload가 I/O 중 만료되면 late inbox/ACK이며 ready0이다. legacy artifacts의 server callable도 초기/최종 writer 취득 뒤 샘플링해 대기 중 만료가 새 ready로 이어지지 않는다. trusted direct core의 명시 deterministic time은 호환한다.
+- RED3: event-loop 차단·DB writer 점유·업로드 중 만료 후 잘못된 ready를 실제 API에서 재현했다. 실제 SQL trigger rollback은 새 events/ready/ACK를 함께 되돌리되 기존 ready bytes와 새 stage를 보존했다. 동시 동일/다른 key, 단계 간 중복 bytes, 변경 본문, 손상 stage, 임대 대기, cleanup 오류의 committed ACK 보존을 검증했다.
+- 독립 리뷰 Important1(성공한 중복 요청이 새 stage/파일을 누적)을 RED2→GREEN으로 한 수정 배치에서 해결했다. 별도 Minor0, 재리뷰 없음. focused68pass66.41s, 최종 전체9failed840passed1skipped579.76s. 실패 node9는 B0.5/기존 기준선과 정확히 같다. 전체 green이 아니다. 로그 .review-work/evidence-io/final-full.log. 이후 독립 B1 replay 편집의 전체 검증으로 이 로그를 대체하지 않는다.
+- 한계: 중단·late·손상 stage와 cleanup I/O/SQL 오류의 stage는 미게시로 남아 reconciliation에서 spooling으로 관찰한다. 자동 GC/TTL/복구 승격을 추가하지 않았다. cached receipt가 실행 권한/현재 파일 availability를 부여하지 않는다. native/키·장비·전원 종료 수용은 별도다.
+- 판단: request-key lock+재사용 stage로 미게시 파일을 추측 삭제하지 않는다(실패 stage 유지 비용). direct-core clock은 trusted seam이며 HTTP가 선택하지 못한다(내부 caller가 출처를 명시해야 함). fixture의 thread별 URI connection을 쓴다(root fixture 수명 의존). cleanup 실패는 commit ACK를 취소하지 않는다(정리 장애 시 spool 유지). 리뷰가 유보한 기존 dedup provenance/GC/B·C·D/native 수용은 해당 범위에서 검증한다(이 배치로 보장하지 않음). 사용자 metadata-load.md는 제외했다.
+- 다음 [B1 replay 한도·현재 제어](../../managed-pc/ANDROID_REPLAY_CONTROL_TASKS.md). B2 승인 check/expected/target·C episode/model port·D native 치유는 미완료다. 전체87/99·기능49/53은 부분 작업으로 늘리지 않는다.

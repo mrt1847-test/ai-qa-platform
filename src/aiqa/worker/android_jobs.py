@@ -38,6 +38,8 @@ from aiqa.worker.recording_limits import RecordingLimits, resolve_recording_limi
 from aiqa.worker.replay_limits import ReplayLimits, resolve_replay_limits
 from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
 from aiqa.worker.case_context import CaseContextRejected, WorkerCaseContext, resolve_claim_case_context
+from aiqa.worker.android_prepare import AppPreparationFailed
+from aiqa.worker.runner import ACTION_LIMIT
 from aiqa.worker.runtime import HandlerResult, InertHandler, JobHandler
 from aiqa.worker.spool import EvidenceSpool
 
@@ -467,6 +469,7 @@ class AndroidRecordingContext:
     step_evidence_commit: StepEvidenceCommit | None = None
     remote_checkpoint: Callable[[str], object] | None = None
 
+    target_preparer: object | None = None
     require_case_context: bool = False
 
 
@@ -496,6 +499,9 @@ class AndroidRecordingHandler:
 
     _case_context: WorkerCaseContext | None = field(default=None, init=False, repr=False)
 
+    _prepared_frame: Observation | None = field(default=None, init=False, repr=False)
+    preparation_artifact_ids: tuple[str, ...] = field(default=(), init=False)
+
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         self.tap_count = self.authoring_calls_seen = 0
         self.finished_by_model = False
@@ -506,6 +512,8 @@ class AndroidRecordingHandler:
         self._device_prepared = False
         self._previous_result = ""
         self._seal_events = []
+        self._prepared_frame = None
+        self.preparation_artifact_ids = ()
         self._case_context = None
         try:
             self._case_context = resolve_claim_case_context(claim, required=self.context.require_case_context)
@@ -541,6 +549,8 @@ class AndroidRecordingHandler:
         max_actions = int(self.context.max_actions) if multi else 1
         if self._limits is not None:
             max_actions = min(max_actions, self._limits.max_actions)
+        if self.context.target_preparer is not None:
+            max_actions = min(max_actions, ACTION_LIMIT - 1)
 
         self.guard.begin_attempt(attempt_id)
         # Each claim/attempt starts clean so a reused handler cannot accumulate taps or clocks.
@@ -626,7 +636,7 @@ class AndroidRecordingHandler:
                     return _fail_closed(self.stopped_reason, evidence_complete=False, ambiguous=ambiguous)
                 break
             except _CaptureFailed as exc:
-                uncertain = self.journal.is_ambiguous(attempt_id, action_id)
+                uncertain = exc.ambiguous or self.journal.is_ambiguous(attempt_id, action_id)
                 self.stopped_reason = "ambiguous_dispatch" if uncertain else exc.reason
                 if self.tap_count == 0:
                     return _fail_closed(exc.reason, evidence_complete=False, ambiguous=uncertain)
@@ -925,6 +935,15 @@ class AndroidRecordingHandler:
 
         self._recording_gate(claim, phase="before_lookup")
         live = self.context.live_capture
+        if self.context.target_preparer is not None and not self._device_prepared:
+            try:
+                prepared = self.context.target_preparer.prepare(claim, self._case_context,
+                    checkpoint=lambda:self._recording_gate(claim,phase="before_lookup"))
+            except AppPreparationFailed as exc:
+                raise _CaptureFailed(exc.reason, ambiguous=exc.ambiguous) from exc
+            self._device_prepared = True
+            self._prepared_frame = prepared.observation
+            self.preparation_artifact_ids = prepared.artifact_ids
         if live is None:
             before, after = self._observations_for_step(action_seq)
             if not before.capture_ok or before.png == b"":
@@ -954,7 +973,8 @@ class AndroidRecordingHandler:
                 raise _CaptureFailed("device_prepare_failed") from exc
             self._device_prepared = True
         try:
-            before = live()
+            before = self._prepared_frame if self._prepared_frame is not None else live()
+            self._prepared_frame = None
         except Exception as exc:
             raise _CaptureFailed("before_capture_failed") from exc
         if not before.capture_ok or before.png == b"":
@@ -1046,9 +1066,10 @@ class _PlanExhausted(Exception):
 
 
 class _CaptureFailed(Exception):
-    def __init__(self, reason: str) -> None:
+    def __init__(self, reason: str, *, ambiguous: bool = False) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.ambiguous = ambiguous
 
 
 @dataclass(frozen=True, slots=True)
@@ -1123,6 +1144,7 @@ class AndroidReplayContext:
     remote_checkpoint: Callable[[str], object] | None = None
 
     prepare_device: Callable[[], None] | None = None
+    target_preparer: object | None = None
     require_case_context: bool = False
 
 
@@ -1151,12 +1173,17 @@ class AndroidReplayHandler:
     _device_prepared: bool = field(default=False, init=False, repr=False)
     _case_context: WorkerCaseContext | None = field(default=None, init=False, repr=False)
 
+    _prepared_frame: Observation | None = field(default=None, init=False, repr=False)
+    preparation_artifact_ids: tuple[str, ...] = field(default=(), init=False)
+
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
         self.original_failure = self.package_digest_after = self.stopped_reason = ""
         self._limits = self._healing_pin = self._mono_origin = None
+        self._prepared_frame = None
+        self.preparation_artifact_ids = ()
         self._case_context = None
         try:
             self._case_context = resolve_claim_case_context(claim, required=self.context.require_case_context)
@@ -1220,6 +1247,9 @@ class AndroidReplayHandler:
         plan_lines = _replay_plan_lines(approved_plan)
         if not plan_lines:
             return _fail_closed("plan_missing", evidence_complete=False)
+        if self.context.target_preparer is not None and len(plan_lines) >= ACTION_LIMIT:
+            self.stopped_reason = "action_budget"
+            return _fail_closed("action_budget", evidence_complete=False)
 
         self.dispatch_count = 0
         self.authoring_calls_seen = 0
@@ -1258,6 +1288,15 @@ class AndroidReplayHandler:
                 break
 
             try:
+                if self.context.target_preparer is not None and not self._device_prepared:
+                    try:
+                        prepared = self.context.target_preparer.prepare(claim,self._case_context,
+                            checkpoint=lambda:self._replay_gate(claim,phase="before_lookup"))
+                    except AppPreparationFailed as exc:
+                        raise _ReplayCaptureFailed(exc.reason,ambiguous=exc.ambiguous) from exc
+                    self._device_prepared = True
+                    self._prepared_frame = prepared.observation
+                    self.preparation_artifact_ids = prepared.artifact_ids
                 if self.context.prepare_device is not None and not self._device_prepared:
                     self._replay_gate(claim,phase="before_lookup")
                     try:
@@ -1268,9 +1307,9 @@ class AndroidReplayHandler:
                 before, after = self._observations_for_step(step_index, previous_after)
             except _ReplayCaptureFailed as exc:
                 self.original_failure = exc.reason
-                self.stopped_reason = exc.reason
+                self.stopped_reason = "ambiguous_dispatch" if exc.ambiguous else exc.reason
                 if self.dispatch_count == 0:
-                    return _fail_closed(exc.reason, evidence_complete=False)
+                    return _fail_closed(exc.reason, evidence_complete=False,ambiguous=exc.ambiguous)
                 break
 
             try:
@@ -1293,7 +1332,7 @@ class AndroidReplayHandler:
                 if recorded.dispatch.native_calls != 1:
                     raise _ReplayCaptureFailed("replay_blocked")
             except _ReplayCaptureFailed as exc:
-                uncertain = self.journal.is_ambiguous(attempt_id, action_id)
+                uncertain = exc.ambiguous or self.journal.is_ambiguous(attempt_id, action_id)
                 self.stopped_reason = "ambiguous_dispatch" if uncertain else exc.reason
                 if self.dispatch_count == 0:
                     return _fail_closed(self.stopped_reason, evidence_complete=False, ambiguous=uncertain)
@@ -1501,6 +1540,9 @@ class AndroidReplayHandler:
         if live is not None:
             if previous_after is not None:
                 before = previous_after
+            elif self._prepared_frame is not None:
+                before = self._prepared_frame
+                self._prepared_frame = None
             else:
                 try:
                     before = live()
@@ -1555,9 +1597,10 @@ def _replay_plan_lines(plan: str) -> tuple[str, ...]:
 
 
 class _ReplayCaptureFailed(Exception):
-    def __init__(self, reason: str) -> None:
+    def __init__(self, reason: str, *, ambiguous: bool = False) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.ambiguous = ambiguous
 
 
 class _AllowAuthoring:
@@ -1754,7 +1797,7 @@ def _live_android_capture_pair(
     adb_path: Path,
     serial: str,
     expected_avd: str | None,
-) -> tuple[Callable[[], Observation], Callable[[], None]]:
+) -> tuple[Callable[[], Observation], Callable[..., object]]:
     from aiqa.environments.android_observation import AndroidObservationProvider
     import subprocess
 
@@ -1766,25 +1809,8 @@ def _live_android_capture_pair(
             raise RuntimeError(result.reason or "capture_failed")
         return result.observation
 
-    def prepare() -> None:
-        completed = subprocess.run(
-            [
-                str(adb_path),
-                "-s",
-                serial,
-                "shell",
-                "am",
-                "start",
-                "-a",
-                "android.settings.SETTINGS",
-            ],
-            capture_output=True,
-            timeout=20,
-            check=False,
-        )
-        if completed.returncode != 0:
-            raise RuntimeError("settings_launch_failed")
-        time.sleep(1.5)
+    from aiqa.environments.android_app_launch import AndroidAppLauncher
+    prepare = AndroidAppLauncher(adb_path,serial).launch
 
     return capture, prepare
 
@@ -1886,6 +1912,7 @@ def build_fixture_android_recording_handler(
     expected_avd: str | None,
     runtime_root: Path,
     fixture_response: str,
+    client: object | None = None,
 ) -> AndroidRecordingHandler:
     """Wire a live ADB capture path that uses only an explicit fixture model response."""
 
@@ -1898,6 +1925,7 @@ def build_fixture_android_recording_handler(
     journal = DispatchJournal(runtime_root / "journal.jsonl")
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
 
+    from aiqa.worker.android_prepare import AndroidTargetPreparer
     return AndroidRecordingHandler(
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
@@ -1915,7 +1943,7 @@ def build_fixture_android_recording_handler(
             lease_remaining_seconds=120.0,
             mono_seconds=None,
             live_capture=capture,
-            prepare_device=prepare,
+            target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
         ),
     )
 
@@ -1939,6 +1967,7 @@ def build_operational_android_recording_handler(
     journal = DispatchJournal(runtime_root / "journal.jsonl")
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
 
+    from aiqa.worker.android_prepare import AndroidTargetPreparer
     return AndroidRecordingHandler(
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
@@ -1956,7 +1985,7 @@ def build_operational_android_recording_handler(
             lease_remaining_seconds=120.0,
             mono_seconds=None,
             live_capture=capture,
-            prepare_device=prepare,
+            target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
             plan_provider=server_model_plan_provider(client),
         ),
     )
@@ -1972,6 +2001,7 @@ def build_approved_android_replay_handler(
     approved_plan: str,
     checks: tuple[object, ...] = (),
     healing_enabled: bool = False,
+    client: object | None = None,
 ) -> AndroidReplayHandler:
     """Replay each sealed plan line on a live device. Capture after every dispatch."""
 
@@ -1993,6 +2023,7 @@ def build_approved_android_replay_handler(
         (OwnedCheck("check-1", "replay-item"),),
         (),
     )
+    from aiqa.worker.android_prepare import AndroidTargetPreparer
     return AndroidReplayHandler(
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
@@ -2014,7 +2045,7 @@ def build_approved_android_replay_handler(
             verify_transport=_NoTransport(),
             verify_control=_AllowVerify(),
             live_capture=capture,
-            prepare_device=prepare,
+            target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
         ),
     )
 

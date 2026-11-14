@@ -450,3 +450,12 @@ POST worker/checkpoints는 현재 인증 project/purpose/worker·job/attempt/ACK
 ### RX87 B0.5 · evidence/event 권한 시각 (C00/C04/C05/C14)
 
 두 HTTP 경로는 worker now를 metadata로 검증하고 server clock callable을 writer transaction 취득 뒤 읽는다. project/purpose는 실제 job과 일치해야 하며 cached receipt에도 적용한다. 과거 저장 receipt는 lease 만료 뒤에도 읽지만 새 late/stale 데이터를 활성 승인 근거로 올리지 않는다. trusted core fixture time seam은 HTTP가 선택하지 못한다. 별도 worker/artifacts의 pre-wait 시각과 파일 I/O/DB 점유는 B0.6 후속이다.
+
+
+### RX87 B2.2b · 선택 Android 앱 준비·증거 (C00/C01/C04/C05/C14)
+
+- 공식 Android 녹화/재생은 ACK된 claim의 immutable case_context target.android_package만 시작한다. builder 생성 중 native0이며 새 현재 fence/serial·AVD 검증 뒤 고정 MAIN/LAUNCHER am start -W argv를1회 전송한다. 엄격 package 문법, bounded stdout/stderr/deadline, 전송 직전 fence/journal을 적용한다. 명령 ACK와 동일 package의 현재 focused window를 함께 확인한다. Settings fallback/자동 native 재전송/설치·reset·권한 승인은 하지 않는다.
+- 준비 operation은 attempt당1회이며 global native50 중1회를 쓴다. 공식 recording gesture cap=min(요청 cap,49), replay50줄 이상은 준비 전 action_budget으로 거절한다. per-pin gesture/model/time 상한은 별도로 유지한다. 준비 로그 model_calls=0은 모델 없는 앱 시작이며 assertion 검증 성공이 아니다. UI의 요청 한도50와 effective49 설명은 B2.3 Minor 후속이다.
+- 예약 action_id는 prepare-<attempt UUID>, evidence key는 evidence-<attempt>-prepare-1이다. 같은 commit의 events=[]이며 gesture prefix를 전진시키지 않는다. before PNG+구조화 app_prepare log, 관찰 성공 때 after PNG를 저장한다. observed는 before/after/log가 필수이며 unknown은 before/log와 가능한 after를 둔다. 서버가 예약 identity·role·log operation/state/attempt/model_calls를 검증해 actions.dispatch_state/outcome_known을 보존한다. unknown을 observed로 승격하거나 다른 body로 같은 ready disposition을 바꾸지 않는다.
+- 예약 준비 증거는 REC/ITEM 타임라인에서 조회하지만 시범 gesture의 준비 완료·review candidates·직접 review entry로 수용하지 않는다. artifact dedup identity에는 project/attempt/hash/role뿐 아니라 owner kind/id/action/media가 포함된다. 같은 이미지라도 다른 step 소유를 합치지 않는다. 원본 package/FAIL/승인은 바꾸지 않는다.
+- filter_capture 뒤 정제 before를 native 전에 fsync하고, 정제 after/log와 scope/context/time/key가 고정된 payload를 ACK 전 fsync한다. SecretRef pixel coverage가 없으면 capture/native/upload 전 거절한다. 같은 process의 evidence-only 재확인은 고정 본문/시각만 사용한다. 재생성 시 저장 scope/context/hash를 검사해 ACK만 복구하고 no-resume으로 중단한다. 과거 ACK 확인은 execution checkpoint와 독립이나 서버 인증/late·cached 구분을 우회하지 않는다. 복구에서 capture/native/model은0이다. payload를 쓰기 전 process crash는 journal로 재전송을 막고 남은 정제 spool은 수동 조사한다. 미ACK spool의 자동 TTL은 아직 없으며 승인/완료로 취급하지 않는다.

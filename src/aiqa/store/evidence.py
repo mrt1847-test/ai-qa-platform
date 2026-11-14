@@ -195,6 +195,36 @@ def ingest_stored(
     return IngestReceipt(UUID(attempt_id), committed_seq, committed_hash, 0)
 
 
+def _preparation_dispositions(artifacts, events=()):
+    """Validate the reserved setup operation; its artifacts never prove a gesture."""
+    groups={}
+    for part in artifacts:
+        if part.action_id and part.action_id.startswith('prepare-'):
+            if part.attempt_id is None or part.action_id!='prepare-'+str(part.attempt_id):
+                raise ValueError('invalid preparation identity')
+            groups.setdefault(part.action_id,[]).append(part)
+    if not groups:return {}
+    if events or len(groups)!=1 or sum(map(len,groups.values()))!=len(artifacts):
+        raise ValueError('preparation evidence must be separate')
+    states={}
+    for action,parts in groups.items():
+        by_role={part.role:part for part in parts}
+        if len(by_role)!=len(parts) or set(by_role) not in ({'before','log'},{'before','after','log'}):
+            raise ValueError('preparation evidence roles invalid')
+        log=by_role['log']
+        if log.media_type!='text/plain' or len(log.body)>16384:
+            raise ValueError('preparation log invalid')
+        doc=json.loads(log.body.decode('utf-8'))
+        if (type(doc) is not dict or doc.get('operation')!='app_prepare' or type(doc.get('state')) is not str or doc.get('state') not in {'observed','unknown'}
+            or doc.get('attempt_id')!=str(log.attempt_id) or type(doc.get('model_calls')) is not int or doc['model_calls']!=0
+            or doc['state']=='observed' and 'after' not in by_role):
+            raise ValueError('preparation disposition invalid')
+        if any(part.media_type!='image/png' for role,part in by_role.items() if role!='log'):
+            raise ValueError('preparation image invalid')
+        states[action]=doc['state']
+    return states
+
+
 def commit_sanitized_evidence(
     binding: ArtifactBinding,
     lease: LeaseToken,
@@ -221,6 +251,7 @@ def commit_sanitized_evidence(
         if not acceptable_size(part.declared_length, part.body):
             raise EvidenceHashRejected("artifact size is invalid")
 
+    _preparation_dispositions(artifacts, events)
     from aiqa.store.evidence_io import commit_staged_evidence
     clock = authority_clock or binding.authority_clock
     return commit_staged_evidence(binding, lease, events=events, artifacts=artifacts,
@@ -480,6 +511,7 @@ def _place_active_artifacts(
         # Replay evidence is owned by the ITEM (case run) and links to the replay action.
         case_id = None if job[5] is None else str(job[5])
         case_version_id = None if job[6] is None else str(job[6])
+    dispositions = _preparation_dispositions(artifacts)
     stored_ids: list[str] = []
     stamped = binding.now.astimezone(timezone.utc).isoformat()
     for index, part in enumerate(artifacts):
@@ -500,6 +532,7 @@ def _place_active_artifacts(
                 action_id=action_id,
                 case_id=case_id,
                 case_version_id=case_version_id,
+                disposition=dispositions.get(action_id,'observed'),
             )
         owner_id = part.owner_id
         if replay_item:
@@ -514,10 +547,11 @@ def _place_active_artifacts(
             """
             SELECT artifact_id FROM artifact_objects
             WHERE project_id = ? AND attempt_id = ? AND content_hash = ? AND role = ?
+              AND owner_kind = ? AND owner_id = ? AND COALESCE(action_id,'') = ? AND media_type = ?
               AND status = 'ready' AND acked = 1
             LIMIT 1
             """,
-            (str(lease.project_id), attempt_id, digest, part.role),
+            (str(lease.project_id), attempt_id, digest, part.role, part.owner_kind, str(owner_id), action_id or "", part.media_type),
         ).fetchone()
         if existing is not None:
             stored_ids.append(str(existing[0]))
@@ -583,15 +617,18 @@ def _ensure_recording_action(
     action_id: str,
     case_id: str,
     case_version_id: str,
+    disposition: str = "observed",
 ) -> None:
     row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT 1 FROM actions
+        SELECT dispatch_state FROM actions
         WHERE project_id = ? AND attempt_id = ? AND action_id = ?
         """,
         (project_id, attempt_id, action_id),
     ).fetchone()
     if row is not None:
+        if action_id.startswith('prepare-') and row[0]!=disposition:
+            raise EventConflict('preparation disposition is immutable')
         return
     seq_row = connection.execute(  # type: ignore[attr-defined]
         "SELECT COALESCE(MAX(action_seq), 0) FROM actions WHERE project_id = ? AND attempt_id = ?",
@@ -603,7 +640,7 @@ def _ensure_recording_action(
         INSERT INTO actions (
             project_id, attempt_id, action_seq, step_id, action_id, proposal_hash,
             dispatch_state, case_id, case_version_id, outcome_known
-        ) VALUES (?, ?, ?, ?, ?, ?, 'observed', ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             project_id,
@@ -612,8 +649,10 @@ def _ensure_recording_action(
             action_id,
             action_id,
             "sha256:" + hashlib.sha256(action_id.encode("utf-8")).hexdigest(),
+            disposition,
             case_id,
             case_version_id,
+            int(disposition == "observed"),
         ),
     )
 

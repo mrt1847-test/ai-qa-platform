@@ -61,8 +61,9 @@ def commit_staged_evidence(binding, lease, *, events, artifacts, request_key, bo
                         raise ValueError('invalid evidence owner or target')
                     existing = connection.execute("""SELECT artifact_id,object_key,content_hash,byte_length
                         FROM artifact_objects WHERE project_id=? AND attempt_id=? AND content_hash=? AND role=?
+                        AND owner_kind=? AND owner_id=? AND COALESCE(action_id,'')=? AND media_type=?
                         AND status='ready' AND acked=1 LIMIT 1""",
-                        (identity[0],attempt[0],part.declared_hash,part.role)).fetchone()
+                        (identity[0],attempt[0],part.declared_hash,part.role,part.owner_kind,str(expected_owner),part.action_id or '',part.media_type)).fetchone()
                     if existing is not None:
                         stages.append((existing, suffix, part, False))
                         continue

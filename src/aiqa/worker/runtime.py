@@ -764,6 +764,7 @@ def run_worker_process(
                         expected_avd=binding.expected_avd,
                         runtime_root=runtime_root,
                         fixture_response=fixture_response,
+                        client=client,
                     )
                 else:
                     recording = build_operational_android_recording_handler(
@@ -781,6 +782,7 @@ def run_worker_process(
                     runtime_root=runtime_root,
                     approved_digest=approved_digest,
                     approved_plan=approved_plan,
+                    client=client,
                 )
                 from aiqa.worker.android_jobs import (
                     build_android_support_handlers,

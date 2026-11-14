@@ -13,7 +13,10 @@ from aiqa.worker.http_client import RetryClass, WorkerHttpError
 
 
 class StepEvidenceCommitter:
-    def __init__(self, client, claim, *, clock=None):
+    def __init__(self, client, claim, *, clock=None, namespace="step"):
+        if namespace not in {"step","prepare"}:
+            raise ValueError("evidence namespace invalid")
+        self.namespace = namespace
         self.client = client
         self.claim = {name:claim.get(name) for name in ('project_id','job_id','attempt_id','generation')}
         self.clock = clock or (lambda:datetime.now(timezone.utc))
@@ -58,7 +61,7 @@ class StepEvidenceCommitter:
             entry = {'fingerprint':fingerprint,'receipt':None,'payload':{
                 'sanitized':True,'project_id':owner['project_id'],'job_id':owner['job_id'],'generation':generation,
                 'now':self.clock().isoformat(),'events':frozen['events'],'artifacts':frozen['artifacts'],
-                'idempotency_key':f"evidence-{owner['attempt_id']}-step-{action_seq}",
+                'idempotency_key':f"evidence-{owner['attempt_id']}-{self.namespace}-{action_seq}",
             }}
             self._entries[action_seq] = entry
             self._pending_seq = action_seq

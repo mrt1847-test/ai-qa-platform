@@ -10,3 +10,5 @@
 - 판단: 공식 builder 필수/직접 개발 constructor 호환을 구분한다(custom 통합자는 strict mode를 선택해야 함). 기존 Settings prepare는 검증 뒤로 옮기되 선택 앱·journal/증거 변경은 다음 단위에서 한다(현재 실제 앱 준비 완성 보장 없음). source 식별자를 현재 pin과 대조하고 context_hash를 권한으로 사용하지 않는다(C가 실제 source/정책/키 권한을 다시 확인해야 함). WEB metadata의 cross-platform 개발 fixture는 명시 호환하며 공식 Android 경로는 거절한다(직접 constructor는 준비된 live entry가 아님). 기존 fake 새 attempt는 context도 복사·재결합·재hash하고 RX39/RX67에 실제 형식 package를 넣었다(실 기기 수용의 대체가 아님). 사용자4718622/별도 metadata-load.md 수정은 변경·amend·stage하지 않았다.
 - 미룬 Minor1: SecretRef ref_id를 nonempty string으로만 검사하며 UUID 형식 검사는 후속이다. 여기서 값/키를 조회하지 않으며 C 권한을 대신하지 않는다. Minor2: wrong-platform 거절 후보가 private _case_context에 남을 수 있다. 실행/완료는 거절하고 다음 handle은 초기화하지만 local candidate 검증 뒤 할당으로 정리할 수 있다. 둘 다 이번 필수 수정 배치에 넣지 않았다.
 - 다음 [B2.2b 선택 앱 준비·저장 근거](../../managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)→B2.3 검사 mapping/결과→C/D. 외부 환경 대기가 아닌 실제 구현이다. 전체87/99·기능49/53과 RX87 in_progress 유지.
+
+2026-11-15 후속: [B2.2b 선택 앱 준비/저장 근거](RX-87-B2-TARGET.md) core 완료로 위의 Settings 준비 누락은 해소했다. 실제 verifier/check mapping·C/D와 기존 Minor2는 계속 미완료다.

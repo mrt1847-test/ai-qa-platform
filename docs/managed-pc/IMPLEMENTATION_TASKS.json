@@ -1,6 +1,6 @@
 {
   "schema_version": "managed-pc-runtime-v1",
-  "date": "2026-11-13",
+  "date": "2026-11-15",
   "scope": "managed_execution_mvp",
   "schedule_owner": "NEXT_ACTION.md",
   "boundaries": "docs/managed-pc/RUNTIME_BOUNDARIES.md",

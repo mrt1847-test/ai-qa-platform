@@ -463,6 +463,7 @@ def _server_acked_evidence(connection: object, project_id: UUID, recording_id: s
         SELECT COUNT(*) FROM artifact_objects
         WHERE project_id = ? AND owner_kind = 'REC' AND owner_id = ?
           AND role IN ('before', 'after', 'log') AND status = 'ready' AND acked = 1
+          AND COALESCE(action_id,'') <> 'prepare-' || COALESCE(attempt_id,'')
         """,
         (str(project_id), recording_id),
     ).fetchone()
@@ -471,6 +472,7 @@ def _server_acked_evidence(connection: object, project_id: UUID, recording_id: s
         SELECT COUNT(*) FROM artifact_objects
         WHERE project_id = ? AND owner_kind = 'ITEM' AND owner_id = ?
           AND role IN ('before', 'after', 'log') AND status = 'ready' AND acked = 1
+          AND COALESCE(action_id,'') <> 'prepare-' || COALESCE(attempt_id,'')
         """,
         (str(project_id), trial_id),
     ).fetchone()
@@ -611,6 +613,8 @@ def _entries(raw: object) -> tuple[ReviewEntry, ...] | None:
 def _require_entry(
     connection: object, project_id: UUID, case_id: str, recording_id: str, trial_id: str, entry: ReviewEntry
 ) -> None:
+    if entry.action_id == "prepare-" + entry.attempt_id:
+        raise ReviewRejected("preparation is not gesture review evidence")
     if entry.owner_kind == "REC" and entry.owner_id != recording_id:
         raise ReviewRejected("evidence owner is outside the review")
     if entry.owner_kind == "ITEM" and entry.owner_id != trial_id:

@@ -15,14 +15,18 @@ B2.2a 완료2026-11-14(core_contract): [인계](../validation/tasks/RX-87-B2-CON
 
 ## B2.2b · 선택 앱의 lease 후 준비와 저장 증거
 
-B2.2a에서 builder 생성 시 `prepare()` 호출을 제거하고 검증/현재 fence 뒤의 lazy 준비로 옮겼다. 아래 전체 체크는 선택 앱·journal·저장 증거까지 확인할 때 완료한다. 아직 기존 Settings 준비가 남아 있다.
+B2.2a에서 builder 생성 시 `prepare()` 호출을 제거하고 검증/현재 fence 뒤의 lazy 준비로 옮겼다. 아래 전체 체크는 선택 앱·journal·저장 증거까지 확인할 때 완료한다. 선택 앱/저장 근거의 구현·검증은 아래와 같다.
 
-- [ ] builder 생성 때 실행되는 replay prepare()를 제거한다. 선택된 immutable Android package만 ACK/fresh fence 뒤 시작하고 Settings 기본값으로 대체하지 않는다. 명령은 고정 argv/전용 serial·엄격 package 문법·deadline/no retry, allowlisted Activity Manager 인텐트만 쓴다. 공식 근거: https://developer.android.com/tools/adb#am 및 intent arguments.
-- [ ] 앱 준비는 gesture plan과 구분된 attempt 소유 operation으로 1회만 허용한다. native 전송 직전 fence/journal, 실패/timeout의 unknown·재시작 차단, source screenshot+정제 log의 durable ACK를 연결한다. 준비 로그/이미지의 이벤트 prefix와 step committer key를 충돌시키지 않는다. 저장된 증거는 worker offline에도 조회한다.
-- [ ] target secret refs가 있으면 RX99와 같은 pixel-coverage gate를 적용한 뒤에만 upload한다. 정제 성공을 가정하거나 새 경로로 우회하지 않는다. 앱 준비 자체와 최대 gesture 한도를 구분해 제한과 UI 안내를 소유 계약에 기록한다.
-- [ ] 두 claim 재사용/다른 package·native timeout/ACK 유실/취소·시간/준비 증거 조회를 실제 API+명시 fake ADB에서 검증한다. 실 기기 수용은 RX23이다.
+- [x] builder 생성 때 실행되는 replay prepare()를 제거한다. 선택된 immutable Android package만 ACK/fresh fence 뒤 시작하고 Settings 기본값으로 대체하지 않는다. 명령은 고정 argv/전용 serial·엄격 package 문법·deadline/no retry, allowlisted Activity Manager 인텐트만 쓴다. 공식 근거: https://developer.android.com/tools/adb#am 및 intent arguments.
+- [x] 앱 준비는 gesture plan과 구분된 attempt 소유 operation으로 1회만 허용한다. native 전송 직전 fence/journal, 실패/timeout의 unknown·재시작 차단, source screenshot+정제 log의 durable ACK를 연결한다. 준비 로그/이미지의 이벤트 prefix와 step committer key를 충돌시키지 않는다. 저장된 증거는 worker offline에도 조회한다.
+- [x] target secret refs가 있으면 RX99와 같은 pixel-coverage gate를 적용한 뒤에만 upload한다. 정제 성공을 가정하거나 새 경로로 우회하지 않는다. 앱 준비 자체와 최대 gesture 한도를 구분해 제한과 UI 안내를 소유 계약에 기록한다.
+- [x] 두 claim 재사용/다른 package·native timeout/ACK 유실/취소·시간/준비 증거 조회를 실제 API+명시 fake ADB에서 검증한다. 실 기기 수용은 RX23이다.
+
+B2.2b core 완료 근거/실제 앱 관찰/리뷰 제약은 [인계](../validation/tasks/RX-87-B2-TARGET.md)를 따른다. 준비1회는 전체 native50에 포함되어 gesture 최대49다. 폼의 한도 설명 문구는 아래 B2.3의 Minor 후속으로 남긴다. 실제 AI/정상 전체 QA 수용은 별도다.
 
 ## B2.3 · 검사 시점과 결과 저장
+
+- [ ] 리뷰 Minor 후속: Android 녹화/환경 한도 UI에 요청 한도와 준비1회/gesture 최대49의 관계를 안내한다. 50줄 승인 plan은 실행 전 거절되며 앱 기동/gesture가 발생하지 않는다.
 
 확인한 기존 live builder 공백: `_NoTransport`는 `ModelTransport` 계약을 구현하지 않아 현재 verifier의 진입 type gate를 통과하지 못한다. 준비 경계의 단위 검사는 명시적 fake transport를 주입한다. 이를 실제 live QA 성공으로 해석하지 않으며, 고정 required check 소비/결과 저장·C verifier 권한과 함께 정상 포트로 교체한다.
 

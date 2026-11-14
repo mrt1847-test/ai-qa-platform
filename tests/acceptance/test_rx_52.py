@@ -216,7 +216,7 @@ def _browser_shot(tmp_path: Path, html: str) -> bool:
     return completed.returncode == 0 and shot.exists() and shot.stat().st_size > 1024
 
 
-def _graph(database: Path, project_id: str, actor_id: str) -> dict[str, str]:
+def _graph(database: Path, project_id: str, actor_id: str, *, preparation_only: bool = False) -> dict[str, str]:
     ids = {
         "actor": actor_id,
         "case": str(uuid4()),
@@ -395,7 +395,7 @@ def _graph(database: Path, project_id: str, actor_id: str) -> dict[str, str]:
             )
         for attempt, action in (
             (ids["rec_attempt"], "A001"),
-            (ids["item_attempt"], "A001"),
+            (ids["item_attempt"], "prepare-"+ids["item_attempt"] if preparation_only else "A001"),
             (ids["healed_attempt"], "A001"),
         ):
             connection.execute(
@@ -409,7 +409,7 @@ def _graph(database: Path, project_id: str, actor_id: str) -> dict[str, str]:
             )
         for artifact, attempt, action in (
             (ids["rec_artifact"], ids["rec_attempt"], "A001"),
-            (ids["item_artifact"], ids["item_attempt"], "A001"),
+            (ids["item_artifact"], ids["item_attempt"], "prepare-"+ids["item_attempt"] if preparation_only else "A001"),
             (ids["source_artifact"], ids["rec_attempt"], "A001"),
         ):
             connection.execute(
@@ -423,7 +423,7 @@ def _graph(database: Path, project_id: str, actor_id: str) -> dict[str, str]:
             )
         for artifact, owner, kind, attempt, action, job, digest, role in (
             (ids["rec_artifact"], ids["recording"], "REC", ids["rec_attempt"], "A001", ids["rec_job"], "hash-rec", "before"),
-            (ids["item_artifact"], ids["trial"], "ITEM", ids["item_attempt"], "A001", ids["item_job"], "hash-item", "before"),
+            (ids["item_artifact"], ids["trial"], "ITEM", ids["item_attempt"], "prepare-"+ids["item_attempt"] if preparation_only else "A001", ids["item_job"], "hash-item", "before"),
             (ids["source_artifact"], ids["recording"], "REC", ids["rec_attempt"], "A001", ids["rec_job"], "hash-source", "source"),
         ):
             connection.execute(

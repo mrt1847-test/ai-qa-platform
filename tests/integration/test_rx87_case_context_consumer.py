@@ -192,10 +192,13 @@ def _prepared_replay(tmp_path,monkeypatch,source_job):
         target={'kind':'android','android_package':'com.example.saved'})
     _rehash(job);events=[]
     def capture():events.append('capture');return _observation()
-    def prepare():events.append('prepare')
+    def prepare(package,*,before_native_send):
+        from aiqa.environments.android_app_launch import AppLaunchReceipt
+        before_native_send();events.append('prepare');return AppLaunchReceipt(package,package+'/.Main')
     def native(argv,seconds):events.append('native');return subprocess.CompletedProcess(argv,0,b'',b'')
     monkeypatch.setattr(jobs,'_live_android_capture_pair',lambda **kwargs:(capture,prepare))
-    handler=jobs.build_approved_android_replay_handler(adb_path=Path('C:/platform-tools/adb.exe'),
+    from test_rx87_target_prepare import Client
+    handler=jobs.build_approved_android_replay_handler(client=Client(),adb_path=Path('C:/platform-tools/adb.exe'),
         serial=snapshot['serial'],expected_avd='fixture',runtime_root=tmp_path,
         approved_digest=digest,approved_plan=snapshot['approved_plan'])
     monkeypatch.setattr(handler.driver,'_runner',native)
@@ -210,7 +213,7 @@ def test_official_replay_preparation_requires_a_fence_and_runs_once(model_job,tm
     if fence!='absent':handler.context.remote_checkpoint=lambda phase:ControlDecision(fence=='allowed',phase)
     result=handler.handle(job)
     if fence=='allowed':
-        assert result.actions==2 and events.count('prepare')==1 and events.count('capture')==3 and events.count('native')==2
+        assert result.actions==2 and events.count('prepare')==1 and events.count('capture')==4 and events.count('native')==2
     else:assert result.actions==0 and events==[]
 
 
@@ -237,3 +240,12 @@ def test_prepared_recording_requires_fence_before_prepare_or_capture(recording,t
     result=handler.handle(job)
     assert result.actions==0 and calls==[] and handler.broker.authoring_calls==0
     assert handler.stopped_reason in {'remote_checkpoint_missing','remote_checkpoint_blocked'}
+
+
+def test_official_replay_reserves_setup_slot_before_any_io(model_job,tmp_path,monkeypatch):
+    from aiqa.contracts.jobs import ControlDecision
+    handler,job,events=_prepared_replay(tmp_path,monkeypatch,model_job['job'])
+    job['snapshot']['approved_plan']='\n'.join(['click(100,200)']*50)
+    handler.context.remote_checkpoint=lambda phase:ControlDecision(True,phase)
+    result=handler.handle(job)
+    assert result.actions==0 and handler.stopped_reason=='action_budget' and events==[]

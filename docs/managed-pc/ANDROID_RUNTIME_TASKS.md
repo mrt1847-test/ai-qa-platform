@@ -57,7 +57,7 @@ B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전�
 
 ## B. replay의 고정 정책과 한도
 
-B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. 현재 [B2.2b 선택 앱 준비·저장 근거](CASE_CONTEXT_CONSUMER_TASKS.md), 이후 검사 mapping/결과와 C/D. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
+B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. 현재 B2.3 검사 mapping/결과, 이후 C/D. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
 
 **입력:** resolve_claim_healing_pin(snapshot)의 detached WorkerHealingPin, 승인 package hash/plan. **파일:** android_jobs.py, worker/healing_pin.py, tests/integration/test_rx87_android_runtime.py.
 
@@ -68,7 +68,7 @@ B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md
 ### B 구현 전 확인한 실제 코드 누락
 
 - 현재 서버 fence·장기 heartbeat/renew/cancel poll은 B0 녹화와 B1 Android replay에 연결했다. Web의 동일 소비는 RX88이다. 단순 context boolean이나 초기 lease_remaining 상수를 원격 현재 권한으로 사용하지 않는다.
-- Android builder의 _live_android_capture_pair.prepare는 선택 package 대신 Android Settings를 연다. 고정 case version의 선택 target을 서버 claim에 결합하고 allowlist된 launch 경계에서 소비할 후속 단위가 필요하다. 새 target schema/authority를 임의 원문 문자열로 대체하지 않는다.
+- B2.1/B2.2에서 고정 선택 package를 claim에 묶고 lease 후 allowlisted launch/journal/정제 증거 ACK로 소비했다. Settings 대체 경로는 제거했다. 앱 기동은 QA assertion PASS나 verifier 권한이 아니다.
 - replay handler checks는 전역 context tuple뿐이다. 승인된 check/expected/target metadata를 package/현재 case-run과 묶어 공급해야 한다. 고정 plan 문자열만으로 이 부분이 완료되지 않는다.
 
 ## C. 서버 check/episode 전용 권한

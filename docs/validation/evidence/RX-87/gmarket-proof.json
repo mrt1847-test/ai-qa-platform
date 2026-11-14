@@ -1,0 +1,39 @@
+{
+  "scope": "new manual technical attempt following CRLF parser fix; no paid AI, authenticated product claim or permission approval",
+  "at": "2026-11-14T14:38:08.284197+00:00",
+  "receipt": {
+    "package": "com.ebay.kr.gmarket",
+    "activity": "com.ebay.kr.gmarket/.eBayKoreaGmarketActivity"
+  },
+  "launch": "confirmed",
+  "native_starts": 1,
+  "observation_state": "ready",
+  "observation_reason": "observed",
+  "screenshot_hash": "sha256:38804e30cfba395d0e7c62b4fe03945d2df5cfe92028d8839475b5c534564cfd",
+  "screenshot_bytes": 218046,
+  "apk": {
+    "filename": "GmarketMobile-prod-debugFinal-20260429_032548.apk",
+    "package": "com.ebay.kr.gmarket",
+    "version_code": 352,
+    "version_name": "10.8.6-debugFinal",
+    "sha256": "8b1cc87206eb5fbaaae6ee6ba4f97cab8b6e573bd157d279af536ca33ac68a1a",
+    "bytes": 47049119
+  },
+  "device": {
+    "avd": "Medium_Phone_API_36",
+    "serial": "emulator-5580",
+    "api": 36,
+    "memory_mb": 4096,
+    "cores": 4,
+    "gpu": "swiftshader",
+    "snapshot": "disabled"
+  },
+  "limits": {
+    "authenticated_product_claim": false,
+    "model_calls": 0,
+    "permission_grants": 0,
+    "account_actions": 0,
+    "qa_acceptance": false
+  },
+  "cleanup": "Dedicated emulator stopped after capture; APK/app data preserved; no user AVD config change"
+}

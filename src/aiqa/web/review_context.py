@@ -63,6 +63,7 @@ def review_candidates(connection, project_id, case_id, version_id):
                 JOIN jobs j ON j.project_id = t.project_id AND j.job_id = t.job_id
                 WHERE a.project_id = ? AND a.owner_kind = ? AND a.owner_id = ? AND j.{column} = ?
                   AND a.role IN ('before', 'after', 'log') AND a.action_id IS NOT NULL
+                  AND a.action_id <> 'prepare-' || a.attempt_id
                   AND a.status = 'ready' AND a.acked = 1
                   AND t.generation = (
                     SELECT MAX(t2.generation) FROM attempts t2
@@ -81,6 +82,7 @@ def review_candidates(connection, project_id, case_id, version_id):
                     JOIN jobs j ON j.project_id = t.project_id AND j.job_id = t.job_id
                     WHERE a.project_id = ? AND a.owner_kind = ? AND a.owner_id = ? AND j.{column} = ?
                       AND a.role IN ('before', 'after', 'log') AND a.action_id IS NOT NULL
+                  AND a.action_id <> 'prepare-' || a.attempt_id
                       AND t.generation = (
                         SELECT MAX(t2.generation) FROM attempts t2
                         WHERE t2.project_id = t.project_id AND t2.job_id = t.job_id

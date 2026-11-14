@@ -37,6 +37,7 @@ from aiqa.worker.runner import MonotonicInstant
 from aiqa.worker.recording_limits import RecordingLimits, resolve_recording_limits
 from aiqa.worker.replay_limits import ReplayLimits, resolve_replay_limits
 from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
+from aiqa.worker.case_context import CaseContextRejected, WorkerCaseContext, resolve_claim_case_context
 from aiqa.worker.runtime import HandlerResult, InertHandler, JobHandler
 from aiqa.worker.spool import EvidenceSpool
 
@@ -466,6 +467,8 @@ class AndroidRecordingContext:
     step_evidence_commit: StepEvidenceCommit | None = None
     remote_checkpoint: Callable[[str], object] | None = None
 
+    require_case_context: bool = False
+
 
 @dataclass
 class AndroidRecordingHandler:
@@ -491,7 +494,26 @@ class AndroidRecordingHandler:
     _previous_result: str = field(default="", init=False, repr=False)
     _seal_events: list[dict[str, Any]] = field(default_factory=list, init=False, repr=False)
 
+    _case_context: WorkerCaseContext | None = field(default=None, init=False, repr=False)
+
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self.tap_count = self.authoring_calls_seen = 0
+        self.finished_by_model = False
+        self.stopped_reason = ""
+        self.evidence_commits.clear()
+        self._limits = self._mono_origin = None
+        self._plan_index = 0
+        self._device_prepared = False
+        self._previous_result = ""
+        self._seal_events = []
+        self._case_context = None
+        try:
+            self._case_context = resolve_claim_case_context(claim, required=self.context.require_case_context)
+            if self.context.require_case_context and self._case_context is not None and self._case_context.target.kind != "android":
+                raise CaseContextRejected("Android target is required")
+        except CaseContextRejected:
+            self.stopped_reason = "case_context_invalid"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
         snapshot = claim.get("snapshot")
         if type(snapshot) is not dict:
             return _fail_closed("snapshot_missing")
@@ -1096,6 +1118,9 @@ class AndroidReplayContext:
     max_actions: int = 50
     remote_checkpoint: Callable[[str], object] | None = None
 
+    prepare_device: Callable[[], None] | None = None
+    require_case_context: bool = False
+
 
 @dataclass
 class AndroidReplayHandler:
@@ -1119,11 +1144,23 @@ class AndroidReplayHandler:
     _mono_origin: float | None = field(default=None, init=False, repr=False)
     _healing_pin: WorkerHealingPin | None = field(default=None, init=False, repr=False)
 
+    _device_prepared: bool = field(default=False, init=False, repr=False)
+    _case_context: WorkerCaseContext | None = field(default=None, init=False, repr=False)
+
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
         self.original_failure = self.package_digest_after = self.stopped_reason = ""
         self._limits = self._healing_pin = self._mono_origin = None
+        self._case_context = None
+        try:
+            self._case_context = resolve_claim_case_context(claim, required=self.context.require_case_context)
+            if self.context.require_case_context and self._case_context is not None and self._case_context.target.kind != "android":
+                raise CaseContextRejected("Android target is required")
+        except CaseContextRejected:
+            self.stopped_reason = "case_context_invalid"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
         snapshot = claim.get("snapshot")
         if type(snapshot) is not dict:
             return _fail_closed("snapshot_missing")
@@ -1217,6 +1254,16 @@ class AndroidReplayHandler:
                 break
 
             try:
+                if self.context.prepare_device is not None and not self._device_prepared:
+                    remote = self.context.remote_checkpoint
+                    if remote is not None and getattr(remote("before_lookup"),"allowed",None) is not True:
+                        raise _ReplayCaptureFailed("remote_checkpoint_blocked")
+                    self._replay_gate(claim,phase="before_lookup")
+                    try:
+                        self.context.prepare_device()
+                    except Exception as exc:
+                        raise _ReplayCaptureFailed("device_prepare_failed") from exc
+                    self._device_prepared = True
                 before, after = self._observations_for_step(step_index, previous_after)
             except _ReplayCaptureFailed as exc:
                 self.original_failure = exc.reason
@@ -1857,6 +1904,7 @@ def build_fixture_android_recording_handler(
         spool=spool,
         context=AndroidRecordingContext(
             expected_serial=serial,
+            require_case_context=True,
             fixture_response=fixture_response,
             before=None,
             after=None,
@@ -1897,6 +1945,7 @@ def build_operational_android_recording_handler(
         spool=spool,
         context=AndroidRecordingContext(
             expected_serial=serial,
+            require_case_context=True,
             fixture_response="",
             before=None,
             after=None,
@@ -1928,7 +1977,6 @@ def build_approved_android_replay_handler(
     capture, prepare = _live_android_capture_pair(
         adb_path=adb_path, serial=serial, expected_avd=expected_avd
     )
-    prepare()
     spool = EvidenceSpool(runtime_root / "spool-replay")
     journal = DispatchJournal(runtime_root / "journal-replay.jsonl")
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
@@ -1950,6 +1998,7 @@ def build_approved_android_replay_handler(
         spool=spool,
         context=AndroidReplayContext(
             expected_serial=serial,
+            require_case_context=True,
             approved_digest=approved_digest,
             approved_plan=approved_plan,
             lease_remaining_seconds=120.0,
@@ -1961,6 +2010,7 @@ def build_approved_android_replay_handler(
             verify_transport=_NoTransport(),
             verify_control=_AllowVerify(),
             live_capture=capture,
+            prepare_device=prepare,
         ),
     )
 

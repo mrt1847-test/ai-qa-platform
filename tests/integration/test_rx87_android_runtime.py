@@ -1,5 +1,7 @@
 """Normal API-frozen pins are consumed by the Android handler, with explicit fake ADB/model."""
 from uuid import uuid4
+import copy
+from aiqa.domain.hashing import canonical_hash
 import pytest
 from test_rx97_recording_pin import recording,ux_app,request as start,claim as get_claim
 from test_rx_48 import _handler
@@ -9,6 +11,19 @@ from test_rx_48 import _handler
 def job(recording):
     result=start(recording);assert result.status_code==201,result.text
     return get_claim(recording)
+
+
+
+def new_attempt(job):
+    # Explicit local fake claim: each independently owned context follows its new
+    # attempt. Reusing a foreign context is now correctly rejected by production.
+    claim=copy.deepcopy(job);attempt=str(uuid4());claim['attempt_id']=attempt
+    claim['snapshot']['attempt_id']=attempt
+    context=claim['snapshot'].get('case_context')
+    if context is not None:
+        context['attempt_id']=attempt
+        context['context_hash']=canonical_hash({k:v for k,v in context.items() if k!='context_hash'},'canon-json-v1')
+    return claim
 
 
 def handler_for(tmp_path,job,calls):
@@ -74,7 +89,7 @@ def test_reused_handler_starts_fresh_time_and_counters_for_next_claim(job,tmp_pa
     def model(claim):clock['now']+=1;return 'click(100,200)'
     handler.context.plan_provider=model
     for _ in range(2):
-        claim={**job,'attempt_id':str(uuid4())};clock['now']+=1000
+        claim=new_attempt(job);clock['now']+=1000
         result=handler.handle(claim)
         assert result.actions==1 and handler.authoring_calls_seen==1
     assert len(calls)==2 and handler.context.max_actions==50
@@ -115,7 +130,7 @@ def test_guard_counts_each_gesture_once_and_resets_for_new_attempt(job,tmp_path)
     handler.context.fixture_responses=('click(100,200)',)*30+('finish()',)
     handler.context.step_observations=tuple((_observation(),_observation()) for _ in range(31))
     for _ in range(2):
-        result=handler.handle({**job,'attempt_id':str(uuid4())})
+        result=handler.handle(new_attempt(job))
         assert result.actions==30 and result.outcome=='completed'
         assert handler.guard._runner.actions==30
     assert len(calls)==60

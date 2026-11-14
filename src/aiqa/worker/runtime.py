@@ -500,11 +500,12 @@ class WorkerRuntime:
         return bound
 
     def _bind_attempt_checkpoint(self, claimed: dict[str, Any]) -> object | None:
-        # Replay/Web control lifecycle is connected in its owning follow-up; do not
-        # start a recording controller merely because a router contains that route.
+        # Bind only the selected Android route; a sibling recording handler cannot
+        # make an unrelated Web route look fenced.
         snapshot = claimed.get("snapshot")
-        if type(snapshot) is not dict or snapshot.get("purpose") != "recording":
+        if type(snapshot) is not dict or snapshot.get("purpose") not in {"recording", "trial", "regression"}:
             return None
+        purpose = str(snapshot["purpose"])
         from aiqa.worker.android_jobs import bind_attempt_checkpoint
         from aiqa.worker.keepalive import WorkerAttemptKeepalive
         from aiqa.contracts.jobs import ControlDecision
@@ -513,9 +514,9 @@ class WorkerRuntime:
             control = WorkerAttemptKeepalive(self._client, claimed, self._config.boot_id, clock=self._mono)
         except (ValueError,TypeError,KeyError):
             bind_attempt_checkpoint(self._handler,
-                lambda phase: ControlDecision(False, "checkpoint_claim_invalid"))
+                lambda phase: ControlDecision(False, "checkpoint_claim_invalid"), purpose=purpose)
             return None
-        if bind_attempt_checkpoint(self._handler, control.checkpoint):
+        if bind_attempt_checkpoint(self._handler, control.checkpoint, purpose=purpose):
             return control
         return None
 

@@ -1,0 +1,13 @@
+# RX87 B1 · Android replay 고정 한도·현재 제어 인계
+
+- 상태: complete(core_contract) for B1, 2026-11-14, 기준 masterf1b8308. 상위 RX87/B 전체는 미완료다. DB migration·원본/승인 package/FAIL 변경·유료 모델/실제 AVD 수용·배포 없음.
+- worker/replay_limits.py는 정상 claim의 max_actions/max_model_calls/timeout_seconds를 strict type/전역 ceiling으로 검증하고 frozen ReplayLimits를 반환한다. worker 한도는 낮추기만 한다. caps 없는 개발 fixture만 legacy seam이며 부분 caps/bool/NaN은 거절한다. 모델 cap metadata는 서버 verifier/healer grant를 대체하지 않는다.
+- AndroidReplayHandler는 claim별 counter·guard·시계를 초기화한다. fixed/injected clock도 정상 claim에서는 claim-relative, real builder는 monotonic clock이다. 계획 반복의 actor AI0을 유지한다. malformed pin은 capture/native 전에 실패한다. explicit server OFF/trial은 worker ON 기본값을 상속하지 않는다.
+- replay_step의 신뢰 optional before_native_send는 parse/driver preflight/정제 spool 뒤 실행한다. 예비 before_lookup은 noncharging, durable dispatch_started 뒤 fresh server fence/취소/시간/guard 최종 검사에서 실제 gesture를 한번 차감한다. 시간·capture·journal·spool·remote 대기 중 변경으로 다음 gesture가 나가지 않는다.
+- 미전송 parse/정제/control 실패는 journal이 온전하면 unknown이 아니다. 최종 차단은 local not_sent. 실제 native timeout/탭 후 after capture 유실은 unknown으로 보존해 재클릭하지 않는다. not_sent 영속 쓰기까지 실패하면 restart에서 미전송을 증명할 수 없어 보수적 quarantine/unknown을 유지한다.
+- runtime은 선택 Android recording/trial/regression route에만 WorkerAttemptKeepalive를 바인딩한다. 형제 recording route가 다른 Web route를 가짜 fence로 만들지 않는다. 기존 실패 latch·joined close→upload/finish/cleanup을 재사용한다. direct fixture callback은 별도이며 live 환경을 가장하지 않는다.
+- 정상 ON의 detached policy/binding은 검증하지만 C의 실제 episode/model 포트가 없으면 healing_runtime_unavailable로 실패한다. context boolean/budget/fixture provider로 정상 ON 성공을 만들지 않는다. 이 중간 단계는 ON 기능 최종 완성이 아니다.
+- RED: caps 무시/시계 누적·절대시계·capture/spool/journal/remote 뒤 전송·bad ON 등8, cap parser8, invalid-next counter/실제 after capture unknown2. 최종 owning25pass9.28s·기존 replay/check/실제 browser API 여정·recording lifecycle expanded34pass31.50s. 독립 리뷰 Critical/Important/Minor0, 재리뷰/추가 수정 배치 없음.
+- 최종 전체9failed865passed1skipped584.43s. node9는 B0.6/기존 기준선과 정확히 같다. 전체 green은 아니다. .review-work/android-replay-control/full.log. 별도 B2.1 metadata supplier 작업의 완료 증거는 이 결과로 대체하지 않는다.
+- 판단: caps 없는 fixture의 시계/context 호환만 유지한다(내부 caller는 정상 pin을 누락하지 않아야 함). 독립 pure cap/handler 작업을 앞 배치 검증 중 준비하되 본 배치에 fresh full을 돌렸다(앞 배치 full을 B1 증거로 쓰지 않음). failed not_sent 영속 기록은 보수적 unknown(미전송도 disk 장애 시 quarantine 가능). ON은 실제 권한 포트 전까지 명시 실패(ON 가용성은 C 이후). 리뷰가 유보한 approved check/target B2·서버 model cap/episodes C·native D/paid/native acceptance는 미완료 유지. Minor 없음. 사용자 metadata-load.md 제외.
+- 다음 [B2.1 고정 case metadata 공급](../../managed-pc/CASE_CONTEXT_TASKS.md)→B2.2 worker 소비/선택 앱 launch·검사 매핑→C/D. 전체87/99·기능49/53은 부분 구현으로 올리지 않는다.

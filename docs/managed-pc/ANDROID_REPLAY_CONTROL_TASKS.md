@@ -10,3 +10,5 @@ Files: 새 worker/replay_limits.py(고정 caps validation), android_jobs.py(hand
 4. Android trial/regression route에만 기존 WorkerAttemptKeepalive 연결. 다른 Web route가 Android recording callback 때문에 잘못 control 대상이 되지 않게 purpose 선택. control close/실패 latch는 기존 runtime 공통 종료를 재사용한다. 정상 runtime API fixture와 legacy replay/check/QA 회귀→one fresh review→필수 RED/GREEN 수정1회→full exact baseline 비교→인계/큐/master commit.
 
 Review focus: 다른 route로 control 바인딩, 시계/guard claim 간 누적, capture/parse/spool/journal/remote wait 사이의 취소, 전송 전 실패와 진짜 native unknown, ON 정책 환경변수 우회/필요 없는 paid actor 호출. max_model_calls는 local cap metadata이며 실제 verifier/healer 서버 quota는 C에서 연결한다.
+
+완료2026-11-14(core_contract): [인계](../validation/tasks/RX-87-B1-CONTROL.md). owning25·expanded34·최종 전체 기존9failed865passed1skipped. B2/C/D는 별도다.

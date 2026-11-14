@@ -160,13 +160,14 @@ class MobileAgentAndroidAdapter:
         driver: AndroidDeterministicDriver,
         secrets: tuple[str, ...] = (),
         broker: ModelBroker | None = None,
+        before_native_send: Callable[[], None] | None = None,
     ) -> RecordingStepResult:
         """Replay uses the sealed plan text only. Authoring provider calls stay 0."""
 
         before_calls = 0 if broker is None else broker.authoring_calls
         before = self.sanitize(observation, secrets=secrets)
         action = self.parse_to_typed(plan_response, before, secrets=secrets)
-        dispatch = self._dispatch(driver, before, after, action)
+        dispatch = self._dispatch(driver, before, after, action, before_native_send=before_native_send)
         after_calls = 0 if broker is None else broker.authoring_calls
         if after_calls != before_calls:
             raise MobileAgentRejected("replay authoring provider call is forbidden")

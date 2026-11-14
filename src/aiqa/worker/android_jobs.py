@@ -35,6 +35,8 @@ from aiqa.worker.control import RemoteLeaseGuard
 from aiqa.worker.dispatch_journal import DispatchJournal, JournalWriteError
 from aiqa.worker.runner import MonotonicInstant
 from aiqa.worker.recording_limits import RecordingLimits, resolve_recording_limits
+from aiqa.worker.replay_limits import ReplayLimits, resolve_replay_limits
+from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
 from aiqa.worker.runtime import HandlerResult, InertHandler, JobHandler
 from aiqa.worker.spool import EvidenceSpool
 
@@ -1051,9 +1053,12 @@ def bind_step_evidence_commit(handler: object, committer: StepEvidenceCommit | N
             route.context.step_evidence_commit = committer
 
 
-def bind_attempt_checkpoint(handler: object, checkpoint: Callable[[str], object]) -> bool:
+def bind_attempt_checkpoint(handler: object, checkpoint: Callable[[str], object], *, purpose: str | None = None) -> bool:
     """Bind the current HTTPS claim fence without sharing a previous attempt's callback."""
-    if isinstance(handler, AndroidRecordingHandler):
+    routes = getattr(handler, "routes", None)
+    if purpose is not None and type(routes) is dict:
+        return bind_attempt_checkpoint(routes.get(purpose), checkpoint)
+    if isinstance(handler, (AndroidRecordingHandler, AndroidReplayHandler)):
         handler.context.remote_checkpoint = checkpoint
         return True
     found = False
@@ -1074,7 +1079,7 @@ class AndroidReplayContext:
     before: Observation | None = None
     after: Observation | None = None
     lease_remaining_seconds: float = 60.0
-    mono_seconds: float = 100.0
+    mono_seconds: float | None = 100.0
     cancelled: bool | Callable[[], bool] = False
     healing_enabled: bool = False
     heal_budget_remaining: int = 0
@@ -1088,6 +1093,8 @@ class AndroidReplayContext:
     step_observations: tuple[tuple[Observation, Observation], ...] = ()
     live_capture: Callable[[], Observation] | None = None
     max_seconds: float | None = None
+    max_actions: int = 50
+    remote_checkpoint: Callable[[str], object] | None = None
 
 
 @dataclass
@@ -1108,8 +1115,15 @@ class AndroidReplayHandler:
     original_failure: str = ""
     package_digest_after: str = ""
     stopped_reason: str = ""
+    _limits: ReplayLimits | None = field(default=None, init=False, repr=False)
+    _mono_origin: float | None = field(default=None, init=False, repr=False)
+    _healing_pin: WorkerHealingPin | None = field(default=None, init=False, repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self.dispatch_count = self.authoring_calls_seen = 0
+        self.healer_calls = self.verifier_calls = 0
+        self.original_failure = self.package_digest_after = self.stopped_reason = ""
+        self._limits = self._healing_pin = self._mono_origin = None
         snapshot = claim.get("snapshot")
         if type(snapshot) is not dict:
             return _fail_closed("snapshot_missing")
@@ -1123,6 +1137,18 @@ class AndroidReplayHandler:
         if serial == "" or serial != self.context.expected_serial:
             return _fail_closed("serial_mismatch")
 
+        try:
+            self._limits = resolve_replay_limits(snapshot,
+                worker_actions=self.context.max_actions, worker_seconds=self.context.max_seconds)
+            self._healing_pin = resolve_claim_healing_pin(snapshot)
+        except ValueError:
+            self.stopped_reason = "replay_pin_invalid"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
+        if self._healing_pin.enabled:
+            # C supplies the server episode/model ports. A legacy fixture budget is
+            # not a credential for a production ON claim.
+            self.stopped_reason = "healing_runtime_unavailable"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
         pin = resolve_claim_replay_pin(snapshot)
         approved_digest = pin.package_hash or self.context.approved_digest
         approved_plan = pin.approved_plan or self.context.approved_plan
@@ -1148,6 +1174,8 @@ class AndroidReplayHandler:
         except (TypeError, ValueError):
             return _fail_closed("attempt_missing")
 
+        self.guard.begin_attempt(attempt_id)
+        self._mono_now()
         plan_lines = _replay_plan_lines(approved_plan)
         if not plan_lines:
             return _fail_closed("plan_missing", evidence_complete=False)
@@ -1166,31 +1194,9 @@ class AndroidReplayHandler:
         base_action_id = str(snapshot.get("action_id") or f"replay-{attempt_id}")
 
         for step_index, plan_line in enumerate(plan_lines):
-            if self._is_cancelled():
-                self.stopped_reason = "cancelled"
-                break
-            now = MonotonicInstant(float(self.context.mono_seconds))
-            self.guard.note_heartbeat(now)
-            decision = self.guard.authorize(
-                now,
-                self.context.lease_remaining_seconds,
-                phase="before_dispatch",
-            )
-            if not decision.allowed:
-                self.stopped_reason = str(decision.reason or "lease_expired")
-                if self.dispatch_count == 0:
-                    return _fail_closed(self.stopped_reason, evidence_complete=False)
-                break
-            if self.context.max_seconds is not None and now.seconds >= float(self.context.max_seconds):
-                self.stopped_reason = "time_budget"
-                if self.dispatch_count == 0:
-                    return _fail_closed("time_budget", evidence_complete=False)
-                break
-
             try:
-                before, after = self._observations_for_step(step_index, previous_after)
+                self._replay_gate(claim, phase="before_lookup")
             except _ReplayCaptureFailed as exc:
-                self.original_failure = exc.reason
                 self.stopped_reason = exc.reason
                 if self.dispatch_count == 0:
                     return _fail_closed(exc.reason, evidence_complete=False)
@@ -1211,8 +1217,16 @@ class AndroidReplayHandler:
                 break
 
             try:
+                before, after = self._observations_for_step(step_index, previous_after)
+            except _ReplayCaptureFailed as exc:
+                self.original_failure = exc.reason
+                self.stopped_reason = exc.reason
+                if self.dispatch_count == 0:
+                    return _fail_closed(exc.reason, evidence_complete=False)
+                break
+
+            try:
                 self.journal.append(attempt_id, action_id, "planned")
-                self.journal.append(attempt_id, action_id, "dispatch_started")
             except JournalWriteError:
                 if self.dispatch_count == 0:
                     return _fail_closed("journal_blocked", evidence_complete=False)
@@ -1226,36 +1240,36 @@ class AndroidReplayHandler:
                     after=after if after is not None else before,
                     driver=self.driver,
                     broker=self.broker,
+                    before_native_send=lambda: self._before_native_replay_send(claim, action_id),
                 )
+                if recorded.dispatch.native_calls != 1:
+                    raise _ReplayCaptureFailed("replay_blocked")
+            except _ReplayCaptureFailed as exc:
+                uncertain = self.journal.is_ambiguous(attempt_id, action_id)
+                self.stopped_reason = "ambiguous_dispatch" if uncertain else exc.reason
+                if self.dispatch_count == 0:
+                    return _fail_closed(self.stopped_reason, evidence_complete=False, ambiguous=uncertain)
+                break
             except MobileAgentRejected as exc:
-                self.journal.mark_started_only_unknown(attempt_id, action_id)
+                uncertain = self.journal.mark_started_only_unknown(attempt_id, action_id) == "unknown"
                 self.original_failure = str(exc.reason)
                 if self.dispatch_count == 0:
-                    return _fail_closed("replay_rejected", evidence_complete=False, ambiguous=True)
-                self.stopped_reason = "replay_rejected"
+                    return _fail_closed("replay_rejected", evidence_complete=False, ambiguous=uncertain)
+                self.stopped_reason = "ambiguous_dispatch" if uncertain else "replay_rejected"
                 break
 
             if after is None:
-                live = self.context.live_capture
-                if live is None:
-                    self.original_failure = "after_evidence_missing"
-                    if self.dispatch_count == 0:
-                        return _fail_closed("after_evidence_missing", evidence_complete=False)
-                    self.stopped_reason = "after_evidence_missing"
-                    break
                 try:
-                    after = live()
+                    live = self.context.live_capture
+                    after = None if live is None else live()
+                    if after is None or not after.capture_ok or after.png == b"":
+                        raise _ReplayCaptureFailed("after_evidence_missing")
                 except Exception:
+                    self.journal.mark_started_only_unknown(attempt_id, action_id)
                     self.original_failure = "after_evidence_missing"
+                    self.stopped_reason = "ambiguous_dispatch"
                     if self.dispatch_count == 0:
-                        return _fail_closed("after_evidence_missing", evidence_complete=False)
-                    self.stopped_reason = "after_evidence_missing"
-                    break
-                if after is None or not after.capture_ok or after.png == b"":
-                    self.original_failure = "after_evidence_missing"
-                    if self.dispatch_count == 0:
-                        return _fail_closed("after_evidence_missing", evidence_complete=False)
-                    self.stopped_reason = "after_evidence_missing"
+                        return _fail_closed("after_evidence_missing", evidence_complete=False, ambiguous=True)
                     break
 
             self.dispatch_count += 1
@@ -1364,6 +1378,51 @@ class AndroidReplayHandler:
             evidence_artifacts=tuple(all_artifacts),
             source_artifact_hashes=hashes,
         )
+
+    def _mono_now(self) -> MonotonicInstant:
+        value = time.monotonic() if self.context.mono_seconds is None else float(self.context.mono_seconds)
+        if self._limits is not None or self.context.mono_seconds is None:
+            if self._mono_origin is None:
+                self._mono_origin = value
+            value = max(0.0, value - self._mono_origin)
+        return MonotonicInstant(value)
+
+    def _replay_gate(self, claim, *, phase):
+        if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
+            raise _ReplayCaptureFailed("cancelled")
+        remote = self.context.remote_checkpoint
+        if remote is not None and phase == "before_dispatch":
+            decision = remote(phase)
+            if getattr(decision, "allowed", None) is not True:
+                raise _ReplayCaptureFailed("remote_checkpoint_blocked")
+            if self._is_cancelled():
+                raise _ReplayCaptureFailed("cancelled")
+            self.guard.note_heartbeat(self._mono_now())
+        now = self._mono_now()
+        seconds = self._limits.timeout_seconds if self._limits is not None else self.context.max_seconds
+        if seconds is not None and now.seconds >= seconds:
+            raise _ReplayCaptureFailed("time_budget")
+        ceiling = self._limits.max_actions if self._limits is not None else self.context.max_actions
+        if self.dispatch_count >= ceiling:
+            raise _ReplayCaptureFailed("action_budget")
+        # Preserve the legacy fake-clock seam; live claims use a real current fence.
+        self.guard.note_heartbeat(now)
+        decision = self.guard.authorize(now, self.context.lease_remaining_seconds, phase=phase)
+        if not decision.allowed:
+            raise _ReplayCaptureFailed(str(decision.reason or "lease_expired"))
+
+    def _before_native_replay_send(self, claim, action_id):
+        self._replay_gate(claim, phase="before_lookup")
+        attempt_id = str(claim["attempt_id"])
+        try:
+            self.journal.append(attempt_id, action_id, "dispatch_started")
+            try:
+                self._replay_gate(claim, phase="before_dispatch")
+            except _ReplayCaptureFailed:
+                self.journal.append(attempt_id, action_id, "not_sent")
+                raise
+        except JournalWriteError as exc:
+            raise _ReplayCaptureFailed("journal_blocked") from exc
 
     def _is_cancelled(self) -> bool:
         flag = self.context.cancelled
@@ -1894,7 +1953,7 @@ def build_approved_android_replay_handler(
             approved_digest=approved_digest,
             approved_plan=approved_plan,
             lease_remaining_seconds=120.0,
-            mono_seconds=100.0,
+            mono_seconds=None,
             healing_enabled=healing_enabled,
             heal_budget_remaining=0,
             checks=checks,

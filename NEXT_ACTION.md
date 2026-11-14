@@ -10,7 +10,7 @@ Updated: **2026-11-14 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 **RX-87 — Android worker의 고정 한도·정책·제한 healing 연결.** 다음 RX-88.
 
-[RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. B0.4의 단계별 증거 ACK 복구도 검증했다. B0.5의 evidence/event 서버 시각·job purpose 권한도 검증했다. B0.6의 파일 I/O/DB writer 분리·다른 artifact ingress의 시각도 검증했다. B1의 Android 재생 고정 한도·현재 제어도 검증했다. 현재 [B2.1 고정 검증·대상 metadata 공급](docs/managed-pc/CASE_CONTEXT_TASKS.md)을 진행한다. 이후 B2.2 worker 소비/선택 앱 launch·검사 매핑과 C/D를 이어간다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
+[RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. B0.4의 단계별 증거 ACK 복구도 검증했다. B0.5의 evidence/event 서버 시각·job purpose 권한도 검증했다. B0.6의 파일 I/O/DB writer 분리·다른 artifact ingress의 시각도 검증했다. B1의 Android 재생 고정 한도·현재 제어도 검증했다. B2.1의 고정 검증·대상 metadata 공급도 검증했다. 현재 [B2.2a worker 파싱·gate](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)를 진행한다. 이후 B2.2b 선택 앱 준비/저장 근거·B2.3 검사 mapping/결과 저장과 C/D를 이어간다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
 
 ## Next
 

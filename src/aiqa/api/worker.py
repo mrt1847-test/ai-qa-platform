@@ -94,6 +94,7 @@ def install_worker(application: FastAPI) -> None:
         intent = None
         claim_origin: str | None = None
         claim_limits: dict[str, object] | None = None
+        case_context = None
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
@@ -125,6 +126,8 @@ def install_worker(application: FastAPI) -> None:
                             )
                         claim_origin = _job_origin(connection, lease.project_id, lease.job_id)
                         claim_limits = _job_limits(connection, lease.project_id, lease.job_id)
+                        from aiqa.recording.case_context import load_case_context
+                        case_context = load_case_context(connection, lease)
             except AuthRequired:
                 return _error(401, "unauthorized", "worker token is missing", {})
             except WorkerDenied:
@@ -144,6 +147,7 @@ def install_worker(application: FastAPI) -> None:
                     intent=intent,
                     origin=claim_origin,
                     limits=claim_limits,
+                    case_context=case_context,
                 ),
             )
         return JSONResponse(
@@ -845,6 +849,7 @@ def _claim_payload(
     intent: object | None = None,
     origin: str | None = None,
     limits: dict[str, object] | None = None,
+    case_context: dict[str, object] | None = None,
 ) -> dict[str, object]:
     snapshot = receipt.snapshot
     snap: dict[str, object] = {
@@ -880,6 +885,8 @@ def _claim_payload(
         resource = limits.get("resource_id")
         if type(resource) is str and resource.strip() != "":
             snap["resource_id"] = resource
+    if case_context is not None:
+        snap["case_context"] = case_context
     if native_id is not None and native_id.strip() != "":
         # Resolve registered device for Android/Web workers without changing the claim digest.
         snap["serial"] = native_id

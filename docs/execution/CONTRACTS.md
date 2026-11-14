@@ -54,6 +54,8 @@ browser session/actor/project scope + mutation CSRF/Origin과 worker token/purpo
 
 실행 PC 접속 상태는 저장본 승인/반려의 선행이 아니다. 서버 commit/ACK된 ready 증거와 기존 필수 OFF trial·검토/hash/보관 조건으로 판정한다. 새 녹화/재녹화·trial/정식/rerun은 접수·claim/dispatch에서 현재 자원/worker 상태를 다시 검사하고 offline 자동 예약을 만들지 않는다. PC-01은 명시 inventory/quarantine admission, PC-02가 서버 수신 heartbeat/자동 단절 감지·claim을 소유한다.
 
+worker claim의 additive `snapshot.case_context`는 `case-context-v1`의 project/job/attempt/generation/purpose·REC/ITEM owner·고정 case version/hash·package ID/hash·objective/preconditions/steps/check/expected/path·target·참조-only secret descriptors/verifier SOURCE config와 `context_hash`다. 공급자는 [B2.1](../validation/tasks/RX-87-B2-CONTEXT.md), 소비/검사 시점은 [B2.2/B2.3](../managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)이다. context_hash는 metadata 식별자이며 새 lease/model grant가 아니다. 기존 main claim/finish digest를 소급 변경하지 않는다. 정상 worker의 current fence와 사후 저장본 승인 계약은 별도다.
+
 ## C02 · 케이스·정의·버전·선택 TC
 
 ```text

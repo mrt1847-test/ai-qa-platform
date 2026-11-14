@@ -463,3 +463,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-14: [RX87 B2.2a](docs/validation/tasks/RX-87-B2-CONSUMER.md) worker 고정 metadata의 immutable 파싱·반복 ID/owner/version/package pin 대조와 공식 Android 필수 fence를 보완했다. 집중93·전체9failed924passed1skipped(기존9). Important3 해결·Minor2 인계, 현재 B2.2b 선택 앱 준비/저장 근거. 상위 RX87·완료 수 유지.
 
 2026-11-15: [RX87 B2.2b](docs/validation/tasks/RX-87-B2-TARGET.md) 선택 package launch·native setup journal·정제 증거 ACK/재생성 복구·unknown 상태·준비/gesture 검토 분리를 구현했다. 실제 G마켓 AVD 기동/PNG는 확인했고 제품 AI API/전체 QA 수용은 별도다. 집중87·JS32·전체9failed963passed1skipped(기존9 동일). Important4 해결·UI 한도 안내 Minor1 후속. 현재 B2.3 mapping/검사 결과→C/D, 전체87/99·기능49/53·RX87 in_progress 유지.
+
+2026-11-15: [RX87 B2.3a](docs/validation/tasks/RX-87-B2-CHECK-COVERAGE.md) 고정 required 누락/중간 final 평가를 차단하고 source coverage unknown·hash 기반 제한 로그·시각 오류의 기존 prefix 보존을 구현했다. Android 한도 UI 안내도 완료했다. 집중120/리뷰26·JS32·전체 기존9failed987passed1skipped. 실제 binding/평가/normalized check_results는 B2.3b/c, 실제 모델/QA 수용은 별도다. 상위 RX87·전체87/99·기능49/53 유지.

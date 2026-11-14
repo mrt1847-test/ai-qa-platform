@@ -39,6 +39,8 @@ from aiqa.worker.replay_limits import ReplayLimits, resolve_replay_limits
 from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
 from aiqa.worker.case_context import CaseContextRejected, WorkerCaseContext, resolve_claim_case_context
 from aiqa.worker.android_prepare import AppPreparationFailed
+from aiqa.worker.replay_check_coverage import (RequiredCheckCoverage, required_check_coverage,
+    coverage_log_document, validate_coverage_source, validate_observed_at)
 from aiqa.worker.runner import ACTION_LIMIT
 from aiqa.worker.runtime import HandlerResult, InertHandler, JobHandler
 from aiqa.worker.spool import EvidenceSpool
@@ -376,6 +378,8 @@ def android_evidence_artifacts(
     after: Observation,
     action_seq: int | None = None,
     owner_kind: str = "REC",
+    check_coverage: tuple[RequiredCheckCoverage, ...] = (),
+    include_observation_text: bool = True,
 ) -> tuple[dict[str, Any], ...]:
     """Build sanitized before/after PNG and action log bodies for evidence commit.
 
@@ -406,11 +410,14 @@ def android_evidence_artifacts(
             None if action_seq is None else f"action_seq={action_seq}",
             f"before={before.captured_at}",
             f"after={after.captured_at}",
-            before.stdout or "",
-            after.stdout or "",
+            before.stdout if include_observation_text and not check_coverage else "",
+            after.stdout if include_observation_text and not check_coverage else "",
         )
         if item
     )
+    if check_coverage:
+        log_text += "\nverification=" + json.dumps(coverage_log_document(check_coverage),
+            ensure_ascii=False,sort_keys=True,separators=(",",":"),allow_nan=False)
     log_body = log_text.encode("utf-8")
     parts.append(
         {
@@ -1176,7 +1183,10 @@ class AndroidReplayHandler:
     _prepared_frame: Observation | None = field(default=None, init=False, repr=False)
     preparation_artifact_ids: tuple[str, ...] = field(default=(), init=False)
 
+    check_coverage: tuple[RequiredCheckCoverage, ...] = field(default=(), init=False)
+
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self.check_coverage = ()
         self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
@@ -1250,6 +1260,13 @@ class AndroidReplayHandler:
         if self.context.target_preparer is not None and len(plan_lines) >= ACTION_LIMIT:
             self.stopped_reason = "action_budget"
             return _fail_closed("action_budget", evidence_complete=False)
+
+        if self.context.require_case_context:
+            try:
+                validate_coverage_source(self._case_context)
+            except ValueError:
+                self.stopped_reason = "check_coverage_limits"
+                return _fail_closed("check_coverage_limits", evidence_complete=False)
 
         self.dispatch_count = 0
         self.authoring_calls_seen = 0
@@ -1351,6 +1368,8 @@ class AndroidReplayHandler:
                     after = None if live is None else live()
                     if after is None or not after.capture_ok or after.png == b"":
                         raise _ReplayCaptureFailed("after_evidence_missing")
+                    if self.context.require_case_context:
+                        validate_observed_at(after.captured_at)
                 except Exception:
                     self.journal.mark_started_only_unknown(attempt_id, action_id)
                     self.original_failure = "after_evidence_missing"
@@ -1375,10 +1394,12 @@ class AndroidReplayHandler:
                 self.dispatch_count -= 1
                 break
 
+            coverage_start = len(self.check_coverage)
             verify = self._verify_and_heal(
                 after,
                 healing_enabled=healing_enabled,
                 approved_digest=approved_digest,
+                action_index=step_index + 1, total_actions=len(plan_lines),
             )
             self.package_digest_after = verify.record.package_digest_after
             self.healer_calls += int(verify.record.healer_calls)
@@ -1402,6 +1423,8 @@ class AndroidReplayHandler:
                     after=after,
                     action_seq=step_index + 1,
                     owner_kind="ITEM",
+                    check_coverage=self.check_coverage[coverage_start:],
+                    include_observation_text=not self.context.require_case_context,
                 )
             )
             previous_after = after
@@ -1525,6 +1548,15 @@ class AndroidReplayHandler:
     ) -> tuple[Observation, Observation | None]:
         """Resolve before/after for one sealed plan line. Live after is captured post-dispatch."""
 
+        def checked(before,after):
+            if self.context.require_case_context:
+                try:
+                    validate_observed_at(before.captured_at)
+                    if after is not None:validate_observed_at(after.captured_at)
+                except ValueError as exc:
+                    raise _ReplayCaptureFailed("capture_time_invalid") from exc
+            return before,after
+
         steps = self.context.step_observations
         if steps:
             if step_index < 0 or step_index >= len(steps):
@@ -1534,7 +1566,7 @@ class AndroidReplayHandler:
                 raise _ReplayCaptureFailed("before_capture_failed")
             if after is None or not after.capture_ok or after.png == b"":
                 raise _ReplayCaptureFailed("after_evidence_missing")
-            return before, after
+            return checked(before, after)
 
         live = self.context.live_capture
         if live is not None:
@@ -1550,7 +1582,7 @@ class AndroidReplayHandler:
                     raise _ReplayCaptureFailed("before_capture_failed") from exc
             if before is None or not before.capture_ok or before.png == b"":
                 raise _ReplayCaptureFailed("before_capture_failed")
-            return before, None
+            return checked(before, None)
 
         if step_index > 0:
             raise _ReplayCaptureFailed("after_evidence_missing")
@@ -1560,7 +1592,7 @@ class AndroidReplayHandler:
             raise _ReplayCaptureFailed("before_capture_failed")
         if after is None or not after.capture_ok or after.png == b"":
             raise _ReplayCaptureFailed("after_evidence_missing")
-        return before, after
+        return checked(before, after)
 
     def _verify_and_heal(
         self,
@@ -1568,8 +1600,22 @@ class AndroidReplayHandler:
         *,
         healing_enabled: bool | None = None,
         approved_digest: str | None = None,
+        action_index: int | None = None,
+        total_actions: int | None = None,
     ) -> object:
         from aiqa.worker.runner import verify_and_heal_after_replay
+
+        if self.context.require_case_context:
+            from aiqa.healing.service import ReplayVerifyHealResult, SeparateVerifyHealRecord
+            coverage = required_check_coverage(self._case_context, action_index=action_index,
+                total_actions=total_actions, observed_at=observation.captured_at)
+            self.check_coverage += coverage
+            digest = self.context.approved_digest if approved_digest is None else approved_digest
+            # Coverage is not a runtime target binding or a verifier/healer grant.
+            # Unknown required checks stay inconclusive; no product FAIL is invented.
+            return ReplayVerifyHealResult(tuple(row.result for row in coverage),
+                SeparateVerifyHealRecord('', '', False, False, 'not_run', 0, 0, digest, digest),
+                not coverage)
 
         broker = self.context.verify_broker if self.context.verify_broker is not None else self.broker
         return verify_and_heal_after_replay(
@@ -2006,7 +2052,6 @@ def build_approved_android_replay_handler(
     """Replay each sealed plan line on a live device. Capture after every dispatch."""
 
     from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter, recording_broker
-    from aiqa.contracts.models import OwnedCheck, RoleBinding
 
     capture, prepare = _live_android_capture_pair(
         adb_path=adb_path, serial=serial, expected_avd=expected_avd
@@ -2014,15 +2059,6 @@ def build_approved_android_replay_handler(
     spool = EvidenceSpool(runtime_root / "spool-replay")
     journal = DispatchJournal(runtime_root / "journal-replay.jsonl")
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
-    verify_broker = ModelBroker(
-        "replay-item",
-        (
-            RoleBinding("verification", 1, "fixture-v", "ref"),
-            RoleBinding("healing", 1, "fixture-h", "ref"),
-        ),
-        (OwnedCheck("check-1", "replay-item"),),
-        (),
-    )
     from aiqa.worker.android_prepare import AndroidTargetPreparer
     return AndroidReplayHandler(
         adapter=MobileAgentAndroidAdapter(),
@@ -2041,9 +2077,6 @@ def build_approved_android_replay_handler(
             healing_enabled=healing_enabled,
             heal_budget_remaining=0,
             checks=checks,
-            verify_broker=verify_broker,
-            verify_transport=_NoTransport(),
-            verify_control=_AllowVerify(),
             live_capture=capture,
             target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
         ),

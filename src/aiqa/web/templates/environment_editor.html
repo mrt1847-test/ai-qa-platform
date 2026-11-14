@@ -41,11 +41,12 @@
     <label>언어·지역 <select name="locale"><option value="ko-KR">한국어 · ko-KR</option>{% if p.get('locale') and p.get('locale') != 'ko-KR' %}<option selected value="{{ p.locale }}">{{ p.locale }}</option>{% endif %}</select></label>
     <label>초기화 정책 <select name="reset_policy"><option value="none">초기화하지 않음</option>{% if p.get('reset_policy') and p.get('reset_policy') != 'none' %}<option selected value="{{ p.reset_policy }}">저장된 정책 · {{ p.reset_policy }}</option>{% endif %}</select></label>
     <label>시간 한도 (초) <input name="limits.timeout_seconds" type="number" min="1" max="600" value="{{ limits.get('timeout_seconds',600) }}"></label>
-    <label>동작 한도 (회) <input name="limits.max_actions" type="number" min="1" value="{{ limits.get('max_actions',50) }}"></label>
+    <label>동작 한도 (회) <input name="limits.max_actions" aria-describedby="android-action-limit-note" type="number" min="1" value="{{ limits.get('max_actions',50) }}"></label>
     <label>AI 비용 한도 <input name="limits.budget" inputmode="decimal" value="{{ limits.get('budget','1') }}"></label>
     <label>통화 <input name="limits.currency" value="{{ limits.get('currency','USD') }}"></label>
     </div>
   </fieldset>
+  <p class="hint" id="android-action-limit-note">Android는 앱 열기 1회를 포함해 전체 최대 50회입니다. 탭·스와이프 등의 동작은 입력한 한도 내에서 최대 49회 실행합니다.</p>
   {% include "components/form_feedback.html" %}
   <div class="action-bar"><input type="submit" data-save-button value="프로필 저장"><span id="environment-version" class="muted">{% if selected_profile %}저장본 v{{ selected_profile.revision }}{% endif %}</span></div>
 </form>

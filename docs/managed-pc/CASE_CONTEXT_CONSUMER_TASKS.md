@@ -26,11 +26,16 @@ B2.2b core 완료 근거/실제 앱 관찰/리뷰 제약은 [인계](../validati
 
 ## B2.3 · 검사 시점과 결과 저장
 
-- [ ] 리뷰 Minor 후속: Android 녹화/환경 한도 UI에 요청 한도와 준비1회/gesture 최대49의 관계를 안내한다. 50줄 승인 plan은 실행 전 거절되며 앱 기동/gesture가 발생하지 않는다.
+- [x] 리뷰 Minor 후속: Android 녹화/환경 한도 UI에 요청 한도와 준비1회/gesture 최대49의 관계를 안내한다. 50줄 승인 plan은 실행 전 거절되며 앱 기동/gesture가 발생하지 않는다.
 
-확인한 기존 live builder 공백: `_NoTransport`는 `ModelTransport` 계약을 구현하지 않아 현재 verifier의 진입 type gate를 통과하지 못한다. 준비 경계의 단위 검사는 명시적 fake transport를 주입한다. 이를 실제 live QA 성공으로 해석하지 않으며, 고정 required check 소비/결과 저장·C verifier 권한과 함께 정상 포트로 교체한다.
+B2.3a의 공식 strict 경로에서 고정 required의 누락·중간 final 평가·placeholder verifier를 차단하고 마지막 source coverage/unknown을 반환한다. [세부 구현](PINNED_CHECK_COVERAGE_TASKS.md) · [인계](../validation/tasks/RX-87-B2-CHECK-COVERAGE.md). 직접 개발 constructor의 fixture 검증은 명시 호환이다. 실제 binding/evaluator/check_results 저장을 아직 완료하지 않았다.
+
+### B2.3b · 승인된 logical 경계와 검증 대상 binding
+
 
 - [ ] 자연어 Step 하나는 여러 gesture가 될 수 있다. logical step 순번을 plan line 순번과 임의로 동일시하지 않는다. 승인된 mapping이 없으면 required step check를 성공 처리하지 않는다. AI recording annotation/사후 검토 mapping의 불변 owner·저장/UI를 별도 구현 단위로 정한다.
+### B2.3c · 실제 평가와 정규화 결과 저장
+
 - [ ] final_expected는 마지막 승인 action 이후만, step check는 승인 mapping 시점에만 평가한다. 정상 claim에서 전역 fixture checks/expected로 대체0이다. 평가 불가 required check는 unknown/error이며 AI 보완은 승인된 방법·C 권한/한도에만 따른다.
 - [ ] 실제 observation provider는 현재 PNG/geometry 중심이며 Android deterministic validator는 hierarchy fixture를 읽는다. 실제 hierarchy 관찰 또는 C의 허용 visual verifier를 연결하지 않고 실 기기 검증 PASS로 보고하지 않는다. check ID·source hash·observed/expected·결과·artifact를 ITEM에 영속화하고 원본 FAIL/승인은 보존한다.
 

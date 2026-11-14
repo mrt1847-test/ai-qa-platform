@@ -37,9 +37,11 @@ B0.4 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-EVIDENCE.md). 집�
 
 ## B0.5. 증거 저장의 서버 시각·용도 권한
 
-- [ ] 새 업로드에 worker의 과거 now를 넣어 만료 임대가 active로 보이는 경로와 같은 worker ID/다른 purpose 토큰의 저장 허용을 실제 API에서 RED로 확인한다.
-- [ ] 서버 commit writer transaction을 얻은 뒤의 시각만 late/임대 권한에 사용한다. worker now는 요청 식별/기록 시각이며 실행 권한이 아니다. token의 project/purpose가 실제 job과 일치해야 한다.
-- [ ] 이미 commit한 같은 key/본문 receipt는 현재 임대와 독립 재조회한다. 새 late evidence를 ready/승인 근거로 승격하지 않는다. timestamp/토큰·다른 generation/반려·결과 불변성 회귀를 확인한다.
+- [x] 새 업로드에 worker의 과거 now를 넣어 만료 임대가 active로 보이는 경로와 같은 worker ID/다른 purpose 토큰의 저장 허용을 실제 API에서 RED로 확인한다.
+- [x] 서버 commit writer transaction을 얻은 뒤의 시각만 late/임대 권한에 사용한다. worker now는 요청 식별/기록 시각이며 실행 권한이 아니다. token의 project/purpose가 실제 job과 일치해야 한다.
+- [x] 이미 commit한 같은 key/본문 receipt는 현재 임대와 독립 재조회한다. 새 late evidence를 ready/승인 근거로 승격하지 않는다. timestamp/토큰·다른 generation/반려·결과 불변성 회귀를 확인한다.
+
+B0.5 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-AUTHORITY.md). 최종 전체 기존9failed/825passed/1skipped. 현재 B0.6.
 
 ## B0.6. 증거 I/O와 control 응답성
 

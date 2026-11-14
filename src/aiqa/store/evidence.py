@@ -6,7 +6,8 @@ import hashlib
 import json
 import sqlite3
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -79,6 +80,15 @@ class EventConflict(Exception):
     """The same local seq arrived with a different hash."""
 
 
+def _require_evidence_purpose(connection, worker, lease):
+    row = connection.execute("SELECT purpose FROM jobs WHERE project_id=? AND job_id=?",
+        (str(lease.project_id),str(lease.job_id))).fetchone()
+    if row is None:
+        raise StaleGeneration("lease generation is stale")
+    if row[0] not in worker.permitted_purposes:
+        raise LeaseDenied("worker cannot write this job purpose")
+
+
 def ingest_stored(
     connection: sqlite3.Connection,
     worker: WorkerScope,
@@ -90,6 +100,7 @@ def ingest_stored(
 
     if lease.project_id not in worker.permitted_projects:
         raise LeaseDenied("worker cannot use this lease")
+    _require_evidence_purpose(connection, worker, lease)
     row = connection.execute(
         """
         SELECT leases.expires_at, leases.worker_id, jobs.status, attempts.attempt_id
@@ -184,6 +195,7 @@ def commit_sanitized_evidence(
     artifacts: list[EvidenceArtifactPart],
     request_key: str,
     body_fingerprint: str,
+    authority_clock: Callable[[], datetime] | None = None,
 ) -> EvidenceCommitAck:
     """Commit a contiguous sanitized event prefix and optional artifacts. Late work is recovery-only."""
 
@@ -209,6 +221,12 @@ def commit_sanitized_evidence(
         request_key.strip(),
     )
     with binding.store.transaction() as connection:
+        _require_evidence_purpose(connection, binding.worker, lease)
+        if authority_clock is not None:
+            current = authority_clock()
+            if not isinstance(current, datetime) or current.tzinfo is None:
+                raise ValueError("authority clock is invalid")
+            binding = replace(binding, now=current.astimezone(timezone.utc))
         row = connection.execute(
             """
             SELECT body_hash, response_body FROM evidence_commit_requests

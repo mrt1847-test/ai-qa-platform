@@ -444,3 +444,7 @@ known_environment는 **문서상의 환경 관찰 메모**이지 실행 worker c
 ### RX87 B0 · 현재 worker 실행 fence (C00/C01/C04/C05/C14)
 
 POST worker/checkpoints는 현재 인증 project/purpose/worker·job/attempt/ACK·최신 세대·incarnation/lease margin·취소/상태·고정 job deadline을 조회한다. worker now/과거 allowed/같은 key 캐시는 권한이 아니다. thread/DB lock 대기 뒤 서버 시각을 읽고 Cache-Control:no-store로 응답한다. worker는 응답 소유·phase·타입과 전체 왕복 지연을 검사하며 recording runtime이 모델 전/실제 native 전송 직전에 소비한다. 이 포트는 model grant/호출 quota 차감/임대 갱신/장기 keepalive/자동 재개를 제공하지 않는다. B0.3 lifecycle과 B/C/D는 별도다.
+
+### RX87 B0.5 · evidence/event 권한 시각 (C00/C04/C05/C14)
+
+두 HTTP 경로는 worker now를 metadata로 검증하고 server clock callable을 writer transaction 취득 뒤 읽는다. project/purpose는 실제 job과 일치해야 하며 cached receipt에도 적용한다. 과거 저장 receipt는 lease 만료 뒤에도 읽지만 새 late/stale 데이터를 활성 승인 근거로 올리지 않는다. trusted core fixture time seam은 HTTP가 선택하지 못한다. 별도 worker/artifacts의 pre-wait 시각과 파일 I/O/DB 점유는 B0.6 후속이다.

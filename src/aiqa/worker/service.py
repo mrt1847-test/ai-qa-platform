@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
@@ -156,14 +156,17 @@ def reconcile_jobs(now: datetime) -> ReconciliationReport:
 
 
 def ingest_events(
-    lease: LeaseToken, events: list[EventEnvelope], worker: WorkerScope, now: datetime
+    lease: LeaseToken, events: list[EventEnvelope], worker: WorkerScope, now: datetime,
+    *, authority_clock: Callable[[], datetime] | None = None,
 ) -> IngestReceipt:
     """Append attempt events and return the contiguous local-seq ack."""
 
     _require_now(now)
     store = _bound_store()
     with store.transaction() as connection:
-        return ingest_stored(connection, worker, lease, events, now)
+        current = now if authority_clock is None else authority_clock()
+        _require_now(current)
+        return ingest_stored(connection, worker, lease, events, current)
 
 
 @contextmanager

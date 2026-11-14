@@ -451,3 +451,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-14: [RX87 B0.3](docs/validation/tasks/RX-87-B0-KEEPALIVE.md) Android 녹화 keepalive·실패 latch·joined 종료 뒤 finish/cleanup을 구현했다. 집중37·전체9failed802passed1skipped(기존9). 다음 B0.4 증거 ACK 복구, 상위 RX87 미완료.
 
 2026-11-14: [RX87 B0.4](docs/validation/tasks/RX-87-B0-EVIDENCE.md) 단계별 증거의 고정 key/body/time·ACK 재확인·pending/변조 차단을 구현했다. 증거 전송만 추가1회, 동작/모델 반복0. 집중39·전체9failed819passed1skipped(기존9). 다음 B0.5 권한, B0.6 I/O. 상위 RX87 미완료.
+
+2026-11-14: [RX87 B0.5](docs/validation/tasks/RX-87-B0-AUTHORITY.md) evidence/event의 서버 transaction 시각·purpose 권한을 구현했다. owning6·전체9failed825passed1skipped(기존9). 다음 B0.6 I/O와 별도 artifact 저장 경계. 상위 RX87 미완료.

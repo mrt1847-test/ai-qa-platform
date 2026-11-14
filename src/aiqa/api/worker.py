@@ -256,7 +256,7 @@ def install_worker(application: FastAPI) -> None:
             try:
                 worker = worker_scope_from_token(token)
                 with bind_claim_store(store):
-                    receipt = ingest_events(lease, events, worker, now)
+                    receipt = ingest_events(lease, events, worker, now, authority_clock=_server_now)
             except AuthRequired:
                 return _error(401, "unauthorized", "worker token is missing", {})
             except LeaseDenied:
@@ -342,7 +342,7 @@ def install_worker(application: FastAPI) -> None:
         if isinstance(payload, JSONResponse):
             return payload
         try:
-            now = _instant(payload.get("now"))
+            _instant(payload.get("now"))  # Validate metadata; server clock supplies authority.
             lease = LeaseToken(
                 _uuid(payload.get("project_id")),
                 _uuid(payload.get("job_id")),
@@ -360,16 +360,17 @@ def install_worker(application: FastAPI) -> None:
         with _bound(request) as store:
             try:
                 worker = worker_scope_from_token(token)
-                marker = bind_artifact_ingest(ArtifactBinding(store, worker, now))
+                marker = bind_artifact_ingest(ArtifactBinding(store, worker, _server_now()))
                 try:
                     ack = commit_sanitized_evidence(
-                        ArtifactBinding(store, worker, now),
+                        ArtifactBinding(store, worker, _server_now()),
                         lease,
                         sanitized=bool(sanitized) and sanitized is True,
                         events=events,
                         artifacts=artifacts,
                         request_key=key,
                         body_fingerprint=fingerprint,
+                        authority_clock=_server_now,
                     )
                 finally:
                     reset_artifact_ingest(marker)

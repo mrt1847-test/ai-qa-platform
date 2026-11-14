@@ -129,7 +129,7 @@ def test_rx_39_register_claim_ack_action_evidence_review(tmp_path: Path, monkeyp
             case.case_id,
             CaseRevisionInput(
                 CaseDefinition("open", "open", (), {}, {}, (), (), PathPolicy()),
-                CaseSettings("android"),
+                CaseSettings("android", document={"android_package":"com.example.fixture"}),
             ),
             None,
         )

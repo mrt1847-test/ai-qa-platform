@@ -860,7 +860,10 @@ class AndroidRecordingHandler:
         if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
             raise _CaptureFailed("cancelled")
         remote = self.context.remote_checkpoint
-        if remote is not None and phase in {"before_model", "before_dispatch"}:
+        requires_remote = phase in {"before_model", "before_dispatch"} or (self.context.require_case_context and phase == "before_lookup")
+        if self.context.require_case_context and requires_remote and remote is None:
+            raise _CaptureFailed("remote_checkpoint_missing")
+        if remote is not None and requires_remote:
             decision = remote(phase)
             if getattr(decision, "allowed", None) is not True:
                 raise _CaptureFailed("remote_checkpoint_blocked")
@@ -920,6 +923,7 @@ class AndroidRecordingHandler:
     ) -> tuple[Observation, Observation, str | None, str | None, Any]:
         """Observe → sanitize → model plan → parse → dispatch. Capture failure skips the model."""
 
+        self._recording_gate(claim, phase="before_lookup")
         live = self.context.live_capture
         if live is None:
             before, after = self._observations_for_step(action_seq)
@@ -1255,9 +1259,6 @@ class AndroidReplayHandler:
 
             try:
                 if self.context.prepare_device is not None and not self._device_prepared:
-                    remote = self.context.remote_checkpoint
-                    if remote is not None and getattr(remote("before_lookup"),"allowed",None) is not True:
-                        raise _ReplayCaptureFailed("remote_checkpoint_blocked")
                     self._replay_gate(claim,phase="before_lookup")
                     try:
                         self.context.prepare_device()
@@ -1438,7 +1439,10 @@ class AndroidReplayHandler:
         if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
             raise _ReplayCaptureFailed("cancelled")
         remote = self.context.remote_checkpoint
-        if remote is not None and phase == "before_dispatch":
+        requires_remote = phase == "before_dispatch" or (self.context.require_case_context and phase == "before_lookup")
+        if self.context.require_case_context and requires_remote and remote is None:
+            raise _ReplayCaptureFailed("remote_checkpoint_missing")
+        if remote is not None and requires_remote:
             decision = remote(phase)
             if getattr(decision, "allowed", None) is not True:
                 raise _ReplayCaptureFailed("remote_checkpoint_blocked")

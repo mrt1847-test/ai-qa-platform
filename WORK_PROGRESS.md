@@ -459,3 +459,5 @@ RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감�
 2026-11-14: [RX87 B1](docs/validation/tasks/RX-87-B1-CONTROL.md) Android replay 고정 cap·claim별 시계/guard·native 전송 직전 fence와 selected-route keepalive를 구현했다. owning25·expanded34·전체9failed865passed1skipped(기존9). B2/C/D·정상 ON 실제 치유는 미완료이며 상위 완료 수 유지.
 
 2026-11-14: [RX87 B2.1](docs/validation/tasks/RX-87-B2-CONTEXT.md) 고정 REC/ITEM version의 goal/check/expected/target·참조 metadata를 실제 claim에 공급했다. 새14·집중80·JS32·전체9failed879passed1skipped(기존9). 현재 B2.2a parser/gate, 앱 준비와 검사 mapping/결과 저장은 후속. 상위 완료 수 유지.
+
+2026-11-14: [RX87 B2.2a](docs/validation/tasks/RX-87-B2-CONSUMER.md) worker 고정 metadata의 immutable 파싱·반복 ID/owner/version/package pin 대조와 공식 Android 필수 fence를 보완했다. 집중93·전체9failed924passed1skipped(기존9). Important3 해결·Minor2 인계, 현재 B2.2b 선택 앱 준비/저장 근거. 상위 RX87·완료 수 유지.

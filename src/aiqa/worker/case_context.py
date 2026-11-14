@@ -108,6 +108,8 @@ def resolve_claim_case_context(claim, *, required=False):
         for key in ('project_id','job_id','attempt_id'):
             if _uuid(raw[key])!=_uuid(claim[key]) or raw[key]!=claim[key]:
                 raise CaseContextRejected('case context scope invalid')
+            if (required or key in snapshot) and key in {'job_id','attempt_id'} and snapshot.get(key)!=claim[key]:
+                raise CaseContextRejected('snapshot identity invalid')
         if (type(raw['generation']) is not int or type(claim['generation']) is not int
             or raw['generation']<1 or raw['generation']!=claim['generation']
             or raw['purpose']!=snapshot.get('purpose') or raw['purpose'] not in {'recording','trial','regression'}):
@@ -116,6 +118,9 @@ def resolve_claim_case_context(claim, *, required=False):
         if raw['owner_kind']!=expected_owner:
             raise CaseContextRejected('case context owner invalid')
         for key in ('owner_id','case_id','case_version_id'):_uuid(raw[key])
+        owner_prefix = 'recording:' if expected_owner=='REC' else 'case_run:'
+        if (required or 'revision_ref' in snapshot) and snapshot.get('revision_ref')!=owner_prefix+raw['owner_id']:
+            raise CaseContextRejected('case context owner pin invalid')
         _text(raw['content_hash']);_text(raw['verification_digest']);_text(raw['objective'],empty=True)
         if raw['purpose']=='recording':
             if raw['replay_package_id'] is not None or raw['replay_package_hash'] is not None:
@@ -134,9 +139,18 @@ def resolve_claim_case_context(claim, *, required=False):
                 raise CaseContextRejected('replay context package invalid')
             _uuid(raw['replay_package_id']);_text(raw['replay_package_hash'])
             limits = snapshot.get('limits',{})
-            execution = limits.get('execution_snapshot',{}) if type(limits) is dict else {}
-            if type(execution) is dict and 'case_version_id' in execution and execution['case_version_id']!=raw['case_version_id']:
-                raise CaseContextRejected('replay context version invalid')
+            if type(limits) is not dict:
+                raise CaseContextRejected('replay limits invalid')
+            for key in ('replay_package_id','replay_package_hash'):
+                if key in limits and limits[key]!=raw[key]:
+                    raise CaseContextRejected('replay limits package invalid')
+            if 'execution_snapshot' in limits:
+                execution = limits['execution_snapshot']
+                if type(execution) is not dict:
+                    raise CaseContextRejected('replay source pin invalid')
+                for source,target in (('case_version_id','case_version_id'),('manifest_hash','content_hash')):
+                    if source in execution and execution[source]!=raw[target]:
+                        raise CaseContextRejected('replay context version invalid')
         target = raw['target']
         if type(target) is not dict or set(target)!={'kind','android_package'} or target['kind'] not in {'web','android'}:
             raise CaseContextRejected('case target invalid')

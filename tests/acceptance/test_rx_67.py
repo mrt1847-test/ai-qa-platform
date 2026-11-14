@@ -154,7 +154,7 @@ def test_rx_67_step_ack_timeline_retransmit_and_prefix(tmp_path: Path, monkeypat
             case.case_id,
             CaseRevisionInput(
                 CaseDefinition("open", "open", (), {}, {}, (), (), PathPolicy()),
-                CaseSettings("android"),
+                CaseSettings("android", document={"android_package":"com.example.fixture"}),
             ),
             None,
         )

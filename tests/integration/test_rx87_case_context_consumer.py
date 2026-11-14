@@ -129,14 +129,10 @@ def test_prepared_android_entry_rejects_a_valid_web_target_before_dispatch(model
 def test_actual_android_api_context_reaches_the_prepared_handler(recording,tmp_path):
     import sqlite3
     from test_rx87_case_context import _save,start,claim
-    f=recording
-    with sqlite3.connect(f['database']) as c:
-        c.execute("UPDATE resource_aliases SET target_kind='android' WHERE project_id=? AND physical_key_id=?",(f['project'],f['body']['resource_id']))
-    saved=_save(f,objective='Selected Android app',target='android',package='com.example.saved')
-    f['body'].update(input_case_version_id=saved['id'],input_version_hash=saved['content_hash'])
-    result=start(f);assert result.status_code==201,result.text
-    job=claim(f);calls=[];handler=handler_for(tmp_path,job,calls)
+    job=_android_api_claim(recording);calls=[];handler=handler_for(tmp_path,job,calls)
     handler.context.require_case_context=True;handler.context.fixture_responses=('click(100,200)','finish()')
+    from aiqa.contracts.jobs import ControlDecision
+    handler.context.remote_checkpoint=lambda phase:ControlDecision(True,phase)  # Explicit test fence.
     result=handler.handle(job)
     assert result.actions==len(calls)==1 and handler._case_context.target.android_package=='com.example.saved'
     assert handler._case_context.steps[0].expected[0].expected=='Saved'
@@ -153,3 +149,91 @@ def test_invalid_next_recording_context_clears_previous_claim_statistics(model_j
     assert result.actions==0 and len(calls)==1
     assert handler.tap_count==handler.authoring_calls_seen==0 and handler.finished_by_model is False
     assert handler._case_context is None and handler.evidence_commits==[]
+
+
+@pytest.mark.parametrize('damage',['snapshot_job','snapshot_attempt','snapshot_job_missing','snapshot_attempt_missing','owner','owner_missing'])
+def test_context_matches_repeated_snapshot_ids_and_authoritative_owner_pin(model_job,damage):
+    from aiqa.worker.case_context import resolve_claim_case_context,CaseContextRejected
+    job=copy.deepcopy(model_job['job'])
+    if damage=='snapshot_job':job['snapshot']['job_id']=str(uuid4())
+    elif damage=='snapshot_attempt':job['snapshot']['attempt_id']=str(uuid4())
+    elif damage=='snapshot_job_missing':job['snapshot'].pop('job_id')
+    elif damage=='snapshot_attempt_missing':job['snapshot'].pop('attempt_id')
+    elif damage=='owner_missing':job['snapshot'].pop('revision_ref')
+    else:job['snapshot']['case_context']['owner_id']=str(uuid4());_rehash(job)
+    with pytest.raises(CaseContextRejected):resolve_claim_case_context(job,required=True)
+
+
+@pytest.mark.parametrize('damage',['manifest','package_id','package_hash','execution_list','execution_null'])
+def test_replay_context_matches_all_available_frozen_source_pins(healing_claim,damage):
+    from aiqa.worker.case_context import resolve_claim_case_context,CaseContextRejected
+    job=copy.deepcopy(healing_claim);job['snapshot']['self_healing_enabled']=False
+    limits=job['snapshot']['limits']
+    if damage=='manifest':limits['execution_snapshot']['manifest_hash']='different-source'
+    elif damage=='package_id':limits['replay_package_id']=str(uuid4())
+    elif damage=='package_hash':limits['replay_package_hash']='different-package-hash'
+    else:limits['execution_snapshot']=[] if damage=='execution_list' else None
+    with pytest.raises(CaseContextRejected):resolve_claim_case_context(job,required=True)
+
+
+def _prepared_replay(tmp_path,monkeypatch,source_job):
+    import subprocess
+    from pathlib import Path
+    import aiqa.worker.android_jobs as jobs
+    from test_rx_34 import _observation,_Script
+    job=copy.deepcopy(source_job);snapshot=job['snapshot'];raw=snapshot['case_context']
+    owner=str(uuid4());package=str(uuid4());digest='sha256:'+'a'*64
+    snapshot.update(purpose='trial',self_healing_enabled=False,revision_ref='case_run:'+owner,
+        replay_package_id=package,replay_package_hash=digest,approved_digest=digest,
+        approved_plan='click(100,200)\nclick(100,200)',limits={'max_actions':2,'max_model_calls':0,'timeout_seconds':30,
+        'replay_package_id':package,'replay_package_hash':digest})
+    snapshot.pop('intent',None)
+    raw.update(purpose='trial',owner_kind='ITEM',owner_id=owner,replay_package_id=package,replay_package_hash=digest,
+        target={'kind':'android','android_package':'com.example.saved'})
+    _rehash(job);events=[]
+    def capture():events.append('capture');return _observation()
+    def prepare():events.append('prepare')
+    def native(argv,seconds):events.append('native');return subprocess.CompletedProcess(argv,0,b'',b'')
+    monkeypatch.setattr(jobs,'_live_android_capture_pair',lambda **kwargs:(capture,prepare))
+    handler=jobs.build_approved_android_replay_handler(adb_path=Path('C:/platform-tools/adb.exe'),
+        serial=snapshot['serial'],expected_avd='fixture',runtime_root=tmp_path,
+        approved_digest=digest,approved_plan=snapshot['approved_plan'])
+    monkeypatch.setattr(handler.driver,'_runner',native)
+    handler.context.verify_transport=_Script()  # Explicit fixture, no paid check calls.
+    return handler,job,events
+
+
+@pytest.mark.parametrize('fence',['absent','denied','allowed'])
+def test_official_replay_preparation_requires_a_fence_and_runs_once(model_job,tmp_path,monkeypatch,fence):
+    from aiqa.contracts.jobs import ControlDecision
+    handler,job,events=_prepared_replay(tmp_path,monkeypatch,model_job['job'])
+    if fence!='absent':handler.context.remote_checkpoint=lambda phase:ControlDecision(fence=='allowed',phase)
+    result=handler.handle(job)
+    if fence=='allowed':
+        assert result.actions==2 and events.count('prepare')==1 and events.count('capture')==3 and events.count('native')==2
+    else:assert result.actions==0 and events==[]
+
+
+def _android_api_claim(f):
+    import sqlite3
+    from test_rx87_case_context import _save,start,claim
+    with sqlite3.connect(f['database']) as c:
+        c.execute("UPDATE resource_aliases SET target_kind='android' WHERE project_id=? AND physical_key_id=?",(f['project'],f['body']['resource_id']))
+    saved=_save(f,objective='Selected Android app',target='android',package='com.example.saved')
+    f['body'].update(input_case_version_id=saved['id'],input_version_hash=saved['content_hash'])
+    result=start(f);assert result.status_code==201,result.text
+    return claim(f)
+
+
+@pytest.mark.parametrize('fence',['absent','denied'])
+def test_prepared_recording_requires_fence_before_prepare_or_capture(recording,tmp_path,fence):
+    from aiqa.contracts.jobs import ControlDecision
+    from test_rx_34 import _observation
+    job=_android_api_claim(recording);calls=[];handler=handler_for(tmp_path,job,calls)
+    handler.context.require_case_context=True
+    handler.context.prepare_device=lambda:calls.append('prepare')
+    handler.context.live_capture=lambda:(calls.append('capture') or _observation())
+    if fence=='denied':handler.context.remote_checkpoint=lambda phase:ControlDecision(False,phase)
+    result=handler.handle(job)
+    assert result.actions==0 and calls==[] and handler.broker.authoring_calls==0
+    assert handler.stopped_reason in {'remote_checkpoint_missing','remote_checkpoint_blocked'}

@@ -226,6 +226,8 @@ def install_recordings(application: FastAPI) -> None:
         store = request.app.state.open_store()
         timeline = _RecordingTimeline("", "", "", (), ())
         row = None
+        binding_context=None
+        version_approved=False
         try:
             migrate_store(store)
             with bound_auth_store(store):
@@ -258,6 +260,14 @@ def install_recordings(application: FastAPI) -> None:
                     ).fetchone()
                     if row is None:
                         return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
+                    from aiqa.recording.check_bindings import load_check_binding_context,BindingRejected,BindingNotFound
+                    try:binding_context=load_check_binding_context(connection,project,recording)
+                    except (BindingRejected,BindingNotFound):binding_context=None
+                    if row[2] is not None and row[4] is not None:
+                        version_approved=connection.execute("""SELECT 1 FROM approval_events a WHERE a.project_id=? AND a.case_id=?
+                            AND a.approval_id=? AND a.case_version_id=? AND a.event_kind='approved'
+                            AND NOT EXISTS(SELECT 1 FROM approval_events r WHERE r.project_id=a.project_id AND r.prior_approval_id=a.approval_id AND r.event_kind='revoked')""",
+                            (str(project),str(row[3]),str(row[2]),str(row[4]))).fetchone() is not None
                     timeline = _recording_timeline(
                         connection,
                         store.config.artifacts_dir,
@@ -307,7 +317,9 @@ def install_recordings(application: FastAPI) -> None:
                 "case_id": case_id,
                 "completion_status": str(row[0]),
                 "package_id": None if row[1] is None else str(row[1]),
-                "approved": row[2] is not None,
+                "approved":version_approved,
+                "materialized_version_id":None if row[4] is None else str(row[4]),
+                "check_binding_context":binding_context,
                 "offline_gate": offline_gate,
                 "selection": selection,
                 "actions": actions,
@@ -342,7 +354,7 @@ def install_recordings(application: FastAPI) -> None:
                 with store.transaction() as connection:
                     exists = connection.execute(
                         """
-                        SELECT 1 FROM recordings
+                        SELECT completion_status FROM recordings
                         WHERE project_id = ? AND recording_id = ?
                         """,
                         (str(project), str(recording)),
@@ -365,6 +377,7 @@ def install_recordings(application: FastAPI) -> None:
                 "recording_id": str(recording),
                 "attempt_id": timeline.attempt_id,
                 "selected_action_id": timeline.selected_action_id,
+                "completion_status":str(exists[0]),
                 "first_failure": timeline.first_failure,
                 "actions": [
                     {

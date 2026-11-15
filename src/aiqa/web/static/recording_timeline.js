@@ -7,6 +7,8 @@
   var seconds = Number(root.getAttribute("data-poll-seconds") || "2");
   var lastCount = Number(root.getAttribute("data-action-count") || "0");
   var countNode = root.querySelector("[data-ack-count]");
+  var lastCompletion=root.getAttribute("data-completion-status")||"";
+  var pendingReload=false;
 
   function selectedAction() {
     var params = new URLSearchParams(window.location.search);
@@ -99,8 +101,11 @@
         if (countNode) {
           countNode.textContent = "서버 ACK " + actions.length;
         }
-        if (actions.length !== lastCount) {
-          lastCount = actions.length;
+        var completion=body.completion_status||lastCompletion;
+        if (pendingReload||actions.length!==lastCount||completion!==lastCompletion) {
+          var dirty=window.aiqaForms&&window.aiqaForms.dirty&&window.aiqaForms.dirty().length>0;
+          if(dirty){pendingReload=true;paintNav(actions);return;}
+          pendingReload=false;lastCount=actions.length;lastCompletion=completion;
           reloadKeepingSelection(actions);
           return;
         }

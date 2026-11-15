@@ -1,7 +1,7 @@
 """Immutable annotations connecting logical checks to an existing native recording."""
 from __future__ import annotations
 from dataclasses import dataclass
-import re
+import re,hashlib
 
 
 class BindingRejected(ValueError):pass
@@ -95,7 +95,7 @@ def _source(connection,project,recording,manifest=None):
 
 
 def _receipt(connection,project,recording,manifest,*,replayed):
-    row=connection.execute("""SELECT b.source_manifest_id,b.binding_hash,m.case_id,r.produced_version_id,v.replay_package_id
+    row=connection.execute("""SELECT b.source_manifest_id,b.binding_hash,m.case_id,r.produced_version_id,v.replay_package_id,m.body_hash
         FROM recording_check_bindings b JOIN recording_manifests m ON m.project_id=b.project_id AND m.manifest_id=b.manifest_id
         JOIN materialization_receipts r ON r.project_id=m.project_id AND r.manifest_id=m.manifest_id
         JOIN case_versions v ON v.project_id=r.project_id AND v.version_id=r.produced_version_id
@@ -103,7 +103,7 @@ def _receipt(connection,project,recording,manifest,*,replayed):
     if row is None or row[4] is None:raise BindingRejected('binding candidate missing')
     return dict(schema='recording-check-bindings-v1',recording_id=str(recording),manifest_id=str(manifest),
         source_manifest_id=str(row[0]),binding_hash=str(row[1]),case_id=str(row[2]),case_version_id=str(row[3]),
-        replay_package_id=str(row[4]),replayed=replayed,approved=False)
+        replay_package_id=str(row[4]),manifest_hash=str(row[5]),replayed=replayed,approved=False)
 
 
 def load_check_binding_context(connection,project,recording):
@@ -116,6 +116,7 @@ def load_check_binding_context(connection,project,recording):
     return {'schema':'recording-check-binding-context-v1','editable':True,
         'source_manifest':{'id':source['manifest_id'],'hash':source['body_hash'],'revision':source['revision']},
         'input_case_version_id':source['input_case_version_id'],'source_content_hash':source['content_hash'],
+        'native_source_hash':'sha256:'+hashlib.sha256(source['action_mapping'].encode('utf-8')).hexdigest(),
         'actions':[{'id':step.action_id,'ordinal':step.line,'kind':step.action.kind} for step in source['native_steps']],
         'logical_steps':[{'id':step['id'],'instruction':str(step.get('instruction',''))[:160],'checks':checks(step.get('expected',[]))} for step in source['definition'].get('steps',[])],
         'final_checks':checks(source['definition'].get('final_expected',[])),'bindings':bindings,

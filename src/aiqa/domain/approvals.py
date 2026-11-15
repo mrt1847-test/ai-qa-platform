@@ -102,19 +102,12 @@ def reject_case(actor: Actor, rejection: RejectionInput) -> DecisionReceipt:
         return _reject(connection, actor, rejection)
 
 
-def case_decision(connection: object, project_id: UUID, case_id: UUID) -> dict[str, object] | None:
+def case_decision(connection: object, project_id: UUID, case_id: UUID, *, version_id: UUID | None = None) -> dict[str, object] | None:
     """Describe the latest candidate and the default that a rejection must keep."""
 
-    version = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT version_id, content_hash, source_manifest_id
-        FROM case_versions
-        WHERE project_id = ? AND case_id = ?
-        ORDER BY revision DESC
-        LIMIT 1
-        """,
-        (str(project_id), str(case_id)),
-    ).fetchone()
+    condition='' if version_id is None else ' AND version_id=?'
+    params=(str(project_id),str(case_id)) if version_id is None else (str(project_id),str(case_id),str(version_id))
+    version=connection.execute('SELECT version_id,content_hash,source_manifest_id FROM case_versions WHERE project_id=? AND case_id=?'+condition+' ORDER BY revision DESC LIMIT 1',params).fetchone()
     if version is None:
         return None
     pointer = connection.execute(  # type: ignore[attr-defined]

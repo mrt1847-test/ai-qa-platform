@@ -1,0 +1,31 @@
+<section class="panel" id="recording-check-bindings-panel">
+<h2>검증 시점 연결</h2>
+{% if check_binding_context %}
+<p>각 검증 단계가 녹화의 어느 동작 뒤에 해당하는지 선택하세요. 한 단계가 여러 동작으로 이루어질 수 있습니다.</p>
+<p class="hint">연결을 저장하면 새 후보가 생기며 기존 녹화와 기본 승인본은 유지됩니다. 현재는 연결 저장만 가능하며 실행 적용은 아직 지원하지 않습니다. 미지정 검증을 자동 통과로 처리하지 않습니다.</p>
+<form id="recording-check-bindings" action="/api/v1/projects/{{ project_id }}/recordings/{{ recording_id }}/check-bindings" data-recording-url="/ui/projects/{{ project_id }}/recordings/{{ recording_id }}" data-review-url="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review" novalidate>
+{% for step in check_binding_context.logical_steps %}
+{% set matched=check_binding_context.bindings.step_boundaries|selectattr('step_id','equalto',step.id)|list %}
+{% set chosen=matched[0].after_action_id if matched else '' %}
+<fieldset class="panel"><legend>단계 {{ loop.index }} · {{ step.instruction }}</legend>
+<label for="binding-step-{{ loop.index0 }}">이 단계의 검증 시점</label>
+<select id="binding-step-{{ loop.index0 }}" name="boundary-{{ loop.index0 }}" data-step-id="{{ step.id }}">
+<option value="">미지정</option>{% for action in check_binding_context.actions %}<option value="{{ action.id }}"{% if chosen==action.id %} selected{% endif %}>동작 {{ action.ordinal }} · {{ {'tap':'탭','text':'문자 입력','key':'키','swipe':'스와이프'}.get(action.kind,action.kind) }} 이후</option>{% endfor %}</select>
+<a class="secondary-link" data-action-evidence="{{ step.id }}" href="?action_id={{ chosen|urlencode }}" target="_blank" rel="noopener"{% if not chosen %} hidden{% endif %}>선택 동작의 저장 화면·로그 보기 (새 탭)</a>
+{% for check in step.checks %}<p class="hint">검증: {{ check.expected_preview }}</p>{% endfor %}</fieldset>
+{% else %}<p>연결할 단계별 검증이 없습니다.</p>{% endfor %}
+{% if check_binding_context.final_checks %}<p>최종 검증은 마지막 녹화 동작 이후입니다.</p>{% endif %}
+{% set ns=namespace(checks=[]) %}{% for step in check_binding_context.logical_steps %}{% set ns.checks=ns.checks+step.checks %}{% endfor %}{% set ns.checks=ns.checks+check_binding_context.final_checks %}
+{% if ns.checks %}<details class="panel"><summary>고급: 검증 대상 요소 연결 (선택)</summary><p class="hint">앱의 리소스 ID를 아는 경우에만 입력하세요. 모르면 비워둘 수 있습니다.</p><div class="form-grid">{% for check in ns.checks %}
+{% set matched=check_binding_context.bindings.check_targets|selectattr('check_id','equalto',check.id)|list %}
+<label for="binding-target-{{ loop.index0 }}">검증 {{ loop.index }} · {{ check.expected_preview }}<input id="binding-target-{{ loop.index0 }}" name="target-{{ loop.index0 }}" data-check-id="{{ check.id }}" value="{{ matched[0].resource_id if matched else '' }}" placeholder="{{ check_binding_context.android_package }}:id/search_field" autocomplete="off"></label>
+{% endfor %}</div></details>{% endif %}
+{% include 'components/form_feedback.html' %}
+<div class="action-bar"><input type="submit" data-save-button value="검증 연결 후보 저장" disabled></div>
+<section data-saved-candidate hidden><p role="status" data-candidate-note></p><a data-candidate-review href="#">저장한 후보 검토</a><p class="hint">새 후보의 시범 실행과 사후 검토·승인이 별도로 필요합니다.</p></section>
+</form>
+<script type="application/json" id="recording-check-binding-source">{{ check_binding_context|tojson }}</script>
+{% elif completion_status=='open' %}<p class="empty">녹화가 완료되면 저장된 동작에 검증 시점을 연결할 수 있습니다.</p>
+{% else %}<p class="empty">이 저장본은 검증 시점 연결을 지원하는 동작 기록이 준비되지 않았습니다. 저장된 화면과 로그는 아래에서 확인할 수 있습니다.</p>{% endif %}
+</section>
+<script src="/static/recording_check_bindings.js?v={{ ui_asset_version }}"></script>

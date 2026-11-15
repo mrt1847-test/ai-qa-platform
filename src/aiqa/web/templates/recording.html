@@ -4,17 +4,19 @@
   <h1>녹화</h1>
   <p>상태 {{ completion_status }}</p>
   <p>package {% if package_id %}{{ package_id }}{% else %}없음{% endif %}</p>
-  <p>{% if approved %}승인됨{% else %}승인되지 않음{% endif %}</p>
+  <p id="recording-version-approval" data-approved="{{ 'true' if approved else 'false' }}">이 저장 후보: {% if approved %}승인됨{% else %}승인되지 않음{% endif %}</p>
   <p>엔진 종료는 승인이나 QA가 아닙니다.</p>
   <p>compiler가 없으면 package는 비어 있습니다.</p>
   <p>실패와 중단도 보존합니다.</p>
-  {% if case_id %}<p><a id="recording-review-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review">저장본 검토·승인</a></p>{% endif %}
+  {% if case_id %}<p><a id="recording-review-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review{% if materialized_version_id %}?version={{ materialized_version_id }}{% endif %}">저장본 검토·승인</a></p>{% endif %}
   {% if offline_gate %}<p id="recording-offline-gate" data-allowed="{{ 'true' if offline_gate.allowed else 'false' }}" data-worker-online="{{ 'true' if offline_gate.worker_online else 'false' }}" data-reason="{{ offline_gate.reason }}">{% if offline_gate.allowed %}서버에 저장된 증거로 실행 PC 없이도 검토할 수 있습니다.{% else %}검토 전 서버 증거: {{ offline_gate.reason }}{% endif %}</p>{% endif %}
+  {% include "components/recording_check_bindings.html" %}
   <section
     id="recording-timeline-root"
     class="review-workspace recording-timeline"
     data-timeline-url="/api/v1/projects/{{ project_id }}/recordings/{{ recording_id }}/timeline"
     data-poll-seconds="2"
+    data-completion-status="{{ completion_status }}"
     data-action-count="{{ timeline.entries|length if timeline else 0 }}"
     data-action-id="{{ selection.action_id if selection else '' }}"
   >

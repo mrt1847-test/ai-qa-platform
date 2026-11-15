@@ -1097,6 +1097,8 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
     decision = None
     revoke = None
     offline_gate = None
+    selected_version=None
+    version_uuid=None
     selected = request.query_params.get('entry', '')
     selection = None
     review_entry = None
@@ -1112,18 +1114,16 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
                     if case_row is None:
                         return HTMLResponse(status_code=404,content='케이스를 찾지 못했습니다.')
                     extra = review_notice(connection, project, parsed)
-                    latest = connection.execute(
-                        """
-                        SELECT version_id FROM case_versions
-                        WHERE project_id = ? AND case_id = ?
-                        ORDER BY revision DESC
-                        LIMIT 1
-                        """,
-                        (str(project), str(parsed)),
-                    ).fetchone()
+                    wanted=request.query_params.get('version')
+                    try:wanted_uuid=None if wanted is None else UUID(wanted)
+                    except ValueError:return HTMLResponse(status_code=404,content='검토할 버전을 찾지 못했습니다.')
+                    condition='' if wanted_uuid is None else ' AND version_id=?'
+                    params=(str(project),str(parsed)) if wanted_uuid is None else (str(project),str(parsed),str(wanted_uuid))
+                    latest=connection.execute('SELECT version_id FROM case_versions WHERE project_id=? AND case_id=?'+condition+' ORDER BY revision DESC LIMIT 1',params).fetchone()
+                    if wanted_uuid is not None and latest is None:return HTMLResponse(status_code=404,content='이 케이스의 검토 버전이 아닙니다.')
                     if latest is not None:
                         try:
-                            version_uuid = UUID(str(latest[0]))
+                            version_uuid = UUID(str(latest[0]));selected_version=str(version_uuid)
                         except ValueError:
                             version_uuid = None
                         if version_uuid is not None:
@@ -1148,11 +1148,11 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
                     elif selected:
                         return HTMLResponse(status_code=404,content='검토할 저장 근거가 없습니다.')
                     try:
-                        protection = review_protection(connection, project, parsed)
+                        protection = review_protection(connection, project, parsed,version_id=version_uuid)
                     except ValueError:
                         protection = None
                     try:
-                        decision = case_decision(connection, project, parsed)
+                        decision = case_decision(connection, project, parsed,version_id=version_uuid)
                     except ValueError:
                         decision = None
                     try:
@@ -1170,6 +1170,7 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
         "case_review.html",
         {
             "notice": notice,
+            "selected_version_id":selected_version,
             "board": board,
             "readiness": readiness,
             "protection": protection,

@@ -103,18 +103,12 @@ def extend_review_retention(
     )
 
 
-def review_protection(connection: object, project_id: UUID, case_id: UUID) -> dict[str, object] | None:
+def review_protection(connection: object, project_id: UUID, case_id: UUID, *, version_id: UUID | None = None) -> dict[str, object] | None:
     """Show the latest temporary deadline. A rejected decision and an old expiry stay."""
 
-    review = connection.execute(  # type: ignore[attr-defined]
-        """
-        SELECT review_id FROM reviews
-        WHERE project_id = ? AND case_id = ?
-        ORDER BY created_commit_seq DESC
-        LIMIT 1
-        """,
-        (str(project_id), str(case_id)),
-    ).fetchone()
+    condition='' if version_id is None else ' AND case_version_id=?'
+    params=(str(project_id),str(case_id)) if version_id is None else (str(project_id),str(case_id),str(version_id))
+    review=connection.execute('SELECT review_id FROM reviews WHERE project_id=? AND case_id=?'+condition+' ORDER BY created_commit_seq DESC LIMIT 1',params).fetchone()
     if review is None:
         return None
     review_id = str(review[0])

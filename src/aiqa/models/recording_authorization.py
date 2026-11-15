@@ -23,6 +23,7 @@ class RecordingGrant:
     provider: str
     endpoint_kind: str
     deadline: datetime
+    engine_kind: str | None = None
 
 
 def is_recording_attempt(connection,project_id,item_id):
@@ -77,5 +78,5 @@ def authorize_recording(connection,worker,request,project_id,item_id,now):
         if begin.tzinfo is None or deadline.tzinfo is None or now>=min(maximum,deadline):deny('deadline')
         policy=AttemptModelPolicy(project_id,item_id,'recording',False,pin['max_model_calls'],pin['budget'],
             (RoleBinding('authoring',binding['revision'],selected[6],binding['key_ref_id']),),(),(),{'authoring':ref},request.generation)
-        return RecordingGrant(policy,UUID(row[8]),row[7],selected[7],selected[9],selected[10],min(maximum,deadline))
+        return RecordingGrant(policy,UUID(row[8]),row[7],selected[7],selected[9],selected[10],min(maximum,deadline),(pin.get('authoring_engine') or {}).get('kind'))
     except (ValueError,TypeError,KeyError,AttributeError):deny('recording_policy_invalid')

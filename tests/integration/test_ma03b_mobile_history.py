@@ -119,7 +119,19 @@ def test_current_registration_must_follow_previous_ack(engine_job):
 
 
 def test_each_history_capture_must_follow_the_previous_native_ack(engine_job):
-    f=engine_job;one,parts1=complete_step(f);two,parts2=complete_step(f)
+    # Normal model API now rejects this sequence before the second send. Seed a
+    # completed proposal through store primitives to retain producer fault coverage.
+    from aiqa.store.model_requests import settle_request
+    f=engine_job;one,parts1=complete_step(f);two,obs=prepare(f);reserve_current(f,two)
+    store=f['app'].state.open_store()
+    try:
+        with store.transaction() as connection:
+            body=json.loads(connection.execute('SELECT response_json FROM model_request_receipts WHERE project_id=? AND call_id=?',
+                (f['project'],one['call_id'])).fetchone()[0])
+            body.update(call_id=two['call_id'],model_observation_id=two['model_observation_id'],provider_request_id='fixture-imported-proposal')
+            settle_request(connection,UUID(f['project']),f['job']['attempt_id'],'reserved',200,body,True,datetime.now(timezone.utc))
+    finally:store.close()
+    parts2=proof_parts(f,two,obs)
     commit(f,parts1,'after-'+one['call_id']);commit(f,parts2,'after-'+two['call_id']);current,_=prepare(f)
     with pytest.raises(ModelRequestDenied,match='mobile_history_order'):load(f,current)
 

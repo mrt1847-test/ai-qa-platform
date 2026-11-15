@@ -168,5 +168,5 @@ def load_mobile_agent_history(store,worker,request,project_id,item_id):
         except ValueError:raise ModelRequestDenied('observation_unavailable') from None
         return MobileAgentHistoryState(context,signature,len(history))
     except ModelRequestDenied:raise
-    except (ValueError,TypeError,KeyError,OSError,AttributeError) as exc:
+    except (ValueError,TypeError,KeyError,OSError,AttributeError,RecursionError) as exc:
         raise ModelRequestDenied('mobile_history_invalid') from exc

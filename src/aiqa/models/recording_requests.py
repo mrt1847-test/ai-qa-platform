@@ -43,12 +43,19 @@ def handle_recording_request(store,gateway,settings,worker,request,project_id,it
     fingerprint = canonical_hash({'request':request_fingerprint(request,project_id,item_id),
         'intent_hash':presented_intent}, 'canon-json-v1')
     reserved = False
+    mobile_state = None
     def reuse(prior):
         status,body=prior
         if 'error' not in body:
-            try:load_authoring_observation(store,worker,request,project_id,item_id)
+            try:
+                load_authoring_observation(store,worker,request,project_id,item_id)
+                with store.transaction() as connection:
+                    current=authorize_recording(connection,worker,request,project_id,item_id,_now())
+                    consumed=current.engine_kind is not None and connection.execute(
+                        "SELECT 1 FROM artifact_objects WHERE project_id=? AND attempt_id=? AND action_id=? AND owner_kind='REC' AND role IN ('after','log') AND status='ready' AND acked=1 AND generation=? LIMIT 1",
+                        (str(project_id),item_id,'ma-'+str(request.call_id),request.generation)).fetchone() is not None
             except ModelRequestDenied:body['action_allowed']=False
-            else:body['action_allowed']=True
+            else:body['action_allowed']=not consumed
         return status,body
     try:
         with store.transaction() as connection:
@@ -72,6 +79,9 @@ def handle_recording_request(store,gateway,settings,worker,request,project_id,it
             if not getattr(admitted_provider,'supports_observation',False):
                 raise ModelRequestDenied('provider_observation_unsupported',status=503)
         frame = load_authoring_observation(store,worker,request,project_id,item_id)
+        if grant.engine_kind is not None:
+            from aiqa.models.mobile_agent_history import load_mobile_agent_history
+            mobile_state=load_mobile_agent_history(store,worker,request,project_id,item_id)
         with store.transaction() as connection:
             prior=prior_request(connection,project_id,item_id,key,fingerprint,worker.worker_id)
             if prior is None:
@@ -96,9 +106,14 @@ def handle_recording_request(store,gateway,settings,worker,request,project_id,it
                 if gateway.provider is not admitted_provider:
                     raise ModelRequestDenied('provider_unavailable',status=503)
                 _provider_endpoint(admitted_provider,current)
+            if mobile_state is not None:
+                fresh=load_mobile_agent_history(store,worker,request,project_id,item_id)
+                if fresh.fingerprint!=mobile_state.fingerprint:
+                    raise ModelRequestDenied('mobile_history_changed')
         receipt = gateway.handle(worker,bound,project_id=project_id,item_id=item_id,
             idempotency_key='recording:'+str(project_id)+':'+item_id+':'+key,actor_id=grant.actor_id,
-            store=store,before_provider=before_provider,observation=frame,provider_pin=admitted_provider)
+            store=store,before_provider=before_provider,observation=frame if mobile_state is None else None,
+            provider_pin=admitted_provider,mobile_context=None if mobile_state is None else mobile_state.context)
         with store.transaction() as connection:
             calls=used_calls(connection,project_id,item_id)
         usage={'authoring_calls':calls,'verification_calls':0,'healing_calls':0,'maintenance_calls':0,
@@ -108,12 +123,24 @@ def handle_recording_request(store,gateway,settings,worker,request,project_id,it
             'reserved_cost':None,'cost_status':'unknown','price_mode':'estimate','budget':policy.budget,'currency':'USD','incomplete':True}
         measurements={'actual_model':receipt.actual_model,'measurement_status':receipt.usage.get('measurement_status','unreported'),
             'provider_request_id':receipt.provider_request_id,'usage':usage}
+        response_error='mobile_action_invalid'
         try:
             load_authoring_observation(store,worker,request,project_id,item_id)
+            if mobile_state is not None:
+                if receipt.actual_model!='gpt-6-luna':
+                    response_error='mobile_model_mismatch'
+                    raise ValueError('unexpected recording model')
+                from aiqa.models.mobile_agent_context import validate_mobile_agent_reply
+                validate_mobile_agent_reply(content=receipt.content,context=mobile_state.context,geometry=frame.geometry)
+                load_authoring_observation(store,worker,request,project_id,item_id)
         except ModelRequestDenied:
             body=model_error('response_late',True)
             body.update(measurements)
             status=403
+        except ValueError:
+            body=model_error(response_error,True)
+            body.update(measurements)
+            status=502
         else:
             body={'call_id':str(receipt.call_id),'allowed':True,'action_allowed':True,'reason':'admitted',
                 **measurements,'role':'authoring','purpose':'recording','replayed':False,'content':receipt.content,

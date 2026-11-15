@@ -33,9 +33,9 @@ B2b1 (BASE7149d97): implement models/mobile_agent_history.py and integration/tes
 
 - [x] B2b1 producer RED scoped normal REC/claim/image/receipt evidence tests: empty history, actual same-action ACK chain, missing ACK, paid failure/pending, foreign worker/policy, log tamper, wrong native args, old-history TTL allowed but current freshness required, no writer across file/Pillow I/O. Then code/review/focused regression/handoff.
 
-- [ ] Read only same project/attempt/worker/policy/source-pinned engine receipts, validate successful permitted model replies and correlate stored observations. Refuse pending/unknown/late/terminal histories and out-of-order/duplicate captures. Native execution completion must be source-evidence ACK, not a model-success claim. Reuse current-frame authorization and immutable artifact hash validation without granting old images new action authority.
-- [ ] Build conversation outside DB writer transactions, recheck all pins at send. Explicit snapshot/engine marker must distinguish new original protocol from legacy worker parser; no silent behavior change. Gateway carries internal server context only, request DTO never carries worker system/messages.
-- [ ] Normal REC/claim/image ACK/receipt tests include restart/idempotency, foreign history, tamper, current control expiration, old history beyond current TTL, unsupported provider, measured usage. Integrate producer before MA04 worker registration.
+- [x] Read only same project/attempt/worker/policy/source-pinned engine receipts, validate successful permitted model replies and correlate stored observations. Refuse pending/unknown/late/terminal histories and out-of-order/duplicate captures. Native execution completion must be source-evidence ACK, not a model-success claim. Reuse current-frame authorization and immutable artifact hash validation without granting old images new action authority.
+- [x] Build conversation outside DB writer transactions, recheck all pins at send. Explicit snapshot/engine marker must distinguish new original protocol from legacy worker parser; no silent behavior change. Gateway carries internal server context only, request DTO never carries worker system/messages.
+- [x] Normal REC/claim/image ACK/receipt tests include restart/idempotency, foreign history, tamper, current control expiration, old history beyond current TTL, unsupported provider, measured usage. Integrate producer before MA04 worker registration.
 
 Constraints: <=80 model steps, <=4 historical images + current, input PNG<=2MB each and original validated physical geometry, output input image1000square, Responses conversation cap5images/8MB. Model fixed user Luna. Goal from authoring_inputs plus path_policy, bounded; intent secret_refs fail closed. Plaintext secret coverage remains unavailable. Actual original main executes child in MA03a; pure loader alone is not a planner. No arbitrary file reads; no API key/env loading, retries, DB resets, approval auto-promotion. Supported source checkout/Pillow.
 
@@ -48,3 +48,12 @@ B2a 완료: ../validation/tasks/AI-LIVE-04-MA03B2A.md, 집중77passed24.82s. 기
 B2b0 완료: ../validation/tasks/AI-LIVE-04-MA03B2B0.md, 집중42passed19.16s. B2b1 DB receipt/관찰과 same-action before/after/log ACK producer 및 정상 engine endpoint가 다음이다.
 
 B2b1 producer 완료: ../validation/tasks/AI-LIVE-04-MA03B2B1.md, 집중73passed49.78s. ACK time은 staging created_at이 아닌 completed response의 server_committed_at이다. endpoint 선택/final-send fingerprint는 B2b2 미완료.
+
+### B2b2 · normal endpoint context selection (BASE47855f7)
+
+Files recording_authorization.py (server-only engine_kind from verified pin), recording_requests.py (marked grant -> producer -> gateway context; final history fingerprint and current policy/source at actual send; validate one original reply and preserve measured usage on invalid reply), mobile_agent_context.py (terminal-aware strict current reply validator, history still terminal-forbidden), mobile_agent_history.py (controlled recursive malformed output), tests/integration/test_ma03b_recording_endpoint.py. No worker DTO, default server admission or actual handler enable.
+
+- [x] RED normal REC/claim/PNG/marked-engine API tests original prompt/current+history/schema, missing native ACK0 send, tamper at HTTP preparation0 send, invalid model action charged1/measured/no content, valid terminal not auto-approved, cached reply after native evidence action_allowedfalse while before evidence reuses freely.
+- [x] Minimal branch outside writers, source recheck at before_send after HTTP build. Old unmarked path unchanged. Single fresh review/fix pass and changed-area regression/handoff/commit. Next MA04 engine-selecting worker/admission.
+
+MA03b B2b2 완료: ../validation/tasks/AI-LIVE-04-MA03B2B2.md, 집중125passed82.42s. 다음 MA04a worker callback/ma-call frame/evidence 대기. default admission/실제 handler 등록은 함께 검증하기 전 유지한다.

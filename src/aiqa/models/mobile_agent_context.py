@@ -54,7 +54,7 @@ def _not_constant(value):
     raise ValueError('non-finite history value')
 
 
-def _history_output(protocol,output,geometry,literals):
+def _history_output(protocol,output,geometry,literals,*,allow_terminal=False):
     if type(output) is not str or not 1<=len(output.encode('utf-8'))<=16384:
         raise ValueError('history output size')
     rendered=render_reply(output)
@@ -70,7 +70,7 @@ def _history_output(protocol,output,geometry,literals):
     except PlanRejected:raise ValueError('history native action invalid') from None
     if action is not None and action.kind=='text' and action.text not in literals:
         raise ValueError('history typing outside frozen inputs')
-    if action is not None and action.kind=='finish':raise ValueError('terminal history cannot continue')
+    if action is not None and action.kind=='finish' and not allow_terminal:raise ValueError('terminal history cannot continue')
     return rendered
 
 
@@ -126,3 +126,10 @@ def build_mobile_agent_context(*,intent,current,history,model='gpt-6-luna'):
         messages.append({'role':role,'content':content,**({'phase':'final_answer'} if role=='assistant' else {})})
     _conversation(tuple(messages))
     return MobileAgentContext(json.dumps({'messages':messages,'text_literals':literals},ensure_ascii=False,separators=(',',':'),allow_nan=False))
+
+
+def validate_mobile_agent_reply(*,content,context,geometry):
+    """Current final response may terminate; history may not continue past termination."""
+    if type(context) is not MobileAgentContext:raise ValueError('server context invalid')
+    try:return _history_output(load_protocol(),content,parse_geometry(geometry),context.text_literals(),allow_terminal=True)
+    except RecursionError:raise ValueError('mobile response nesting') from None

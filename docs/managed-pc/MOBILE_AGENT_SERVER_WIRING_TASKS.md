@@ -2,7 +2,7 @@
 
 2026-11-15 Asia/Seoul. 실제 source/main/Luna/4동작 AI0 재생의 로컬 증거는 AI-LIVE-03이며 재실행하지 않는다. 이 카드는 그 재사용 engine을 정상 제품 요청에 연결하는 구현이다. 로컬 증거를 서버 수용으로 승격하지 않는다. 사용자 DB/기존 UI dirty/기존 승인/FAIL을 보존한다.
 
-> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 MA02a/b는 AI-LIVE-04-MA02 인계로 완료했고 MA03a는 AI-LIVE-04-MA03A 인계로 완료했고 현재 준비 단위는 MA03b B2b2다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
+> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 MA02a/b는 AI-LIVE-04-MA02 인계로 완료했고 MA03a는 AI-LIVE-04-MA03A 인계로 완료했고 MA03b는 AI-LIVE-04-MA03B2B2 인계로 완료했고 현재 준비 단위는 MA04a다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
 
 ## MA-01 · 정상 provider factory에 OpenAI 모드 연결
 
@@ -22,13 +22,15 @@ MA02a(먼저): recording_requests의 openai endpoint/provider 일치와 실제 s
 
 MA03a(완료; [인계](../validation/tasks/AI-LIVE-04-MA03A.md)) · 원본 main을 격리한 실행 프로세스와 bounded typed RPC. 새 worker/mobile_agent_process.py(부모), mobile_agent_child.py(자식), mobile_agent_ipc.py(프로토콜), integration/test_mobile_agent_process.py. 부모는 capture/model/dispatch/before_send callback을 받고 자식은 원본 main/prompt/history/parser/rescale만 실행한다. 키/worker token을 전달하지 않으며 child network를 막는다. 부모 cwd/stdio를 바꾸지 않는다. 메시지 크기/순서/step/모델·native 건수/monotonic cutoff/중지·정리 경계를 검증한다. callback은 기존 bounded worker ports이며 cutoff 뒤 새 전송을 금지하고 진행 I/O는 자체 timeout으로 drain한다.
 
-MA03b(B1 context/명시 포트 완료; [인계](../validation/tasks/AI-LIVE-04-MA03B1.md), B2a exact engine pin/legacy 거절 완료, B2b0 내부 gateway 완료, B2b1 DB 이력/실제 ACK producer 완료, B2b2 정상 endpoint 선택 다음) · 정상 server의 frozen goal/직전 저장 관찰·완료 model receipt로 원본 대화/최종 단일 행동을 구성한다. 임의 worker conversation/외부 이미지 경로를 신뢰하지 않는다. image1000frame와 final_answer codec, source/claim/call 연결을 유지한다. 원본 child가 정상 모델 응답을 받는 것과 handler/evidence/finish 등록은 별도다.
+MA03b(B1 context/명시 포트 완료; [인계](../validation/tasks/AI-LIVE-04-MA03B1.md), B2a exact engine pin/legacy 거절 완료, B2b0 내부 gateway 완료, B2b1 DB 이력/실제 ACK producer 완료, B2b2 정상 endpoint 선택 완료; 다음 MA04a worker callback/관찰) · 정상 server의 frozen goal/직전 저장 관찰·완료 model receipt로 원본 대화/최종 단일 행동을 구성한다. 임의 worker conversation/외부 이미지 경로를 신뢰하지 않는다. image1000frame와 final_answer codec, source/claim/call 연결을 유지한다. 원본 child가 정상 모델 응답을 받는 것과 handler/evidence/finish 등록은 별도다.
 
 
 - [x] 원본 main은 worker API 서버의 thread/cwd에서 실행하지 않는다. worker 전용 subprocess에 원본 engine을 두고 bounded typed capture/model/native IPC를 만든다. 실제 키/비밀 원문을 worker·child argv/환경/로그에 보내지 않는다. 실행 ID·case input/version·target·geometry pin과 부모 승인 callback만 전달한다.
 - [ ] MA03b의 서버 소유 원본 대화/이미지/receipt 이력과 MA04의 durable journal/evidence ACK를 정상 handler에 연결한다. MA03a 부모의 현재 allowed/before_send·한도·단계 대조는 완료했다. 중지/timeout/child crash/불명 전송에서 재클릭0, 원본 이전 prefix/전후 증거를 보존한다. fake subprocess/IPC와 원본 main으로 통합 테스트한다.
 
 ## MA-04 · 정상 AndroidRecordingHandler에 원본 engine 연결
+
+MA04a worker model callback/ma-call before frame/receipt/evidence ACK 대기→MA04b 원본 subprocess native/evidence/source/finish handler→MA04c 지원 handler·admission 함께 등록. 기존 default는 c 전까지 보존한다.
 
 - [ ] worker/android_jobs.py·runtime.py의 정상 recording handler가 MA03을 호출한다. fixture_response/자체 plan_provider가 정상 요청의 암묵적 성공 경로가 되지 않게 한다. 자연어 목표/선택앱/고정 한도/원본 이력을 소비한다.
 - [ ] 기존 before/after spool→서버 commit/ACK·native source seal→finish→검토 대기를 유지한다. source v2의 실제 text/key/swipe/좌표와 logical check binding은 보존하며 승인/QA를 자동 생성하지 않는다.

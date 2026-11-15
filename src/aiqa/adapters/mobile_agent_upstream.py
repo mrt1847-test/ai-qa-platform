@@ -71,7 +71,7 @@ def upstream_action(upstream,raw,geometry):
         'terminate':{'action','status'},'wait':{'action','time'}}
     if name not in allowed or set(args)!=allowed[name]:raise ValueError('upstream action unsupported')
     if name=='terminate':
-        if args['status'] not in {'success','failure'}:raise ValueError('terminal status invalid')
+        if type(args['status']) is not str or args['status'] not in {'success','failure'}:raise ValueError('terminal status invalid')
         return TypedAndroidAction('finish')
     if name=='wait':
         if type(args['time']) not in (int,float) or not 0<=args['time']<=2:raise ValueError('wait outside cap')

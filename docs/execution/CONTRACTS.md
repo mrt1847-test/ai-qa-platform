@@ -541,3 +541,10 @@ Gateway의 mobile_context 인수는 내부 포트이며 worker DTO/HTTP에는 �
 History는 같은 project/attempt/worker/policy의 완료 모델 receipt와 exact call 관찰만 쓰고 모델 성공을 native 완료로 보지 않는다. ma-<call UUID> before/after/log가 ready/ACK된 같은 action이어야 한다. mobile-agent-step-v1 로그는 원본 parser/rescale의 physical typed native·native_calls1(wait0)·전후 hash와 정확히 일치하고 after/log가 같은 worker evidence commit에 함께 포함돼야 한다. current와 과거 source capture ID는 중복 불가, 동일 pixels의 다른 capture는 허용한다.
 
 evidence commit 완료 response_body의 server_committed_at은 파일 준비 후 metadata writer 안의 서버 시각이다. staging created_at과 구분하고 캐시에서도 원래 값을 보존하며 public DTO/DB schema는 유지한다. 이력 proof는 모델 완료 이후 시작하고 각 다음 캡처 등록은 proof 완료 이후여야 한다. 시간 없는 legacy receipt는 새 engine의 이력 ACK로 사용하지 않는다. PNG/log 검증·모델 이미지 처리는 writer 밖에서 하고 마지막 snapshot 후 exact current frame의 freshness까지 재확인한다. producer는 내부 포트이고 정상 endpoint의 engine 선택/최종 fingerprint는 B2b2, 실제 handler는 MA04다.
+
+
+### MA03b B2b2 · normal marked-engine request (C04/C05/C06/C14)
+
+정상 model API는 verified server grant의 engine_kind만으로 original context producer를 선택하고 worker가 messages/engine flag를 직접 지정하지 못한다. 실제 before_send에서 source fingerprint와 현재 관찰/lease/key/provider/policy를 다시 확인한다. current reply는 canonical original tool/native/frozen literal과 actual_model=Luna를 검증한다. invalid action/model은 consumed502/usage 보존/content 제외이며, 최종 의미 검증 이후 freshness도 다시 검사해 늦은403에도 측정을 남긴다. terminal response는 사람 승인/finish 자동 생성이 아니다.
+
+같은 call의 after/log ready 증거가 있으면 캐시 receipt의 action_allowed=false이고 unknown native도 재전송하지 않는다. 기본 marker 없는 API는 기존 single-frame 동작을 유지한다. MA03b server 경로 완료와 MA04 실제 main handler/admission·MA05 승인본 여정 수용은 분리한다.

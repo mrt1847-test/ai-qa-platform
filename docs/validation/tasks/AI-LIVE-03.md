@@ -21,7 +21,7 @@ Responses의 commentary와 final_answer를 합치던 기존 포트 결함을 고
 | 1 | click420,56 | tap453,134 · 홈 검색창 열기 |
 | 2 | click370,88 | tap399,211 · 검색 입력란 선택 |
 | 3 | type mouse | input text mouse |
-| 4 | click805,89 | tap869,214 · 검색 실행 |
+| 4 | click805,89 | tap869,213 · 검색 실행 |
 | 5 | terminate success | native0 · 현재 결과 화면을 보고 종료 |
 
 실제 좌표·명령의 최종 권위는 [녹화 report](../evidence/AI-LIVE-03/recording-run/recording/report.json)와 [native trace](../evidence/AI-LIVE-03/recording-run/recording/native-trace.json)다. 표는 그 원본과 별도로 확인해야 한다. 검색 결과 상품/광고는 녹화와 재생에서 달라지므로 동일 상품/가격을 검증한 것은 아니다.

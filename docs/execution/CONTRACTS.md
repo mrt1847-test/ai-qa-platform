@@ -510,3 +510,10 @@ AIQA_MODEL_PROVIDER_MODE=openai는 고정 api.openai.com/v1/responses/public CA 
 정상 OpenAI grant는 provider=openai와 origin/canonical Responses endpoint가 일치하는 정확한 서버 adapter에만 허용한다. operational로 downgrade하지 않으며 최초 승인한 객체를 실제 send까지 고정한다. request 준비 뒤 실제 HTTP 직전 관찰·lease/키·정책·provider identity를 다시 확인한다. 전송 전 거절은 charged0이고 실제/불명 send는 charged1이다. 예약 transaction 안에서 동일 키를 재확인해 concurrent pending을 unsent conflict로 바꾸지 않는다.
 
 정산 token_scope는 call이다. input/output/cached_input/reasoning은 실제 보고 정수 또는 null이며 total=input+output, 추론/캐시는 부분집합이다. 역할 call count는 attempt 누적이라 per-call token과 더하지 않는다. 정상 response_json에 영속하고 같은 키/재시작은 재전송·중복 정산 없이 읽는다. 이미 측정한 늦은403에도 usage를 보존하고 action content는 제거한다. unusable 응답 오류는 usage 생략/charged1을 unknown으로 해석하며0token으로 표시하지 않는다. gateway memory ledger도 project/call로 분리한다. 실제가격/월간 집계 UI는 후속이고 비용 필드는unknown/null을 유지한다. 원본 main의 정상 worker/IPC·서버 소유 이력은 MA03~05이며 model API 연결과 구분한다.
+
+
+### MA03a · 실제 main 자식과 부모 소유 I/O (C04/C05/C06/C14)
+
+run_mobile_agent_process는 필수 secrets tuple·현재 allowed와 bounded capture/model/dispatch ports를 받는다. 실제 pinned main은 키/worker token 없는 고정 자식에서만 실행한다. 부모는 검증한 source bytes를 직접 compile하고 pyc/재읽기를 사용하지 않으며 cwd/absolute imports를 보존한다. 원본 prompt/history를 대조하고 한 run tag·순차 캡처·명시 capture/model/native 단계를 강제한다. 모델-facing frame은 검증 PNG/geometry/관찰ID/시각/platform만 포함하고 raw reasoning/DOM/stdout/messages를 전달하지 않는다. 민감 픽셀 정제를 증명할 수 없으면 child/model 저장·전송 전 차단한다.
+
+전송 직전 before_send는 현재 제어·cutoff·한도를 확인한다. model_requests는 위임 횟수이며 청구 횟수와 구분한다. ACK된 native prefix와 마지막 ambiguous_dispatch를 보존하고 재전송하지 않는다. 부모→자식 쓰기도 감독 가능해야 하며 읽기 중단에 cutoff/cleanup을 보장한다. 자신의 child만 kill/reap하고 진단 로그 실패가 실행 결과를 덮지 않는다. trusted bounded 콜백의 진행 I/O는 포트 timeout으로 drain한다. Python socket 차단은 OS sandbox가 아니다. 현재 source-checkout/Pillow 지원이며 정상 server 대화/handler/evidence ACK·승인 여정은 MA03b~05다. 실제 Luna/AI0 CLI 증거와 모의 subprocess83검사는 각각 별도 근거다.

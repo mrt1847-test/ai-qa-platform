@@ -17,30 +17,36 @@ _LOCK=threading.Lock()
 _MANIFEST_SHA='ee406e537f411cc4e92d4cc2094d34c4b4ac00c99d5cb758efc98899e09aec72'
 
 
-def _module(name,path):
+def _module(name,path,source):
     spec=importlib.util.spec_from_file_location(name,path)
     module=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    exec(compile(source,str(path),'exec',dont_inherit=True),module.__dict__)
     return module
 
 
-def load_upstream(*,root=None):
+def _source_root(root=None):
     root=Path(root) if root else Path(__file__).resolve().parents[3]/'third_party/mobile_agent'
+    manifest_bytes=(root/'manifest.json').read_bytes()
+    if hashlib.sha256(manifest_bytes).hexdigest()!=_MANIFEST_SHA:raise ValueError()
+    manifest=json.loads(manifest_bytes)
+    if set(manifest['files'])!={'run_gui_owl_1_5_for_mobile.py','utils.py','packages.py','LICENSE'}:raise ValueError()
+    if manifest['commit']!=COMMIT:raise ValueError()
+    sources={name:(root/'upstream'/name).read_bytes() for name in manifest['files']}
+    for name,v in manifest['files'].items():
+        if hashlib.sha256(sources[name]).hexdigest()!=v['vendored_sha256']:raise ValueError()
+    return root,sources
+
+
+def load_upstream(*,root=None):
     try:
-        manifest_bytes=(root/'manifest.json').read_bytes()
-        if hashlib.sha256(manifest_bytes).hexdigest()!=_MANIFEST_SHA:raise ValueError()
-        manifest=json.loads(manifest_bytes)
-        if set(manifest['files'])!={'run_gui_owl_1_5_for_mobile.py','utils.py','packages.py','LICENSE'}:raise ValueError()
-        if manifest['commit']!=COMMIT:raise ValueError()
-        for name,v in manifest['files'].items():
-            if hashlib.sha256((root/'upstream'/name).read_bytes()).hexdigest()!=v['vendored_sha256']:raise ValueError()
-        utils=_module('_aiqa_mobile_utils',root/'upstream/utils.py')
-        packages=_module('_aiqa_mobile_packages',root/'upstream/packages.py')
+        root,sources=_source_root(root)
+        utils=_module('_aiqa_mobile_utils',root/'upstream/utils.py',sources['utils.py'])
+        packages=_module('_aiqa_mobile_packages',root/'upstream/packages.py',sources['packages.py'])
         # Original imports are absolute; restore prior modules immediately after import.
         previous={n:sys.modules.get(n) for n in ('utils','packages')}
         try:
             sys.modules.update(utils=utils,packages=packages)
-            runner=_module('_aiqa_mobile_runner',root/'upstream/run_gui_owl_1_5_for_mobile.py')
+            runner=_module('_aiqa_mobile_runner',root/'upstream/run_gui_owl_1_5_for_mobile.py',sources['run_gui_owl_1_5_for_mobile.py'])
         finally:
             for name,old in previous.items():
                 if old is None:sys.modules.pop(name,None)
@@ -128,3 +134,22 @@ def render_reply(text):
         or any(ord(c)<32 for c in raw['summary'])):raise ValueError('single action format invalid')
     tool={'name':raw['name'],'arguments':raw['arguments']}
     return 'Action: '+raw['summary']+'\n<tool_call>\n'+json.dumps(tool,ensure_ascii=False,separators=(',',':'))+'\n</tool_call>'
+
+
+
+def load_protocol(*,root=None):
+    """Load original pure protocol functions without runner absolute imports or cwd changes."""
+    import ast
+    try:
+        root,sources=_source_root(root)
+        utils=_module('_aiqa_mobile_protocol_utils',root/'upstream/utils.py',sources['utils.py'])
+        path=root/'upstream/run_gui_owl_1_5_for_mobile.py'
+        tree=ast.parse(sources['run_gui_owl_1_5_for_mobile.py'])
+        selected=[node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name in {'parse_action','rescale_coordinates'}]
+        if len(selected)!=2:raise ValueError()
+        namespace={'json':json}
+        exec(compile(ast.Module(body=selected,type_ignores=[]),str(path),'exec',dont_inherit=True),namespace)
+        return SimpleNamespace(SYSTEM_PROMPT=utils.SYSTEM_PROMPT,build_messages=utils.build_messages,
+            smart_resize=utils.smart_resize,parse_action=namespace['parse_action'],rescale_coordinates=namespace['rescale_coordinates'])
+    except (OSError,KeyError,ValueError,TypeError,SyntaxError):
+        raise ValueError('pinned Mobile-Agent protocol unavailable or changed') from None

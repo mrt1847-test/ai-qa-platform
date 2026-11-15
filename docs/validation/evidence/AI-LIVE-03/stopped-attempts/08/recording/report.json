@@ -1,0 +1,94 @@
+{
+  "elapsed_seconds": 9.094,
+  "engine": "actual_mobile_agent_v3.5",
+  "error_type": "FrameDrift",
+  "human_review": "pending",
+  "model_calls": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 1213,
+      "content": "{\"summary\":\"Close the promotional overlay so the search field is unobstructed.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[677,872]}}",
+      "input_tokens": 2683,
+      "latency_seconds": 3.594,
+      "output_tokens": 68,
+      "provider_request_id": "resp_0da0a347c7eca2fe016af91e8146d887d2983f7ef5be38a980",
+      "reasoning_tokens": 22
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 0,
+  "paid_calls": 1,
+  "product_approval": false,
+  "reason": "screen_drift",
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "status": "stopped",
+  "steps": [
+    {
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-001-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 731,
+        "x2": null,
+        "y": 2092,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-001",
+        "geometry": {
+          "content_bounds": [
+            731,
+            2092,
+            732,
+            2093
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 1,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 731,
+          "x2": null,
+          "y": 2092,
+          "y2": null
+        },
+        "target": "731,2092"
+      },
+      "state": "planned",
+      "step": 1,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          736,
+          2092
+        ]
+      }
+    }
+  ]
+}

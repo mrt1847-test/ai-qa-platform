@@ -1,0 +1,115 @@
+{
+  "elapsed_seconds": 31.156,
+  "engine": "actual_mobile_agent_v3.5",
+  "error_type": "RuntimeError",
+  "human_review": "pending",
+  "model_calls": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 1213,
+      "content": "{\"summary\":\"Wait for the search results to appear.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"wait\",\"time\":2}}",
+      "input_tokens": 2678,
+      "latency_seconds": 8.219,
+      "output_tokens": 459,
+      "provider_request_id": "resp_01a9a32772cfc54c016af91d4cf3a887d288b5bcc71d2f8dec",
+      "reasoning_tokens": 241
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 2675,
+      "content": "{\"summary\":\"Tap the search icon to open the results.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[821,56]}}",
+      "input_tokens": 3952,
+      "latency_seconds": 10.359,
+      "output_tokens": 767,
+      "provider_request_id": "resp_0f2ff62e7fc6f996016af91d5bcd0c87d2aaf73278804e3559",
+      "reasoning_tokens": 186
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 1,
+  "paid_calls": 2,
+  "product_approval": false,
+  "reason": "recording_failed",
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "source_sha256": "f6ef6f55480f30e5c4635dd3bbdd420e59d4606d90af706cdc8b6d0947ed58b3",
+  "status": "stopped",
+  "steps": [
+    {
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "886",
+        "134"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-001-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 886,
+        "x2": null,
+        "y": 134,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-001",
+        "geometry": {
+          "content_bounds": [
+            886,
+            134,
+            887,
+            135
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 1,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 886,
+          "x2": null,
+          "y": 134,
+          "y2": null
+        },
+        "target": "886,134"
+      },
+      "state": "acknowledged_after_missing",
+      "step": 1,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          893,
+          134
+        ]
+      }
+    }
+  ]
+}

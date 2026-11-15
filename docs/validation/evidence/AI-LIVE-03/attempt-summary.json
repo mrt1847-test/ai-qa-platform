@@ -1,0 +1,341 @@
+[
+  {
+    "attempt": "live-record-01",
+    "status": "setup_failed",
+    "reason": null,
+    "paid_calls": 0,
+    "native_actions": 0,
+    "saved_responses": []
+  },
+  {
+    "attempt": "live-record-02",
+    "status": "stopped",
+    "reason": "provider_response_invalid",
+    "paid_calls": 1,
+    "native_actions": 0,
+    "saved_responses": []
+  },
+  {
+    "attempt": "live-record-03",
+    "status": "stopped",
+    "reason": "screen_drift",
+    "paid_calls": 1,
+    "native_actions": 0,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 4114,
+          "input_tokens_details": {
+            "cache_write_tokens": 4111,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 4111
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 84,
+          "output_tokens_details": {
+            "reasoning_tokens": 23
+          },
+          "total_tokens": 4198
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-04",
+    "status": "stopped",
+    "reason": "recording_failed",
+    "paid_calls": 1,
+    "native_actions": 0,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2414,
+          "input_tokens_details": {
+            "cache_write_tokens": 2411,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 2411
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 597,
+          "output_tokens_details": {
+            "reasoning_tokens": 213
+          },
+          "total_tokens": 3011
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-05",
+    "status": "stopped",
+    "reason": "recording_failed",
+    "paid_calls": 1,
+    "native_actions": 0,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2681,
+          "input_tokens_details": {
+            "cache_write_tokens": 2678,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 2678
+            },
+            "cached_tokens": 0
+          },
+          "output_tokens": 83,
+          "output_tokens_details": {
+            "reasoning_tokens": 24
+          },
+          "total_tokens": 2764
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-06",
+    "status": "stopped",
+    "reason": "recording_failed",
+    "paid_calls": 2,
+    "native_actions": 1,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2678,
+          "input_tokens_details": {
+            "cache_write_tokens": 1462,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1462
+            },
+            "cached_tokens": 1213
+          },
+          "output_tokens": 459,
+          "output_tokens_details": {
+            "reasoning_tokens": 241
+          },
+          "total_tokens": 3137
+        }
+      },
+      {
+        "file": "provider-response-002.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3952,
+          "input_tokens_details": {
+            "cache_write_tokens": 1274,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1274
+            },
+            "cached_tokens": 2675
+          },
+          "output_tokens": 767,
+          "output_tokens_details": {
+            "reasoning_tokens": 186
+          },
+          "total_tokens": 4719
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-07",
+    "status": "stopped",
+    "reason": "capture_transition",
+    "paid_calls": 2,
+    "native_actions": 2,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2681,
+          "input_tokens_details": {
+            "cache_write_tokens": 1465,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1465
+            },
+            "cached_tokens": 1213
+          },
+          "output_tokens": 55,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 2736
+        }
+      },
+      {
+        "file": "provider-response-002.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3958,
+          "input_tokens_details": {
+            "cache_write_tokens": 1277,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1277
+            },
+            "cached_tokens": 2678
+          },
+          "output_tokens": 53,
+          "output_tokens_details": {
+            "reasoning_tokens": 13
+          },
+          "total_tokens": 4011
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-08",
+    "status": "stopped",
+    "reason": "screen_drift",
+    "paid_calls": 1,
+    "native_actions": 0,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2683,
+          "input_tokens_details": {
+            "cache_write_tokens": 1467,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1467
+            },
+            "cached_tokens": 1213
+          },
+          "output_tokens": 68,
+          "output_tokens_details": {
+            "reasoning_tokens": 22
+          },
+          "total_tokens": 2751
+        }
+      }
+    ]
+  },
+  {
+    "attempt": "live-record-09",
+    "status": "model_claimed_success",
+    "reason": null,
+    "paid_calls": 5,
+    "native_actions": 4,
+    "saved_responses": [
+      {
+        "file": "provider-response-001.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 2677,
+          "input_tokens_details": {
+            "cache_write_tokens": 1461,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1461
+            },
+            "cached_tokens": 1213
+          },
+          "output_tokens": 67,
+          "output_tokens_details": {
+            "reasoning_tokens": 13
+          },
+          "total_tokens": 2744
+        }
+      },
+      {
+        "file": "provider-response-002.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 3950,
+          "input_tokens_details": {
+            "cache_write_tokens": 1273,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1273
+            },
+            "cached_tokens": 2674
+          },
+          "output_tokens": 53,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4003
+        }
+      },
+      {
+        "file": "provider-response-003.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 5225,
+          "input_tokens_details": {
+            "cache_write_tokens": 1275,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1275
+            },
+            "cached_tokens": 3947
+          },
+          "output_tokens": 46,
+          "output_tokens_details": {
+            "reasoning_tokens": 10
+          },
+          "total_tokens": 5271
+        }
+      },
+      {
+        "file": "provider-response-004.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 6498,
+          "input_tokens_details": {
+            "cache_write_tokens": 1273,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1273
+            },
+            "cached_tokens": 5222
+          },
+          "output_tokens": 36,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 6534
+        }
+      },
+      {
+        "file": "provider-response-005.json",
+        "status": "completed",
+        "usage": {
+          "input_tokens": 7772,
+          "input_tokens_details": {
+            "cache_write_tokens": 1274,
+            "cache_write_tokens_details": {
+              "ttl_12h_tokens": 0,
+              "ttl_30m_tokens": 1274
+            },
+            "cached_tokens": 6495
+          },
+          "output_tokens": 42,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 7814
+        }
+      }
+    ]
+  }
+]

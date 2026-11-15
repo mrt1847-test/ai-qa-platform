@@ -1,0 +1,314 @@
+{
+  "id": "resp_06c3413b095a5c59016af91de3fb4887d29ccf2e7620e0a327",
+  "object": "response",
+  "created_at": 1794711012,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1794711013,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "image": {
+    "context_compression": "disabled"
+  },
+  "incomplete_details": null,
+  "input_transformations": [],
+  "instructions": null,
+  "max_output_tokens": 1024,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "rs_06c3413b095a5c59016af91de4f0c087d2b4c02e5e5dc13b74",
+      "type": "reasoning",
+      "content": [],
+      "encrypted_content": "gAAAAABq-R3lTotqMUmw87Sw3iySXh7iCE8vb24aLPvTjNKYy_ERMk8d3-8CzlRo5WQLxFI7ZlIznad8eL1whopfw7vVo4pkAd6sNmdvvSyxGtRe38ltGoRdODZ4Pqs5K7Bb_yvyhUeIj7csDK6Ar-b4189MmZ0Y7epTntSShtPl1qeW_hQNsINNy8zfaQZrj4Jyph5SzwYZ9WXjM2GAQuzMN9Z8zCvpY8jWOU2mbKAP6phbVmRnMzZzhiJjuAYQoj0VnrWufBOow88YllFfflBE4_z3DiVNwrIN07fwEBvuREwYhpgiGmr_gkaPdexwPkSYDSEJhBAZXBFHy0I-B3M8wI4YpHVEhuzbn8KirBpC9fqAWFKDTYY8MokgoeQAZB0UVHmq9zBh4BKyva2zryYpBlKGp0soE9rSRHn5m_MAK1Twjm5pwU6lSwNaB6YtO0otZh3lGxkNDbmoNj3ERoNpzJCFVd-YgvK87juB-8NZwGNZB0PGoj8IL1MJnucDKAqwlDZ4OngCBcuV8Cet4OP0H6wTYDbovzQFt-zoatbLHkS8vvx96RELQF8VTqU8uUb_TEybfJ9l96UmY8utCOc1BgxNbGgNil0nfst8ac7orYYihN-oFO9fvYqt0C6uIGQpwFxcQC89Msl0o07tB4Yq_kMSW5-Y3rn-U_0dm5OZaBJgFGKppLM3L-KrC0MVKLr5MdgP07dBZsUu6Y21Xlfb7voYXgrTzoE9AV8zWZHFRJ8cMNeuiG-OkGtGage-3M5krv-Rv5s9Sg6I9UyYDc0QBMslMDqGqTH83lMTKYXtFI-7bhY1XFTjp5YCN4NfAlh3is5CeGCyJnoompvCMBRb0cE7ppWqye5j2rYFGdBIcGSIvcx6keiyYxQQNIGsA9yjDXJUPoIAuC3NCS37Tus4vFBygXmgtV4mHDiYa-sIzvXp3njinEklzYH2aPt3EMl4aeKjCX1yQWtlY2i8fQSUekGHUz__bLDIu-9oNnrjKvFCS0JUyE8zXcV6WkIf39DuEsMVh_InMvsaUTir4znufVdJmE5ZnltQx_3tnf1ywhITyyv56OS1WvOKPXMZjNbHCjVH318vfnWicYL-fnfna5APemIdgVkjHakaRVy-T6I5SmdzVe-aXFk6hkbyfUN7lorSqCKRSabCvdTu0-2fRiJcg3hE1GSw4x8sGFuSTcvRoIl8jbDcgchCCoSEQcAO4pvDYU_Q5Kjx_aCopRy71a7x1qFRCePDeLZI8qv8bv9ATqDPp9GZmQ1TF_6y8CZw1ygkpzn1x_C5dSvORFxhw6zrMsk7lWKxI0KAZFY0jPZK2Mm3Tq0L8FlzvLhJbTiWZ6PncEVNSvE6n-RuFg-aCfo85VWCsZqJViQzNwWPL4UllerdFghCUuMb42s8ubtNVBeIK4AERGIXXqmRYWjrupA6LYqby2zblHZX0x9Ufn5KyX0qZgUtcY5ZAzYvqVEa7QaPFqDrQo2eJ-roaKlFWOxTYZs0xf4stYxBPRiDa7YIujA05opHjgreV4omijS0Eqq3Wc6Qcnh5eDmIz0ZkzDYPtoxSXZM1WVx2xMtZpJxlKF6Ge8M2_m0--v6FiTnNn8ZNbZNXv76Xyv7PxRwrQh_Ww1ppZttnkr9fv65MPBJ7KIXvqFGNQ2QXJCM6XjQz-wKV-6c3PT7MZmt0Eg7KtmjiZIb1XOAOvhRna-zkw0Ldk9rWXTpBumgx7hkW4rx1mXyBd92vf4h5gbUuc8lpoogS4O2NHEKpjq8mjfeCKYG1dKSzvb6iWrR3IehX6JAzp77jcpRm",
+      "summary": []
+    },
+    {
+      "id": "msg_06c3413b095a5c59016af91de52f7487d2be1fecd7ebbea191",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"summary\":\"Tap the search field to begin searching.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[426,58]}}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "mobile_agent_one_action",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "mobile_use"
+            ]
+          },
+          "arguments": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "long_press"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "swipe"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "coordinate2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate",
+                  "coordinate2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "type"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "enum": [
+                      "mouse"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "system_button"
+                    ]
+                  },
+                  "button": {
+                    "type": "string",
+                    "enum": [
+                      "Back"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "button"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "wait"
+                    ]
+                  },
+                  "time": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "time"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "terminate"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "success",
+                      "failure"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "summary",
+          "name",
+          "arguments"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 2681,
+    "input_tokens_details": {
+      "cache_write_tokens": 1465,
+      "cache_write_tokens_details": {
+        "ttl_12h_tokens": 0,
+        "ttl_30m_tokens": 1465
+      },
+      "cached_tokens": 1213
+    },
+    "output_tokens": 55,
+    "output_tokens_details": {
+      "reasoning_tokens": 14
+    },
+    "total_tokens": 2736
+  },
+  "user": null,
+  "metadata": {}
+}

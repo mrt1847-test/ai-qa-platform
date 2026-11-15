@@ -1,6 +1,7 @@
 """Explicit, bounded OpenAI Responses port; local smoke use, no implicit key loading."""
 from __future__ import annotations
 import base64
+from contextlib import closing
 from dataclasses import dataclass
 import hashlib
 import json
@@ -42,9 +43,11 @@ class OpenAIProviderHttp:
     kind='openai'
     supports_observation=True
 
-    def __init__(self, *, allow_live=False, max_calls=3, reasoning_effort=None, transport=None):
+    def __init__(self, *, allow_live=False, max_calls=3, reasoning_effort=None, transport=None, response_sink=None):
         if type(max_calls) is not int or not 1<=max_calls<=12:raise ValueError('call cap must be 1..12')
         if reasoning_effort not in {None,'none','low','medium','high'}:raise ValueError('reasoning effort unsupported')
+        if response_sink is not None and not callable(response_sink):raise ValueError('response sink invalid')
+        self._response_sink=response_sink
         self.reasoning_effort=reasoning_effort
         self.allow_live=allow_live
         self.max_calls=max_calls
@@ -55,7 +58,7 @@ class OpenAIProviderHttp:
     @property
     def call_count(self):return len(self.calls)
 
-    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None, before_send=None):
+    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None, before_send=None, conversation=None, mobile_action_format=False):
         if not self.allow_live or self._stopped or self.call_count>=self.max_calls:
             raise ProviderHttpError('provider_disabled_or_exhausted')
         if (type(secret) is not str or not secret or any(c.isspace() for c in secret)
@@ -79,17 +82,24 @@ class OpenAIProviderHttp:
             content.append({'type':'input_image','image_url':'data:image/png;base64,'+base64.b64encode(observation.png).decode('ascii'),'detail':'high'})
         body={'model':model,'store':False,'max_output_tokens':token_output_limit,
             'input':[{'role':'user','content':content}]}
+        if conversation is not None:
+            if observation is not None or sanitized_inputs:raise ProviderHttpError('provider_input_invalid')
+            body['input']=_conversation(conversation)
+        if mobile_action_format:
+            if conversation is None or role!='authoring' or model!='gpt-6-luna':raise ProviderHttpError('provider_input_invalid')
+            from aiqa.models.mobile_action_format import MOBILE_ACTION_FORMAT
+            body['text']={'format':MOBILE_ACTION_FORMAT}
         if model.startswith('gpt-6'):body['reasoning']={'effort':self.reasoning_effort or 'low'}
         elif self.reasoning_effort is not None:body['reasoning']={'effort':self.reasoning_effort}
         elif model.startswith('gpt-5'):body['reasoning']={'effort':'minimal'}
-        if before_send is not None:
-            if not callable(before_send):raise ProviderHttpError('provider_input_invalid')
-            before_send()
-        self.calls.append({'model':model,'role':role,'token_output_limit':token_output_limit})
+        if before_send is not None and not callable(before_send):raise ProviderHttpError('provider_input_invalid')
         try:
             with httpx.Client(timeout=60,trust_env=False,follow_redirects=False,transport=self._transport) as client:
-                with client.stream('POST','https://api.openai.com/v1/responses',json=body,
-                    headers={'Authorization':'Bearer '+secret,'Content-Type':'application/json'}) as reply:
+                request=client.build_request('POST','https://api.openai.com/v1/responses',json=body,
+                    headers={'Authorization':'Bearer '+secret,'Content-Type':'application/json'})
+                if before_send is not None:before_send()
+                self.calls.append({'model':model,'role':role,'token_output_limit':token_output_limit})
+                with closing(client.send(request,stream=True)) as reply:
                     if reply.status_code!=200:
                         reason={401:'provider_unauthorized',403:'provider_unauthorized',429:'provider_quota'}.get(reply.status_code,'provider_http_error')
                         raise ProviderHttpError(reason,status=reply.status_code)
@@ -97,6 +107,7 @@ class OpenAIProviderHttp:
                     for chunk in reply.iter_bytes():
                         raw.extend(chunk)
                         if len(raw)>2_000_000:raise ProviderHttpError('provider_response_too_large')
+            if self._response_sink is not None:self._response_sink(bytes(raw))
             data=json.loads(raw)
             if type(data) is not dict or data.get('status')!='completed':raise ValueError()
             identity,actual,usage=data['id'],data['model'],data['usage']
@@ -113,7 +124,11 @@ class OpenAIProviderHttp:
             reasoning=detail('output_tokens_details','reasoning_tokens',counts[1])
             cached=detail('input_tokens_details','cached_tokens',counts[0])
             texts=[]
-            for item in data['output']:
+            messages=[item for item in data['output'] if item.get('type')=='message']
+            finals=[item for item in messages if item.get('phase')=='final_answer']
+            chosen=finals if finals else [item for item in messages if item.get('phase') is None]
+            if len(chosen)!=1 or any(item.get('phase') not in {None,'commentary','final_answer'} for item in messages):raise ValueError()
+            for item in chosen:
                 if item.get('type')=='message':
                     if item.get('role')!='assistant' or item.get('status') not in (None,'completed'):raise ValueError()
                     for part in item['content']:
@@ -134,3 +149,33 @@ class OpenAIProviderHttp:
         except (ValueError,TypeError,KeyError,AttributeError,RecursionError):
             self._stopped=True
             raise ProviderHttpError('provider_response_invalid') from None
+
+
+def _conversation(messages):
+    """Bounded Responses conversation; embedded validated PNGs only, no remote URLs."""
+    import struct
+    from aiqa.security.redaction import _validate_png
+    try:
+        if type(messages) is not tuple or not 1<=len(messages)<=12:raise ValueError()
+        images=0;size=0
+        for message in messages:
+            if type(message) is not dict or set(message) not in ({'role','content'},{'role','content','phase'}) or message['role'] not in {'system','user','assistant'}:raise ValueError()
+            if 'phase' in message and (message['role']!='assistant' or message['phase']!='final_answer'):raise ValueError()
+            if type(message['content']) is not list or not 1<=len(message['content'])<=4:raise ValueError()
+            for item in message['content']:
+                if type(item) is not dict:raise ValueError()
+                if item.get('type')=='input_image':
+                    if message['role']!='user' or set(item)!={'type','image_url','detail'} or item['detail']!='high':raise ValueError()
+                    url=item['image_url']
+                    if type(url) is not str or not url.startswith('data:image/png;base64,') or len(url)>2_700_000:raise ValueError()
+                    raw=base64.b64decode(url.split(',',1)[1],validate=True)
+                    if not 24<=len(raw)<=2_000_000:raise ValueError()
+                    width,height=struct.unpack_from('>II',raw,16);_validate_png(raw,width,height)
+                    images+=1;size+=len(raw)
+                else:
+                    kind='output_text' if message['role']=='assistant' else 'input_text'
+                    if set(item)!={'type','text'} or item['type']!=kind or type(item['text']) is not str or len(item['text'])>32000:raise ValueError()
+                    size+=len(item['text'].encode('utf-8'))
+        if images>5 or size>8_000_000:raise ValueError()
+        return list(messages)
+    except (ValueError,TypeError,KeyError,UnicodeError,struct.error):raise ProviderHttpError('provider_input_invalid') from None

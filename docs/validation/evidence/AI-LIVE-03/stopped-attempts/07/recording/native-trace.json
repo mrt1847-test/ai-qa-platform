@@ -1,0 +1,64 @@
+{
+  "events": [
+    {
+      "action": "tap",
+      "action_id": "step-001",
+      "geometry": {
+        "content_bounds": [
+          460,
+          139,
+          461,
+          140
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 1,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 460,
+        "x2": null,
+        "y": 139,
+        "y2": null
+      },
+      "target": "460,139"
+    },
+    {
+      "action": "tap",
+      "action_id": "step-002",
+      "geometry": {
+        "content_bounds": [
+          143,
+          573,
+          144,
+          574
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 2,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 143,
+        "x2": null,
+        "y": 573,
+        "y2": null
+      },
+      "target": "143,573"
+    }
+  ],
+  "native_action_count": 2,
+  "schema": "android-native-trace-v2"
+}

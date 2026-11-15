@@ -51,3 +51,6 @@
 - NEXT_ACTION이 순서를 단독 소유한다. 원래 W·AD/UX·PC와 새 RX 색인을 ID로 합쳐 직접 선행이 완료되고 인계 파일이 있는 항목만 고려한다. 알려진 미가용 환경 또는 작업 승인이 필요한 카드는 대기에 둔다. core 작업과 UX 독립 후보를 계속 선택할 수 있다.
 - RX-21~27, RX-29의 실제 환경 조건은 색인에 명시한다. 현재 독립 서버/운영 인증, Web VM, 운영 모델 키, 두 워커 경합 환경의 준비는 확인되지 않았다. 설치·배포·실제 모델 과금·전원/네트워크 차단은 해당 카드 실행 시 허용 범위를 확인한다. 운영 검증은 전용 테스트 계정·자원·케이스에만 한정한다.
 - core 카드는 임시 DB/fixture/무작동 handler로 시험할 수 있다. UI 카드는 실제 브라우저의 키보드와 오류 경로도 확인한다. 실환경 카드는 필요한 실제 환경 증거가 있어야 완료된다. `docs/validation/tasks/<ID>.md`에 명령, 결과, 수정 파일, 인터페이스, 제약과 다음 소비자가 확인할 증거를 남긴다. 기존 W/AD 상태와 RX 상태는 별도로 추적한다.
+
+
+2026-11-15 실제 원본 실행 보강: AI-LIVE-02는 자체 평가 루프/호환 adapter이며 upstream 실행이 아니다. AI-LIVE-03의 adapters/mobile_agent_upstream.py는 third_party/mobile_agent의 고정 v3.5 main·build_messages/history·parser/rescale를 실제 호출했고 I/O만 Luna/typed driver로 바꿨다. 4동작 녹화 후 같은 source를 키 없는 별도 프로세스에서 AI0으로 재생했다. 이것은 로컬 reusable engine/CLI 수용이며 현재 정상 AndroidRecordingHandler가 이 원본 main을 호출한다는 증거는 아니다. 정상 연결은 MOBILE_AGENT_SERVER_WIRING_TASKS.md MA01~05다.

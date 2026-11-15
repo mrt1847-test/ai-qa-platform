@@ -1,0 +1,410 @@
+{
+  "elapsed_seconds": 137.953,
+  "engine": "actual_mobile_agent_v3.5",
+  "human_review": "pending",
+  "main_file": "C:\\Users\\cease\\OneDrive\\문서\\ChatGPT\\AI test\\third_party\\mobile_agent\\upstream\\run_gui_owl_1_5_for_mobile.py",
+  "main_invocations": 1,
+  "model_calls": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 1213,
+      "content": "{\"summary\":\"Open search input\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[420,56]}}",
+      "input_tokens": 2677,
+      "latency_seconds": 3.578,
+      "output_tokens": 67,
+      "provider_request_id": "resp_0e1928dbc649d7ca016af91fb63a7087d2a5ba5c1832d206f6",
+      "reasoning_tokens": 13
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 2674,
+      "content": "{\"summary\":\"Enter the requested search term\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[370,88]}}",
+      "input_tokens": 3950,
+      "latency_seconds": 4.562,
+      "output_tokens": 53,
+      "provider_request_id": "resp_0511961254be000a016af91fd2e0fc87d295fd0d7616ca25fe",
+      "reasoning_tokens": 14
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 3947,
+      "content": "{\"summary\":\"Type the requested search term.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"type\",\"text\":\"mouse\"}}",
+      "input_tokens": 5225,
+      "latency_seconds": 4.11,
+      "output_tokens": 46,
+      "provider_request_id": "resp_0e6c69cb3aea30e6016af91ff082fc87d29c8856fb3d8b03b9",
+      "reasoning_tokens": 10
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 5222,
+      "content": "{\"summary\":\"Submit the mouse search\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[805,89]}}",
+      "input_tokens": 6498,
+      "latency_seconds": 3.844,
+      "output_tokens": 36,
+      "provider_request_id": "resp_090333497a4083ee016af92014f68c87d29cf7b973a8c03463",
+      "reasoning_tokens": 0
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 6495,
+      "content": "{\"summary\":\"The search term and mouse product listings are visible; finish the task.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"terminate\",\"status\":\"success\"}}",
+      "input_tokens": 7772,
+      "latency_seconds": 3.953,
+      "output_tokens": 42,
+      "provider_request_id": "resp_01ca5a613708bc49016af92033c97887d28625a3a08d63fa4b",
+      "reasoning_tokens": 0
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 4,
+  "paid_calls": 5,
+  "product_approval": false,
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "source_sha256": "8c6c7ba26c2ffdc1308619006246f0772966582fd3ed5f39f23991ccde2d3bea",
+  "status": "model_claimed_success",
+  "steps": [
+    {
+      "after_image": "step-001-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "453",
+        "134"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-001-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[45,88][825,187]",
+          "class": "android.view.ViewGroup",
+          "content-desc": "무엇을 찾아드릴까요?",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/clSearch",
+          "text": ""
+        }
+      },
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 453,
+        "x2": null,
+        "y": 134,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-001",
+        "geometry": {
+          "content_bounds": [
+            453,
+            134,
+            454,
+            135
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 1,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 453,
+          "x2": null,
+          "y": 134,
+          "y2": null
+        },
+        "target": "453,134"
+      },
+      "state": "observed",
+      "step": 1,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          456,
+          134
+        ]
+      }
+    },
+    {
+      "after_image": "step-002-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "399",
+        "211"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-002-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[74,162][786,267]",
+          "class": "android.widget.EditText",
+          "content-desc": "",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/searchEditText",
+          "text": "검색어를 입력해 주세요."
+        }
+      },
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 399,
+        "x2": null,
+        "y": 211,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-002",
+        "geometry": {
+          "content_bounds": [
+            399,
+            211,
+            400,
+            212
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 2,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 399,
+          "x2": null,
+          "y": 211,
+          "y2": null
+        },
+        "target": "399,211"
+      },
+      "state": "observed",
+      "step": 2,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          402,
+          211
+        ]
+      }
+    },
+    {
+      "after_image": "step-003-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "text",
+        "mouse"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-003-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "frame_guard": {
+        "kind": "pixels"
+      },
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "text",
+        "text": "mouse",
+        "x": null,
+        "x2": null,
+        "y": null,
+        "y2": null
+      },
+      "source_event": {
+        "action": "type",
+        "action_id": "step-003",
+        "geometry": {
+          "content_bounds": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 3,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "text",
+          "text": "mouse",
+          "x": null,
+          "x2": null,
+          "y": null,
+          "y2": null
+        },
+        "target": "literal"
+      },
+      "state": "observed",
+      "step": 3,
+      "upstream_action": {
+        "action": "type",
+        "text": "mouse"
+      }
+    },
+    {
+      "after_image": "step-004-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "869",
+        "213"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-004-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[828,173][912,257]",
+          "class": "android.widget.ImageView",
+          "content-desc": "입력된 단어로 검색",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/goSearchBtn",
+          "text": ""
+        }
+      },
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 869,
+        "x2": null,
+        "y": 213,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-004",
+        "geometry": {
+          "content_bounds": [
+            869,
+            213,
+            870,
+            214
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 4,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 869,
+          "x2": null,
+          "y": 213,
+          "y2": null
+        },
+        "target": "869,213"
+      },
+      "state": "observed",
+      "step": 4,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          875,
+          213
+        ]
+      }
+    }
+  ],
+  "upstream_commit": "81fa28b564ef7a695521500bc15a0e1324b2b394"
+}

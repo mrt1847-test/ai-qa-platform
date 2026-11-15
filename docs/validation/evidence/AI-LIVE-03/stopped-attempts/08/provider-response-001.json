@@ -1,0 +1,314 @@
+{
+  "id": "resp_0da0a347c7eca2fe016af91e8146d887d2983f7ef5be38a980",
+  "object": "response",
+  "created_at": 1794711169,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1794711171,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "image": {
+    "context_compression": "disabled"
+  },
+  "incomplete_details": null,
+  "input_transformations": [],
+  "instructions": null,
+  "max_output_tokens": 1024,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "rs_0da0a347c7eca2fe016af91e82735087d2b6b5739e81012677",
+      "type": "reasoning",
+      "content": [],
+      "encrypted_content": "gAAAAABq-R6DtNhWd10ITSatKbH0IgoHL_wJ6dS57ddNSOekjsvgzpwOGRLyw8-AJck8W_Miwvwb8ZOWd9Nqv_lSRGTN8MogqKCX2nboKc0dMO3d2tQyWbrH5PYLFayMMFiKkaY3L1C_5PqguIQftJepGTNq0pS_hYEd8vypwlg0-Bm_auYRgX5V4wbOny5q6YGITy2IM1Phz9y4bjmrNwbko6FLTYGVb6K0ZibKq43I9KHZxTCjTVG8TNY7xqncrkyCBGrjZ1i7lAnLhmoGodQUG305b8wKDtejUfJN46KeU4qApYACNVtZ2n4Zl8-hY-_hxvwCHGVQvX2QtqCyhOufnB8slKS3MV6-cyQUXdyCkegBaY0LcSk8V7oh6qs5jNevKF3FwEN7kE3N_PAL38Hfx-kU_MGJM8of8RBDszn_M9741cuQravNzwZC_cqyWSG-mBUYh1oE6CVPxCUyP5LKhn0l9yXM50xv5SX_3cXdlGTCEWVPdO5_MzI2wpbNVjiHRLRUIYcYeL5RBwlGa-ARhtBrxSovvGxNjkPeIphn98ehYWyXMomlgyeFJ9xW1BJfhO01n9UoUNxZtAXIEh6_x7aNbIvwYocm8n5yWsdUDPEtzPJ7wBQ6Kr85pnPr4evc3dWS-fHo51yViU1cCG04lWfiDkwRfNUkKf2SZKNXdJoKpGe91aKRAQjzI-uCuqJAla8eDpUb5CmEumrWI6LARcP0Wl5-dnwAr91TCZvRRMh979PWGg1n_oO7PVCyDWA9g19Vb-NlV2-QSfUCZ8NlRE1mRxFjppqB9pLuGPAYQ1BJurgCi2b8LPA1rWdtAybC2y33CRZFAwsw1PdPBWKtH0vtc1MDQO0xWCgu27z_Jzbf_4eMQTWHH5wI5V2NS8ZZrHybSH33NC-RZjz5pun-aksL2Zd3sgDqntWfCACucqMUTSBqzy-6fNdykmdI5oOf-_Qe_NEhhaD5y6gMLGxXhe3tmQJNygwrJgfDkXVUYv217wLLrZOTK5HyZ3xoF58-CMRg2_4kg2O2DmMXAOhcHfx7Xa6o3JZJbaV6cVx0QlcXefS7_drR5Q7GVdUPHo5FEu1ACmkuTnEass8A9jr4oZBjN0wttD1IxXqQho5NLQpHdoqG1mbrgv5QfPTpRlEGAxeuxXaG-qnrlIBem-7EmzX4YZGzk4E7KKmrTlnql2PSd7TgXE8AuaDxPkbXJa2fJP1bHMZuAs3UwLhTp3KXYprDAkfr3B-fuGlRJa8m6MjH4L1d1HX5UQ6P-G51viXWU88JZNz6u4t5UJJRftpVB6n3KLFgu47IwH3whwkY1CEJfiGxDsR85Svv3iSNDA7OeTEkqdvQd-zkxqnLdXh_DhrVvtf839EYAEP-iQG4Bsv5NksvDClccrwaQeDmIOBtGqQCXD7o67FJu-CuRzHmHfHqY_rKKiLV8wkNRSsp8pbSSicHrll0o0J6HlAAX-M43Cf-tlZBRm7o_heRj7xlEARDeSp58Z8_NoYY_AeIUkvNueR7ghYn_XlrFdS3ek0sAVlfhLs4r402hLn8agHrzuhEeNYHDhhSe69Vqx15frKjCePwkcYVnI-Cv7qCb4ujjhIvo61KTZsIvwqg2TuMtYLbQCdsQGpAQtJf8ibzVir_JSDLH1aZnjR5AEnD_J8mNz6uA1ume2_5an9t5FQpjwopl0WR2JC8vg6JZQIpCs7k3HonKTjZ2tZC7Pf4NJM8GPZVF7yRQAd0hQif29sZ6kAI9bxHZZTc8Om0pKNT48wYMeAASZ4pVQRTmH9A1MZ9JsFlRUOJCcGSAvu3uvd7vAlCCvrdstDfarelhD8LLlGfwOeqLopdcVreGEhWMHCPpNTUoxQKpgL2zKyPH6wWeYUaInH8Lg==",
+      "summary": []
+    },
+    {
+      "id": "msg_0da0a347c7eca2fe016af91e82bf9487d2983889d9cf0d8bd5",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"summary\":\"Close the promotional overlay so the search field is unobstructed.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[677,872]}}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "mobile_agent_one_action",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "mobile_use"
+            ]
+          },
+          "arguments": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "long_press"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "swipe"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "coordinate2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate",
+                  "coordinate2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "type"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "enum": [
+                      "mouse"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "system_button"
+                    ]
+                  },
+                  "button": {
+                    "type": "string",
+                    "enum": [
+                      "Back"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "button"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "wait"
+                    ]
+                  },
+                  "time": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "time"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "terminate"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "success",
+                      "failure"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "summary",
+          "name",
+          "arguments"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 2683,
+    "input_tokens_details": {
+      "cache_write_tokens": 1467,
+      "cache_write_tokens_details": {
+        "ttl_12h_tokens": 0,
+        "ttl_30m_tokens": 1467
+      },
+      "cached_tokens": 1213
+    },
+    "output_tokens": 68,
+    "output_tokens_details": {
+      "reasoning_tokens": 22
+    },
+    "total_tokens": 2751
+  },
+  "user": null,
+  "metadata": {}
+}

@@ -1,1 +1,6 @@
 /docs/validation/evidence/AI-LIVE-02/*.json -text
+
+/third_party/mobile_agent/upstream/* -text -whitespace
+/third_party/mobile_agent/manifest.json -text -whitespace
+
+/docs/validation/evidence/AI-LIVE-03/** -text -whitespace

@@ -142,3 +142,56 @@ def test_send_boundary_can_cancel_before_any_chargeable_request():
     def deny():raise RuntimeError('deadline')
     with pytest.raises(RuntimeError):port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=('task',),token_output_limit=1024,before_send=deny)
     assert not seen and port.call_count==0
+
+
+def test_upstream_conversation_preserves_system_history_and_images():
+    seen=[]
+    conversation=({'role':'system','content':[{'type':'input_text','text':'original tool prompt'}]},
+                  {'role':'user','content':[{'type':'input_text','text':'goal'}]},
+                  {'role':'assistant','content':[{'type':'output_text','text':'original prior action'}]},
+                  {'role':'user','content':[{'type':'input_text','text':'current screen'}]})
+    port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda req:(seen.append(req) or httpx.Response(200,json=response()))))
+    port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024,conversation=conversation)
+    assert json.loads(seen[0].content)['input']==list(conversation)
+
+
+def test_upstream_conversation_rejects_remote_image_without_sending():
+    seen=[];port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda r:seen.append(r)))
+    conversation=({'role':'user','content':[{'type':'input_image','image_url':'https://outside/image.png','detail':'high'}]},)
+    with pytest.raises(ProviderHttpError):port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024,conversation=conversation)
+    assert not seen and port.call_count==0
+
+
+def test_send_fence_runs_after_client_preparation(monkeypatch):
+    actual=httpx.Client;prepared=[];seen=[]
+    def client(*args,**kwargs):prepared.append(True);return actual(*args,**kwargs)
+    monkeypatch.setattr(httpx,'Client',client)
+    port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda req:(seen.append(req) or httpx.Response(200,json=response()))))
+    def fence():assert prepared, 'client preparation must precede final send fence'
+    port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024,before_send=fence)
+    assert len(seen)==1
+
+
+def test_non_actionable_paid_response_is_preserved_for_diagnosis():
+    raw=response();raw['status']='incomplete';saved=[]
+    port=OpenAIProviderHttp(allow_live=True,response_sink=saved.append,transport=httpx.MockTransport(lambda r:httpx.Response(200,json=raw)))
+    with pytest.raises(ProviderHttpError):port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024)
+    assert json.loads(saved[0])['status']=='incomplete' and port.call_count==1
+
+
+def test_mobile_agent_response_is_constrained_to_one_tool():
+    seen=[];port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda req:(seen.append(req) or httpx.Response(200,json=response()))))
+    port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024,conversation=({'role':'user','content':[{'type':'input_text','text':'goal'}]},),mobile_action_format=True)
+    fmt=json.loads(seen[0].content)['text']['format']
+    assert fmt['type']=='json_schema' and fmt['strict'] is True
+    assert fmt['schema']['properties']['name']['enum']==['mobile_use']
+    assert 'anyOf' in fmt['schema']['properties']['arguments']
+
+
+def test_luna_commentary_cannot_be_concatenated_into_the_final_action():
+    raw=response();raw['model']='gpt-6-luna';raw['output']=[
+        {'type':'message','role':'assistant','status':'completed','phase':'commentary','content':[{'type':'output_text','text':'I will choose an action.'}]},
+        {'type':'message','role':'assistant','status':'completed','phase':'final_answer','content':[{'type':'output_text','text':'key(4)'}]}]
+    port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda r:httpx.Response(200,json=raw)))
+    result=port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=(),token_output_limit=1024)
+    assert result.content=='key(4)'

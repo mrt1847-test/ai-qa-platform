@@ -1,0 +1,40 @@
+{
+  "complete": true,
+  "schema": "mobile-agent-recording-pin-v1",
+  "source_sha256": "8c6c7ba26c2ffdc1308619006246f0772966582fd3ed5f39f23991ccde2d3bea",
+  "steps": [
+    {
+      "action_id": "step-001",
+      "before_hierarchy_sha256": "41e2c5656196c62894bdaff6ef71eb2c50dc5e9e3e70209e616854dbabb1d631",
+      "before_image": "step-001-before.png",
+      "before_sha256": "9b5204c46db78258fd5b5b824022a6aaf69f13ecd0f004c45b3114b1ff34e76e",
+      "foreground": "com.ebay.kr.gmarket"
+    },
+    {
+      "action_id": "step-002",
+      "before_hierarchy_sha256": "bf625c706a9aeefbdd5b35d93d18671d428a827f61d0b95978dce75d3c32d300",
+      "before_image": "step-002-before.png",
+      "before_sha256": "33a3d7c896c069f68de6b74e9d626ffacb9570c1fb3249eb833e6edb31526489",
+      "foreground": "com.ebay.kr.gmarket"
+    },
+    {
+      "action_id": "step-003",
+      "before_hierarchy_sha256": "bf625c706a9aeefbdd5b35d93d18671d428a827f61d0b95978dce75d3c32d300",
+      "before_image": "step-003-before.png",
+      "before_sha256": "402f6df2fced5c3f6868b774276625e4aa7221215dc4d39e2ca759453e85d656",
+      "foreground": "com.ebay.kr.gmarket"
+    },
+    {
+      "action_id": "step-004",
+      "before_hierarchy_sha256": "63fb0cf74b3e8cc9e3b94e6d281321546a4e428ede585c1cd892d7aabf4fe38b",
+      "before_image": "step-004-before.png",
+      "before_sha256": "80c967d8a029292fd8fbaa79ec707588ab54fa954d3a7f176fd6fef2c92cbfda",
+      "foreground": "com.ebay.kr.gmarket"
+    }
+  ],
+  "target": {
+    "avd": "Medium_Phone_API_36",
+    "package": "com.ebay.kr.gmarket",
+    "serial": "emulator-5580"
+  }
+}

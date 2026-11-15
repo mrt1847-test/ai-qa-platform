@@ -1,0 +1,21 @@
+{
+  "scope": "actual_upstream_recording_and_local_deterministic_replay_not_server_approval",
+  "upstream_commit": "81fa28b564ef7a695521500bc15a0e1324b2b394",
+  "main_invocations": 1,
+  "source_sha256": "8c6c7ba26c2ffdc1308619006246f0772966582fd3ed5f39f23991ccde2d3bea",
+  "recording_pin_sha256": "70b6d3c66d240521bab559ffb165f379eb175fc70c39034f29db6780d9638220",
+  "recording_model_calls": 5,
+  "recording_native_actions": 4,
+  "input_tokens": 26122,
+  "output_tokens": 244,
+  "reasoning_tokens": 37,
+  "cached_input_tokens": 19551,
+  "replay_model_calls": 0,
+  "replay_native_actions": 4,
+  "replay_python_network_attempts": 0,
+  "replay_key_file_read": false,
+  "replay_model_port_constructed": false,
+  "exact_argv_match": true,
+  "human_review": "pending",
+  "product_approval": false
+}

@@ -1,0 +1,16 @@
+{
+  "elapsed_seconds": 16.14,
+  "engine": "actual_mobile_agent_v3.5",
+  "error_type": "ProviderHttpError",
+  "human_review": "pending",
+  "model_calls": [],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 0,
+  "paid_calls": 1,
+  "product_approval": false,
+  "reason": "provider_response_invalid",
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "status": "stopped",
+  "steps": []
+}

@@ -1,0 +1,329 @@
+{
+  "id": "resp_0e1928dbc649d7ca016af91fb63a7087d2a5ba5c1832d206f6",
+  "object": "response",
+  "created_at": 1794711478,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1794711479,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "image": {
+    "context_compression": "disabled"
+  },
+  "incomplete_details": null,
+  "input_transformations": [],
+  "instructions": null,
+  "max_output_tokens": 1024,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "rs_0e1928dbc649d7ca016af91fb7326487d2894ae161f3a5fc22",
+      "type": "reasoning",
+      "content": [],
+      "encrypted_content": "gAAAAABq-R-4At11DTlJDeJFkqrrSSqR-rZ-XALf7EXNOVr_tq6AxneETFeS5yxR--4fhOGfUdaJfXwd7lcqM4sotrH6j8wbP9g23D3xM-kJxUUZ4j2NtUL_KfuZc90fXWG5jjl55LF2L5vPs6bOWinQ2RTc82x2ZARMiWhz38Gk3grrZVzZybGrN5w_QxKBcaFb3Z9p4eC_lUcLbveL9nZC0H0U3uqeEWwvsd79TBPJNF6SfiLse6qJa_qQrAlT0GHgkuqi-8ZI5yGruLlLUyDPMyBGr1LxqAkZu2xOeqySilrOJ2uu2Pwt8X23w48vsak_So4yv5WC_tQaSptYRIjc5GmhrIJBDwuwPJnXhfe82Jvr5Dn4ddr3PHVlF1E0YYXBfDAz6k52hxLbBPJ3NnOwXG6lhFE0lmyiE5pBJ2MzhJpE3RlRMvgo0WpxQJoSVvHbgmppp-PHcdw4Uq3-bsACD0XdKbf01tFoSsW4SwWY3PMTTc3LBcs4ma0Njts148QqteHwrjKaIiAoZ-wbc1P_ESFBo-mCqPqz5n3_UeWz0-OkBhE4hfryCg5QsUjqYlORwoXqxewPDls4MvS5XxBCittW0P_4R_ojthSS3-ZF2EHej9hCLA69vG9mkphs-i2qxozzJq-Gy51HHEKGE0DmL1mFJhj_Gw_9NUb6aVeZc_uAnGSRKfmUXuAmbAIjC7y-OhiOKXkZf9wk_a5_874ciZnyRE56Tqu7ilSXozNYrG3_DEAPsdV_4PNwh2EF__v637ozFO7wLhv-GMF6IYddUXDQHtALCG0vYP24TjV5gX-wAf9k5Uv2wjcOA3QJJAOcGCG9d80cJU4rlPIF8KWA0GcX0uAtAX8HJMV9cXaMCkU1_GH50Bq6Upoz9HF_a_eMZpmOIyWkT8qXVj8rCIIj2KtfmtHD0v97MY9YkrPjPdkVZfbUn9LWXHrEDpX9l8gAqtmxuf0yeBqivda3cn9dWgsx-28jqY95wvG6psPjT_vx_cO5N692oDZB8TqeOemWdsyNHfySNWlD3QagYo7MMGQUWC0sJ2dbESOLMAULF7OkmnltNKzslvvlW3x6HYsI9O-WdY61LVSZI_dsSLC7Gslc-Z0Q386ALkdxgeETPaxWRbM33ufP6xqPYShJPrHQy1SXoLbSdvQYNiBhpPd_dH9cVhcXxjLJ2X3XrJX94J1St0sRGPjNjCLQVdlPVx28UcOOarf0oqkmjKfRHqxM5x7ps8_aADskg8oTORAPj4a2KFAZIJNNFt1TAPCB_DE9whYufSGowa-vTCi4g6CC0HGmJiuK3AOsaw4jZVSlxR6bmPavw33afkVxMmHLL8wdISymXBTsCsVmkFMmqSAHOmRghwWHwWiSJxTzSKQ5Lw2vZ2qG_dylF70TLWvAu7std-X7_IxwbB1GMaNJUrE0HE61iWMhOO-JL-Q5dBEuPSkx2EOTTttpVNeWNwlIMp9uoxRzvUCwohzCPryNWRng2g5z6lJwfJk7fZsfXNBQmqiIrvO04iP3C5Di0qD9LbnzK-n_3sqXnNdnroaShOYpmIiHnrZJ-zTKH7v_-M0bSm67yB7p0Z0zMTmIc9em_k3joSy9t8-WU1aFrpwyzoQUCH1hXw4fyrsnrP10Ks5MBY94Vl9eNw5KXh6lEn99BzVkpiPaW64GKBjd6PHOvILXruBjx-96dbVxiHvAcwxubjjVgq5UxfJrle3tS8Ulf44TYlgfpL-hsZT4eBCvRcK-Kl7w3QsHnLNVOIVPF7tO1KDspqMu1vffJ61bA0RYX3NzPerOBULc",
+      "summary": []
+    },
+    {
+      "id": "msg_0e1928dbc649d7ca016af91fb75f8487d28ecaf505a083e9cd",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "Tap the search bar to enter the requested query."
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant"
+    },
+    {
+      "id": "msg_0e1928dbc649d7ca016af91fb79da487d282a26a82307e1dd9",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"summary\":\"Open search input\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[420,56]}}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "mobile_agent_one_action",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "mobile_use"
+            ]
+          },
+          "arguments": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "long_press"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "swipe"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "coordinate2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate",
+                  "coordinate2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "type"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "enum": [
+                      "mouse"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "system_button"
+                    ]
+                  },
+                  "button": {
+                    "type": "string",
+                    "enum": [
+                      "Back"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "button"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "wait"
+                    ]
+                  },
+                  "time": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "time"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "terminate"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "success",
+                      "failure"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "summary",
+          "name",
+          "arguments"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 2677,
+    "input_tokens_details": {
+      "cache_write_tokens": 1461,
+      "cache_write_tokens_details": {
+        "ttl_12h_tokens": 0,
+        "ttl_30m_tokens": 1461
+      },
+      "cached_tokens": 1213
+    },
+    "output_tokens": 67,
+    "output_tokens_details": {
+      "reasoning_tokens": 13
+    },
+    "total_tokens": 2744
+  },
+  "user": null,
+  "metadata": {}
+}

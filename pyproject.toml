@@ -14,7 +14,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mobile-agent = ["Pillow>=11,<13", "httpx"]
 dev = [
+    "Pillow>=11,<13",
     "pytest",
     "httpx",
 ]

@@ -1,0 +1,193 @@
+{
+  "elapsed_seconds": 29.25,
+  "engine": "actual_mobile_agent_v3.5",
+  "error_type": "TransientCapture",
+  "human_review": "pending",
+  "model_calls": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 1213,
+      "content": "{\"summary\":\"Tap the search field to begin searching.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[426,58]}}",
+      "input_tokens": 2681,
+      "latency_seconds": 3.578,
+      "output_tokens": 55,
+      "provider_request_id": "resp_06c3413b095a5c59016af91de3fb4887d29ccf2e7620e0a327",
+      "reasoning_tokens": 14
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 2678,
+      "content": "{\"summary\":\"Select the recent search term mouse.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[133,239]}}",
+      "input_tokens": 3958,
+      "latency_seconds": 2.906,
+      "output_tokens": 53,
+      "provider_request_id": "resp_03ea9f5319945919016af91df280ec87d28724b99970883195",
+      "reasoning_tokens": 13
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 2,
+  "paid_calls": 2,
+  "product_approval": false,
+  "reason": "capture_transition",
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "source_sha256": "f8d93777987960636276634eac07403f242c99a6ce1d8789deebeb4593705cbc",
+  "status": "stopped",
+  "steps": [
+    {
+      "after_image": "step-001-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "460",
+        "139"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-001-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 460,
+        "x2": null,
+        "y": 139,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-001",
+        "geometry": {
+          "content_bounds": [
+            460,
+            139,
+            461,
+            140
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 1,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 460,
+          "x2": null,
+          "y": 139,
+          "y2": null
+        },
+        "target": "460,139"
+      },
+      "state": "observed",
+      "step": 1,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          463,
+          139
+        ]
+      }
+    },
+    {
+      "after_image": "step-002-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "143",
+        "573"
+      ],
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-002-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 143,
+        "x2": null,
+        "y": 573,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-002",
+        "geometry": {
+          "content_bounds": [
+            143,
+            573,
+            144,
+            574
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 2,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 143,
+          "x2": null,
+          "y": 573,
+          "y2": null
+        },
+        "target": "143,573"
+      },
+      "state": "observed",
+      "step": 2,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          144,
+          573
+        ]
+      }
+    }
+  ]
+}

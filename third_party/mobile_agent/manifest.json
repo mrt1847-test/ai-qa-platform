@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/X-PLUG/MobileAgent",
+  "commit": "81fa28b564ef7a695521500bc15a0e1324b2b394",
+  "files": {
+    "LICENSE": {
+      "upstream_sha256": "961819a89dacd1f4f161e1d2ebf616b538bf095a2eecfa3ef40b7ccec633fac4",
+      "vendored_sha256": "961819a89dacd1f4f161e1d2ebf616b538bf095a2eecfa3ef40b7ccec633fac4"
+    },
+    "packages.py": {
+      "upstream_sha256": "ab302e38b0a1247880cb443970f2c2afb1e3411bc4344af0801d09c36c04bfb3",
+      "vendored_sha256": "ab302e38b0a1247880cb443970f2c2afb1e3411bc4344af0801d09c36c04bfb3"
+    },
+    "run_gui_owl_1_5_for_mobile.py": {
+      "upstream_sha256": "f796a792bd9eb041b8e8daf178c1bf23e350d335d22da05a73801e5f4c0bae5f",
+      "vendored_sha256": "f796a792bd9eb041b8e8daf178c1bf23e350d335d22da05a73801e5f4c0bae5f"
+    },
+    "utils.py": {
+      "upstream_sha256": "1cd5414943f379ddd6a46e279fd11b4cf6317e7e568cf1e94cb7749fc5732e3d",
+      "vendored_sha256": "18a6e427b3d5343dcce15423d6041a4e3d86fee43ad07efa73fae83085eaa4de"
+    }
+  }
+}

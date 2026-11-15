@@ -1,0 +1,18 @@
+{
+  "complete": false,
+  "schema": "mobile-agent-recording-pin-v1",
+  "source_sha256": "f6ef6f55480f30e5c4635dd3bbdd420e59d4606d90af706cdc8b6d0947ed58b3",
+  "steps": [
+    {
+      "action_id": "step-001",
+      "before_image": "step-001-before.png",
+      "before_sha256": "d547c221ae276c025a8d2fcb84b6e2a9b05c6bef602bced3273fa0ddd845d236",
+      "foreground": "com.ebay.kr.gmarket"
+    }
+  ],
+  "target": {
+    "avd": "Medium_Phone_API_36",
+    "package": "com.ebay.kr.gmarket",
+    "serial": "emulator-5580"
+  }
+}

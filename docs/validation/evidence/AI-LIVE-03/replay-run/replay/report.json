@@ -1,0 +1,118 @@
+{
+  "healing": "OFF",
+  "human_review": "pending",
+  "key_file_read": false,
+  "model_calls": 0,
+  "model_port_constructed": false,
+  "product_approval": false,
+  "python_network_attempts": 0,
+  "recording_pin_sha256": "70b6d3c66d240521bab559ffb165f379eb175fc70c39034f29db6780d9638220",
+  "source_sha256": "8c6c7ba26c2ffdc1308619006246f0772966582fd3ed5f39f23991ccde2d3bea",
+  "status": "replayed_pending_observation",
+  "steps": [
+    {
+      "action_id": "step-001",
+      "after_image": "step-001-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "453",
+        "134"
+      ],
+      "before_image": "step-001-before.png",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[45,88][825,187]",
+          "class": "android.view.ViewGroup",
+          "content-desc": "무엇을 찾아드릴까요?",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/clSearch",
+          "text": ""
+        }
+      },
+      "state": "observed"
+    },
+    {
+      "action_id": "step-002",
+      "after_image": "step-002-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "399",
+        "211"
+      ],
+      "before_image": "step-002-before.png",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[74,162][786,267]",
+          "class": "android.widget.EditText",
+          "content-desc": "",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/searchEditText",
+          "text": "검색어를 입력해 주세요."
+        }
+      },
+      "state": "observed"
+    },
+    {
+      "action_id": "step-003",
+      "after_image": "step-003-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "text",
+        "mouse"
+      ],
+      "before_image": "step-003-before.png",
+      "frame_guard": {
+        "kind": "pixels"
+      },
+      "state": "observed"
+    },
+    {
+      "action_id": "step-004",
+      "after_image": "step-004-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "869",
+        "213"
+      ],
+      "before_image": "step-004-before.png",
+      "frame_guard": {
+        "kind": "resource_id",
+        "target": {
+          "bounds": "[828,173][912,257]",
+          "class": "android.widget.ImageView",
+          "content-desc": "입력된 단어로 검색",
+          "package": "com.ebay.kr.gmarket",
+          "resource-id": "com.ebay.kr.gmarket:id/goSearchBtn",
+          "text": ""
+        }
+      },
+      "state": "observed"
+    }
+  ],
+  "target": {
+    "avd": "Medium_Phone_API_36",
+    "package": "com.ebay.kr.gmarket",
+    "serial": "emulator-5580"
+  }
+}

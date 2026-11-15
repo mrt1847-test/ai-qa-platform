@@ -1,0 +1,94 @@
+{
+  "elapsed_seconds": 9.547,
+  "engine": "actual_mobile_agent_v3.5",
+  "error_type": "FrameDrift",
+  "human_review": "pending",
+  "model_calls": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "Tap the search bar and enter “mouse”.Action: Tap the search bar and enter “mouse”.  \n<tool_call>\n{\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[460,135]}}\n</tool_call>",
+      "input_tokens": 4114,
+      "latency_seconds": 4.5,
+      "output_tokens": 84,
+      "provider_request_id": "resp_0647626e9a544e45016af91b3658a487d2b24154133cdf7a75",
+      "reasoning_tokens": 23
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "native_actions": 0,
+  "paid_calls": 1,
+  "product_approval": false,
+  "reason": "screen_drift",
+  "reasoning_effort": "low",
+  "replay_model_calls": null,
+  "status": "stopped",
+  "steps": [
+    {
+      "before_geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1080,
+          2400
+        ],
+        "model_height": 2400,
+        "model_width": 1080,
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0,
+        "transform": "identity"
+      },
+      "before_image": "step-001-before.png",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 496,
+        "x2": null,
+        "y": 324,
+        "y2": null
+      },
+      "source_event": {
+        "action": "tap",
+        "action_id": "step-001",
+        "geometry": {
+          "content_bounds": [
+            496,
+            324,
+            497,
+            325
+          ],
+          "physical_height": 2400,
+          "physical_width": 1080,
+          "rotation": 0
+        },
+        "intent": "open",
+        "kind": "action",
+        "line": 1,
+        "native": {
+          "duration_ms": 300,
+          "keycode": null,
+          "kind": "tap",
+          "text": null,
+          "x": 496,
+          "x2": null,
+          "y": 324,
+          "y2": null
+        },
+        "target": "496,324"
+      },
+      "state": "planned",
+      "step": 1,
+      "upstream_action": {
+        "action": "click",
+        "coordinate": [
+          500,
+          324
+        ]
+      }
+    }
+  ]
+}

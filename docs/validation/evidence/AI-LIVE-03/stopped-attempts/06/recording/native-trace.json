@@ -1,0 +1,35 @@
+{
+  "events": [
+    {
+      "action": "tap",
+      "action_id": "step-001",
+      "geometry": {
+        "content_bounds": [
+          886,
+          134,
+          887,
+          135
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 1,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 886,
+        "x2": null,
+        "y": 134,
+        "y2": null
+      },
+      "target": "886,134"
+    }
+  ],
+  "native_action_count": 1,
+  "schema": "android-native-trace-v2"
+}

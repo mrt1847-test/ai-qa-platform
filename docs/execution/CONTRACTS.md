@@ -491,3 +491,10 @@ AI-LIVE-01의 OpenAIProviderHttp/tools/android_openai_smoke.py는 명시 로컬 
 새 native v2 원본에 한해 recording input case version의 logical step→after_action_id와 check ID→선택 package resource_id를 immutable annotation으로 저장한다. expected/목표/실제 native bytes/기존 승인/FAIL은 수정하지 않는다. source 단계 순서는 nondecreasing, 같은 boundary와 부분 연결은 가능하다. binding hash를 새로운 package_rebuild manifest/body hash에 넣고 새 version/package를 만든다. 현재 approval/late draft pointer는 유지한다. 새 후보는 실제 UTC 생성 시각을 쓰며 과거 이력을 보정하지 않는다.
 
 migration0051은 annotation의 derived manifest/recording/prior source/hash/input version/native bytes/완료 상태를 함께 묶는 insert guard와 UPDATE/DELETE 금지를 가진다. expected source CAS와 actor/body/request key의 retry를 구분하고 savepoint로 원자화한다. generic rebuild는 annotation을 유실시키는 대신 거절하며 연결 변경 API를 사용한다. GET/POST projects/{project}/recordings/{recording}/check-bindings는 정상 세션/CSRF/Origin/프로젝트와 요청 제한을 확인하고 worker/model 없이 저장본을 처리한다. POST는128KiB 이전에 chunk copy를 거절하고 정확한 본문만 허용한다. 이 후보 저장은 trial/승인/QA/모델 grant가 아니며 UI·worker 소비/실제 평가·정규화 결과 저장은 후속이다.
+
+
+### AI-LIVE-03 · 실제 upstream 실행과 정상 제품 경로의 구분 (C00/C04/C05/C06/C14)
+
+third_party/mobile_agent는 고정81fa28b564ef7a695521500bc15a0e1324b2b394의 원본 main/prompt/history/parser/rescale를 실행한다. 원본 hash/최소 import 패치·라이선스를 보존하며 manifest 자체와 필수 파일 집합도 고정한다. Luna image1000square/최종 단일 행동 codec과 관찰 가능한 typed driver I/O만 변환한다. Responses commentary를 action에 합치지 않으며 final_answer를 보존한다. 실제 성공4native/5generation과 동일 source 4native/AI0 재생, 단계별 before/after·hierarchy/usage/log의 근거는 AI-LIVE-03이다.
+
+이 CLI 경로는 키 없는 별도 재생 프로세스·명시 source/pin SHA·target/complete·before image/hierarchy SHA를 확인하고 같은 좌표/문자만 보낸다. source/native를 추정 보정하거나 retry/healing하지 않는다. 유일한 클릭 리소스/같은 위치·속성 또는 bounded interaction pixels가 달라지면 차단한다. 읽기 전용 전환 관찰은 최대10회이며 native/model 재전송과 다르다. CLI의 로컬 증거/assistant 관찰은 서버 DB evidence ACK/실제 사람 승인/QA assertion 수용이 아니다. 정상 모델 factory/서버 비밀 참조/권한·usage/worker IPC 연결은 MOBILE_AGENT_SERVER_WIRING_TASKS.md의 MA01~05에서 구현한다. API 키를 로컬 env에서 자동 등록하거나 worker에 전달하지 않는다.

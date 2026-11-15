@@ -1,0 +1,329 @@
+{
+  "id": "resp_023c408b9aa05a8a016af91cbfe5e487d28df66af0fa5d1d84",
+  "object": "response",
+  "created_at": 1794710719,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1794710722,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "image": {
+    "context_compression": "disabled"
+  },
+  "incomplete_details": null,
+  "input_transformations": [],
+  "instructions": null,
+  "max_output_tokens": 1024,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "rs_023c408b9aa05a8a016af91cc12c7087d28cedbf3d29ea766a",
+      "type": "reasoning",
+      "content": [],
+      "encrypted_content": "gAAAAABq-RzCoYpJlfVtBGPvA7Uc9SzuYuUR5JMyKGXyhZjI_38Y7heHLLTkeOzETS-FEXr00icYo-ss5wLDEVK6tghuwTklAhgmOMjhEvKpQzsUaDADA4kid0dvlffKbckDc8IQJvnfmoSnzxE5pTzrl1PsFBOCvqpLNexTTpjIeuQlNoSU2g9rEuRMlBkCV9ZDjEwbAP2vaFJnd834gdmrnVijUxvgn1cmOsCsNvQl0QPcRO6L29IKzY_HoLPpPXg9ekqntgaX0ijQACK3SKtwGyqDow7gDPZDbfo6XFOUzhUs_NKZYLR_Z5RGzt58O9blNwIqLLZ1S-_o9fEI9r79bvkkH2HfvAj8eIbEJWIXsq3xPZ0IMQ6VG8AsovSs1djRc7w-t13fD8MhfMNRLGV4IBpk3-hqedSYslKuiFRSGYJGGKsLZ-rfjxGOoLvyS5H8Li2iKcbIKOqCAKMfW0WUdidwYbAuoCzlOqlAzd9YeRRKXo9wTIl7nYD7HqNbjUePkbYUXKGISuHxTU7WULV6PEzgOFN3w5wrW5gXnvn3qmj_1d-hJCRrQwYwxgO7ML7hWJ1WfJ_rxouzsyBvsLwu_KzMa2JXeDCMgyZ3cAXEzNVX-l1t_VXEa8Q2kr5tThZxYevxHz4zqV5vn5RaSZTefpOlNjFObKOiHMH6NF5cBwLZ7nKm9pUsADMwSZI2CZ9XDpAjAyBgV-kHfg7AWKmI5iZM7ieuDFxAUT5ZUKMoCMmLaVCGP3maeN_JagERs6CC4mHOubYXougPEzbBNwC_XFkQvKcFO1BHyeNQDpZIJn6n72qlhpqt5-Eb4vt4mgT5747uWGUP0Lv987xEdmhE9qiaOonGUM7rRSdBMJ4gTfQ2m_QnKylza0rR2MIEuOk5knOIuFFUR2xjtUrs3o3_EhGAoS4A0zV6NCmDMjH4opq3uoYtR5XnUu9e-mkEdrNbxRUARO0vBzJ1oxGiSDRznMmGQ36OlKcpKoK4RFXOe0jJunRfi0nNCaR9jnaPZz6-0V1w6viuyVM6yDuP9zFUgzGXxNrepWE_BvtZBZqkMzvTTlnHuEScLtadrWO1hcUX1AsOAFtqEBW6Y59DiU304QotARrWI_kYH4M4adznO6CnCj9lq3hVqKN4TcgDaro3v3BY_e0vilHVNGH8DL3gZR8ZDisbdoG9y6eUY4G1Pb0kXv6efrRnqnObzgLxub3SR2KFPusDISiAlZZoPD4isxKU6dZyio2cbINRJ32ns1znyUMT9XyD12PGIr56pR8BA6Ghm2VYKqHrLCHChob1JEJ6ZckAAMWV38m5Cl702l2wF-MKR89-REzHJszZk5oeHm3KeU01hEuj8Qyaank3NjuvX5elvPZtJd0MkSZClQ9Io9AXZVtbRBV2N9PW07ZToRO4uUo5wtUW04_SvPNKZLXgHtjyiFWTM9zxI75ZBZXrJZgKmA_-gfb1e5MOGxTnJM9QB5wd7VTsUG01alo5onRmcLFMzv-YuaqnTaK6mx1Wnr8cV2Wf8kfue5qIeGunv19g7VcQhtAJslsekj-snOpzExne9gP30zmuWigYfXnO5Qtt80I0DWIkE2L2BtvMCBT894E2l6n6UD_1A2gkL3adTwwXFsLiXYnPJMirzqMCm4mzm0uv6m069lx6BdIIY5F-dBz5XTmREfu4t4QqF1MdrFV_zkz37DS6OZXVrt5JSCWSiRMT2r4m0ERPkwHPGGFRj29_-z82Es2rK4iSx_MeNFp59m0qeSdJ5JU7tXLfMZtNu2ejBNBSsbsmuz5e_rQJ6lmifj6JDIFybuHfPjm38dBPsTB2LxNFbibtb_qGSCsTfc_r8qwTWXb6NiCcSKkAl9N6Q6jWnciN-g2xKHssPptvwRxkJ5OsA_6Vy-Ng-W9XuNgVQz4ElFl3TFqMWRU-uJCe9RSb3imTymSYxgf5QKqPCQs0ydudIlYdWEwIdyCzacY=",
+      "summary": []
+    },
+    {
+      "id": "msg_023c408b9aa05a8a016af91cc16f4887d299ed20faa7b09af9",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "Tap the search bar and enter \u201cmouse\u201d."
+        }
+      ],
+      "phase": "commentary",
+      "role": "assistant"
+    },
+    {
+      "id": "msg_023c408b9aa05a8a016af91cc1b3cc87d2a50cb6bb48964619",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"summary\":\"Tap the search bar to enter the requested query.\",\"name\":\"mobile_use\",\"arguments\":{\"action\":\"click\",\"coordinate\":[442,57]}}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "mobile_agent_one_action",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "mobile_use"
+            ]
+          },
+          "arguments": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "click"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "long_press"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "swipe"
+                    ]
+                  },
+                  "coordinate": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "coordinate2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "coordinate",
+                  "coordinate2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "type"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "enum": [
+                      "mouse"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "system_button"
+                    ]
+                  },
+                  "button": {
+                    "type": "string",
+                    "enum": [
+                      "Back"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "button"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "wait"
+                    ]
+                  },
+                  "time": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  }
+                },
+                "required": [
+                  "action",
+                  "time"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "terminate"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "success",
+                      "failure"
+                    ]
+                  }
+                },
+                "required": [
+                  "action",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "summary",
+          "name",
+          "arguments"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 2681,
+    "input_tokens_details": {
+      "cache_write_tokens": 2678,
+      "cache_write_tokens_details": {
+        "ttl_12h_tokens": 0,
+        "ttl_30m_tokens": 2678
+      },
+      "cached_tokens": 0
+    },
+    "output_tokens": 83,
+    "output_tokens_details": {
+      "reasoning_tokens": 24
+    },
+    "total_tokens": 2764
+  },
+  "user": null,
+  "metadata": {}
+}

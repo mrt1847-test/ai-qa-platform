@@ -61,3 +61,5 @@ TDD: effort RED3→GREEN, evaluator parser 부재RED→GREEN, after capture 유�
 판단: 사용자 지정 Luna만 시험했으므로 다른 모델 상대 우위는 미평가다. hidden chain-of-thought 대신 실제 행동/관찰 요약을 평가하므로 내부 사고 경로는 알 수 없다. 모델 성공은 QA PASS/사람 승인으로 올리지 않으므로 제품 검토가 별도로 필요하다. 리뷰 Minor의 검색어/안전규칙 제공 사실은 위 평가 범위로 명시했다. **미룬 Minor:** 여러 로컬 실패에 공통 local_evaluation_stopped 사유를 쓰는 진단 세분화(현재 error_type/step dispatch 로그로 조사); 후속에서 안정된 사유 코드를 추가한다. 비용은 실패 원인 자동 집계가 아직 거칠다는 점이다.
 
 이 도구는 고정 G마켓 공개 검색의 로컬 기술 평가이며 정상 관리 서버 secretref/model admission/binding/정규화 check_results/웹 승인 연결은 미완료다. 초기 AVD는 같은 기존전용자원만 snapshot 없이4096MB/4core/swiftshader로 시작해 검사 뒤 종료했다. 사용자/앱 데이터 초기화·추가 설치0. 권한 안내의 앱 확인은 이번 시험에서 진행했으므로 다음 시험의 초기 상태가 달라질 수 있으며 비교 시 초기 상태를 고정해야 한다.
+
+재현 bytes 보존: AI-LIVE-02 증거 JSON은 .gitattributes에서 text normalization을 끈다. Windows checkout의 LF/CRLF 변환으로 native source/증거 SHA256이 달라지지 않게 하며, 모든 증거의 현재 bytes와 Git blob bytes가 manifest hash와 같은지 직접 대조했다. 다른 증거/사용자 파일의 줄바꿈 규칙은 바꾸지 않는다.

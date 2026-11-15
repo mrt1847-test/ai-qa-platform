@@ -2,16 +2,18 @@
 
 2026-11-15 Asia/Seoul. 실제 source/main/Luna/4동작 AI0 재생의 로컬 증거는 AI-LIVE-03이며 재실행하지 않는다. 이 카드는 그 재사용 engine을 정상 제품 요청에 연결하는 구현이다. 로컬 증거를 서버 수용으로 승격하지 않는다. 사용자 DB/기존 UI dirty/기존 승인/FAIL을 보존한다.
 
-> Use superpowers:executing-plans, TDD. 현재 준비 단위는 MA-01 하나다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
+> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 현재 준비 단위는 MA02a다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
 
 ## MA-01 · 정상 provider factory에 OpenAI 모드 연결
 
-- [ ] config.py ModelProviderSettings/load_settings가 명시 AIQA_MODEL_PROVIDER_MODE=openai를 받고 fixture 기본/operational origin 규칙을 보존한다. OpenAI origin=https://api.openai.com, path=/v1/responses, TLS 검증은 고정한다. 임의 base URL/path/TLS 해제를 거절하고 키는 settings/factory에서 읽지 않는다.
-- [ ] models/provider_http.py build_provider_from_settings에서 새 server OpenAI adapter를 선택한다. adapter.complete는 기존 ProviderHttpPort 인터페이스와 결과를 사용한다. 요청마다 bounded OpenAIProviderHttp(max_calls=1)를 새로 만들어 서버 전체12회 latch를 만들지 않는다. 실패한 호출을 자동 retry/fallback하지 않는다. 지정 timeout을 반영하며 테스트 transport가 정상 요청 경계를 관찰할 수 있어야 한다.
-- [ ] tests/unit/test_openai_provider_settings.py: 기본 fixture, 명시 openai, 잘못된 URL/path/TLS, 키 로딩0, 13회 독립 호출, 실패 후 다른 요청/동일 요청 retry 책임 분리, phase/observation/실제 모델·usage 전달을 검증한다. 실제 네트워크0.
-- [ ] 관련 설정·provider·gateway 회귀와 인계 AI-LIVE-04-MA01. factory 연결만으로 upstream worker/웹 녹화 완료라고 쓰지 않는다.
+- [x] config.py ModelProviderSettings/load_settings가 명시 AIQA_MODEL_PROVIDER_MODE=openai를 받고 fixture 기본/operational origin 규칙을 보존한다. OpenAI origin=https://api.openai.com, path=/v1/responses, HTTPX 기본 public CA 검증(trust_env=False)을 고정한다. 임의 base URL/path/TLS 해제를 거절하고 키는 settings/factory에서 읽지 않는다.
+- [x] models/provider_http.py build_provider_from_settings에서 새 server OpenAI adapter를 선택한다. adapter.complete는 기존 ProviderHttpPort 인터페이스와 결과를 사용한다. 요청마다 bounded OpenAIProviderHttp(max_calls=1)를 새로 만들어 서버 전체12회 latch를 만들지 않는다. 실패한 호출을 자동 retry/fallback하지 않는다. 지정 timeout을 반영하며 테스트 transport가 정상 요청 경계를 관찰할 수 있어야 한다.
+- [x] tests/unit/test_openai_provider_settings.py: 기본 fixture, 명시 openai, 잘못된 URL/path/TLS, 키 로딩0, 13회 독립 호출, 실패 후 다른 요청/동일 요청 retry 책임 분리, phase/observation/실제 모델·usage 전달을 검증한다. 실제 네트워크0.
+- [x] 관련 설정·provider·gateway 회귀와 인계 AI-LIVE-04-MA01. factory 연결만으로 upstream worker/웹 녹화 완료라고 쓰지 않는다.
 
 ## MA-02 · 실제 사용량·최종 server 권한 경계
+
+MA02a(먼저): recording_requests의 openai endpoint/provider 일치와 실제 send 직전 권한 callback. MA02b(다음): 측정 usage 영속화·중복/재시작 정산. 두 단위를 별도 커밋한다. 현재 openai 정상 녹화는 endpoint gate에서 차단된다.
 
 - [ ] broker.py ServerModelGateway가 OpenAI 결과의 input/output/reasoning/cache를 정상 정산/영속 usage에 전달한다. usage unknown을0으로 바꾸지 않는다. 서버 receipt/idempotency 경로는 동일 요청 재호출/중복 과금을 막는다.
 - [ ] 실제 HTTP 전송 직전 callback으로 현 attempt/generation/lease/control/모델 budget·역할 binding을 다시 확인한다. 거절 시 provider_dispatched=false, timeout/전송불명은 true로 구분한다. 테스트에서 client 준비/관찰 파싱 동안 권한 변화·quota·lost ACK를 다룬다.

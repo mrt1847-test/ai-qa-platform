@@ -498,3 +498,8 @@ migration0051은 annotation의 derived manifest/recording/prior source/hash/inpu
 third_party/mobile_agent는 고정81fa28b564ef7a695521500bc15a0e1324b2b394의 원본 main/prompt/history/parser/rescale를 실행한다. 원본 hash/최소 import 패치·라이선스를 보존하며 manifest 자체와 필수 파일 집합도 고정한다. Luna image1000square/최종 단일 행동 codec과 관찰 가능한 typed driver I/O만 변환한다. Responses commentary를 action에 합치지 않으며 final_answer를 보존한다. 실제 성공4native/5generation과 동일 source 4native/AI0 재생, 단계별 before/after·hierarchy/usage/log의 근거는 AI-LIVE-03이다.
 
 이 CLI 경로는 키 없는 별도 재생 프로세스·명시 source/pin SHA·target/complete·before image/hierarchy SHA를 확인하고 같은 좌표/문자만 보낸다. source/native를 추정 보정하거나 retry/healing하지 않는다. 유일한 클릭 리소스/같은 위치·속성 또는 bounded interaction pixels가 달라지면 차단한다. 읽기 전용 전환 관찰은 최대10회이며 native/model 재전송과 다르다. CLI의 로컬 증거/assistant 관찰은 서버 DB evidence ACK/실제 사람 승인/QA assertion 수용이 아니다. 정상 모델 factory/서버 비밀 참조/권한·usage/worker IPC 연결은 MOBILE_AGENT_SERVER_WIRING_TASKS.md의 MA01~05에서 구현한다. API 키를 로컬 env에서 자동 등록하거나 worker에 전달하지 않는다.
+
+
+### MA01 · 정상 OpenAI factory와 실제 전송 여부 (C00/C04/C06/C14)
+
+AIQA_MODEL_PROVIDER_MODE=openai는 고정 api.openai.com/v1/responses/public CA verification/trust_env=False와 유한 timeout<=60을 사용한다. 기본 fixture·기존 operational은 보존한다. 키는 서버 secret resolver가 호출 단위로 주며 로컬 env를 자동 읽지 않는다. 서버 adapter는 한 요청당 bounded port1개로 global12회 latch를 만들지 않고 실제 send만 역할 count에 기록한다. 명시 provider_dispatched=False의 로컬 거절은 gateway quota를 차감하지 않으며 실제/불명/기존 provider 미지정은 차감한다. maintenance도 기존 역할 권한 뒤에만 전송한다. 현재 정상 recording_requests의 openai grant는 MA02a 전까지 fail-closed이며 이 factory만으로 원본 녹화/정산/승인 수용을 완료하지 않는다.

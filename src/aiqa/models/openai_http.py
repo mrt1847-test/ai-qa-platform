@@ -4,6 +4,7 @@ import base64
 from contextlib import closing
 from dataclasses import dataclass
 import hashlib
+import math
 import json
 from pathlib import Path
 import httpx
@@ -43,10 +44,12 @@ class OpenAIProviderHttp:
     kind='openai'
     supports_observation=True
 
-    def __init__(self, *, allow_live=False, max_calls=3, reasoning_effort=None, transport=None, response_sink=None):
+    def __init__(self, *, allow_live=False, max_calls=3, reasoning_effort=None, transport=None, response_sink=None, timeout_seconds=60):
         if type(max_calls) is not int or not 1<=max_calls<=12:raise ValueError('call cap must be 1..12')
         if reasoning_effort not in {None,'none','low','medium','high'}:raise ValueError('reasoning effort unsupported')
         if response_sink is not None and not callable(response_sink):raise ValueError('response sink invalid')
+        if type(timeout_seconds) not in (int,float) or not math.isfinite(timeout_seconds) or not 0<timeout_seconds<=60:raise ValueError('provider timeout invalid')
+        self.timeout_seconds=float(timeout_seconds)
         self._response_sink=response_sink
         self.reasoning_effort=reasoning_effort
         self.allow_live=allow_live
@@ -63,7 +66,7 @@ class OpenAIProviderHttp:
             raise ProviderHttpError('provider_disabled_or_exhausted')
         if (type(secret) is not str or not secret or any(c.isspace() for c in secret)
             or type(model) is not str or not model or len(model)>128
-            or role not in {'authoring','verification','healing','structure'}
+            or role not in {'authoring','verification','healing','structure','maintenance'}
             or type(token_output_limit) is not int or not 16<=token_output_limit<=2048
             or type(sanitized_inputs) is not tuple or any(type(s) is not str for s in sanitized_inputs)
             or sum(len(s) for s in sanitized_inputs)>20000):
@@ -94,7 +97,7 @@ class OpenAIProviderHttp:
         elif model.startswith('gpt-5'):body['reasoning']={'effort':'minimal'}
         if before_send is not None and not callable(before_send):raise ProviderHttpError('provider_input_invalid')
         try:
-            with httpx.Client(timeout=60,trust_env=False,follow_redirects=False,transport=self._transport) as client:
+            with httpx.Client(timeout=self.timeout_seconds,trust_env=False,follow_redirects=False,transport=self._transport) as client:
                 request=client.build_request('POST','https://api.openai.com/v1/responses',json=body,
                     headers={'Authorization':'Bearer '+secret,'Content-Type':'application/json'})
                 if before_send is not None:before_send()

@@ -450,10 +450,12 @@ class ServerModelGateway:
                 **call_options,
             )
         except ProviderHttpError as exc:
-            # A completed HTTP failure or uncertain send still consumes a call.
-            broker.meter(model_request)
-            ledger[request.role] = ledger.get(request.role, 0) + 1
-            raise ModelRequestDenied(exc.reason, status=exc.status or (504 if exc.reason=="provider_timeout" else 502), provider_dispatched=True) from exc
+            # Explicit pre-send refusals are free; attempted/legacy-unknown sends consume a call.
+            dispatched = exc.provider_dispatched is not False
+            if dispatched:
+                broker.meter(model_request)
+                ledger[request.role] = ledger.get(request.role, 0) + 1
+            raise ModelRequestDenied(exc.reason, status=exc.status or (504 if exc.reason=="provider_timeout" else 502), provider_dispatched=dispatched) from exc
         except TimeoutError as exc:
             broker.meter(model_request)
             ledger[request.role] = ledger.get(request.role, 0) + 1

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -49,6 +50,7 @@ class OidcHostedSettings:
 
 MODEL_PROVIDER_FIXTURE = "fixture"
 MODEL_PROVIDER_OPERATIONAL = "operational"
+MODEL_PROVIDER_OPENAI = "openai"
 DEFAULT_MODEL_PROVIDER_TIMEOUT_SECONDS = 10.0
 
 
@@ -61,19 +63,31 @@ class ModelProviderSettings:
     ca_bundle: Path | None = None
     verify_tls: bool = True
     timeout_seconds: float = DEFAULT_MODEL_PROVIDER_TIMEOUT_SECONDS
-    complete_path: str = "/v1/complete"
+    complete_path: str | None = None
 
     def __post_init__(self) -> None:
-        if self.mode not in {MODEL_PROVIDER_FIXTURE, MODEL_PROVIDER_OPERATIONAL}:
+        if self.mode not in {MODEL_PROVIDER_FIXTURE, MODEL_PROVIDER_OPERATIONAL, MODEL_PROVIDER_OPENAI}:
             raise SettingsError(
-                f"AIQA_MODEL_PROVIDER_MODE must be fixture or operational; refused {self.mode!r}"
+                f"AIQA_MODEL_PROVIDER_MODE must be fixture, operational, or openai; refused {self.mode!r}"
             )
         if type(self.timeout_seconds) is not float and type(self.timeout_seconds) is not int:
             raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid")
         if float(self.timeout_seconds) <= 0:
             raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid")
+        if self.complete_path is None:
+            object.__setattr__(self,"complete_path","/v1/responses" if self.mode==MODEL_PROVIDER_OPENAI else "/v1/complete")
         if type(self.complete_path) is not str or not self.complete_path.startswith("/"):
             raise SettingsError("AIQA_MODEL_PROVIDER_COMPLETE_PATH is invalid")
+        if self.mode == MODEL_PROVIDER_OPENAI:
+            if self.base_url is not None and (type(self.base_url) is not str or self.base_url not in {"https://api.openai.com","https://api.openai.com/"}):
+                raise SettingsError("AIQA_MODEL_PROVIDER_BASE_URL is fixed for openai")
+            if self.complete_path!="/v1/responses":raise SettingsError("AIQA_MODEL_PROVIDER_COMPLETE_PATH is fixed for openai")
+            if self.verify_tls is not True:raise SettingsError("AIQA_MODEL_PROVIDER_VERIFY_TLS must be enabled for openai")
+            if self.ca_bundle is not None:raise SettingsError("AIQA_MODEL_PROVIDER_CA_BUNDLE is not supported for openai")
+            if not math.isfinite(float(self.timeout_seconds)) or float(self.timeout_seconds)>60:
+                raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS must be finite and at most60 for openai")
+            object.__setattr__(self,"base_url","https://api.openai.com")
+            return
         if self.mode == MODEL_PROVIDER_FIXTURE:
             return
         if type(self.base_url) is not str or self.base_url.strip() == "":
@@ -304,7 +318,7 @@ def _load_model_provider_settings(source: Mapping[str, str]) -> ModelProviderSet
             timeout = float(raw_timeout)
         except (TypeError, ValueError) as exc:
             raise SettingsError("AIQA_MODEL_PROVIDER_TIMEOUT_SECONDS is invalid") from exc
-    complete_path = "/v1/complete"
+    complete_path = None
     if "AIQA_MODEL_PROVIDER_COMPLETE_PATH" in source:
         raw_path = source["AIQA_MODEL_PROVIDER_COMPLETE_PATH"]
         if type(raw_path) is not str or raw_path.strip() == "":

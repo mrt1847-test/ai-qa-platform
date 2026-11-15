@@ -17,6 +17,7 @@ from aiqa.contracts.model_observations import ProviderObservation
 from aiqa.config import (
     MODEL_PROVIDER_FIXTURE,
     MODEL_PROVIDER_OPERATIONAL,
+    MODEL_PROVIDER_OPENAI,
     AppSettings,
     ModelProviderSettings,
 )
@@ -56,10 +57,11 @@ class ProviderHttpPort(Protocol):
 class ProviderHttpError(ValueError):
     """Outbound provider transport or response was refused."""
 
-    def __init__(self, reason: str, *, status: int | None = None) -> None:
+    def __init__(self, reason: str, *, status: int | None = None, provider_dispatched: bool | None = None) -> None:
         super().__init__(reason)
         self.reason = reason
         self.status = status
+        self.provider_dispatched = provider_dispatched
 
 
 def structured_fixture_content(role: str, *, sanitized_inputs: tuple[str, ...] = ()) -> str:
@@ -290,12 +292,15 @@ def build_provider_from_settings(
     settings: AppSettings | ModelProviderSettings,
     *,
     transport: httpx.BaseTransport | None = None,
-) -> FixtureProviderHttp | OperationalProviderHttp:
-    """Select fixture or operational HTTP from approved settings. Keys are not read here."""
+) -> ProviderHttpPort:
+    """Select an explicit outbound provider. Keys are not read here."""
 
     conf = settings.model_provider if isinstance(settings, AppSettings) else settings
     if conf.mode == MODEL_PROVIDER_FIXTURE:
         return FixtureProviderHttp()
+    if conf.mode == MODEL_PROVIDER_OPENAI:
+        from aiqa.models.openai_server import OpenAIServerProvider
+        return OpenAIServerProvider(timeout_seconds=float(conf.timeout_seconds),transport=transport)
     if conf.mode != MODEL_PROVIDER_OPERATIONAL:
         raise ValueError("model provider mode is invalid")
     return OperationalProviderHttp(

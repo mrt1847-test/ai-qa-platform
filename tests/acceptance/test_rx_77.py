@@ -438,7 +438,7 @@ def test_rx_77_browser_contract_journey_results_and_resource_reuse(tmp_path: Pat
             "SELECT action_mapping FROM recording_manifests WHERE project_id = ? AND recording_id = ?",
             (project_id, recording_id),
         )[0][0]
-        expected_plan = "click(%s)" % ", ".join(_CASES[label]["tap"].split())
+        expected_plan = "physical:click(%s)" % ", ".join(_CASES[label]["tap"].split())
         assert mobile_agent_plan_from_android_mapping(mapping) == expected_plan
 
         # --- Trial (execution-previews → executions with frozen items, as the JS does) ---------
@@ -534,11 +534,12 @@ def test_rx_77_browser_contract_journey_results_and_resource_reuse(tmp_path: Pat
     assert first_physical_attempts[-1] == [(physical,), (physical,)]
     assert len(journey.runs) == 6
 
-    # Regression advanced BOTH items, each with its own approved replay plan (distinct taps).
+    # V2 preserves physical recording taps; rescaling these again would send 2,5 and 5,10.
+    # Regression advances BOTH items with their own approved replay plans.
     regression_taps = [call for call in journey.replay_calls[-2:]]
     flattened = [" ".join(call) for call in regression_taps]
-    assert any(text.endswith("input tap 2 5") for text in flattened), flattened
-    assert any(text.endswith("input tap 5 10") for text in flattened), flattened
+    assert any(text.endswith("input tap 25 50") for text in flattened), flattened
+    assert any(text.endswith("input tap 50 100") for text in flattened), flattened
     assert len({tuple(call) for call in regression_taps}) == 2
 
     # A third claim finds nothing: queue drained and no lease left behind.

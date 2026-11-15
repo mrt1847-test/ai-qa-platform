@@ -466,3 +466,14 @@ POST worker/checkpoints는 현재 인증 project/purpose/worker·job/attempt/ACK
 정상 require_case_context=True Android 재생은 고정 source의 필수 step/final 검증을 worker fixture tuple로 바꾸지 않는다. StepMapping의 gesture ID/ordinal을 logical StepSpec이나 resource_id로 추정하지 않는다. 실제 마지막 action의 유효 후속 관찰 뒤에만 final_expected의 coverage를 보고하며, 논리 경계/subject/전용 verifier 연결이 없으면 required unknown→error/INCONCLUSIVE다. 모델/치유 호출0이며 원본 FAIL/승인은 불변이다. 실제 평가와 normalized check_results 저장은 B2.3b/c다. require_case_context=False 직접 개발 constructor의 fixture 검증은 supplied metadata를 검증한 뒤에만 기존대로 유지하며 HTTP가 이 모드를 선택하지 못한다.
 
 저장 log에는 check/phase/source version·hash·context/status/method/reason/time과 expected_hash만 기록한다. expected 원문은 고정 source에서 조회하며 strict replay의 raw stdout/observed text는 복제하지 않는다. source steps/총check 각각256, metadata label UTF8 256bytes 초과는 native 준비 전에 check_coverage_limits다. expected 자체는 크기 제한 표현(hash)으로 저장한다. 관찰 시각은 timezone-aware ISO/64자 이하를 ACK/dispatch 전에 검사하며 잘못된 final frame 때문에 앞선 prefix를 버리거나 final check 성공을 만들지 않는다. 원문과 미평가를 실제 검증 증거로 승격하지 않는다.
+
+
+### RX87 native trace v2와 실제 모델 기술 시험 (C00/C04/C05/C06/C14)
+
+새 Android 녹화는 android-native-trace-v2로 실제 typed tap/text/key/swipe의 좌표·문자·키코드·시간과 physical geometry를 모두 저장한다. source가 받은 native 수와 event 수, planned/observed final_seq=2*수는 같아야 한다. compiler/lock은 android-native-plan-v2/android-native-lock-v2이며 표시 plan은 physical: 접두사를 가진다. 기존 v1 manifest/package bytes는 바꾸거나 누락 값을 추정해 업그레이드하지 않는다. schema/native/count/physical geometry 중 surviving v2 표식이 있으면 v1 fallback을 금지한다.
+
+v2 seal은 ready/ACK된 같은 project·REC owner·source role·text/plain·hash/byte length·같은 recording job/attempt/generation의 source artifact를 요구한다. finish 본문에서 새 digest를 계산하는 것만으로 저장 원본 증명이 되지 않는다. 불명/손상 source는 승인 가능한 새 package를 만들지 않는다. 기존 v1의 저장 이력 계약은 유지한다.
+
+정상 case_context는 서버 DB package의 replay_compiler_ref를 context_hash에 포함한다(recording은 null). 정상 strict replay는 이 필드를 요구하고 native v2 compiler이면 native_source witness를 필수로 검증한다. witness는 project/package ID/hash/source manifest ID/hash/원본 mapping이며 worker 재compile hash·표시 plan이 같아야 한다. 표시 plan/witness가 빠져도 worker 전역 plan으로 v2를 실행하지 않는다. 원래 observation의 model/physical geometry·bounds·정제를 먼저 검사하고 identity physical frame에서 typed driver를 호출해 이중 rescale을 막는다. context-v1에 새 compiler metadata를 추가하므로 이 strict producer/consumer를 함께 갱신한다; 직접 개발 seam의 구형 fixture 호환은 정상 runtime 권한이 아니다.
+
+AI-LIVE-01의 OpenAIProviderHttp/tools/android_openai_smoke.py는 명시 로컬 파일의 키와 fixed OpenAI TLS origin을 사용하는 별도 기술 시험이다. 정상 factory/서버 비밀 참조/admission/비용 저장/사람 승인으로 해석하지 않는다. 이미지 입력, store=false, 호출/출력 한도, incomplete/refusal 거절, 오류 후 latch/no retry를 적용한다. 단일 Back의 저장 bytes hash·개수/허용 동작을 dispatch 전에 대조하고 양쪽 native1/acknowledged를 확인한다. 실제 기록1회2387+22tokens/저장본 AI0 재생의 근거가 있고, 일반 자율 다단계·실제 check 평가 수용은 남아 있다.

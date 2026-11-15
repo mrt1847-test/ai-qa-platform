@@ -7,6 +7,8 @@
 
 기준일: **2026-11-02 (Asia/Seoul)** · 기존 local baseline **완료126/163**, 상위6/33 W. 이 수는 cloud MVP 진행률이 아니다. [확정 배치](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)·[PC 작업 계획](docs/superpowers/plans/2026-11-02-managed-pc-transition.md)에 따라 전환하며 cloud 실제 수용은 미검증이다.
 
+실제 모델 최초 기술 시험: [AI-LIVE-01](docs/validation/tasks/AI-LIVE-01.md), OpenAI1회/2409tokens로 단일 Back 기록 후 AI0 재생. 정상 제품 접수·승인·검증 수용과 별개이며 완료 수는 유지한다.
+
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**
 [최소 기반4개](docs/execution/00-bootstrap.md)를 먼저 만들고 환경에 막히지 않는 독립 core 경로로 진행한다.
 기존 상세 작업은 163개/15영역이다. 초기 전환은 [PC_EXECUTION_INDEX](docs/execution/PC_EXECUTION_INDEX.json)의 별도 4개, 원격 실행 구현·수용은 [RX 색인](docs/managed-pc/IMPLEMENTATION_TASKS.json)의 별도 99개로 추적한다.

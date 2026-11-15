@@ -422,7 +422,7 @@ def test_rx_71_browser_recording_trial_approve_suite_regression(tmp_path: Path, 
         "SELECT action_mapping FROM recording_manifests WHERE project_id = ? AND recording_id = ?",
         (project_id, recording_id),
     )[0][0]
-    assert mobile_agent_plan_from_android_mapping(manifest_mapping) == "click(25, 50)"
+    assert mobile_agent_plan_from_android_mapping(manifest_mapping) == "physical:click(25, 50)"
 
     # --- Trial -----------------------------------------------------------------------------
     trial = asyncio.run(

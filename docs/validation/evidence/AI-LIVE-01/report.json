@@ -1,0 +1,36 @@
+{
+  "avd": "Medium_Phone_API_36",
+  "finished_at": "2026-11-15T00:46:25.834978+00:00",
+  "input_tokens": 2387,
+  "model": "gpt-5-mini-2025-08-07",
+  "output_tokens": 22,
+  "package": "com.ebay.kr.gmarket",
+  "provider_request_id": "resp_0e2179daaa95539b016af900d92c5487d2bf523f4326d9ce3f",
+  "recording_actions": 1,
+  "recording_argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "keyevent",
+    "4"
+  ],
+  "recording_model_calls": 1,
+  "replay_actions": 1,
+  "replay_argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "keyevent",
+    "4"
+  ],
+  "replay_model_calls": 0,
+  "scope": "manual_technical_smoke_not_product_approval_or_QA",
+  "serial": "emulator-5580",
+  "started_at": "2026-11-15T00:46:05.979211+00:00",
+  "status": "recorded_and_replayed",
+  "total_tokens": 2409
+}

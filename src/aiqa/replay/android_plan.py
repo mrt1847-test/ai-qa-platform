@@ -317,6 +317,12 @@ def android_trace_ready(mapping: str) -> bool:
         return False
     if type(parsed) is not dict or type(parsed.get("events")) is not list:
         return False
+    from aiqa.replay.android_native_trace import is_native_trace
+    if is_native_trace(parsed):
+        from aiqa.replay.android_native_trace import parse_native_trace
+        try:parse_native_trace(mapping)
+        except PlanRejected:return False
+        return True
     return android_trace_reasons(parsed["events"]) == ()
 
 
@@ -335,6 +341,10 @@ def compile_android_plan(source: RecordingManifest) -> CompiledPackage:
         raise PlanRejected("trace is missing") from exc
     if type(parsed) is not dict or type(parsed.get("events")) is not list:
         raise PlanRejected("trace is missing")
+    from aiqa.replay.android_native_trace import is_native_trace
+    if is_native_trace(parsed):
+        from aiqa.replay.android_native_trace import compile_native_source
+        return compile_native_source(source)
     events = parsed["events"]
     reasons = android_trace_reasons(events)
     if reasons:

@@ -12,6 +12,8 @@ Updated: **2026-11-15 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 [RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. B0.4의 단계별 증거 ACK 복구도 검증했다. B0.5의 evidence/event 서버 시각·job purpose 권한도 검증했다. B0.6의 파일 I/O/DB writer 분리·다른 artifact ingress의 시각도 검증했다. B1의 Android 재생 고정 한도·현재 제어도 검증했다. B2.1의 고정 검증·대상 metadata 공급도 검증했다. B2.2a의 worker metadata 파싱·owner/version/pin 대조·필수 current fence도 검증했다. [B2.2b 선택 앱 준비/저장 근거](docs/validation/tasks/RX-87-B2-TARGET.md)도 검증했다. [B2.3a 필수 검증 누락 방지](docs/validation/tasks/RX-87-B2-CHECK-COVERAGE.md)도 core 완료했다. 현재 [B2.3b 승인 logical 경계/검증 대상 binding·저장/UI](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)를 진행하고, 실제 hierarchy/정규화 결과 B2.3c와 C/D를 이어간다. subject/mapping 없는 필수 검증은 unknown이며 fixture 성공으로 바꾸지 않는다. C:/apk G마켓은 전용 AVD에서 기동/PNG까지 확인했으나 실제 모델/전체 QA 수용은 아니다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
 
+현재 보조 구현/실제 시험: [AI-LIVE-01](docs/validation/tasks/AI-LIVE-01.md)에서 로컬 env 키로 실제 OpenAI 이미지→명시 단일 Back 응답1회(2409tokens)→저장 JSON→AI0 재생을 관찰했다. 이것은 정상 서버 접수/사람 승인/다단계 자율 탐색의 완료가 아니다. OpenAI 직접 포트를 정상 model binding·비밀 참조·계측으로 연결하는 후속을 B2.3/C와 함께 구현한다. 웹 설정의 연결 검사는 아직 fixture이며 실제 OpenAI 연결 성공으로 해석하지 않는다. [native trace 정확 재생](docs/managed-pc/ANDROID_NATIVE_TRACE_TASKS.md)의 코드와 [리뷰 보완](docs/validation/tasks/RX-87-B2-NATIVE-TRACE.md)을 검증했다. 다음은 logical 검증 경계 binding/UI와 정상 OpenAI port의 서버 연결이다.
+
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |

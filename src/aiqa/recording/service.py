@@ -569,6 +569,11 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
         _require_artifacts(connection, project_id, spec.artifact_ids)
     outcome = "interrupted" if spec.outcome == "interrupted" else spec.outcome
     mapping, source_hashes, should_compile = _android_seal_payload(spec, outcome)
+    if should_compile:
+        from aiqa.replay.android_native_trace import is_native_trace
+        if is_native_trace(json.loads(mapping)):
+            _require_native_source(connection,project_id,spec,mapping)
+
     connection.execute(  # type: ignore[attr-defined]
         """
         UPDATE recordings
@@ -617,7 +622,12 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
 
 def _android_seal_payload(spec: RecordingFinishInput, outcome: str) -> tuple[str, str, bool]:
     mapping = spec.action_mapping if type(spec.action_mapping) is str else "{}"
-    if android_trace_ready(mapping):
+    ready = android_trace_ready(mapping)
+    if ready and 'schema' in json.loads(mapping):
+        from aiqa.replay.android_native_trace import parse_native_trace
+        # Each dispatched gesture has one planned and one observed durable event.
+        ready = spec.final_seq == 2 * len(parse_native_trace(mapping))
+    if ready:
         digest = android_mapping_digest(mapping)
         hashes = list(spec.artifact_ids)
         if digest not in hashes:
@@ -664,6 +674,21 @@ def _artifact_ids_from_hashes(raw: str) -> tuple[str, ...]:
         if len(text) == 36 and text.count("-") == 4:
             ids.append(text)
     return tuple(ids)
+
+
+def _require_native_source(connection, project_id, spec, mapping):
+    digest='sha256:'+android_mapping_digest(mapping)
+    for artifact_id in spec.artifact_ids:
+        row=connection.execute("""SELECT 1 FROM artifact_objects o
+            JOIN attempts a ON a.project_id=o.project_id AND a.attempt_id=o.attempt_id
+              AND a.job_id=o.job_id AND a.generation=o.generation
+            JOIN jobs j ON j.project_id=a.project_id AND j.job_id=a.job_id
+            WHERE o.project_id=? AND o.artifact_id=? AND o.owner_kind='REC' AND o.owner_id=?
+              AND o.role='source' AND o.media_type='text/plain' AND o.content_hash=? AND o.byte_length=?
+              AND o.status='ready' AND o.acked=1 AND j.purpose='recording' AND j.recording_id=?""",
+            (str(project_id),artifact_id,str(spec.recording_id),digest,len(mapping.encode('utf-8')),str(spec.recording_id))).fetchone()
+        if row is not None:return
+    raise PreflightRejected('acknowledged native source differs or is missing')
 
 
 def _require_artifacts(connection: object, project_id: UUID, artifact_ids: tuple[str, ...]) -> None:

@@ -39,6 +39,7 @@ from aiqa.worker.replay_limits import ReplayLimits, resolve_replay_limits
 from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
 from aiqa.worker.case_context import CaseContextRejected, WorkerCaseContext, resolve_claim_case_context
 from aiqa.worker.android_prepare import AppPreparationFailed
+from aiqa.worker.native_source import NativeSource, resolve_claim_native_source
 from aiqa.worker.replay_check_coverage import (RequiredCheckCoverage, required_check_coverage,
     coverage_log_document, validate_coverage_source, validate_observed_at)
 from aiqa.worker.runner import ACTION_LIMIT
@@ -749,12 +750,14 @@ class AndroidRecordingHandler:
         ):
             self.stopped_reason = "action_budget"
 
+        if self.stopped_reason in _RECORDING_SUCCESS_STOPS and len(self._seal_events)!=self.tap_count:
+            self.stopped_reason = "recording_trace_incomplete"
         outcome = _recording_attempt_outcome(self.stopped_reason)
         # Only a completed recording carries a compile-ready mapping; cancelled/error stay "{}".
         action_mapping = "{}"
         if outcome == "completed" and self._seal_events:
             action_mapping = json.dumps(
-                {"events": list(self._seal_events)},
+                {"schema":"android-native-trace-v2","native_action_count":self.tap_count,"events":list(self._seal_events)},
                 ensure_ascii=False,
                 separators=(",", ":"),
                 sort_keys=True,
@@ -1015,44 +1018,15 @@ class AndroidRecordingHandler:
 def _seal_event_for_action(
     action: Any, before: Observation, *, action_id: str, line: int
 ) -> dict[str, Any] | None:
-    """One RX-50 style seal event for a dispatched step. Unsupported kinds are skipped."""
+    """Preserve one validated native step; missing steps make the complete trace unavailable."""
 
-    kind = str(getattr(action, "kind", "") or "")
-    x = getattr(action, "x", None)
-    y = getattr(action, "y", None)
-    if kind == "tap" and type(x) is int and type(y) is int:
-        name = "tap"
-        bounds = [x, y, x + 1, y + 1]
-        target: Any = f"{x},{y}"
-    elif kind == "swipe" and type(x) is int and type(y) is int:
-        x2, y2 = getattr(action, "x2", None), getattr(action, "y2", None)
-        if type(x2) is not int or type(y2) is not int:
-            return None
-        name = "swipe"
-        bounds = [min(x, x2), min(y, y2), max(x, x2) + 1, max(y, y2) + 1]
-        target = f"{x},{y}->{x2},{y2}"
-    elif kind == "text":
-        name = "type"
-        bounds = [0, 0, 1, 1]
-        target = "text"
-    elif kind == "key" and getattr(action, "keycode", None) == 4:
-        name = "back"
-        bounds = [0, 0, 1, 1]
-        target = "back"
-    else:
+    from aiqa.replay.android_native_trace import native_event
+    from aiqa.replay.android_plan import PlanRejected
+    try:
+        return native_event(action,before,action_id=action_id,line=line)
+    except (TypeError,ValueError,AttributeError,PlanRejected):
         return None
-    return {
-        "kind": "action",
-        "action": name,
-        "intent": "open",
-        "target": target,
-        "action_id": action_id,
-        "line": line,
-        "geometry": {
-            "rotation": int(before.geometry.rotation),
-            "content_bounds": bounds,
-        },
-    }
+
 
 
 def _action_result_token(action: object) -> str:
@@ -1184,9 +1158,11 @@ class AndroidReplayHandler:
     preparation_artifact_ids: tuple[str, ...] = field(default=(), init=False)
 
     check_coverage: tuple[RequiredCheckCoverage, ...] = field(default=(), init=False)
+    _native_source: NativeSource | None = field(default=None,init=False,repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         self.check_coverage = ()
+        self._native_source = None
         self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
@@ -1227,6 +1203,12 @@ class AndroidReplayHandler:
             # not a credential for a production ON claim.
             self.stopped_reason = "healing_runtime_unavailable"
             return _fail_closed(self.stopped_reason, evidence_complete=False)
+        try:
+            self._native_source=resolve_claim_native_source(claim,case_context=self._case_context)
+        except ValueError:
+            self.stopped_reason='native_source_invalid'
+            return _fail_closed('native_source_invalid',evidence_complete=False)
+
         pin = resolve_claim_replay_pin(snapshot)
         approved_digest = pin.package_hash or self.context.approved_digest
         approved_plan = pin.approved_plan or self.context.approved_plan
@@ -1338,10 +1320,25 @@ class AndroidReplayHandler:
                 break
 
             try:
+                replay_before=before
+                replay_after=after if after is not None else before
+                replay_line=plan_line
+                if self._native_source is not None:
+                    from aiqa.replay.android_native_trace import mobile_action
+                    from aiqa.adapters.mobile_agent_android import _physical_identity
+                    self.adapter.sanitize(before)
+                    self.adapter.sanitize(replay_after)
+                    step=self._native_source.steps[step_index]
+                    geo=before.geometry
+                    if geo is None or (geo.physical_width,geo.physical_height,geo.rotation)!=(step.width,step.height,step.rotation):
+                        raise MobileAgentRejected('native source geometry changed')
+                    replay_line=mobile_action(step.action)
+                    replay_before=_physical_identity(before)
+                    replay_after=_physical_identity(replay_after)
                 recorded = self.adapter.replay_step(
-                    plan_response=plan_line,
-                    observation=before,
-                    after=after if after is not None else before,
+                    plan_response=replay_line,
+                    observation=replay_before,
+                    after=replay_after,
                     driver=self.driver,
                     broker=self.broker,
                     before_native_send=lambda: self._before_native_replay_send(claim, action_id),

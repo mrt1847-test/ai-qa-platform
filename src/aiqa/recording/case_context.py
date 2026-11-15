@@ -56,6 +56,12 @@ def load_case_context(connection, receipt):
     package = receipt.snapshot.replay_package_id
     if package is not None and source['replay_package_id'] != package:
         raise ValueError('case context package mismatch')
+    compiler = None
+    if package is not None:
+        row = connection.execute('SELECT compiler_ref FROM replay_packages WHERE project_id=? AND package_id=?',
+            (str(receipt.project_id),package)).fetchone()
+        if row is None or not row[0]:raise ValueError('case package compiler missing')
+        compiler = str(row[0])
     definition, settings = (json.loads(source[name]) for name in ('definition_json','settings_json'))
     if type(definition) is not dict or type(settings) is not dict:
         raise ValueError('case source is invalid')
@@ -76,6 +82,7 @@ def load_case_context(connection, receipt):
         'case_id':source['case_id'],'case_version_id':source['version_id'],
         'content_hash':source['content_hash'],'verification_digest':source['verification_digest'],
         'replay_package_id':package,'replay_package_hash':receipt.snapshot.replay_package_hash,
+        'replay_compiler_ref':compiler,
         'objective':definition.get('objective',''),'preconditions':definition.get('preconditions',[]),
         'steps':prepared_steps,'final_expected':_checks(definition.get('final_expected',[])),
         'path_policy':definition.get('path_policy',{'must_use':[],'forbidden':[]}),

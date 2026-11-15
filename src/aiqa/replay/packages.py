@@ -280,6 +280,7 @@ class ClaimPackagePin:
     package_hash: str
     approved_plan: str
     self_healing_enabled: bool
+    native_source: dict[str, object] | None = None
 
 
 def resolve_claim_package_pin(
@@ -299,7 +300,7 @@ def resolve_claim_package_pin(
         return None
     row = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT body_hash, source_manifest_id FROM replay_packages
+        SELECT body_hash, source_manifest_id, compiler_ref FROM replay_packages
         WHERE project_id = ? AND package_id = ? AND ready = 1
         """,
         (str(project_id), package_id),
@@ -307,8 +308,19 @@ def resolve_claim_package_pin(
     if row is None or str(row[0]) != package_hash:
         return None
     plan = _approved_plan_from_manifest(connection, project_id, row[1])
+    native_source = None
+    from aiqa.replay.android_native_trace import COMPILER, native_source_document
+    if str(row[2]) == COMPILER:
+        from aiqa.recording.service import _manifest_row
+        from aiqa.replay.android_plan import PlanRejected
+        source = _manifest_row(connection,UUID(str(project_id)),UUID(str(row[1])))
+        if source is None:return None
+        try:native_source=native_source_document(project_id,package_id,package_hash,source)
+        except (PlanRejected,ValueError):return None
+    elif plan.startswith('physical:'):
+        return None
     healing = False if purpose == "trial" else self_healing_enabled is True
-    return ClaimPackagePin(package_id, package_hash, plan, healing)
+    return ClaimPackagePin(package_id, package_hash, plan, healing, native_source)
 
 
 def mobile_agent_plan_from_android_mapping(mapping: str) -> str:
@@ -320,6 +332,12 @@ def mobile_agent_plan_from_android_mapping(mapping: str) -> str:
         return ""
     if type(parsed) is not dict or type(parsed.get("events")) is not list:
         return ""
+    from aiqa.replay.android_native_trace import is_native_trace
+    if is_native_trace(parsed):
+        from aiqa.replay.android_native_trace import parse_native_trace,physical_plan
+        from aiqa.replay.android_plan import PlanRejected
+        try:return physical_plan(parse_native_trace(mapping))
+        except PlanRejected:return ''
     lines: list[str] = []
     for item in parsed["events"]:
         if type(item) is not dict or item.get("kind") == "model":

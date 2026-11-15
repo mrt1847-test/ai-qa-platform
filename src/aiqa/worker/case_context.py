@@ -37,6 +37,7 @@ class WorkerCaseContext:
     final_expected: tuple[CheckSpec, ...]
     context_hash: str
     _serialized: str = field(repr=False)
+    replay_compiler_ref: str | None = None
 
     def to_document(self) -> dict:
         """Callers may edit their own copy; the detached pin stays immutable."""
@@ -100,8 +101,13 @@ def resolve_claim_case_context(claim, *, required=False):
                 raise CaseContextRejected('case context missing')
             return None
         raw = snapshot['case_context']
-        if type(raw) is not dict or set(raw)!=_FIELDS or raw['schema']!='case-context-v1':
+        if type(raw) is not dict or set(raw) not in (_FIELDS,_FIELDS|{'replay_compiler_ref'}) or raw['schema']!='case-context-v1':
             raise CaseContextRejected('case context schema invalid')
+        compiler=raw.get('replay_compiler_ref')
+        if compiler is not None:_text(compiler)
+        if raw['purpose']=='recording' and compiler is not None:raise CaseContextRejected('recording compiler context invalid')
+        if required and raw['purpose'] in {'trial','regression'} and not compiler:
+            raise CaseContextRejected('replay compiler context missing')
         unsigned = {key:value for key,value in raw.items() if key!='context_hash'}
         if raw['context_hash']!=canonical_hash(unsigned,'canon-json-v1'):
             raise CaseContextRejected('case context hash invalid')
@@ -185,7 +191,7 @@ def resolve_claim_case_context(claim, *, required=False):
         final = _checks(raw['final_expected'],seen_checks)
         return WorkerCaseContext(raw['case_version_id'],raw['content_hash'],raw['objective'],
             CaseTarget(target['kind'],package),tuple(steps),final,raw['context_hash'],
-            json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False))
+            json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False),compiler)
     except (KeyError,TypeError,ValueError,OverflowError) as exc:
         if isinstance(exc,CaseContextRejected):raise
         raise CaseContextRejected('case context invalid') from exc

@@ -265,7 +265,7 @@ def _seed_case(app: object, store: object, project_id: UUID, actor: Actor) -> tu
     return case_id, version_id, recording_id, artifact_id
 
 
-def _seed_artifact(connection: object, project_id: UUID, recording_id: UUID, artifact_id: UUID) -> None:
+def _seed_artifact(connection: object, project_id: UUID, recording_id: UUID, artifact_id: UUID, *, source_mapping: str | None = None) -> None:
     job_id = str(uuid4())
     attempt_id = str(uuid4())
     connection.execute(  # type: ignore[attr-defined]
@@ -296,8 +296,11 @@ def _seed_artifact(connection: object, project_id: UUID, recording_id: UUID, art
             project_id, artifact_id, object_key, content_hash, byte_length, media_type,
             owner_id, status, acked, custody, stored_at,
             owner_kind, attempt_id, action_id, check_id, role, job_id, generation
-        ) VALUES (?, ?, ?, 'hash-rx50', 4, 'image/png', ?, 'ready', 1, 'stored', '2026-11-05T00:00:00+00:00',
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ready', 1, 'stored', '2026-11-05T00:00:00+00:00',
             'REC', ?, NULL, NULL, 'source', ?, 1)
         """,
-        (str(project_id), str(artifact_id), str(artifact_id), str(recording_id), attempt_id, job_id),
+        (str(project_id), str(artifact_id), str(artifact_id),
+         'hash-rx50' if source_mapping is None else 'sha256:'+hashlib.sha256(source_mapping.encode('utf-8')).hexdigest(),
+         4 if source_mapping is None else len(source_mapping.encode('utf-8')),
+         'image/png' if source_mapping is None else 'text/plain',str(recording_id),attempt_id,job_id),
     )

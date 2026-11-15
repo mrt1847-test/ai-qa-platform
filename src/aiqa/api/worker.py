@@ -872,6 +872,8 @@ def _claim_payload(
         snap["self_healing_enabled"] = snapshot.self_healing_enabled
     if snapshot.approved_plan not in {None, ""}:
         snap["approved_plan"] = snapshot.approved_plan
+    if snapshot.native_source is not None:
+        snap['native_source'] = dict(snapshot.native_source)
     if intent is not None:
         from aiqa.contracts.worker_attempt import RecordingIntent
         from aiqa.recording.intent import intent_to_document

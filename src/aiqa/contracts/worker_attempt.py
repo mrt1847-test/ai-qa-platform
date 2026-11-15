@@ -36,6 +36,7 @@ class JobSpecSnapshot:
     replay_package_hash: str | None = None
     self_healing_enabled: bool | None = None
     approved_plan: str | None = None
+    native_source: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)

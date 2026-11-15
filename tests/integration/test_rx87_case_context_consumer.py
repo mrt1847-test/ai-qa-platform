@@ -188,7 +188,7 @@ def _prepared_replay(tmp_path,monkeypatch,source_job):
         approved_plan='click(100,200)\nclick(100,200)',limits={'max_actions':2,'max_model_calls':0,'timeout_seconds':30,
         'replay_package_id':package,'replay_package_hash':digest})
     snapshot.pop('intent',None)
-    raw.update(purpose='trial',owner_kind='ITEM',owner_id=owner,replay_package_id=package,replay_package_hash=digest,
+    raw.update(purpose='trial',owner_kind='ITEM',owner_id=owner,replay_package_id=package,replay_package_hash=digest,replay_compiler_ref='android-plan-v1',
         target={'kind':'android','android_package':'com.example.saved'})
     _rehash(job);events=[]
     def capture():events.append('capture');return _observation()
@@ -249,3 +249,17 @@ def test_official_replay_reserves_setup_slot_before_any_io(model_job,tmp_path,mo
     handler.context.remote_checkpoint=lambda phase:ControlDecision(True,phase)
     result=handler.handle(job)
     assert result.actions==0 and handler.stopped_reason=='action_budget' and events==[]
+
+
+@pytest.mark.parametrize('plan',['click(100,200)',''])
+def test_official_native_compiler_context_cannot_lose_witness_or_use_fallback(model_job,tmp_path,monkeypatch,plan):
+    handler,job,events=_prepared_replay(tmp_path,monkeypatch,model_job['job'])
+    raw=job['snapshot']['case_context'];raw['replay_compiler_ref']='android-native-plan-v2';_rehash(job)
+    job['snapshot']['approved_plan']=plan
+    result=handler.handle(job)
+    assert result.actions==0 and events==[] and handler.stopped_reason=='native_source_invalid'
+
+
+def test_normal_recording_context_identifies_that_no_replay_compiler_is_selected(model_job):
+    raw=model_job['job']['snapshot']['case_context']
+    assert 'replay_compiler_ref' in raw and raw['replay_compiler_ref'] is None

@@ -588,6 +588,7 @@ def claim_with_receipt(
             replay_package_hash=None if pin is None else pin.package_hash,
             self_healing_enabled=None if pin is None else pin.self_healing_enabled,
             approved_plan=None if pin is None else pin.approved_plan,
+            native_source=None if pin is None else pin.native_source,
         )
         return ClaimReceipt(
             project_id=scoped,
@@ -649,6 +650,7 @@ def claim_with_receipt(
         replay_package_hash=None if pin is None else pin.package_hash,
         self_healing_enabled=None if pin is None else pin.self_healing_enabled,
         approved_plan=None if pin is None else pin.approved_plan,
+            native_source=None if pin is None else pin.native_source,
     )
     incarnation = load_attempt_incarnation(connection, lease.project_id, lease.attempt_id)
     connection.execute(
@@ -724,6 +726,7 @@ def load_claim_receipt_for_attempt(
         replay_package_hash=None if pin is None else pin.package_hash,
         self_healing_enabled=None if pin is None else pin.self_healing_enabled,
         approved_plan=None if pin is None else pin.approved_plan,
+            native_source=None if pin is None else pin.native_source,
     )
     return ClaimReceipt(
         project_id=UUID(str(row[0])),

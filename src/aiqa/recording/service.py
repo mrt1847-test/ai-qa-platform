@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime,timezone
 from uuid import UUID, uuid4
 
 import hashlib
@@ -494,6 +495,9 @@ def rebuild_android_package(
     ).fetchone()
     if source is None:
         raise PreflightRejected("manifest is missing")
+    if connection.execute('SELECT 1 FROM recording_check_bindings WHERE project_id=? AND recording_id=? AND manifest_id=?',
+        (str(project_id),str(recording_id),str(source[0]))).fetchone() is not None:
+        raise PreflightRejected('annotated recording must be revised through check bindings')
     mapping = str(source[2])
     if not android_trace_ready(mapping):
         raise PreflightRejected("trace is missing")
@@ -863,7 +867,7 @@ def _fallback_draft(
             str(source[5]),
             str(actor.actor_id),
             "compiler is missing" if package_id is None else "package ready",
-            "2026-11-01T00:00:00+00:00",
+            datetime.now(timezone.utc).isoformat(),
         ),
     )
     if late:

@@ -11,6 +11,8 @@
 
 [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md): 사용자 선택 Luna low로 G마켓 검색 5동작/AI6회 기록과 관찰 가능한 추론 체크리스트를 추가했다. 정상 서버/사람 승인·전체 수용 완료 수는 유지하며 새 source 재생은 미실행이다.
 
+RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
+
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**
 [최소 기반4개](docs/execution/00-bootstrap.md)를 먼저 만들고 환경에 막히지 않는 독립 core 경로로 진행한다.
 기존 상세 작업은 163개/15영역이다. 초기 전환은 [PC_EXECUTION_INDEX](docs/execution/PC_EXECUTION_INDEX.json)의 별도 4개, 원격 실행 구현·수용은 [RX 색인](docs/managed-pc/IMPLEMENTATION_TASKS.json)의 별도 99개로 추적한다.

@@ -648,6 +648,8 @@ def install_recordings(application: FastAPI) -> None:
         post_recovery,
         methods=["POST"],
     )
+    from aiqa.api.recording_check_bindings import install_check_binding_routes
+    install_check_binding_routes(application)
     application.state.recordings_installed = True
 
 

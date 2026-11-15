@@ -484,3 +484,10 @@ AI-LIVE-01의 OpenAIProviderHttp/tools/android_openai_smoke.py는 명시 로컬 
 사용자 선택 gpt-6-luna를 로컬 단일Back/평가 도구의 기본으로 사용한다. OpenAI port는 명시 effort(none/low 등), 실제 reasoning/cache metadata, 기본3/최대12 model cap을 지원한다. 평가 도구는10회/출력1024/전송 cutoff240초를 고정하며 현재 진행 중인 요청·증거·정리는 개별 timeout 내 drain할 수 있다. 실제 생성6회/5native의 공개 검색 증거와 AR01~14 체크리스트는 정상 서버 공급자/model binding·예산 admission·QA/사람 승인/새 저장본 재생의 완료가 아니다. 모델 성공 선언과 관찰 판정/사람 승인을 분리한다. 추론 토큰은 출력에 포함되므로 다시 더하지 않는다.
 
 평가 도구는 이름이 고정된 G마켓 emulator만 받고 capture 전후 foreground를 결합한다. native 직전 새 AVD/geometry/foreground와 paid/native 전송 시간 경계를 검사하고, cleanup 직전도 현재 AVD 이름을 확인한다. 권한/외부 화면은 Back만, 텍스트는 과제에 지정한 mouse만 허용한다. 앱 내부의 구매/로그인 의미 판단은 이 수동 기술 시험의 과제 규칙과 관찰에 의존하며 범용 시각 정책 엔진으로 해석하지 않는다. 불명 전송/관찰 실패에서 재시도0, acknowledged/observed 수를 구분해 저장한다. 관찰 요약은 hidden chain-of-thought가 아니다.
+
+
+### RX87 B2.3b1 · 검증 연결 저장 후보 (C00/C02/C05/C08/C14)
+
+새 native v2 원본에 한해 recording input case version의 logical step→after_action_id와 check ID→선택 package resource_id를 immutable annotation으로 저장한다. expected/목표/실제 native bytes/기존 승인/FAIL은 수정하지 않는다. source 단계 순서는 nondecreasing, 같은 boundary와 부분 연결은 가능하다. binding hash를 새로운 package_rebuild manifest/body hash에 넣고 새 version/package를 만든다. 현재 approval/late draft pointer는 유지한다. 새 후보는 실제 UTC 생성 시각을 쓰며 과거 이력을 보정하지 않는다.
+
+migration0051은 annotation의 derived manifest/recording/prior source/hash/input version/native bytes/완료 상태를 함께 묶는 insert guard와 UPDATE/DELETE 금지를 가진다. expected source CAS와 actor/body/request key의 retry를 구분하고 savepoint로 원자화한다. generic rebuild는 annotation을 유실시키는 대신 거절하며 연결 변경 API를 사용한다. GET/POST projects/{project}/recordings/{recording}/check-bindings는 정상 세션/CSRF/Origin/프로젝트와 요청 제한을 확인하고 worker/model 없이 저장본을 처리한다. POST는128KiB 이전에 chunk copy를 거절하고 정확한 본문만 허용한다. 이 후보 저장은 trial/승인/QA/모델 grant가 아니며 UI·worker 소비/실제 평가·정규화 결과 저장은 후속이다.

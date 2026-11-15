@@ -16,6 +16,8 @@ Updated: **2026-11-15 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 선택 모델: 사용자 요청에 따라 로컬 실제 평가/단일Back 도구 기본을 **gpt-6-luna**로 둔다(녹화 평가 effort=low). [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md)는 좌표/순서를 주지 않은 G마켓 mouse 검색을 5동작·6모델호출/23413입력·592출력(추론126포함)으로 관찰했다. [추론 체크리스트](docs/validation/AI_RECORDING_REASONING_CHECKLIST.md)의 실제 범위 판정과 미실행을 분리한다. 새 다단계 source 재생·인간 승인·정상 서버 공급자는 아직 미완료다. 로컬 실패 사유 코드 세분화 Minor는 이후 후속으로 남긴다.
 
+현재 세부 구현은 [B2.3b1 검증 경계 연결 저장/API](docs/managed-pc/CHECK_BINDING_STORAGE_TASKS.md)다. 원본 native bytes·승인·FAIL을 유지하는 새 후보 저장/API와 마지막 검토 보완을 마쳤다([인계](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md)). 지금 다음 구현은 B2.3b2의 실제 녹화 페이지 편집 UI, 그 다음은 b3/c의 worker 시점 소비·실제 평가/정규화 결과다. 로컬 API/DB 구현은 실제 키·기기·서버 배포를 기다리지 않는다.
+
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |

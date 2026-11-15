@@ -524,3 +524,8 @@ run_mobile_agent_process는 필수 secrets tuple·현재 allowed와 bounded capt
 MobileAgentContext는 서버 내부 frozen intent/관찰/settled 응답을 원본 SYSTEM_PROMPT/build_messages/history로 직렬화한 immutable JSON snapshot이다. 권한 token이 아니며 B2 producer가 project/attempt/worker/policy/source/실제 ACK 경계를 별도로 확인한다. 현재+최근4개 이미지만 validated pixel-only1000square로 전송하고 원본 ICC/text/exif·raw reasoning·worker URL/path를 전달하지 않는다. 오래된 요약도 canonical 비공백 Action summary 하나와 원본 tool/parser/native 검증을 통과해야 한다. terminal 뒤 이어가기와 frozen native literal 외 type을 거절한다.
 
 명시 authoring/Luna context는 다른 observation/sanitized_inputs와 혼합하지 않는다. schema의 type enum은 frozen 비밀 아닌 변수 중 기존 native validator가 허용하는 값만 사용하고 없으면 type을 제외한다. 기존 smoke mouse schema/단일 관찰 경로는 보존한다. context 구현만으로 normal handler/evidence ACK/승인 수용을 완료하지 않는다.
+
+
+### MA03b B2a · optional 원본 engine marker (C04/C05/C14)
+
+authoring_engine은 kind/upstream_commit/manifest_sha256/protocol의 exact source ref다. 명시 서버 freeze에만 넣고 authoring policy hash에 포함한다. marker가 없으면 legacy hash 계산식을 유지한다. 부분/null/unknown marker는 원본 hash를 다시 계산해도 거절하며 legacy로 해석하지 않는다. 반환 pin의 extension도 deepcopy한다. worker caps는 exact supported_engine을 요구하고 기존 plan_provider는 새 marker를 전송 전에 거절한다. 일반 접수 default/실제 새 engine handler는 아직 선택하지 않는다. 이 consistency contract가 DB 소유권·current lease·실제 native ACK를 대체하지 않는다.

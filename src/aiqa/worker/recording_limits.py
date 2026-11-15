@@ -15,11 +15,13 @@ class RecordingLimits:
     timeout_seconds: float
 
 
-def resolve_recording_limits(snapshot, *, worker_actions, worker_seconds):
+def resolve_recording_limits(snapshot, *, worker_actions, worker_seconds, supported_engine=None):
     """New pins must validate; an old development claim retains its legacy context."""
     pin = validate_authoring_pin(snapshot)
     if pin is None:
         return None
+    if 'authoring_engine' in pin and supported_engine!=pin['authoring_engine']:
+        raise ValueError('recording engine unsupported')
     if type(worker_actions) is not int or not 0 <= worker_actions <= ACTION_LIMIT:
         raise ValueError('worker action limit invalid')
     if worker_seconds is not None and (

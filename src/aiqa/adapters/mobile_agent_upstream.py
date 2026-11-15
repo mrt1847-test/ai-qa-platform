@@ -12,9 +12,11 @@ from types import SimpleNamespace
 from uuid import uuid4
 from aiqa.replay.android_plan import build_typed_android_action,TypedAndroidAction
 
-COMMIT='81fa28b564ef7a695521500bc15a0e1324b2b394'
+from aiqa.contracts.mobile_agent_engine import MOBILE_AGENT_COMMIT,MOBILE_AGENT_MANIFEST_SHA256
+
+COMMIT=MOBILE_AGENT_COMMIT
 _LOCK=threading.Lock()
-_MANIFEST_SHA='ee406e537f411cc4e92d4cc2094d34c4b4ac00c99d5cb758efc98899e09aec72'
+_MANIFEST_SHA=MOBILE_AGENT_MANIFEST_SHA256
 
 
 def _module(name,path,source):

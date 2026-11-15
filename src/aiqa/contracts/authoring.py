@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from copy import deepcopy
 from aiqa.domain.hashing import canonical_hash
 
 AUTHORING_SCHEMA = "authoring-admission-v1"
@@ -10,7 +11,9 @@ _FIELDS = ("authoring_schema", "authoring_binding", "input_case_version_id", "in
 
 
 def authoring_policy_ref(limits: dict[str, object]) -> str:
-    return AUTHORING_SCHEMA + ":" + canonical_hash({name: limits.get(name) for name in _FIELDS}, "canon-json-v1")
+    fields={name:limits.get(name) for name in _FIELDS}
+    if "authoring_engine" in limits:fields["authoring_engine"]=limits["authoring_engine"]
+    return AUTHORING_SCHEMA + ":" + canonical_hash(fields, "canon-json-v1")
 
 
 def validate_authoring_pin(snapshot: dict[str, object]) -> dict[str, object] | None:
@@ -23,7 +26,7 @@ def validate_authoring_pin(snapshot: dict[str, object]) -> dict[str, object] | N
     outer = str(snapshot.get("policy_ref", ""))
     markers = outer.startswith(AUTHORING_SCHEMA + ":") or (type(limits) is dict and (
         str(limits.get("policy_ref", "")).startswith(AUTHORING_SCHEMA + ":") or any(
-            name in limits for name in ("authoring_schema", "authoring_binding", "input_version_hash"))))
+            name in limits for name in ("authoring_schema", "authoring_binding", "input_version_hash", "authoring_engine"))))
     if not markers:
         return None
     def reject():
@@ -62,7 +65,11 @@ def validate_authoring_pin(snapshot: dict[str, object]) -> dict[str, object] | N
     if (type(intent) is not dict or intent.get("case_version_id") != limits["input_case_version_id"]
         or intent.get("content_hash") != limits["input_version_hash"]):
         reject()
+    engine={}
+    if "authoring_engine" in limits:
+        from aiqa.contracts.mobile_agent_engine import require_mobile_agent_engine
+        engine={"authoring_engine":require_mobile_agent_engine(limits["authoring_engine"])}
     expected = authoring_policy_ref(limits)
     if limits.get("policy_ref") != expected or snapshot.get("policy_ref") != expected:
         reject()
-    return {**limits, "authoring_binding": dict(binding)}
+    return {**deepcopy(limits), "authoring_binding": dict(binding),**engine}

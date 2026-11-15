@@ -41,8 +41,11 @@ def recording_caps(raw: object) -> dict[str, object]:
     return caps
 
 
-def freeze_authoring_limits(binding: dict[str, object], raw: object, version_id, version_hash: str) -> dict[str, object]:
+def freeze_authoring_limits(binding: dict[str, object], raw: object, version_id, version_hash: str, *, engine_ref=None) -> dict[str, object]:
     limits = {**recording_caps(raw),"authoring_schema":AUTHORING_SCHEMA,"authoring_binding":dict(binding),
               "input_case_version_id":str(version_id),"input_version_hash":version_hash}
+    if engine_ref is not None:
+        from aiqa.contracts.mobile_agent_engine import require_mobile_agent_engine
+        limits["authoring_engine"]=require_mobile_agent_engine(engine_ref)
     limits["policy_ref"] = authoring_policy_ref(limits)
     return limits

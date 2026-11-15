@@ -1899,6 +1899,8 @@ def server_model_plan_provider(
         snapshot = claim.get("snapshot") if type(claim.get("snapshot")) is dict else {}
         from aiqa.contracts.authoring import validate_authoring_pin
         pin = validate_authoring_pin(snapshot)
+        if pin is not None and 'authoring_engine' in pin:
+            raise MobileAgentRejected('recording engine unsupported')
         revision = pin["authoring_binding"]["revision"] if pin is not None else binding_revision
         intent_hash = str(snapshot.get("intent_hash") or "").strip()
         observation = claim.get("observation")

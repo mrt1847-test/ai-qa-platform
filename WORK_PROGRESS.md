@@ -21,6 +21,8 @@
 
 [AI-LIVE-04-MA03B1](docs/validation/tasks/AI-LIVE-04-MA03B1.md): 서버 내부 frozen 목표·관찰·완료 응답으로 원본 대화/최근4이미지·요약·1000frame·최종 단일 행동을 구성하는 context와 명시 OpenAI 포트를 구현했다. 픽셀 외 metadata/잘못된 요약/허용 타이핑을 차단하며 집중110pass, 유료·ADB0. DB 소유권/engine admission/gateway는 다음 B2이며 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA03B2A](docs/validation/tasks/AI-LIVE-04-MA03B2A.md): 원본 commit/manifest/RPC protocol을 authoring policy에 고정하는 optional engine ref와 기존 worker의 명시 capability/전송 전 거절을 구현했다. legacy hash 유지·불완전 marker 거절·nested extension 복사77pass. 기본 접수/새 handler를 켠 것은 아니며 다음 B2b DB 이력·gateway, MA04 consumer를 이어간다.
+
 RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**

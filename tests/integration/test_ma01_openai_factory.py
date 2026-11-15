@@ -20,7 +20,8 @@ def gateway_state(tmp_path,monkeypatch):
     def handle(req):
         sent.append(req)
         assert req.headers['Authorization']=='Bearer synthetic-server-only'
-        return httpx.Response(mode["status"],json=response())
+        raw=response();raw['id']='response-'+str(len(sent));raw['usage']['input_tokens']=mode.get('tokens',100);raw['usage']['total_tokens']=raw['usage']['input_tokens']+20
+        return httpx.Response(mode["status"],json=raw)
     def bounded(*args,**kwargs):kwargs['transport']=httpx.MockTransport(handle);return client(*args,**kwargs)
     monkeypatch.setattr(httpx,'Client',bounded)
     settings=load_settings(_env(tmp_path,AIQA_MODEL_PROVIDER_MODE='openai'))
@@ -40,7 +41,7 @@ def gateway_state(tmp_path,monkeypatch):
         worker=WorkerScope(str(uuid4()),frozenset({project.project_id}),frozenset({'regression','recording'}),None)
         request=_req()
         def send(req,key):return gateway.handle(worker,req,project_id=project.project_id,item_id='item',idempotency_key=key,actor_id=actor.actor_id,store=store)
-        yield {'send':send,'request':request,'provider':provider,'sent':sent,'mode':mode,'gateway':gateway,'project':project.project_id,'policy':policy,'ref':ref}
+        yield {'send':send,'request':request,'provider':provider,'sent':sent,'mode':mode,'gateway':gateway,'project':project.project_id,'policy':policy,'ref':ref,'actor':actor,'store':store,'resolver':app.state.secret_resolver,'worker':worker}
     finally:store.close()
 
 
@@ -79,3 +80,21 @@ def test_admitted_maintenance_role_reaches_server_openai(gateway_state):
     request=replace(f['request'],purpose='recording',role='maintenance')
     receipt=f['send'](request,'maintenance')
     assert receipt.allowed and len(f['sent'])==1 and f['provider'].calls_for('maintenance')==1
+
+
+
+def test_usage_call_uuid_is_scoped_by_project(gateway_state):
+    f=gateway_state;store=f['store'];gateway=f['gateway']
+    first=f['send'](f['request'],'project-one')
+    owner=Actor(f['actor'].actor_id,None,True)
+    with bind_store(store):project=create_project(owner,ProjectCreate('Second','ma02second','','android'))
+    actor=Actor(owner.actor_id,project.project_id,True)
+    with bind_secret_store(store):secret=f['resolver'].put(actor,SecretInput(value='synthetic-server-only',name='second'))
+    ref=SecretRef(project.project_id,secret.ref_id,secret.revision)
+    policy=replace(f['policy'],project_id=project.project_id,secret_refs={'verification':ref},bindings=(RoleBinding('verification',1,'gpt-6-luna',str(ref.ref_id)),))
+    gateway.register_policy(policy);f['mode']['tokens']=200
+    worker=replace(f['worker'],permitted_projects=frozenset({f['project'],project.project_id}))
+    second=gateway.handle(worker,f['request'],project_id=project.project_id,item_id='item',idempotency_key='project-two',actor_id=actor.actor_id,store=store)
+    assert first.usage['input_tokens']==100 and second.usage['input_tokens']==200
+    assert gateway.call_tokens(f['project'],f['request'].call_id)==(100,20,50,None)
+    assert gateway.call_tokens(project.project_id,f['request'].call_id)==(200,20,50,None)

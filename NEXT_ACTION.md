@@ -16,7 +16,7 @@ Updated: **2026-11-15 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 선택 모델은 사용자 지정 **gpt-6-luna**다. [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md)는 호환 어댑터/자체 루프 평가이며 실제 upstream 실행 증거가 아니다. [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)에서 고정 Mobile-Agent v3.5 원본 main·prompt·이력·파서와 Luna를 실제 연결해 4동작/5응답으로 검색 녹화 후, 같은 원본을 별도 키 없는 프로세스에서 4동작 AI0으로 재생했다. 4개 actual argv 동일, key/network/model0이다. 실제 서버 접수/DB ACK·사람 승인 수용과 구분하며 이 로컬 시험을 유료 반복하지 않는다. 실패 시도/usage unknown1회도 인계에 남겼다.
 
-**현재 세부 구현: [정상 녹화 OpenAI 권한 경계 MA02a](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md).** [MA01 인계](docs/validation/tasks/AI-LIVE-04-MA01.md)의 명시 OpenAI factory·요청별 bounded port·전송 전 오류 비차감을 완료했다. 현재 정상 recording endpoint는 아직 openai를 거절한다. MA02a에서 고정 provider/endpoint grant 일치와 실제 HTTP 전송 직전 현재 권한을 연결한다. 다음 MA02b 실제 token 정산→MA03 subprocess/IPC→MA04 정상 worker→MA05 저장 검토/승인본 실행 여정이다. local env 키 자동 등록·유료 재시험은 하지 않는다.
+**현재 세부 구현: [원본 main 격리 프로세스/IPC MA03a](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md).** [MA01](docs/validation/tasks/AI-LIVE-04-MA01.md)의 factory와 [MA02](docs/validation/tasks/AI-LIVE-04-MA02.md)의 정상 OpenAI grant·최종 HTTP 권한·실측 token 영속화를 완료했다. MA03a는 부모의 capture/model/native callback과 키 없는 child의 원본 main을 bounded IPC로 연결한다. 다음 MA03b 서버 소유 원본 대화·이미지/이력 구성→MA04 정상 worker/evidence ACK/finish→MA05 저장 검토/승인본 실행 여정이다. 정상 model API 연결을 원본 worker 완료로 확대하지 않는다. 유료 재시험·local env key 자동 등록0.
 
 [B2.3b2 녹화 검증 연결 편집 UI](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)의 기존 미커밋 코드는 보존하며 완료 처리하지 않는다. [b1 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md)는 master f7cb466 완료다. 원본 engine 정상 연결을 우선하고 UI/worker 소비·정규화 결과·C/D를 이어간다. 로컬 구현은 실제 키·기기·배포를 기다리지 않는다.
 

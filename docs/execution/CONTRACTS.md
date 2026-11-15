@@ -503,3 +503,10 @@ third_party/mobile_agent는 고정81fa28b564ef7a695521500bc15a0e1324b2b394의 �
 ### MA01 · 정상 OpenAI factory와 실제 전송 여부 (C00/C04/C06/C14)
 
 AIQA_MODEL_PROVIDER_MODE=openai는 고정 api.openai.com/v1/responses/public CA verification/trust_env=False와 유한 timeout<=60을 사용한다. 기본 fixture·기존 operational은 보존한다. 키는 서버 secret resolver가 호출 단위로 주며 로컬 env를 자동 읽지 않는다. 서버 adapter는 한 요청당 bounded port1개로 global12회 latch를 만들지 않고 실제 send만 역할 count에 기록한다. 명시 provider_dispatched=False의 로컬 거절은 gateway quota를 차감하지 않으며 실제/불명/기존 provider 미지정은 차감한다. maintenance도 기존 역할 권한 뒤에만 전송한다. 현재 정상 recording_requests의 openai grant는 MA02a 전까지 fail-closed이며 이 factory만으로 원본 녹화/정산/승인 수용을 완료하지 않는다.
+
+
+### MA02 · 정상 녹화의 OpenAI grant·전송 시각·실측 receipt (C04/C05/C06/C14)
+
+정상 OpenAI grant는 provider=openai와 origin/canonical Responses endpoint가 일치하는 정확한 서버 adapter에만 허용한다. operational로 downgrade하지 않으며 최초 승인한 객체를 실제 send까지 고정한다. request 준비 뒤 실제 HTTP 직전 관찰·lease/키·정책·provider identity를 다시 확인한다. 전송 전 거절은 charged0이고 실제/불명 send는 charged1이다. 예약 transaction 안에서 동일 키를 재확인해 concurrent pending을 unsent conflict로 바꾸지 않는다.
+
+정산 token_scope는 call이다. input/output/cached_input/reasoning은 실제 보고 정수 또는 null이며 total=input+output, 추론/캐시는 부분집합이다. 역할 call count는 attempt 누적이라 per-call token과 더하지 않는다. 정상 response_json에 영속하고 같은 키/재시작은 재전송·중복 정산 없이 읽는다. 이미 측정한 늦은403에도 usage를 보존하고 action content는 제거한다. unusable 응답 오류는 usage 생략/charged1을 unknown으로 해석하며0token으로 표시하지 않는다. gateway memory ledger도 project/call로 분리한다. 실제가격/월간 집계 UI는 후속이고 비용 필드는unknown/null을 유지한다. 원본 main의 정상 worker/IPC·서버 소유 이력은 MA03~05이며 model API 연결과 구분한다.

@@ -11,9 +11,11 @@
 
 [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md): 사용자 선택 Luna low로 G마켓 검색 5동작/AI6회 기록과 관찰 가능한 추론 체크리스트를 추가했다. 정상 서버/사람 승인·전체 수용 완료 수는 유지하며 새 source 재생은 미실행이다.
 
-[AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md): 실제 고정 Mobile-Agent v3.5 main+Luna 녹화4동작/5응답과 동일 저장 source의 별도 AI0 재생4동작을 관찰했다. 단계별 PNG/XML/log/usage와 추론 체크리스트, 4argv 동일/key0/network0 근거를 저장했다. 실제 정상 서버·사람 승인 수용/전체 완료 수는 유지한다. 다음 구현은 [정상 서버/worker 연결 MA02a](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)이다.
+[AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md): 실제 고정 Mobile-Agent v3.5 main+Luna 녹화4동작/5응답과 동일 저장 source의 별도 AI0 재생4동작을 관찰했다. 단계별 PNG/XML/log/usage와 추론 체크리스트, 4argv 동일/key0/network0 근거를 저장했다. 실제 정상 서버·사람 승인 수용/전체 완료 수는 유지한다. 다음 구현은 [정상 서버/worker 연결 MA03a](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)이다.
 
 [AI-LIVE-04-MA01](docs/validation/tasks/AI-LIVE-04-MA01.md): 정상 앱 설정의 명시 OpenAI factory와 서버 secret/gateway 배선을 모의 HTTP로 검증했다. 요청별 한도로 전체12회 latch를 막고 전송 전 거절은 차감하지 않는다. 실제 녹화 grant/final fence·usage/worker 연결은 후속이며 전체 완료 수는 유지한다.
+
+[AI-LIVE-04-MA02](docs/validation/tasks/AI-LIVE-04-MA02.md): 정상 REC/ACK/이미지의 OpenAI grant·실제 send 직전 권한과 per-call token을 연결했다. 늦은403에도 측정값을 저장하고 동시 retry/프로젝트별 ledger를 분리한다. 모의 HTTP 회귀이며 유료 호출0, 원본 worker/사람 승인 수용은 다음이다.
 
 RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
 

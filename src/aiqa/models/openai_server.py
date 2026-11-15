@@ -11,6 +11,7 @@ from aiqa.models.provider_http import ProviderHttpError
 class OpenAIServerProvider:
     kind='openai'
     supports_observation=True
+    supports_send_boundary=True
 
     def __init__(self,*,timeout_seconds=10,transport=None):
         # Reuse the local port's strict timeout validation without enabling any send.

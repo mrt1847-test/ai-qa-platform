@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from aiqa.contracts.models import MODEL_ROLES, ModelRequest, OwnedCheck, OwnedEpisode, RoleBinding
 from aiqa.models.budget import CallBudget
+from aiqa.models.measurements import provider_measurements
 from aiqa.models.provider_http import FixtureProviderHttp, OperationalProviderHttp, ProviderHttpError, ProviderHttpPort
 from aiqa.models.usage import bind_usage, record_model_usage, reset_usage
 from aiqa.security.secrets import (
@@ -244,7 +245,7 @@ class ServerModelGateway:
         self._receipts: dict[str, tuple[str, ModelRequestReceipt]] = {}
         self._attempt_receipts: dict[tuple[UUID, str], list[ModelRequestReceipt]] = {}
         self._ledgers: dict[tuple[UUID, str], dict[str, int]] = {}
-        self._usage = UsageLedger()
+        self._usage: dict[UUID, UsageLedger] = {}
         self._lock = Lock()
 
     def register_policy(self, policy: AttemptModelPolicy) -> None:
@@ -282,6 +283,7 @@ class ServerModelGateway:
         store: object | None = None,
         before_provider=None,
         observation=None,
+        provider_pin=None,
     ) -> ModelRequestReceipt:
         fingerprint = _fingerprint(request, project_id, item_id)
         with self._lock:
@@ -305,10 +307,10 @@ class ServerModelGateway:
                     prior[1].generation,
                 )
             if store is None:
-                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation)
+                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin)
             else:
                 with bind_secret_store(store):  # type: ignore[arg-type]
-                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation)
+                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin)
             self._receipts[idempotency_key] = (fingerprint, receipt)
             self._attempt_receipts.setdefault((project_id, item_id), []).append(receipt)
             return receipt
@@ -318,6 +320,14 @@ class ServerModelGateway:
 
         with self._lock:
             return tuple(self._attempt_receipts.get((project_id, item_id), ()))
+
+    def call_tokens(self, project_id: UUID, call_id: UUID):
+        """Read immutable count values under the project that owns this call."""
+        with self._lock:
+            ledger=self._usage.get(project_id)
+            if ledger is None:return None
+            try:return ledger.tokens(call_id)
+            except KeyError:return None
 
     def usage_for(self, project_id: UUID, item_id: str) -> dict[str, object]:
         with self._lock:
@@ -361,8 +371,11 @@ class ServerModelGateway:
         project_id: UUID,
         item_id: str,
         actor_id: UUID,
-        *, before_provider=None, observation=None,
+        *, before_provider=None, observation=None, provider_pin=None,
     ) -> ModelRequestReceipt:
+        provider=self.provider if provider_pin is None else provider_pin
+        if provider_pin is not None and self.provider is not provider_pin:
+            raise ModelRequestDenied('provider_unavailable',status=503)
         if project_id not in worker.permitted_projects:
             raise ModelRequestDenied("project")
         if request.purpose not in worker.permitted_purposes:
@@ -436,12 +449,14 @@ class ServerModelGateway:
         if before_provider is not None:
             before_provider()
         try:
-            call_options = {"request_key":f"{project_id}:{item_id}:{request.call_id}"} if isinstance(self.provider,OperationalProviderHttp) else {}
+            call_options = {"request_key":f"{project_id}:{item_id}:{request.call_id}"} if isinstance(provider,OperationalProviderHttp) else {}
+            if before_provider is not None and getattr(provider,'supports_send_boundary',False):
+                call_options['before_send']=before_provider
             if observation is not None:
-                if not getattr(self.provider, 'supports_observation', False):
+                if not getattr(provider, 'supports_observation', False):
                     raise ModelRequestDenied('provider_observation_unsupported', status=503)
                 call_options['observation'] = observation
-            result = self.provider.complete(
+            result = provider.complete(
                 model=binding.model,
                 role=request.role,
                 secret=secret.value,
@@ -466,7 +481,9 @@ class ServerModelGateway:
             provider_request_id=result.provider_request_id.replace(secret.value,"[redacted]"))
         broker.meter(model_request)
         ledger[request.role] = ledger.get(request.role, 0) + 1
-        token = bind_usage(self._usage)
+        measurements=provider_measurements(result)
+        measured_status='measured' if measurements['tokens_complete'] else 'metered'
+        token = bind_usage(self._usage.setdefault(project_id,UsageLedger()))
         try:
             record_model_usage(
                 ModelCallSettlement(
@@ -478,23 +495,24 @@ class ServerModelGateway:
                     result.actual_model,
                     None,
                     None,
+                    measurements['input_tokens'],
+                    measurements['output_tokens'],
+                    measurements['cached_input_tokens'],
                     None,
-                    None,
-                    None,
-                    None,
-                    "metered",
+                    measured_status,
                 )
             )
         finally:
             reset_usage(token)
 
         usage = self._usage_for_unlocked(project_id, item_id)
+        usage.update(measurements)
         receipt = ModelRequestReceipt(
             request.call_id,
             True,
             "admitted",
             result.actual_model,
-            "metered",
+            measured_status,
             result.provider_request_id,
             request.role,
             request.purpose,

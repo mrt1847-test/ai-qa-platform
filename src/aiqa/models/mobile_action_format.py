@@ -11,3 +11,26 @@ for name,properties in (
     variants.append(obj({'action':enum(name),**properties}))
 MOBILE_ACTION_FORMAT={'type':'json_schema','name':'mobile_agent_one_action','strict':True,
     'schema':obj({'summary':{'type':'string'},'name':enum('mobile_use'),'arguments':{'anyOf':variants}})}
+
+
+def mobile_action_format_for(text_literals):
+    """Keep typing confined to explicit frozen nonsecret input literals."""
+    from copy import deepcopy
+    if (type(text_literals) is not tuple or len(text_literals)>32
+        or any(not is_native_text_literal(value) for value in text_literals)):
+        raise ValueError('mobile text literals invalid')
+    result=deepcopy(MOBILE_ACTION_FORMAT)
+    choices=result['schema']['properties']['arguments']['anyOf']
+    if not text_literals:
+        choices[:]=[choice for choice in choices if choice['properties']['action']['enum']!=['type']]
+    else:
+        choice=next(choice for choice in choices if choice['properties']['action']['enum']==['type'])
+        choice['properties']['text']=enum(*dict.fromkeys(text_literals))
+    return result
+
+
+def is_native_text_literal(value):
+    from aiqa.replay.android_plan import build_typed_android_action,PlanRejected
+    try:build_typed_android_action('text',width=1,height=1,rotation=0,text=value)
+    except PlanRejected:return False
+    return True

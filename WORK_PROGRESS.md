@@ -19,6 +19,8 @@
 
 [AI-LIVE-04-MA03A](docs/validation/tasks/AI-LIVE-04-MA03A.md): 실제 원본 main을 키 없는 자식에서 실행하는 부모 소유 capture/model/native IPC를 구현했다. source 검증 bytes 직접 compile, 단계/이미지/좌표 대조, bounded writer·중지·불명 전송/정리를83개 집중 검사로 확인했다. 이번 유료/ADB 호출0, 기존 실제 증거85개 해시·4argv/AI0 재대조. 정상 웹/서버 이력·handler·DB ACK·사람 승인은 MA03b~05이며 완료 수는 유지한다.
 
+[AI-LIVE-04-MA03B1](docs/validation/tasks/AI-LIVE-04-MA03B1.md): 서버 내부 frozen 목표·관찰·완료 응답으로 원본 대화/최근4이미지·요약·1000frame·최종 단일 행동을 구성하는 context와 명시 OpenAI 포트를 구현했다. 픽셀 외 metadata/잘못된 요약/허용 타이핑을 차단하며 집중110pass, 유료·ADB0. DB 소유권/engine admission/gateway는 다음 B2이며 전체 완료 수는 유지한다.
+
 RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**

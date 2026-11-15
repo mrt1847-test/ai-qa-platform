@@ -517,3 +517,10 @@ AIQA_MODEL_PROVIDER_MODE=openai는 고정 api.openai.com/v1/responses/public CA 
 run_mobile_agent_process는 필수 secrets tuple·현재 allowed와 bounded capture/model/dispatch ports를 받는다. 실제 pinned main은 키/worker token 없는 고정 자식에서만 실행한다. 부모는 검증한 source bytes를 직접 compile하고 pyc/재읽기를 사용하지 않으며 cwd/absolute imports를 보존한다. 원본 prompt/history를 대조하고 한 run tag·순차 캡처·명시 capture/model/native 단계를 강제한다. 모델-facing frame은 검증 PNG/geometry/관찰ID/시각/platform만 포함하고 raw reasoning/DOM/stdout/messages를 전달하지 않는다. 민감 픽셀 정제를 증명할 수 없으면 child/model 저장·전송 전 차단한다.
 
 전송 직전 before_send는 현재 제어·cutoff·한도를 확인한다. model_requests는 위임 횟수이며 청구 횟수와 구분한다. ACK된 native prefix와 마지막 ambiguous_dispatch를 보존하고 재전송하지 않는다. 부모→자식 쓰기도 감독 가능해야 하며 읽기 중단에 cutoff/cleanup을 보장한다. 자신의 child만 kill/reap하고 진단 로그 실패가 실행 결과를 덮지 않는다. trusted bounded 콜백의 진행 I/O는 포트 timeout으로 drain한다. Python socket 차단은 OS sandbox가 아니다. 현재 source-checkout/Pillow 지원이며 정상 server 대화/handler/evidence ACK·승인 여정은 MA03b~05다. 실제 Luna/AI0 CLI 증거와 모의 subprocess83검사는 각각 별도 근거다.
+
+
+### MA03b B1 · 서버 내부 원본 대화 context (C04/C05/C06/C14)
+
+MobileAgentContext는 서버 내부 frozen intent/관찰/settled 응답을 원본 SYSTEM_PROMPT/build_messages/history로 직렬화한 immutable JSON snapshot이다. 권한 token이 아니며 B2 producer가 project/attempt/worker/policy/source/실제 ACK 경계를 별도로 확인한다. 현재+최근4개 이미지만 validated pixel-only1000square로 전송하고 원본 ICC/text/exif·raw reasoning·worker URL/path를 전달하지 않는다. 오래된 요약도 canonical 비공백 Action summary 하나와 원본 tool/parser/native 검증을 통과해야 한다. terminal 뒤 이어가기와 frozen native literal 외 type을 거절한다.
+
+명시 authoring/Luna context는 다른 observation/sanitized_inputs와 혼합하지 않는다. schema의 type enum은 frozen 비밀 아닌 변수 중 기존 native validator가 허용하는 값만 사용하고 없으면 type을 제외한다. 기존 smoke mouse schema/단일 관찰 경로는 보존한다. context 구현만으로 normal handler/evidence ACK/승인 수용을 완료하지 않는다.

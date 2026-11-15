@@ -28,11 +28,22 @@ class OpenAIServerProvider:
     def calls_for(self,role):
         with self._lock:return self._counts[role]
 
-    def complete(self,*,model,role,secret,sanitized_inputs,token_output_limit,observation=None,before_send=None):
+    def complete(self,*,model,role,secret,sanitized_inputs,token_output_limit,observation=None,before_send=None,mobile_context=None):
+        options={}
+        if mobile_context is not None:
+            from aiqa.models.mobile_agent_context import MobileAgentContext
+            if (type(mobile_context) is not MobileAgentContext or model!='gpt-6-luna' or role!='authoring'
+                or observation is not None or sanitized_inputs!=()):
+                raise ProviderHttpError('provider_mobile_context_invalid',provider_dispatched=False)
+            try:
+                options={'conversation':mobile_context.messages(),'mobile_action_format':True,
+                         'mobile_action_literals':mobile_context.text_literals()}
+            except (ValueError,TypeError,KeyError):
+                raise ProviderHttpError('provider_mobile_context_invalid',provider_dispatched=False) from None
         port=OpenAIProviderHttp(allow_live=True,max_calls=1,timeout_seconds=self.timeout_seconds,transport=self._transport)
         try:
             return port.complete(model=model,role=role,secret=secret,sanitized_inputs=sanitized_inputs,
-                token_output_limit=token_output_limit,observation=observation,before_send=before_send)
+                token_output_limit=token_output_limit,observation=observation,before_send=before_send,**options)
         except ProviderHttpError as exc:
             exc.provider_dispatched=port.call_count>0
             raise

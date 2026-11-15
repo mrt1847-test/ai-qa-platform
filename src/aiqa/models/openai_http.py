@@ -61,7 +61,7 @@ class OpenAIProviderHttp:
     @property
     def call_count(self):return len(self.calls)
 
-    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None, before_send=None, conversation=None, mobile_action_format=False):
+    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None, before_send=None, conversation=None, mobile_action_format=False, mobile_action_literals=None):
         if not self.allow_live or self._stopped or self.call_count>=self.max_calls:
             raise ProviderHttpError('provider_disabled_or_exhausted')
         if (type(secret) is not str or not secret or any(c.isspace() for c in secret)
@@ -91,7 +91,12 @@ class OpenAIProviderHttp:
         if mobile_action_format:
             if conversation is None or role!='authoring' or model!='gpt-6-luna':raise ProviderHttpError('provider_input_invalid')
             from aiqa.models.mobile_action_format import MOBILE_ACTION_FORMAT
-            body['text']={'format':MOBILE_ACTION_FORMAT}
+            if mobile_action_literals is None:body['text']={'format':MOBILE_ACTION_FORMAT}
+            else:
+                from aiqa.models.mobile_action_format import mobile_action_format_for
+                try:body['text']={'format':mobile_action_format_for(mobile_action_literals)}
+                except ValueError:raise ProviderHttpError('provider_input_invalid') from None
+        if mobile_action_literals is not None and not mobile_action_format:raise ProviderHttpError('provider_input_invalid')
         if model.startswith('gpt-6'):body['reasoning']={'effort':self.reasoning_effort or 'low'}
         elif self.reasoning_effort is not None:body['reasoning']={'effort':self.reasoning_effort}
         elif model.startswith('gpt-5'):body['reasoning']={'effort':'minimal'}

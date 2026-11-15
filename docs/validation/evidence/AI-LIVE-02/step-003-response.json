@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"G마켓 홈 화면이며 상단에 검색창과 돋보기 아이콘이 보입니다.\",\"progress\":\"검색창을 열기 위해 상단 검색창을 누릅니다.\",\"action\":\"click(450,133)\",\"goal_status\":\"in_progress\",\"evidence\":\"상단 검색창에 추천 문구가 표시되어 있습니다.\"}",
+  "input_tokens": 3791,
+  "latency_seconds": 5.641,
+  "output_tokens": 100,
+  "reasoning_tokens": 21,
+  "request_id": "resp_0557cc6e5abf3d8c016af907e3b9ac87d29f9080cf7d3bc430"
+}

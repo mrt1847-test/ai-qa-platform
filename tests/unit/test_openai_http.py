@@ -114,3 +114,31 @@ def test_smoke_rejects_zero_or_blocked_dispatch():
     from types import SimpleNamespace
     module=runpy.run_path(str(Path('tools/android_openai_smoke.py')))
     with pytest.raises(ValueError):module['require_acknowledged'](SimpleNamespace(native_calls=0,outcome='blocked',argv=()))
+
+
+@pytest.mark.parametrize('effort',['none','low'])
+def test_luna_uses_explicit_supported_effort_and_measures_reasoning(effort):
+    seen=[];raw=response();raw['model']='gpt-6-luna';raw['usage']['output_tokens_details']={'reasoning_tokens':10}
+    raw['usage']['input_tokens_details']={'cached_tokens':20}
+    def handle(req):seen.append(req);return httpx.Response(200,json=raw)
+    port=OpenAIProviderHttp(allow_live=True,reasoning_effort=effort,max_calls=10,transport=httpx.MockTransport(handle))
+    result=port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=('task',),token_output_limit=1024)
+    assert json.loads(seen[0].content)['reasoning']=={'effort':effort}
+    assert result.reasoning_tokens==10 and result.cached_input_tokens==20
+
+
+@pytest.mark.parametrize('value',[True,0,13])
+def test_luna_evaluation_call_cap_is_bounded(value):
+    with pytest.raises(ValueError):OpenAIProviderHttp(allow_live=True,max_calls=value)
+
+
+def test_luna_rejects_unsupported_effort_before_http():
+    with pytest.raises(ValueError):OpenAIProviderHttp(allow_live=True,reasoning_effort='minimal')
+
+
+def test_send_boundary_can_cancel_before_any_chargeable_request():
+    seen=[]
+    port=OpenAIProviderHttp(allow_live=True,transport=httpx.MockTransport(lambda r:seen.append(r)))
+    def deny():raise RuntimeError('deadline')
+    with pytest.raises(RuntimeError):port.complete(model='gpt-6-luna',role='authoring',secret='private-test',sanitized_inputs=('task',),token_output_limit=1024,before_send=deny)
+    assert not seen and port.call_count==0

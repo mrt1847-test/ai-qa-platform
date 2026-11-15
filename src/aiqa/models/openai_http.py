@@ -15,6 +15,8 @@ class OpenAIProviderResult(ProviderHttpResult):
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    reasoning_tokens: int | None = None
+    cached_input_tokens: int | None = None
 
 
 def load_local_api_key(path: Path) -> str:
@@ -40,8 +42,10 @@ class OpenAIProviderHttp:
     kind='openai'
     supports_observation=True
 
-    def __init__(self, *, allow_live=False, max_calls=3, transport=None):
-        if type(max_calls) is not int or not 1<=max_calls<=3:raise ValueError('call cap must be 1..3')
+    def __init__(self, *, allow_live=False, max_calls=3, reasoning_effort=None, transport=None):
+        if type(max_calls) is not int or not 1<=max_calls<=12:raise ValueError('call cap must be 1..12')
+        if reasoning_effort not in {None,'none','low','medium','high'}:raise ValueError('reasoning effort unsupported')
+        self.reasoning_effort=reasoning_effort
         self.allow_live=allow_live
         self.max_calls=max_calls
         self._transport=transport
@@ -51,7 +55,7 @@ class OpenAIProviderHttp:
     @property
     def call_count(self):return len(self.calls)
 
-    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None):
+    def complete(self, *, model, role, secret, sanitized_inputs, token_output_limit, observation=None, before_send=None):
         if not self.allow_live or self._stopped or self.call_count>=self.max_calls:
             raise ProviderHttpError('provider_disabled_or_exhausted')
         if (type(secret) is not str or not secret or any(c.isspace() for c in secret)
@@ -75,7 +79,12 @@ class OpenAIProviderHttp:
             content.append({'type':'input_image','image_url':'data:image/png;base64,'+base64.b64encode(observation.png).decode('ascii'),'detail':'high'})
         body={'model':model,'store':False,'max_output_tokens':token_output_limit,
             'input':[{'role':'user','content':content}]}
-        if model.startswith('gpt-5'):body['reasoning']={'effort':'minimal'}
+        if model.startswith('gpt-6'):body['reasoning']={'effort':self.reasoning_effort or 'low'}
+        elif self.reasoning_effort is not None:body['reasoning']={'effort':self.reasoning_effort}
+        elif model.startswith('gpt-5'):body['reasoning']={'effort':'minimal'}
+        if before_send is not None:
+            if not callable(before_send):raise ProviderHttpError('provider_input_invalid')
+            before_send()
         self.calls.append({'model':model,'role':role,'token_output_limit':token_output_limit})
         try:
             with httpx.Client(timeout=60,trust_env=False,follow_redirects=False,transport=self._transport) as client:
@@ -95,6 +104,14 @@ class OpenAIProviderHttp:
             if type(usage) is not dict:raise ValueError()
             counts=tuple(usage[k] for k in ('input_tokens','output_tokens','total_tokens'))
             if any(type(v) is not int or v<0 for v in counts) or counts[2]!=counts[0]+counts[1]:raise ValueError()
+            def detail(group,name,limit):
+                values=usage.get(group)
+                if values is None or name not in values:return None
+                value=values[name]
+                if type(value) is not int or not 0<=value<=limit:raise ValueError()
+                return value
+            reasoning=detail('output_tokens_details','reasoning_tokens',counts[1])
+            cached=detail('input_tokens_details','cached_tokens',counts[0])
             texts=[]
             for item in data['output']:
                 if item.get('type')=='message':
@@ -104,7 +121,7 @@ class OpenAIProviderHttp:
                         texts.append(part['text'])
             text=''.join(texts).strip()
             if not text:raise ValueError()
-            return OpenAIProviderResult(text,identity,200,actual,*counts)
+            return OpenAIProviderResult(text,identity,200,actual,*counts,reasoning_tokens=reasoning,cached_input_tokens=cached)
         except ProviderHttpError:
             self._stopped=True
             raise

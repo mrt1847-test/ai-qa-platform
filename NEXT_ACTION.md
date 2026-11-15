@@ -14,6 +14,8 @@ Updated: **2026-11-15 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 현재 보조 구현/실제 시험: [AI-LIVE-01](docs/validation/tasks/AI-LIVE-01.md)에서 로컬 env 키로 실제 OpenAI 이미지→명시 단일 Back 응답1회(2409tokens)→저장 JSON→AI0 재생을 관찰했다. 이것은 정상 서버 접수/사람 승인/다단계 자율 탐색의 완료가 아니다. OpenAI 직접 포트를 정상 model binding·비밀 참조·계측으로 연결하는 후속을 B2.3/C와 함께 구현한다. 웹 설정의 연결 검사는 아직 fixture이며 실제 OpenAI 연결 성공으로 해석하지 않는다. [native trace 정확 재생](docs/managed-pc/ANDROID_NATIVE_TRACE_TASKS.md)의 코드와 [리뷰 보완](docs/validation/tasks/RX-87-B2-NATIVE-TRACE.md)을 검증했다. 다음은 logical 검증 경계 binding/UI와 정상 OpenAI port의 서버 연결이다.
 
+선택 모델: 사용자 요청에 따라 로컬 실제 평가/단일Back 도구 기본을 **gpt-6-luna**로 둔다(녹화 평가 effort=low). [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md)는 좌표/순서를 주지 않은 G마켓 mouse 검색을 5동작·6모델호출/23413입력·592출력(추론126포함)으로 관찰했다. [추론 체크리스트](docs/validation/AI_RECORDING_REASONING_CHECKLIST.md)의 실제 범위 판정과 미실행을 분리한다. 새 다단계 source 재생·인간 승인·정상 서버 공급자는 아직 미완료다. 로컬 실패 사유 코드 세분화 Minor는 이후 후속으로 남긴다.
+
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |

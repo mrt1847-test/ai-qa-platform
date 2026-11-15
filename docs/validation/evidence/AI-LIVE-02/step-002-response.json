@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"Android 알림 권한 대화상자가 화면을 덮고 있습니다.\",\"progress\":\"외부 권한 화면에서는 허용을 선택하지 않고 Android Back을 누릅니다.\",\"action\":\"key(4)\",\"goal_status\":\"in_progress\",\"evidence\":\"화면에 알림 허용 여부를 묻는 Android 시스템 대화상자가 보입니다.\"}",
+  "input_tokens": 3557,
+  "latency_seconds": 2.375,
+  "output_tokens": 107,
+  "reasoning_tokens": 23,
+  "request_id": "resp_0330cdc60dd480c5016af907d9dd3087d28a2a2de246c1056e"
+}

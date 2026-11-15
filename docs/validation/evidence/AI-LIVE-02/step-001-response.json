@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"G마켓 첫 안내 화면이며 선택적 권한 안내와 확인 버튼이 보입니다.\",\"progress\":\"초기 안내를 닫기 위해 확인을 누릅니다.\",\"action\":\"click(536,1768)\",\"goal_status\":\"in_progress\",\"evidence\":\"화면의 확인 버튼을 선택합니다.\"}",
+  "input_tokens": 3330,
+  "latency_seconds": 4.328,
+  "output_tokens": 96,
+  "reasoning_tokens": 23,
+  "request_id": "resp_0badf9a0f4853d8f016af907d3480487d2901d92111bbecfe8"
+}

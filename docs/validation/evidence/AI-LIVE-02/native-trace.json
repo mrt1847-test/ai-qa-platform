@@ -1,0 +1,151 @@
+{
+  "events": [
+    {
+      "action": "tap",
+      "action_id": "step-001",
+      "geometry": {
+        "content_bounds": [
+          536,
+          1768,
+          537,
+          1769
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 1,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 536,
+        "x2": null,
+        "y": 1768,
+        "y2": null
+      },
+      "target": "536,1768"
+    },
+    {
+      "action": "back",
+      "action_id": "step-002",
+      "geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 2,
+      "native": {
+        "duration_ms": 300,
+        "keycode": 4,
+        "kind": "key",
+        "text": null,
+        "x": null,
+        "x2": null,
+        "y": null,
+        "y2": null
+      },
+      "target": "4"
+    },
+    {
+      "action": "tap",
+      "action_id": "step-003",
+      "geometry": {
+        "content_bounds": [
+          450,
+          133,
+          451,
+          134
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 3,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 450,
+        "x2": null,
+        "y": 133,
+        "y2": null
+      },
+      "target": "450,133"
+    },
+    {
+      "action": "type",
+      "action_id": "step-004",
+      "geometry": {
+        "content_bounds": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 4,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "text",
+        "text": "mouse",
+        "x": null,
+        "x2": null,
+        "y": null,
+        "y2": null
+      },
+      "target": "literal"
+    },
+    {
+      "action": "tap",
+      "action_id": "step-005",
+      "geometry": {
+        "content_bounds": [
+          852,
+          210,
+          853,
+          211
+        ],
+        "physical_height": 2400,
+        "physical_width": 1080,
+        "rotation": 0
+      },
+      "intent": "open",
+      "kind": "action",
+      "line": 5,
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 852,
+        "x2": null,
+        "y": 210,
+        "y2": null
+      },
+      "target": "852,210"
+    }
+  ],
+  "native_action_count": 5,
+  "schema": "android-native-trace-v2"
+}

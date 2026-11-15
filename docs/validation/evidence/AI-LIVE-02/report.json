@@ -1,0 +1,269 @@
+{
+  "acknowledged_native_actions": 5,
+  "ambiguous_dispatch": false,
+  "avd": "Medium_Phone_API_36",
+  "elapsed_seconds": 60.375,
+  "finished_at": "2026-11-15T01:16:53.056433+00:00",
+  "goal": "로그인·구매·개인정보 입력·권한 허용 없이 G마켓에서 상품 검색창을 열어 mouse를 검색하고, 검색 결과 화면에 검색어와 상품 목록이 보이면 종료한다.",
+  "human_review": "pending",
+  "input_tokens": 23413,
+  "limits": {
+    "model_calls": 10,
+    "output_tokens_per_call": 1024,
+    "seconds": 240
+  },
+  "model_claims": [
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"G마켓 첫 안내 화면이며 선택적 권한 안내와 확인 버튼이 보입니다.\",\"progress\":\"초기 안내를 닫기 위해 확인을 누릅니다.\",\"action\":\"click(536,1768)\",\"goal_status\":\"in_progress\",\"evidence\":\"화면의 확인 버튼을 선택합니다.\"}",
+      "input_tokens": 3330,
+      "latency_seconds": 4.328,
+      "output_tokens": 96,
+      "reasoning_tokens": 23,
+      "request_id": "resp_0badf9a0f4853d8f016af907d3480487d2901d92111bbecfe8"
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"Android 알림 권한 대화상자가 화면을 덮고 있습니다.\",\"progress\":\"외부 권한 화면에서는 허용을 선택하지 않고 Android Back을 누릅니다.\",\"action\":\"key(4)\",\"goal_status\":\"in_progress\",\"evidence\":\"화면에 알림 허용 여부를 묻는 Android 시스템 대화상자가 보입니다.\"}",
+      "input_tokens": 3557,
+      "latency_seconds": 2.375,
+      "output_tokens": 107,
+      "reasoning_tokens": 23,
+      "request_id": "resp_0330cdc60dd480c5016af907d9dd3087d28a2a2de246c1056e"
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"G마켓 홈 화면이며 상단에 검색창과 돋보기 아이콘이 보입니다.\",\"progress\":\"검색창을 열기 위해 상단 검색창을 누릅니다.\",\"action\":\"click(450,133)\",\"goal_status\":\"in_progress\",\"evidence\":\"상단 검색창에 추천 문구가 표시되어 있습니다.\"}",
+      "input_tokens": 3791,
+      "latency_seconds": 5.641,
+      "output_tokens": 100,
+      "reasoning_tokens": 21,
+      "request_id": "resp_0557cc6e5abf3d8c016af907e3b9ac87d29f9080cf7d3bc430"
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"G마켓 검색 화면으로, 상단 검색어 입력란에 커서가 보입니다.\",\"progress\":\"검색어를 입력합니다.\",\"action\":\"type('mouse')\",\"goal_status\":\"in_progress\",\"evidence\":\"검색어 입력란이 활성화되어 있습니다.\"}",
+      "input_tokens": 4023,
+      "latency_seconds": 2.375,
+      "output_tokens": 80,
+      "reasoning_tokens": 16,
+      "request_id": "resp_009e8f2acb067e0b016af907ecbf9c87d2bdfe7da04864a632"
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"G마켓 검색어 입력 화면이며 입력란에 mouse가 있고 키보드가 열려 있습니다.\",\"progress\":\"검색 버튼을 눌러 mouse 상품 결과를 표시합니다.\",\"action\":\"click(852,210)\",\"goal_status\":\"in_progress\",\"evidence\":\"상단 입력란에 mouse가 보이고 오른쪽에 돋보기 아이콘이 있습니다.\"}",
+      "input_tokens": 4237,
+      "latency_seconds": 3.562,
+      "output_tokens": 98,
+      "reasoning_tokens": 13,
+      "request_id": "resp_0e3ea2ec4f964f07016af907fb953887d2b1db48fd7763ffb9"
+    },
+    {
+      "actual_model": "gpt-6-luna",
+      "cached_input_tokens": 0,
+      "content": "{\"screen\":\"G마켓 검색 결과 화면에 검색어 mouse와 상품 목록이 보이며 안내 오버레이가 표시되어 있습니다.\",\"progress\":\"검색어와 상품 결과가 화면에 확인됩니다.\",\"action\":\"finish()\",\"goal_status\":\"achieved\",\"evidence\":\"상단 검색란에 mouse가 있고 아래에 마우스 상품 목록이 보입니다.\"}",
+      "input_tokens": 4475,
+      "latency_seconds": 2.875,
+      "output_tokens": 111,
+      "reasoning_tokens": 30,
+      "request_id": "resp_09651873d962d9f7016af908045ce087d2891524e374a59bc1"
+    }
+  ],
+  "model_requested": "gpt-6-luna",
+  "observed_native_actions": 5,
+  "output_tokens": 592,
+  "package": "com.ebay.kr.gmarket",
+  "product_approval": false,
+  "reasoning_effort": "low",
+  "reasoning_tokens": 126,
+  "recording_model_calls": 6,
+  "replay_model_calls": null,
+  "scope": "manual_recording_reasoning_evaluation",
+  "serial": "emulator-5580",
+  "source_sha256": "03733c6d7ddb3d6dbadbf6b122632db830512ea07c341e30465d35a8f0434905",
+  "started_at": "2026-11-15T01:15:52.685627+00:00",
+  "status": "model_claimed_achieved",
+  "steps": [
+    {
+      "after_image": "step-001-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "536",
+        "1768"
+      ],
+      "before_image": "step-001-before.png",
+      "decision": {
+        "action": "click(536,1768)",
+        "evidence": "화면의 확인 버튼을 선택합니다.",
+        "goal_status": "in_progress",
+        "progress": "초기 안내를 닫기 위해 확인을 누릅니다.",
+        "screen": "G마켓 첫 안내 화면이며 선택적 권한 안내와 확인 버튼이 보입니다."
+      },
+      "dispatch": "observed",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 536,
+        "x2": null,
+        "y": 1768,
+        "y2": null
+      },
+      "step": 1
+    },
+    {
+      "after_image": "step-002-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "keyevent",
+        "4"
+      ],
+      "before_image": "step-002-before.png",
+      "decision": {
+        "action": "key(4)",
+        "evidence": "화면에 알림 허용 여부를 묻는 Android 시스템 대화상자가 보입니다.",
+        "goal_status": "in_progress",
+        "progress": "외부 권한 화면에서는 허용을 선택하지 않고 Android Back을 누릅니다.",
+        "screen": "Android 알림 권한 대화상자가 화면을 덮고 있습니다."
+      },
+      "dispatch": "observed",
+      "foreground": "com.google.android.permissioncontroller",
+      "native": {
+        "duration_ms": 300,
+        "keycode": 4,
+        "kind": "key",
+        "text": null,
+        "x": null,
+        "x2": null,
+        "y": null,
+        "y2": null
+      },
+      "step": 2
+    },
+    {
+      "after_image": "step-003-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "450",
+        "133"
+      ],
+      "before_image": "step-003-before.png",
+      "decision": {
+        "action": "click(450,133)",
+        "evidence": "상단 검색창에 추천 문구가 표시되어 있습니다.",
+        "goal_status": "in_progress",
+        "progress": "검색창을 열기 위해 상단 검색창을 누릅니다.",
+        "screen": "G마켓 홈 화면이며 상단에 검색창과 돋보기 아이콘이 보입니다."
+      },
+      "dispatch": "observed",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 450,
+        "x2": null,
+        "y": 133,
+        "y2": null
+      },
+      "step": 3
+    },
+    {
+      "after_image": "step-004-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "text",
+        "mouse"
+      ],
+      "before_image": "step-004-before.png",
+      "decision": {
+        "action": "type('mouse')",
+        "evidence": "검색어 입력란이 활성화되어 있습니다.",
+        "goal_status": "in_progress",
+        "progress": "검색어를 입력합니다.",
+        "screen": "G마켓 검색 화면으로, 상단 검색어 입력란에 커서가 보입니다."
+      },
+      "dispatch": "observed",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "text",
+        "text": "mouse",
+        "x": null,
+        "x2": null,
+        "y": null,
+        "y2": null
+      },
+      "step": 4
+    },
+    {
+      "after_image": "step-005-after.png",
+      "argv": [
+        "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+        "-s",
+        "emulator-5580",
+        "shell",
+        "input",
+        "tap",
+        "852",
+        "210"
+      ],
+      "before_image": "step-005-before.png",
+      "decision": {
+        "action": "click(852,210)",
+        "evidence": "상단 입력란에 mouse가 보이고 오른쪽에 돋보기 아이콘이 있습니다.",
+        "goal_status": "in_progress",
+        "progress": "검색 버튼을 눌러 mouse 상품 결과를 표시합니다.",
+        "screen": "G마켓 검색어 입력 화면이며 입력란에 mouse가 있고 키보드가 열려 있습니다."
+      },
+      "dispatch": "observed",
+      "foreground": "com.ebay.kr.gmarket",
+      "native": {
+        "duration_ms": 300,
+        "keycode": null,
+        "kind": "tap",
+        "text": null,
+        "x": 852,
+        "x2": null,
+        "y": 210,
+        "y2": null
+      },
+      "step": 5
+    }
+  ],
+  "terminal_decision": {
+    "action": "finish()",
+    "evidence": "상단 검색란에 mouse가 있고 아래에 마우스 상품 목록이 보입니다.",
+    "goal_status": "achieved",
+    "progress": "검색어와 상품 결과가 화면에 확인됩니다.",
+    "screen": "G마켓 검색 결과 화면에 검색어 mouse와 상품 목록이 보이며 안내 오버레이가 표시되어 있습니다."
+  },
+  "usage_complete": true
+}

@@ -1,0 +1,33 @@
+{
+  "after_image": "step-004-after.png",
+  "argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "text",
+    "mouse"
+  ],
+  "before_image": "step-004-before.png",
+  "decision": {
+    "action": "type('mouse')",
+    "evidence": "검색어 입력란이 활성화되어 있습니다.",
+    "goal_status": "in_progress",
+    "progress": "검색어를 입력합니다.",
+    "screen": "G마켓 검색 화면으로, 상단 검색어 입력란에 커서가 보입니다."
+  },
+  "dispatch": "observed",
+  "foreground": "com.ebay.kr.gmarket",
+  "native": {
+    "duration_ms": 300,
+    "keycode": null,
+    "kind": "text",
+    "text": "mouse",
+    "x": null,
+    "x2": null,
+    "y": null,
+    "y2": null
+  },
+  "step": 4
+}

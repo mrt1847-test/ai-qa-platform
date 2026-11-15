@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-11-15T01:16:39.160635+00:00",
+  "geometry": {
+    "content_bounds": [
+      0,
+      0,
+      1080,
+      2400
+    ],
+    "model_height": 2400,
+    "model_width": 1080,
+    "physical_height": 2400,
+    "physical_width": 1080,
+    "rotation": 0,
+    "transform": "identity"
+  },
+  "hash": "sha256:db3de0c359418db57d1489ce19e3f8d3665bcd57f666f25d805b959901f9f3da"
+}

@@ -1,0 +1,34 @@
+{
+  "after_image": "step-001-after.png",
+  "argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "tap",
+    "536",
+    "1768"
+  ],
+  "before_image": "step-001-before.png",
+  "decision": {
+    "action": "click(536,1768)",
+    "evidence": "화면의 확인 버튼을 선택합니다.",
+    "goal_status": "in_progress",
+    "progress": "초기 안내를 닫기 위해 확인을 누릅니다.",
+    "screen": "G마켓 첫 안내 화면이며 선택적 권한 안내와 확인 버튼이 보입니다."
+  },
+  "dispatch": "observed",
+  "foreground": "com.ebay.kr.gmarket",
+  "native": {
+    "duration_ms": 300,
+    "keycode": null,
+    "kind": "tap",
+    "text": null,
+    "x": 536,
+    "x2": null,
+    "y": 1768,
+    "y2": null
+  },
+  "step": 1
+}

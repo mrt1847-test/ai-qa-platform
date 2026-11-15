@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"G마켓 검색 화면으로, 상단 검색어 입력란에 커서가 보입니다.\",\"progress\":\"검색어를 입력합니다.\",\"action\":\"type('mouse')\",\"goal_status\":\"in_progress\",\"evidence\":\"검색어 입력란이 활성화되어 있습니다.\"}",
+  "input_tokens": 4023,
+  "latency_seconds": 2.375,
+  "output_tokens": 80,
+  "reasoning_tokens": 16,
+  "request_id": "resp_009e8f2acb067e0b016af907ecbf9c87d2bdfe7da04864a632"
+}

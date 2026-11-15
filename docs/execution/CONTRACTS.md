@@ -477,3 +477,10 @@ v2 seal은 ready/ACK된 같은 project·REC owner·source role·text/plain·hash
 정상 case_context는 서버 DB package의 replay_compiler_ref를 context_hash에 포함한다(recording은 null). 정상 strict replay는 이 필드를 요구하고 native v2 compiler이면 native_source witness를 필수로 검증한다. witness는 project/package ID/hash/source manifest ID/hash/원본 mapping이며 worker 재compile hash·표시 plan이 같아야 한다. 표시 plan/witness가 빠져도 worker 전역 plan으로 v2를 실행하지 않는다. 원래 observation의 model/physical geometry·bounds·정제를 먼저 검사하고 identity physical frame에서 typed driver를 호출해 이중 rescale을 막는다. context-v1에 새 compiler metadata를 추가하므로 이 strict producer/consumer를 함께 갱신한다; 직접 개발 seam의 구형 fixture 호환은 정상 runtime 권한이 아니다.
 
 AI-LIVE-01의 OpenAIProviderHttp/tools/android_openai_smoke.py는 명시 로컬 파일의 키와 fixed OpenAI TLS origin을 사용하는 별도 기술 시험이다. 정상 factory/서버 비밀 참조/admission/비용 저장/사람 승인으로 해석하지 않는다. 이미지 입력, store=false, 호출/출력 한도, incomplete/refusal 거절, 오류 후 latch/no retry를 적용한다. 단일 Back의 저장 bytes hash·개수/허용 동작을 dispatch 전에 대조하고 양쪽 native1/acknowledged를 확인한다. 실제 기록1회2387+22tokens/저장본 AI0 재생의 근거가 있고, 일반 자율 다단계·실제 check 평가 수용은 남아 있다.
+
+
+### AI-LIVE-02 · Luna 녹화 추론 평가의 경계 (C00/C05/C06/C14)
+
+사용자 선택 gpt-6-luna를 로컬 단일Back/평가 도구의 기본으로 사용한다. OpenAI port는 명시 effort(none/low 등), 실제 reasoning/cache metadata, 기본3/최대12 model cap을 지원한다. 평가 도구는10회/출력1024/전송 cutoff240초를 고정하며 현재 진행 중인 요청·증거·정리는 개별 timeout 내 drain할 수 있다. 실제 생성6회/5native의 공개 검색 증거와 AR01~14 체크리스트는 정상 서버 공급자/model binding·예산 admission·QA/사람 승인/새 저장본 재생의 완료가 아니다. 모델 성공 선언과 관찰 판정/사람 승인을 분리한다. 추론 토큰은 출력에 포함되므로 다시 더하지 않는다.
+
+평가 도구는 이름이 고정된 G마켓 emulator만 받고 capture 전후 foreground를 결합한다. native 직전 새 AVD/geometry/foreground와 paid/native 전송 시간 경계를 검사하고, cleanup 직전도 현재 AVD 이름을 확인한다. 권한/외부 화면은 Back만, 텍스트는 과제에 지정한 mouse만 허용한다. 앱 내부의 구매/로그인 의미 판단은 이 수동 기술 시험의 과제 규칙과 관찰에 의존하며 범용 시각 정책 엔진으로 해석하지 않는다. 불명 전송/관찰 실패에서 재시도0, acknowledged/observed 수를 구분해 저장한다. 관찰 요약은 hidden chain-of-thought가 아니다.

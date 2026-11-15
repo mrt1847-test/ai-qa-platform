@@ -38,7 +38,7 @@ def require_acknowledged(dispatch):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('adb','serial','avd','package','key-file','output'):p.add_argument('--'+name,required=True)
-    p.add_argument('--model',default='gpt-5-mini')
+    p.add_argument('--model',default='gpt-6-luna')
     a=p.parse_args()
     out=Path(a.output);out.mkdir(parents=True,exist_ok=False)
     report={'scope':'manual_technical_smoke_not_product_approval_or_QA','started_at':datetime.now(timezone.utc).isoformat(),

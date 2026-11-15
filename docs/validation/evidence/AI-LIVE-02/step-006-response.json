@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"G마켓 검색 결과 화면에 검색어 mouse와 상품 목록이 보이며 안내 오버레이가 표시되어 있습니다.\",\"progress\":\"검색어와 상품 결과가 화면에 확인됩니다.\",\"action\":\"finish()\",\"goal_status\":\"achieved\",\"evidence\":\"상단 검색란에 mouse가 있고 아래에 마우스 상품 목록이 보입니다.\"}",
+  "input_tokens": 4475,
+  "latency_seconds": 2.875,
+  "output_tokens": 111,
+  "reasoning_tokens": 30,
+  "request_id": "resp_09651873d962d9f7016af908045ce087d2891524e374a59bc1"
+}

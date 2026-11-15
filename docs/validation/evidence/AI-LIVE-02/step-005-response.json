@@ -1,0 +1,10 @@
+{
+  "actual_model": "gpt-6-luna",
+  "cached_input_tokens": 0,
+  "content": "{\"screen\":\"G마켓 검색어 입력 화면이며 입력란에 mouse가 있고 키보드가 열려 있습니다.\",\"progress\":\"검색 버튼을 눌러 mouse 상품 결과를 표시합니다.\",\"action\":\"click(852,210)\",\"goal_status\":\"in_progress\",\"evidence\":\"상단 입력란에 mouse가 보이고 오른쪽에 돋보기 아이콘이 있습니다.\"}",
+  "input_tokens": 4237,
+  "latency_seconds": 3.562,
+  "output_tokens": 98,
+  "reasoning_tokens": 13,
+  "request_id": "resp_0e3ea2ec4f964f07016af907fb953887d2b1db48fd7763ffb9"
+}

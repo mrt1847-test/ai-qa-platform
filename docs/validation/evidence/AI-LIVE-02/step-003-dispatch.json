@@ -1,0 +1,34 @@
+{
+  "after_image": "step-003-after.png",
+  "argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "tap",
+    "450",
+    "133"
+  ],
+  "before_image": "step-003-before.png",
+  "decision": {
+    "action": "click(450,133)",
+    "evidence": "상단 검색창에 추천 문구가 표시되어 있습니다.",
+    "goal_status": "in_progress",
+    "progress": "검색창을 열기 위해 상단 검색창을 누릅니다.",
+    "screen": "G마켓 홈 화면이며 상단에 검색창과 돋보기 아이콘이 보입니다."
+  },
+  "dispatch": "observed",
+  "foreground": "com.ebay.kr.gmarket",
+  "native": {
+    "duration_ms": 300,
+    "keycode": null,
+    "kind": "tap",
+    "text": null,
+    "x": 450,
+    "x2": null,
+    "y": 133,
+    "y2": null
+  },
+  "step": 3
+}

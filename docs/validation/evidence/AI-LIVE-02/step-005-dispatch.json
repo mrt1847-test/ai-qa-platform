@@ -1,0 +1,34 @@
+{
+  "after_image": "step-005-after.png",
+  "argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "tap",
+    "852",
+    "210"
+  ],
+  "before_image": "step-005-before.png",
+  "decision": {
+    "action": "click(852,210)",
+    "evidence": "상단 입력란에 mouse가 보이고 오른쪽에 돋보기 아이콘이 있습니다.",
+    "goal_status": "in_progress",
+    "progress": "검색 버튼을 눌러 mouse 상품 결과를 표시합니다.",
+    "screen": "G마켓 검색어 입력 화면이며 입력란에 mouse가 있고 키보드가 열려 있습니다."
+  },
+  "dispatch": "observed",
+  "foreground": "com.ebay.kr.gmarket",
+  "native": {
+    "duration_ms": 300,
+    "keycode": null,
+    "kind": "tap",
+    "text": null,
+    "x": 852,
+    "x2": null,
+    "y": 210,
+    "y2": null
+  },
+  "step": 5
+}

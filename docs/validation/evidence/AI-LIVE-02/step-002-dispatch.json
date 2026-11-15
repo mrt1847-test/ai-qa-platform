@@ -1,0 +1,33 @@
+{
+  "after_image": "step-002-after.png",
+  "argv": [
+    "C:\\Users\\cease\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+    "-s",
+    "emulator-5580",
+    "shell",
+    "input",
+    "keyevent",
+    "4"
+  ],
+  "before_image": "step-002-before.png",
+  "decision": {
+    "action": "key(4)",
+    "evidence": "화면에 알림 허용 여부를 묻는 Android 시스템 대화상자가 보입니다.",
+    "goal_status": "in_progress",
+    "progress": "외부 권한 화면에서는 허용을 선택하지 않고 Android Back을 누릅니다.",
+    "screen": "Android 알림 권한 대화상자가 화면을 덮고 있습니다."
+  },
+  "dispatch": "observed",
+  "foreground": "com.google.android.permissioncontroller",
+  "native": {
+    "duration_ms": 300,
+    "keycode": 4,
+    "kind": "key",
+    "text": null,
+    "x": null,
+    "x2": null,
+    "y": null,
+    "y2": null
+  },
+  "step": 2
+}

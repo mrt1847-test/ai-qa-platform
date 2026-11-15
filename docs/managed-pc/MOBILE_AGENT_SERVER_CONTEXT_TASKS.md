@@ -24,6 +24,11 @@ BASE4ed74fb. Files contracts/mobile_agent_engine.py (dependency-free exact commi
 
 ### B2b · authoritative DB producer and gateway
 
+B2b0 (BASE0e434dd) internal gateway transport first: handle/_admit accept server-only mobile_context, include immutable context in idempotency fingerprint, require exact OpenAI/authoring/recording/Luna and no mixed observation before secret/send; broker admission still uses original frozen request inputs but context transport sends its own complete conversation. Keep worker DTO/HTTP parsing unchanged. Tests integration/test_ma03b_context_gateway.py with existing server secret/gateway fixture, cancellation, measured usage, context collision, unsupported provider/role/model, no durable normal-engine claim. B2b1 next is DB proposal/native ACK producer + endpoint/source admission; do not enable default or skip that gate.
+
+- [x] B2b0 RED mocked gateway tests → code → focused regression/review/handoff/commit. No DB admission or native ACK claim.
+
+
 - [ ] Read only same project/attempt/worker/policy/source-pinned engine receipts, validate successful permitted model replies and correlate stored observations. Refuse pending/unknown/late/terminal histories and out-of-order/duplicate captures. Native execution completion must be source-evidence ACK, not a model-success claim. Reuse current-frame authorization and immutable artifact hash validation without granting old images new action authority.
 - [ ] Build conversation outside DB writer transactions, recheck all pins at send. Explicit snapshot/engine marker must distinguish new original protocol from legacy worker parser; no silent behavior change. Gateway carries internal server context only, request DTO never carries worker system/messages.
 - [ ] Normal REC/claim/image ACK/receipt tests include restart/idempotency, foreign history, tamper, current control expiration, old history beyond current TTL, unsupported provider, measured usage. Integrate producer before MA04 worker registration.
@@ -35,3 +40,5 @@ Review focus: history trusted provenance vs helper type; secret/image size/hash 
 B1 완료 근거: ../validation/tasks/AI-LIVE-04-MA03B1.md, 집중110passed16.47s. 다음 B2 DB 소유 이력·명시 engine pin/gateway 연결.
 
 B2a 완료: ../validation/tasks/AI-LIVE-04-MA03B2A.md, 집중77passed24.82s. 기존 consumer는 새 marker를 전송 전에 거절하고 실제 default 접수는 유지한다. B2b producer/MA04 handler는 미완료.
+
+B2b0 완료: ../validation/tasks/AI-LIVE-04-MA03B2B0.md, 집중42passed19.16s. B2b1 DB receipt/관찰과 same-action before/after/log ACK producer 및 정상 engine endpoint가 다음이다.

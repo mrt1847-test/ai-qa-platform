@@ -529,3 +529,8 @@ MobileAgentContext는 서버 내부 frozen intent/관찰/settled 응답을 원�
 ### MA03b B2a · optional 원본 engine marker (C04/C05/C14)
 
 authoring_engine은 kind/upstream_commit/manifest_sha256/protocol의 exact source ref다. 명시 서버 freeze에만 넣고 authoring policy hash에 포함한다. marker가 없으면 legacy hash 계산식을 유지한다. 부분/null/unknown marker는 원본 hash를 다시 계산해도 거절하며 legacy로 해석하지 않는다. 반환 pin의 extension도 deepcopy한다. worker caps는 exact supported_engine을 요구하고 기존 plan_provider는 새 marker를 전송 전에 거절한다. 일반 접수 default/실제 새 engine handler는 아직 선택하지 않는다. 이 consistency contract가 DB 소유권·current lease·실제 native ACK를 대체하지 않는다.
+
+
+### MA03b B2b0 · server-internal gateway context (C04/C05/C06)
+
+Gateway의 mobile_context 인수는 내부 포트이며 worker DTO/HTTP에는 노출하지 않는다. exact context와 단독 입력을 cache 조회 전 검사하고 context SHA를 멱등성에 포함한다. ModelBroker admission은 기존 frozen request로 하고 transport만 원본 대화/빈 inputs를 사용한다. exact OpenAI/recording/authoring/Luna만 전송하며 서버 resolver/최종 send fence/실측 정산을 보존한다. 정상 endpoint producer는 B2b1에서 DB 소유권/source/실제 native ACK를 검증해야 하며 내부 context 타입은 그 증명이 아니다.

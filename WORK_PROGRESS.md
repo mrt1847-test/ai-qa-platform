@@ -23,6 +23,8 @@
 
 [AI-LIVE-04-MA03B2A](docs/validation/tasks/AI-LIVE-04-MA03B2A.md): 원본 commit/manifest/RPC protocol을 authoring policy에 고정하는 optional engine ref와 기존 worker의 명시 capability/전송 전 거절을 구현했다. legacy hash 유지·불완전 marker 거절·nested extension 복사77pass. 기본 접수/새 handler를 켠 것은 아니며 다음 B2b DB 이력·gateway, MA04 consumer를 이어간다.
 
+[AI-LIVE-04-MA03B2B0](docs/validation/tasks/AI-LIVE-04-MA03B2B0.md): 원본 context를 기존 서버 gateway 권한/비밀/쿼터/정산에 연결하고 대화별 멱등성·캐시 혼합 입력 거절을42개 모의 검사로 확인했다. worker HTTP에는 context를 노출하지 않았다. 정상 endpoint의 DB 이력/실제 native ACK producer는 B2b1이며 완료 수는 유지한다.
+
 RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**

@@ -284,8 +284,14 @@ class ServerModelGateway:
         before_provider=None,
         observation=None,
         provider_pin=None,
+        mobile_context=None,
     ) -> ModelRequestReceipt:
         fingerprint = _fingerprint(request, project_id, item_id)
+        if mobile_context is not None:
+            from aiqa.models.mobile_agent_context import MobileAgentContext
+            if type(mobile_context) is not MobileAgentContext or observation is not None:
+                raise ModelRequestDenied('mobile_context_invalid')
+            fingerprint += '|mobile-context:'+mobile_context.fingerprint()
         with self._lock:
             prior = self._receipts.get(idempotency_key)
             if prior is not None:
@@ -307,10 +313,10 @@ class ServerModelGateway:
                     prior[1].generation,
                 )
             if store is None:
-                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin)
+                receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin, mobile_context=mobile_context)
             else:
                 with bind_secret_store(store):  # type: ignore[arg-type]
-                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin)
+                    receipt = self._admit(worker, request, project_id, item_id, actor_id, before_provider=before_provider, observation=observation, provider_pin=provider_pin, mobile_context=mobile_context)
             self._receipts[idempotency_key] = (fingerprint, receipt)
             self._attempt_receipts.setdefault((project_id, item_id), []).append(receipt)
             return receipt
@@ -371,7 +377,7 @@ class ServerModelGateway:
         project_id: UUID,
         item_id: str,
         actor_id: UUID,
-        *, before_provider=None, observation=None, provider_pin=None,
+        *, before_provider=None, observation=None, provider_pin=None, mobile_context=None,
     ) -> ModelRequestReceipt:
         provider=self.provider if provider_pin is None else provider_pin
         if provider_pin is not None and self.provider is not provider_pin:
@@ -432,6 +438,11 @@ class ServerModelGateway:
             for item in policy.bindings
             if item.role == request.role and item.revision == request.binding_revision
         )
+        if mobile_context is not None:
+            from aiqa.models.openai_server import OpenAIServerProvider
+            if (type(provider) is not OpenAIServerProvider or request.purpose!='recording'
+                or request.role!='authoring' or binding.model!='gpt-6-luna' or observation is not None):
+                raise ModelRequestDenied('mobile_context_unsupported')
         secret_ref = policy.secret_refs.get(request.role)
         if secret_ref is None:
             raise ModelRequestDenied("secret")
@@ -452,6 +463,7 @@ class ServerModelGateway:
             call_options = {"request_key":f"{project_id}:{item_id}:{request.call_id}"} if isinstance(provider,OperationalProviderHttp) else {}
             if before_provider is not None and getattr(provider,'supports_send_boundary',False):
                 call_options['before_send']=before_provider
+            if mobile_context is not None:call_options['mobile_context']=mobile_context
             if observation is not None:
                 if not getattr(provider, 'supports_observation', False):
                     raise ModelRequestDenied('provider_observation_unsupported', status=503)
@@ -460,7 +472,7 @@ class ServerModelGateway:
                 model=binding.model,
                 role=request.role,
                 secret=secret.value,
-                sanitized_inputs=request.sanitized_inputs,
+                sanitized_inputs=() if mobile_context is not None else request.sanitized_inputs,
                 token_output_limit=request.token_output_limit,
                 **call_options,
             )

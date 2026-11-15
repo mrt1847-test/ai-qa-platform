@@ -38,6 +38,9 @@ class MobileAgentContext:
     def text_literals(self):
         return tuple(json.loads(self._document)['text_literals'])
 
+    def fingerprint(self):
+        return hashlib.sha256(self._document.encode('utf-8')).hexdigest()
+
 
 def _unique(pairs):
     result={}

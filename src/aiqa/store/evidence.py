@@ -462,6 +462,7 @@ def _commit_evidence_metadata(
             "late": ack.late,
             "artifact_count": ack.artifact_count,
             "artifact_ids": list(ack.artifact_ids),
+            "server_committed_at": binding.now.astimezone(timezone.utc).isoformat(),
         }
         connection.execute(
             """

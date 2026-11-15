@@ -534,3 +534,10 @@ authoring_engine은 kind/upstream_commit/manifest_sha256/protocol의 exact sourc
 ### MA03b B2b0 · server-internal gateway context (C04/C05/C06)
 
 Gateway의 mobile_context 인수는 내부 포트이며 worker DTO/HTTP에는 노출하지 않는다. exact context와 단독 입력을 cache 조회 전 검사하고 context SHA를 멱등성에 포함한다. ModelBroker admission은 기존 frozen request로 하고 transport만 원본 대화/빈 inputs를 사용한다. exact OpenAI/recording/authoring/Luna만 전송하며 서버 resolver/최종 send fence/실측 정산을 보존한다. 정상 endpoint producer는 B2b1에서 DB 소유권/source/실제 native ACK를 검증해야 하며 내부 context 타입은 그 증명이 아니다.
+
+
+### MA03b B2b1 · DB/native ACK history producer (C04/C05/C06)
+
+History는 같은 project/attempt/worker/policy의 완료 모델 receipt와 exact call 관찰만 쓰고 모델 성공을 native 완료로 보지 않는다. ma-<call UUID> before/after/log가 ready/ACK된 같은 action이어야 한다. mobile-agent-step-v1 로그는 원본 parser/rescale의 physical typed native·native_calls1(wait0)·전후 hash와 정확히 일치하고 after/log가 같은 worker evidence commit에 함께 포함돼야 한다. current와 과거 source capture ID는 중복 불가, 동일 pixels의 다른 capture는 허용한다.
+
+evidence commit 완료 response_body의 server_committed_at은 파일 준비 후 metadata writer 안의 서버 시각이다. staging created_at과 구분하고 캐시에서도 원래 값을 보존하며 public DTO/DB schema는 유지한다. 이력 proof는 모델 완료 이후 시작하고 각 다음 캡처 등록은 proof 완료 이후여야 한다. 시간 없는 legacy receipt는 새 engine의 이력 ACK로 사용하지 않는다. PNG/log 검증·모델 이미지 처리는 writer 밖에서 하고 마지막 snapshot 후 exact current frame의 freshness까지 재확인한다. producer는 내부 포트이고 정상 endpoint의 engine 선택/최종 fingerprint는 B2b2, 실제 handler는 MA04다.

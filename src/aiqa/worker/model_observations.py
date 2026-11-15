@@ -20,6 +20,10 @@ def upload_authoring_observation(client, claim, observation, model_request):
         or intent['secret_refs'] or not isinstance(observation, Observation)):
         raise SanitizationRequired('pixel coverage is unavailable')
     try:
+        from aiqa.contracts.authoring import validate_authoring_pin
+        pin=validate_authoring_pin(snapshot)
+        mobile=pin is not None and 'authoring_engine' in pin
+        action_id='ma-'+str(UUID(model_request['call_id'])) if mobile else None
         geometry = parse_geometry(asdict(observation.geometry))
         filtered = filter_capture(replace(observation, geometry=geometry), ())
         captured = datetime.fromisoformat(observation.captured_at)
@@ -41,9 +45,10 @@ def upload_authoring_observation(client, claim, observation, model_request):
     try:
         ack = client.commit_evidence(sanitized=True,project_id=claim['project_id'],job_id=claim['job_id'],
             generation=claim['generation'],now=clean.captured_at,events=[],
-            artifacts=[{'filename':'model-frame.png','media_type':'image/png','declared_hash':digest,
+            artifacts=[{'filename':action_id+'-before.png' if mobile else 'model-frame.png','media_type':'image/png','declared_hash':digest,
                 'declared_length':len(clean.png),'body_b64':base64.b64encode(clean.png).decode('ascii'),
-                'owner_kind':'REC','attempt_id':claim['attempt_id'],'role':'source'}],
+                'owner_kind':'REC','attempt_id':claim['attempt_id'],'role':'before' if mobile else 'source',
+                **({'action_id':action_id} if mobile else {})}],
             idempotency_key='observation-image:'+identity)
         ids = ack.get('artifact_ids')
         if (ack.get('late') is not False or ack.get('attempt_id')!=claim['attempt_id']

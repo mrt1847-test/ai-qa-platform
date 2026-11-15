@@ -548,3 +548,10 @@ evidence commit 완료 response_body의 server_committed_at은 파일 준비 후
 정상 model API는 verified server grant의 engine_kind만으로 original context producer를 선택하고 worker가 messages/engine flag를 직접 지정하지 못한다. 실제 before_send에서 source fingerprint와 현재 관찰/lease/key/provider/policy를 다시 확인한다. current reply는 canonical original tool/native/frozen literal과 actual_model=Luna를 검증한다. invalid action/model은 consumed502/usage 보존/content 제외이며, 최종 의미 검증 이후 freshness도 다시 검사해 늦은403에도 측정을 남긴다. terminal response는 사람 승인/finish 자동 생성이 아니다.
 
 같은 call의 after/log ready 증거가 있으면 캐시 receipt의 action_allowed=false이고 unknown native도 재전송하지 않는다. 기본 marker 없는 API는 기존 single-frame 동작을 유지한다. MA03b server 경로 완료와 MA04 실제 main handler/admission·MA05 승인본 여정 수용은 분리한다.
+
+
+### MA04a · parent worker model port (C04/C05/C06)
+
+MobileAgentModelPort는 exact engine의 detached claim과 canonical stripped frame만 사용하며 child messages를 전송하지 않는다. marked upload는 ma-call before ACK→등록 관찰→마지막 callback boundary→normal model API 순서다. response call/attempt/gen/model/obs/hash/action flag를 확인해 content/typed physical action/audit를 immutable pending turn으로 보존한다. 모델 불명/실패는 stopped·자동 재시도0, model_requests는 HTTP 시도 count다.
+
+후속 native/wait after+log ACK 전 다음 모델 요청은 금지다. canonical ordered distinct UUID·same attempt·late=false와 consumed artifact 재사용을 검사한다. fresh ACK의 동일 upload/call 연결은 MA04b trusted uploader 책임이며 서버의 native/source 검증을 대체하지 않는다. legacy 관찰 filename/role은 유지하고 actual handler/default 등록은 MA04b/c다.

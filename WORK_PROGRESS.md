@@ -29,6 +29,8 @@
 
 [AI-LIVE-04-MA03B2B2](docs/validation/tasks/AI-LIVE-04-MA03B2B2.md): 정상 모델 API에서 verified DB engine에 따라 원본 context를 선택하고 실제 send 직전 source/현재 권한을 재검사한다. 모델/행동 오류의 measured usage·캐시 조회 전용·unknown native 재실행 금지를125개 검사로 확인했다. 기본 접수/worker는 아직 전환하지 않았고 다음 MA04a callback/관찰→원본 handler/등록을 진행한다.
 
+[AI-LIVE-04-MA04A](docs/validation/tasks/AI-LIVE-04-MA04A.md): 원본 parent model callback→ma-call before 업로드/관찰 등록→정상 HTTPS 모델 API→typed receipt를 연결했다. pending evidence/고정 한도/중복 source/재진입/불명 HTTP·stale ACK·mutable bounds51pass. native handler/등록/default는 MA04b/c이며 전체 완료 수는 유지한다.
+
 RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md) core 완료: 원본을 보존하는 새 후보·immutable annotation·CAS/retry·권한 API. 편집 UI/worker 평가 소비는 미완료이며 완료 수는 유지한다.
 
 **실행 진입점/Current는 [NEXT_ACTION](NEXT_ACTION.md) 하나다.**

@@ -31,6 +31,7 @@ class MobileAgentWorkerTurn:
     terminal:bool
     action:TypedAndroidAction|None
     _receipt_json:str=field(repr=False)
+    before_artifact_id:str=''
 
     def receipt(self):return json.loads(self._receipt_json)
 
@@ -55,7 +56,10 @@ class MobileAgentModelPort:
         self._client=client;self._claim=claim;self._pin=pin;self._output_limit=token_output_limit
         self._deadline=(datetime.now(timezone.utc)+timedelta(seconds=pin['timeout_seconds'])).isoformat()
         self._lock=Lock();self._seen=set();self._consumed_artifacts=set();self._pending=None;self._last=None;self._stopped=False
-        self.model_requests=0
+        self.model_requests=0;self._before_ids=[]
+
+    @property
+    def before_artifact_ids(self):return tuple(self._before_ids)
 
     @property
     def pending(self):return self._pending
@@ -88,6 +92,11 @@ class MobileAgentModelPort:
                 'binding_revision':self._pin['authoring_binding']['revision'],'generation':claim['generation'],
                 'intent_hash':claim['snapshot']['intent_hash'],'deadline':self._deadline,'token_output_limit':self._output_limit}
             bound=upload_authoring_observation(self._client,claim,observation,payload)
+            before_id=bound.get('artifact_id')
+            try:
+                if type(before_id) is not str or str(UUID(before_id))!=before_id:raise ValueError()
+            except (ValueError,TypeError,AttributeError):raise ModelPortRejected('before artifact receipt invalid') from None
+            self._before_ids.append(before_id)
             payload.update(model_observation_id=bound['observation_id'],sanitized_inputs=bound['sanitized_inputs'])
             before_send();self.model_requests+=1
             receipt=self._client.request_model(project_id=claim['project_id'],item_id=claim['attempt_id'],
@@ -108,7 +117,7 @@ class MobileAgentModelPort:
                      'measurement_status','model_observation_id','image_hash','usage','replayed')
             audit={name:receipt[name] for name in allowed if name in receipt}
             turn=MobileAgentWorkerTurn(call,'ma-'+call,receipt['content'],bound['observation_id'],receipt['image_hash'],
-                frame,terminal,action,json.dumps(audit,ensure_ascii=False,separators=(',',':'),allow_nan=False))
+                frame,terminal,action,json.dumps(audit,ensure_ascii=False,separators=(',',':'),allow_nan=False),before_id)
             self._pending=self._last=turn;self._stopped=terminal;completed=True
             return turn.content
         finally:

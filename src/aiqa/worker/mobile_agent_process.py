@@ -33,6 +33,7 @@ class MobileAgentProcessResult:
     native_actions:int
     ambiguous_dispatch:bool
     receipt:dict|None=None
+    cleanup_failed:bool=False
 
 
 class _Stop(Exception):pass
@@ -193,9 +194,25 @@ def run_mobile_agent_process(*,output,instruction,capture,model,dispatch,secrets
     except Exception:return result('stopped','callback_or_ipc_failed')
     finally:
         stop.set()
-        if process.poll() is None:process.kill()
-        process.wait(timeout=2)
-        for thread in readers:thread.join(timeout=.5)
-        for stream in (process.stdin,process.stdout,process.stderr):stream.close()
+        cleanup_failed=False
+        try:
+            if process.poll() is None:process.kill()
+            process.wait(timeout=2)
+        except Exception:cleanup_failed=True
+        for thread in readers:
+            try:
+                thread.join(timeout=.5)
+                if thread.is_alive():cleanup_failed=True
+            except Exception:cleanup_failed=True
+        try:alive=process.poll() is None
+        except Exception:alive=True
+        # A surviving child can hold pipe locks: do not block forever closing its streams.
+        if alive:cleanup_failed=True
+        else:
+            for stream in (process.stdin,process.stdout,process.stderr):
+                try:stream.close()
+                except Exception:cleanup_failed=True
         try:(output/'child-stderr.log').write_bytes(stderr)
         except OSError:pass  # Diagnostics must never erase an ACK/ambiguous dispatch result.
+        if cleanup_failed:
+            return MobileAgentProcessResult('stopped','child_cleanup_failed',model_count,native_count,native_started,receipt,True)

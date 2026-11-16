@@ -46,16 +46,18 @@ class MobileAgentRecordingResult:
     last_ack_seq:int
     last_ack_hash:str
     process:MobileAgentProcessResult
+    before_artifact_ids:tuple[str,...]=()
+    cleanup_failed:bool=False
 
 
 class MobileAgentRecordingSession:
     """Single use. Recovery resends evidence metadata; it never restarts this session."""
-    def __init__(self,client,claim,*,driver,capture,output,expected_serial,checkpoint,allowed,secrets=()):
+    def __init__(self,client,claim,*,driver,capture,output,expected_serial,checkpoint,allowed,secrets=(),worker_actions=50,worker_seconds=None):
         claim=deepcopy(claim)
         if type(claim) is not dict or type(claim.get('worker_id')) is not str or not claim['worker_id'].strip():
             raise ValueError('durable evidence owner invalid')
         self.model_port=MobileAgentModelPort(client,claim)
-        self.limits=resolve_recording_limits(claim['snapshot'],worker_actions=50,worker_seconds=None,
+        self.limits=resolve_recording_limits(claim['snapshot'],worker_actions=worker_actions,worker_seconds=worker_seconds,
             supported_engine=mobile_agent_engine_ref())
         if (self.limits is None or self.limits.max_actions<1 or not isinstance(driver,AndroidDeterministicDriver)
             or type(expected_serial) is not str or not expected_serial or driver.serial!=expected_serial
@@ -118,7 +120,8 @@ class MobileAgentRecordingSession:
             raise ValueError('model frame changed')
         def boundary():
             self._checkpoint('before_model');before_send()
-        return self.model_port(request,before_send=boundary)
+        content=self.model_port(request,before_send=boundary)
+        return content
 
     def _dispatch(self,action,before,*,before_send):
         turn=self.model_port.pending
@@ -179,7 +182,7 @@ class MobileAgentRecordingSession:
                 'body_b64':base64.b64encode(body).decode('ascii'),'role':role,'owner_kind':'REC',
                 'attempt_id':self.claim['attempt_id'],'action_id':turn.action_id})
         events=list(android_evidence_events(attempt_id=self.claim['attempt_id'],action_id=turn.action_id,
-            before=before,after=after,seq_base=self._seq,action_seq=self._turns+1))
+            before=before,after=after,seq_base=self._seq,action_seq=self._turns+1)) if physical else []
         try:
             ack=self.delivery(action_seq=self._turns+1,action_id=turn.action_id,events=events,artifacts=parts)
             self.model_port.accept_evidence(turn.call_id,ack,after_id=ack['artifact_ids'][0],log_id=ack['artifact_ids'][1])
@@ -203,7 +206,7 @@ class MobileAgentRecordingSession:
             model=self._model,dispatch=self._dispatch,secrets=self._secrets,allowed=self._allowed,
             max_steps=self.limits.max_model_calls,max_actions=self.limits.max_actions,timeout_seconds=self.limits.timeout_seconds)
         # A normal child done (including a step limit) may leave its final turn without another capture.
-        if result.receipt is not None and self._final_authority('after_child') and self.model_port.pending is not None:
+        if result.receipt is not None and not result.cleanup_failed and self._final_authority('after_child') and self.model_port.pending is not None:
             try:self._flush_turn(self._read_capture('after_final_turn'))
             except Exception:
                 if not self._fault:self._fault='final_evidence_failed'
@@ -220,4 +223,4 @@ class MobileAgentRecordingSession:
             except Exception:self._fault='source_commit_failed'
         return MobileAgentRecordingResult('completed' if ready else 'failed',self._fault or ('no_native_actions' if result.status=='claimed_success' and not self._native_actions else result.reason),
             self._native_actions,self.model_port.model_requests,result.ambiguous_dispatch or self._uncertain,
-            self.model_port.pending is None and not self._fault,ready,mapping,tuple(self._ids),self._seq,self._prefix,result)
+            self.model_port.pending is None and not self._fault,ready,mapping,tuple(self._ids),self._seq,self._prefix,result,self.model_port.before_artifact_ids,result.cleanup_failed)

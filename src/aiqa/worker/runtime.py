@@ -39,6 +39,7 @@ class HandlerResult:
     review_pending: bool = False
     action_mapping: str = "{}"
     cleanup_proof_refs: tuple[str, ...] = ()
+    cleanup_failed: bool = False
 
 
 # Default proof after a local handler returned and the finish receipt exists. Real device
@@ -371,7 +372,7 @@ class WorkerRuntime:
                 self._cleanup_payload(
                     body,
                     physical_key_id=body.get("physical_key_id"),
-                    proofs=(_DEFAULT_CLEANUP_PROOF,),
+                    proofs=() if body.get('ambiguous_dispatch') is True or body.get('cleanup_failed') is True else (_DEFAULT_CLEANUP_PROOF,),
                 )
             )
         if self._pending_cleanup is not None:
@@ -441,13 +442,15 @@ class WorkerRuntime:
 
         Handlers may pass cleanup_proof_refs. When they do not, the runtime attests with
         `runtime:attempt-closed` because the local handler returned and the server sealed the
-        attempt; sending an empty list would quarantine the resource. Real device proof is
-        supplied by device handlers later. Quarantine is left to the server when cleanup never
-        arrives or the handler reports an explicit failure.
+        attempt. Ambiguous dispatch or failed child cleanup always sends empty proofs so the
+        server quarantines the resource; a generic closed-handler marker cannot prove device
+        safety in those cases.
         """
 
         proofs = tuple(item for item in result.cleanup_proof_refs if str(item).strip() != "")
-        if proofs == ():
+        if result.ambiguous_dispatch or result.cleanup_failed:
+            proofs = ()
+        elif proofs == ():
             proofs = (_DEFAULT_CLEANUP_PROOF,)
         # Same fence value as the finish body: the lease's physical key, never a guessed one.
         physical = claimed.get("physical_key_id")
@@ -605,6 +608,7 @@ class WorkerRuntime:
             "manifest_digest": claimed["snapshot"]["digest"],
             "evidence_complete": result.evidence_complete,
             "ambiguous_dispatch": result.ambiguous_dispatch,
+            "cleanup_failed": result.cleanup_failed,
             "physical_key_id": claimed.get("physical_key_id"),
             "now": self._now().isoformat(),
             "source_artifact_hashes": list(result.source_artifact_hashes),

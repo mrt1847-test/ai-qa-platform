@@ -41,7 +41,7 @@ def test_actual_original_main_to_server_model_driver_evidence_and_source(engine_
     assert source['schema']=='android-native-trace-v2' and source['native_action_count']==1
     assert source['events'][0]['native']['x']==50 and source['events'][0]['native']['y']==100
     assert sent[0][-3:]==('tap','50','100') and len(sent)==1
-    assert len(result.artifact_ids)==5 and result.last_ack_seq==4
+    assert len(result.artifact_ids)==5 and result.last_ack_seq==2
     assert json.loads((tmp_path/'session/native-prefix.json').read_text())==source
     with sqlite3.connect(f['database']) as db:
         assert db.execute("SELECT COUNT(*) FROM artifact_objects WHERE role='before'").fetchone()[0]==2
@@ -55,7 +55,7 @@ def test_wait_is_evidenced_without_native_and_then_original_main_continues(engin
     c,session,sent=prepare(engine_job,tmp_path,actions=actions)
     with c:r=session.run()
     assert r.outcome=='completed' and r.native_actions==1 and r.model_requests==3
-    assert len(sent)==1 and r.last_ack_seq==6 and len(r.artifact_ids)==7
+    assert len(sent)==1 and r.last_ack_seq==2 and len(r.artifact_ids)==7
 
 
 def test_after_capture_failure_preserves_known_ack_before_return(engine_job,tmp_path):
@@ -117,7 +117,7 @@ def test_source_ack_failure_keeps_native_and_step_proofs_but_no_ready_source(eng
         return commit(**payload)
     monkeypatch.setattr(c,'commit_evidence',send)
     with c:r=session.run()
-    assert r.native_actions==1 and r.model_requests==2 and r.last_ack_seq==4
+    assert r.native_actions==1 and r.model_requests==2 and r.last_ack_seq==2
     assert len(sent)==1 and r.action_mapping=='{}' and not r.review_pending
     assert (tmp_path/'session/evidence-delivery.json').is_file()
 
@@ -205,7 +205,7 @@ def test_cancel_during_source_upload_retains_ack_without_promotion(engine_job,tm
     monkeypatch.setattr(c,'commit_evidence',send)
     with c:r=session.run()
     assert r.native_actions==1 and len(sent)==1 and r.model_requests==2
-    assert r.action_mapping=='{}' and not r.review_pending and r.last_ack_seq==4
+    assert r.action_mapping=='{}' and not r.review_pending and r.last_ack_seq==2
     assert len(r.artifact_ids)==5 and r.reason=='final_authority_refused'
     with sqlite3.connect(engine_job['database']) as db:
         assert db.execute("SELECT COUNT(*) FROM artifact_objects WHERE role='source'").fetchone()[0]==1

@@ -8,11 +8,11 @@ Updated: **2026-11-16 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — Android worker의 고정 한도·정책·제한 healing 연결. 다음 세부 작업: MA04c · 정상 원본 handler/runtime·접수 engine 등록.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — Android worker의 고정 한도·정책·제한 healing 연결. 다음 세부 작업: MA04c2 · 운영 원본 handler 등록·접수 engine 전환.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
 [원본 engine 연결 계획](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)의 MA01~MA03b 정상 모델 API, MA04a worker model port, [MA04b1 증거 전송 복구](docs/validation/tasks/AI-LIVE-04-MA04B1.md), [MA04b2 원본 session/native/source](docs/validation/tasks/AI-LIVE-04-MA04B2.md)를 구현했다. 실제 pinned main subprocess와 정상 ASGI model/evidence 경로를 모의 OpenAI/ADB로 연결했다. 현재 일반 웹 접수의 default는 이전 handler이며 이 내부 통합을 정상 웹 전체 녹화 완료로 해석하지 않는다.
 
-MA04c는 실제 운영 factory/handler가 위 session을 호출하도록 연결한다. 선택 앱 준비·case context·serial과 고정 한도, current lease/checkpoint·keepalive, canonical attempt directory, session 결과→HandlerResult→finish/검토 대기를 소비한다. session parent phase를 기존 gate의 허용 phase에 명시 매핑하고 준비 동작을 포함한 action/time budget을 지킨다. 지원 runtime과 server admission engine marker를 함께 검증한 뒤 전환하며 Web/legacy fixture 경로를 암묵적으로 원본 성공 처리하지 않는다. 기존 API key를 worker/child로 보내지 않는다.
+[MA04c1 runtime handler](docs/validation/tasks/AI-LIVE-04-MA04C1.md)는 정상 finish의 manifest/package/미승인 버전 저장과 불명·cleanup 실패 격리를 구현했다. 다음 MA04c2는 실제 운영 factory가 이 handler를 선택하고 지원 source/protocol·현재 boot를 inventory로 보고하며 서버 접수에 engine pin을 넣도록 연결한다. 선택 앱 준비·case context·serial과 고정 한도, current lease/checkpoint·keepalive, canonical attempt directory, session 결과→HandlerResult→finish/검토 대기를 소비한다. session parent phase를 기존 gate의 허용 phase에 명시 매핑하고 준비 동작을 포함한 action/time budget을 지킨다. 지원 runtime과 server admission engine marker를 함께 검증한 뒤 전환하며 Web/legacy fixture 경로를 암묵적으로 원본 성공 처리하지 않는다. 기존 API key를 worker/child로 보내지 않는다.
 
 그 뒤 MA05 정상 저장본 검토/사람 승인/승인 package AI0 재생을 확인한다. RX87의 [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), 실제 hierarchy 결과 B2.3c와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 기존 완료 인계/진행 수는 유지하며 UI 작업의 현재 파일 상태를 먼저 확인한다.
 

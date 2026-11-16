@@ -13,8 +13,9 @@ import logging
 
 
 class AppPreparationFailed(RuntimeError):
-    def __init__(self,reason,*,ambiguous=False):
+    def __init__(self,reason,*,ambiguous=False,native_calls=0,artifact_ids=()):
         super().__init__(reason);self.reason=reason;self.ambiguous=ambiguous
+        self.native_calls=native_calls;self.artifact_ids=tuple(artifact_ids)
 
 
 @dataclass(frozen=True,slots=True)
@@ -26,7 +27,7 @@ class PreparedTarget:
 class AndroidTargetPreparer:
     def __init__(self,*,capture,launch,client,journal):
         self.capture,self.launch,self.client,self.journal=capture,launch,client,journal
-        self._context_hash=None;self._owner=None;self._pending=None;self._result=None;self._failure=None;self._folder=None
+        self._context_hash=None;self._owner=None;self._pending=None;self._result=None;self._failure=None;self._folder=None;self._committed_ids=()
 
     @staticmethod
     def _gate(checkpoint):
@@ -92,7 +93,7 @@ class AndroidTargetPreparer:
     def _publish(self):
         committer,frame,parts=self._pending
         ack=committer(action_seq=1,action_id=parts[0]['action_id'],events=[],artifacts=parts)
-        ids=tuple(ack['artifact_ids'])
+        ids=tuple(ack['artifact_ids']);self._committed_ids=ids
         self._pending=None
         try:
             for name in ('before.png','after.png','prepare.log','payload.json'):
@@ -101,7 +102,7 @@ class AndroidTargetPreparer:
         except OSError:logging.getLogger(__name__).warning('Preparation spool cleanup deferred')
         return frame,ids
 
-    def prepare(self,claim,pin,*,checkpoint):
+    def prepare(self,claim,pin,*,checkpoint,before_native_send=None):
         action='prepare-'+str(claim.get('attempt_id'));before=after=None;sent=False;launched=None
         try:
             if self.client is None:raise AppPreparationFailed('preparation_evidence_client_missing')
@@ -115,7 +116,7 @@ class AndroidTargetPreparer:
             if owner==self._owner and self._context_hash!=pin.context_hash:
                 raise AppPreparationFailed('preparation_target_changed')
             if owner!=self._owner:
-                self._owner=owner;self._context_hash=pin.context_hash;self._pending=None;self._result=None;self._failure=None
+                self._owner=owner;self._context_hash=pin.context_hash;self._pending=None;self._result=None;self._failure=None;self._committed_ids=()
                 self._folder=self.journal.path.parent/'prepare-spool'/claim['attempt_id']
                 if self.journal.states(action,claim['attempt_id']):
                     self._failure=AppPreparationFailed('preparation_recovered_no_resume',ambiguous=self.journal.is_ambiguous(claim['attempt_id'],action))
@@ -137,7 +138,9 @@ class AndroidTargetPreparer:
                     nonlocal sent
                     self._gate(checkpoint)
                     self.journal.append(claim['attempt_id'],action,'dispatch_started')
-                    try:self._gate(checkpoint)
+                    try:
+                        self._gate(checkpoint)
+                        if before_native_send is not None:before_native_send()
                     except Exception:
                         self.journal.append(claim['attempt_id'],action,'not_sent');raise
                     sent=True
@@ -155,9 +158,13 @@ class AndroidTargetPreparer:
             try:
                 self.journal.mark_started_only_unknown(str(claim.get('attempt_id')),action)
                 ambiguous=self.journal.is_ambiguous(str(claim.get('attempt_id')),action)
-            except Exception:ambiguous=True
+                known=1 if 'acknowledged' in self.journal.states(action,str(claim.get('attempt_id'))) else 0
+            except Exception:ambiguous=True;known=0
             reason=getattr(exc,'reason','preparation_failed')
-            failure=AppPreparationFailed(reason,ambiguous=ambiguous or getattr(exc,'ambiguous',False))
+            same_owner=(tuple(claim.get(k) for k in ('project_id','job_id','attempt_id','generation'))==self._owner
+                and getattr(pin,'context_hash',None)==self._context_hash)
+            ids=self._committed_ids if same_owner else ()
+            failure=AppPreparationFailed(reason,ambiguous=ambiguous or getattr(exc,'ambiguous',False),native_calls=known,artifact_ids=ids)
             if sent and before is not None and self._result is None and self._failure is None and self._pending is None:
                 self._failure=failure
                 if after is None:
@@ -168,4 +175,5 @@ class AndroidTargetPreparer:
                         activity=getattr(launched,'activity',''),reason=reason)
                     self._publish()
                 except Exception:pass  # Durable sanitized spool remains; never retry the native start.
+            if same_owner:failure.artifact_ids=tuple(self._committed_ids)
             raise failure from exc

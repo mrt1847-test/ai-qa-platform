@@ -565,3 +565,11 @@ mobile namespace만 logical80+source81과 선택 durable journal을 사용한다
 MobileAgentRecordingSession은 새 attempt 전용 directory에서 실제 upstream child와 정상 model/evidence API를 연결하는 내부 포트다. 모델 제안과 dispatch typed action/frame을 대조하고 fresh frame guard→STARTED fsync→최종 authority→OS send를 지킨다. physical ACK를 journal/native-prefix에 독립 저장한 후 parent에 반환하고 after capture를 수행한다. 후속 실패에도 native count를 보존하며 unknown 재전송0이다. wait/terminal은 logical evidence만 저장하고 native0이다.
 
 같은 turn after/log ACK 후에만 다음 model을 요청한다. session cutoff는 finalization까지 유지하며 callback/capture/source ACK 뒤 authority를 재확인한다. source ACK 뒤 취소는 ACK/IDs를 보존하되 compile-ready mapping/review 후보를 반환하지 않는다. 원본 success·nonempty physical source-v2·전후 증거·현재 authority·source ACK가 모두 필요하며 사람 승인은 별도다. zero-native replay는 미지원이다. durable owner는 모델/native 전 검증한다. runtime target/lease/finish·접수 marker 등록은 MA04c, canonical attempt 경로도 그 소유다. [인계](../validation/tasks/AI-LIVE-04-MA04B2.md).
+
+### MA04c1 · original runtime handler/result/cleanup (C04/C05/C06)
+
+OriginalAndroidRecordingHandler는 exact engine·owner·Android case/serial·유효 instruction·필수 remote/live capture/preparer를 준비 전에 검증한다. 첫 remote lookup부터 elapsed budget을 측정하고 canonical attempt directory 생성은 앱 준비 전이며 충돌은 ambiguous 정지다. 선택 앱 준비의 최종 STARTED 뒤1회 before_dispatch charge하고 session에는 남은 action/time만 허용한다. parent allowed는 local 상태만 읽고 before_native만 dispatch phase, model은 model phase, 나머지는 lookup phase로 매핑한다.
+
+model before artifact IDs와 preparation/failure ACK IDs는 확인 경계에서 current owner/context에만 보존한다. HandlerResult의 source refs는 preparation+model before+after/log/source를 포함한다. wait/terminal은 PNG/log/action row를 저장하지만 physical event prefix를 늘리지 않는다. final_seq=2*physical native의 기존 server seal은 유지한다. 사람 승인 이벤트는 자동 생성하지 않는다.
+
+ProcessResult/SessionResult/HandlerResult cleanup_failed는 child teardown 실패를 known count/cursor와 함께 전달한다. runtime은 ambiguous_dispatch 또는 cleanup_failed일 때 generic attempt-closed proof로 대체하지 않고 빈 cleanup proof를 보내 기기를 격리한다. lost finish 확인에서도 이 분류를 보존한다. 기존 missing preparation after capture의 unknown 분류는 유지한다. 실제 operational factory/admission은 MA04c2다. [인계](../validation/tasks/AI-LIVE-04-MA04C1.md).

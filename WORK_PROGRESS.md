@@ -45,6 +45,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA04B2](docs/validation/tasks/AI-LIVE-04-MA04B2.md): 실제 원본 main subprocess를 정상 model API·native driver·journal/source prefix·전후 증거 ACK로 연결하는 내부 session을 구현했다. wait/terminal native0, 불명 재전송0, final cutoff/취소·독립 prefix·owner를 보완했다. 새 통합20pass는 실제 upstream+모의 OpenAI/ADB이며 일반 handler/admission/finish 등록은 다음 MA04c다. 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA04C1](docs/validation/tasks/AI-LIVE-04-MA04C1.md): 선택 앱 준비·고정 한도/current fence·원본 session→HandlerResult→정상 finish의 manifest/package/미승인 버전을 연결했다. control evidence와 physical event 수를 분리해 strict source seal을 유지하고, unknown/child cleanup 실패는 resource quarantine으로 전달한다. 현재 operational factory/admission 전환은 다음 MA04c2이며 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

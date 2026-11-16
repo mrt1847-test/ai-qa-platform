@@ -41,6 +41,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 2026-11-01 검토 후 [R01~R20/V01 보완](docs/validation/reviews/2026-11-01-remediation-result.md)을 구현·검증했다. 기존 53개 완료의 결함 수정이다. 과거 VM/기기/모델 수용 gate를 보존한다.
 
+[AI-LIVE-04-MA04B1](docs/validation/tasks/AI-LIVE-04-MA04B1.md): 정제 증거 packet/ACK의 durable journal·동일 metadata 복구를37개 검사로 확인했다. 모델/기기 재실행 없이 lost ACK를 복구하며 다음은 MA04b2 native/capture/source coordinator다. 전체 완료 수와 기존 default는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

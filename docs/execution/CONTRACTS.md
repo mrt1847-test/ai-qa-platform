@@ -555,3 +555,7 @@ evidence commit 완료 response_body의 server_committed_at은 파일 준비 후
 MobileAgentModelPort는 exact engine의 detached claim과 canonical stripped frame만 사용하며 child messages를 전송하지 않는다. marked upload는 ma-call before ACK→등록 관찰→마지막 callback boundary→normal model API 순서다. response call/attempt/gen/model/obs/hash/action flag를 확인해 content/typed physical action/audit를 immutable pending turn으로 보존한다. 모델 불명/실패는 stopped·자동 재시도0, model_requests는 HTTP 시도 count다.
 
 후속 native/wait after+log ACK 전 다음 모델 요청은 금지다. canonical ordered distinct UUID·same attempt·late=false와 consumed artifact 재사용을 검사한다. fresh ACK의 동일 upload/call 연결은 MA04b trusted uploader 책임이며 서버의 native/source 검증을 대체하지 않는다. legacy 관찰 filename/role은 유지하고 actual handler/default 등록은 MA04b/c다.
+
+### MA04b1 · durable mobile evidence delivery (C05/C06)
+
+mobile namespace만 logical80+source81과 선택 durable journal을 사용한다. 정제 packet과 ACK를 owner·checksum·strict schema/cursor로 검증하고 atomic write 이후 HTTP를 보낸다. lost ACK/재시작은 같은 key/time/body의 metadata만 복구하며 capture/model/native는 호출하지 않는다. 기존 step/prepare51은 유지한다. clock은 aware이며 full-state checksum은 인증 수단이 아니다. native prefix의 독립 보존과 handler 연결은 MA04b2, runtime/admission 전환은 MA04c다. [인계](../validation/tasks/AI-LIVE-04-MA04B1.md).

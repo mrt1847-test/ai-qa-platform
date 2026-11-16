@@ -155,6 +155,9 @@ MA05a3: registered before 뒤 정상 모델 turn 수용 전 오류는 authoring-
 
 MA05a4: 서버 reconcile의 lost와 queued→cancelled도 같은 transaction에서 해당 REC만 stopped/interrupted/stored/incomplete로 끝낸다. 이 stop은 물리 cleanup 증거가 아니며 quarantine/no-resume을 유지한다. 기존 terminal REC/승인/source/다른 REC와 trial/regression QA는 바꾸지 않는다. 늦은 worker error는 저장 사실만 확인하고 source를 만들지 않는다.
 
+MA05b1: REC 검토와 offline readiness는 실제 materialized produced version에만 묶고 None을 최신 case 후보로 fallback하지 않는다. 재녹화 base는 해당 REC의 produced/input 버전이며 준비 화면만 연다. 화면/로그 보관 표시는 complete flag뿐 아니라 해당 타임라인의 실제 stored before/after/log를 확인한다. UI 요약으로 QA/사후 승인을 생성하지 않는다.
+
+
 
 
 

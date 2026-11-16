@@ -240,7 +240,8 @@ def install_recordings(application: FastAPI) -> None:
                     row = connection.execute(
                         """
                         SELECT recordings.completion_status, versions.replay_package_id, cases.current_approval_id,
-                               recordings.case_id, versions.version_id
+                               recordings.case_id, versions.version_id,
+                               recordings.storage_status, recordings.evidence_status, recordings.input_case_version_id
                         FROM recordings
                         LEFT JOIN recording_manifests AS manifests
                           ON manifests.project_id = recordings.project_id
@@ -278,11 +279,11 @@ def install_recordings(application: FastAPI) -> None:
                         request.query_params.get("action_id", ""),
                     )
                     offline_gate = None
-                    if row[3] is not None:
+                    if row[3] is not None and row[4] is not None:
                         from aiqa.recording.review_manifest import review_offline_gate
                         from uuid import UUID as _UUID
 
-                        version_uuid = None if row[4] is None else _UUID(str(row[4]))
+                        version_uuid = _UUID(str(row[4]))
                         offline_gate = review_offline_gate(
                             connection, project, _UUID(str(row[3])), version_uuid
                         )
@@ -317,6 +318,13 @@ def install_recordings(application: FastAPI) -> None:
                 "recording_id": str(recording),
                 "case_id": case_id,
                 "completion_status": str(row[0]),
+                "storage_status": str(row[5]),
+                "evidence_status": str(row[6]),
+                "evidence_ready": str(row[6]) == "complete" and bool(timeline.entries) and all(
+                    entry.before_state == "stored" and entry.after_state == "stored" and entry.log_state == "stored"
+                    for entry in timeline.entries
+                ),
+                "rerecord_base_version_id": str(row[4] or row[7]) if row[4] or row[7] else None,
                 "package_id": None if row[1] is None else str(row[1]),
                 "approved":version_approved,
                 "materialized_version_id":None if row[4] is None else str(row[4]),

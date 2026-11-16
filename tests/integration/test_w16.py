@@ -164,7 +164,7 @@ def test_w16_05(tmp_path: Path) -> None:
             "SELECT completion_status FROM recordings WHERE completion_status = 'error'"
         ).fetchone()
     observed = {
-        "unapproved_saved": finished.status_code == 201 and approval is None and "승인되지 않음" in page.text,
+        "unapproved_saved": finished.status_code == 201 and approval is None and 'id="recording-version-approval" data-approved="false"' in page.text,
         "failed_saved": error_status is not None and str(error_status[0]) == "error",
         "duplicate_materializations": receipts,
         "missing_compiler_package": None if package is not None and package[0] is None else "present",

@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 {% block title %}녹화{% endblock %}
 {% block content %}
-  <h1>녹화</h1>
-  <p>상태 {{ completion_status }}</p>
-  <p>package {% if package_id %}{{ package_id }}{% else %}없음{% endif %}</p>
-  <p id="recording-version-approval" data-approved="{{ 'true' if approved else 'false' }}">이 저장 후보: {% if approved %}승인됨{% else %}승인되지 않음{% endif %}</p>
-  <p>엔진 종료는 승인이나 QA가 아닙니다.</p>
-  <p>compiler가 없으면 package는 비어 있습니다.</p>
-  <p>실패와 중단도 보존합니다.</p>
-  {% if case_id %}<p><a id="recording-review-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review{% if materialized_version_id %}?version={{ materialized_version_id }}{% endif %}">저장본 검토·승인</a></p>{% endif %}
-  {% if offline_gate %}<p id="recording-offline-gate" data-allowed="{{ 'true' if offline_gate.allowed else 'false' }}" data-worker-online="{{ 'true' if offline_gate.worker_online else 'false' }}" data-reason="{{ offline_gate.reason }}">{% if offline_gate.allowed %}서버에 저장된 증거로 실행 PC 없이도 검토할 수 있습니다.{% else %}검토 전 서버 증거: {{ offline_gate.reason }}{% endif %}</p>{% endif %}
+  <header class="page-heading">
+    <div><p class="eyebrow">RECORDING / 저장 기록</p><h1>녹화 기록</h1><p class="muted">동작별 화면과 로그를 확인하고 저장된 후보를 검토합니다.</p></div>
+    <div class="actions">
+      {% if case_id %}<a id="recording-case-link" class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">케이스로</a>{% endif %}
+      {% if case_id and rerecord_base_version_id and completion_status != 'open' %}<a id="recording-rerecord-link" class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/rerecord?base={{ rerecord_base_version_id }}">재녹화 준비</a>{% endif %}
+      {% if case_id and materialized_version_id %}<a id="recording-review-link" class="primary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review?version={{ materialized_version_id }}">저장 후보 검토</a>{% endif %}
+    </div>
+  </header>
+  <section id="recording-custody-summary" class="case-state-grid" aria-label="녹화 저장 상태">
+    <article class="metric"><span class="metric-label">녹화 상태</span><strong>{{ {'open':'녹화 진행 중','completed':'녹화 완료','interrupted':'녹화 중단','error':'녹화 실패'}.get(completion_status,'상태 확인 필요') }}</strong></article>
+    <article class="metric"><span class="metric-label">기록 보관</span><strong>{{ {'local':'서버 저장 대기','spooling':'서버 전송 중','stored':'서버에 기록 보관됨'}.get(storage_status,'보관 상태 확인 필요') }}</strong></article>
+    <article id="recording-evidence-status" data-ready="{{ 'true' if evidence_ready else 'false' }}" class="metric"><span class="metric-label">화면·로그</span><strong>{{ '동작 화면·로그 보관됨' if evidence_ready else '증거 확인 필요' }}</strong></article>
+  </section>
+  <section id="recording-candidate-state" class="panel" data-has-candidate="{{ 'true' if materialized_version_id else 'false' }}" aria-label="이 녹화의 검토 대상">
+    <p id="recording-version-approval" data-approved="{{ 'true' if approved else 'false' }}">{% if approved %}테스트용으로 승인된 후보입니다.{% elif materialized_version_id %}저장된 후보입니다. 테스트용 승인은 검토 화면에서 진행합니다.{% else %}이 녹화에는 아직 검토할 후보가 없습니다.{% endif %}</p>
+    {% if not materialized_version_id %}<p class="hint">{% if completion_status == 'open' %}녹화가 끝나면 저장된 후보를 검토할 수 있습니다.{% else %}아래에서 저장된 동작과 오류를 확인하세요. 같은 검증 내용으로 재녹화를 준비할 수 있습니다.{% endif %}</p>{% endif %}
+    {% if offline_gate %}<p id="recording-offline-gate" data-allowed="{{ 'true' if offline_gate.allowed else 'false' }}" data-worker-online="{{ 'true' if offline_gate.worker_online else 'false' }}" data-reason="{{ offline_gate.reason }}">{% if offline_gate.allowed %}이 후보의 서버 저장 증거를 실행 PC 없이도 검토할 수 있습니다.{% else %}{{ {'version is missing':'검토할 후보를 찾지 못했습니다.','source is not stored':'녹화 기록의 서버 저장을 확인해야 합니다.','package is not ready':'테스트 재생 절차를 준비해야 합니다.','trial is missing':'이 후보의 시범 실행 결과가 필요합니다.','healed trial is not accepted':'자동 복구 없이 실행한 시범 결과가 필요합니다.','evidence is missing':'필수 화면과 로그를 확인해야 합니다.'}.get(offline_gate.reason,'검토 준비 상태를 확인해 주세요.') }}{% endif %}</p>{% endif %}
+  </section>
   {% include "components/recording_check_bindings.html" %}
   <section
     id="recording-timeline-root"

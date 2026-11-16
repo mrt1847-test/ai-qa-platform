@@ -8,15 +8,15 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05b1 · 저장된 녹화에 정확히 묶인 검토 UI.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: MA05b1.2 · 수신 타임라인의 사람용 동작·상태.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[MA05b1 실행 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b1--저장된-녹화에-정확히-묶인-검토-ui)를 수행한다. 실패 REC에 새 후보 version이 없는데 recording.html은 case/review로 보내 다른 최신/승인 후보를 열 수 있다. 실제 materialized version이 있을 때만 해당 후보로 검토하고, 실패본은 자신의 timeline/PNG/log와 명시 재녹화 경로를 제공한다. 내부 compiler/package 설명과 raw 상태 표시를 사용자 용어로 정리하며 기존 sample 구성·polling data 계약·키보드를 유지한다.
+[MA05b1.2 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b12--수신-타임라인의-사람용-동작상태)를 수행한다. 실제 화면에서 ma UUID와 raw observed/unknown/stored가 주 정보이며 polling이 nav를 재생성한다. 저장된 검증 log로 동작/전달 상태를 표시하고 unknown을 실행 성공으로 꾸미지 않는다. SSR/poll·선택·키보드를 맞추고 untrusted timeline 문자열은 textContent로 렌더한다. 원본 IDs/state/선택 API·승인/source와 model/native0을 유지한다.
 
-직접 선행은 [a4 서버 손실/queued 취소 종료](docs/validation/tasks/AI-LIVE-04-MA05A4.md)와 [a3 모델 전 진단](docs/validation/tasks/AI-LIVE-04-MA05A3.md)이며 a1/a2 증거 ACK·불명 동작 계약도 보존한다. 구현 완료와 실제 기기/유료 수용을 구분하고 전체 완료 수는 유지한다.
+직접 선행 [MA05b1](docs/validation/tasks/AI-LIVE-04-MA05B1.md)은 실제 후보로만 검토/오프라인 gate를 묶고 자기 입력으로 재녹화 준비, 상태 카드/실제 증거 확인을45개 검사와3폭 Chrome12회로 확인했다. [화면·재현](docs/validation/ux/ma05b1/). 이전 a1~4 실패 저장/불명 동작/ACK 복구/서버 손실 종료 계약도 유지한다. 전체 완료 수는 올리지 않는다.
 
-그 뒤 MA05b2 저장본의 사후 사람 승인/동일 package AI0 여정을 확인한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy 결과와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 선행 기능을 실제 코드로 확인하고 필요한 구현을 편성한다. 미구현을 fixture 승인이나 assertion 제거로 대체하지 않는다.
+그 뒤 b1.3 공통 명령/좌표 상세, b2 저장본 사후 사람 승인/동일 package AI0 여정을 진행한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy·[C/D 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 필요한 구현을 실제 코드로 확인해 편성한다. 미구현을 fixture 승인이나 assertion 제거로 대신하지 않는다.
 
-실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용 측정을 기능 구현의 선행으로 삼지 않는다.
+실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 
 ## Next
 

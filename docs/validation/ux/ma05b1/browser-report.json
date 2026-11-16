@@ -1,0 +1,116 @@
+[
+  {
+    "name": "failed",
+    "width": 360,
+    "scroll": 360,
+    "review": false,
+    "selected": "ma-4bc2d56d-9859-4b3f-a120-bc36b83b2c59",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "failed",
+    "width": 768,
+    "scroll": 768,
+    "review": false,
+    "selected": "ma-4bc2d56d-9859-4b3f-a120-bc36b83b2c59",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "failed",
+    "width": 1440,
+    "scroll": 1440,
+    "review": false,
+    "selected": "ma-4bc2d56d-9859-4b3f-a120-bc36b83b2c59",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "completed",
+    "width": 360,
+    "scroll": 360,
+    "review": true,
+    "selected": "prepare-37f4c88f-1bd5-4f9a-81ca-1a303f46b658",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "completed",
+    "width": 768,
+    "scroll": 768,
+    "review": true,
+    "selected": "prepare-37f4c88f-1bd5-4f9a-81ca-1a303f46b658",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "completed",
+    "width": 1440,
+    "scroll": 1440,
+    "review": true,
+    "selected": "prepare-37f4c88f-1bd5-4f9a-81ca-1a303f46b658",
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "open",
+    "width": 360,
+    "scroll": 360,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "open",
+    "width": 768,
+    "scroll": 768,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "open",
+    "width": 1440,
+    "scroll": 1440,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "interrupted",
+    "width": 360,
+    "scroll": 360,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "interrupted",
+    "width": 768,
+    "scroll": 768,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "name": "interrupted",
+    "width": 1440,
+    "scroll": 1440,
+    "review": false,
+    "overflow": [],
+    "errors": [],
+    "mutations": []
+  }
+]

@@ -57,6 +57,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05A4](docs/validation/tasks/AI-LIVE-04-MA05A4.md): worker finish 없는 queued 취소/lease·watchdog·offline/session 손실에서 서버가 해당 REC를 interrupted/stored/incomplete로 보존한다. ACK PNG·다른 REC·late error·quarantine/no-resume의 관련30pass를 확인했다. 다음 MA05b1 검토 UI, RX87 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05B1](docs/validation/tasks/AI-LIVE-04-MA05B1.md): 녹화 검토/오프라인 준비는 실제 produced 후보로, 재녹화는 자기 produced/input 버전으로 묶었다. 샘플 헤더/카드 구성과 실제 파일 상태 표시, 관련45pass/Chrome12 renders·Tab·오류0을 확인했다. 다음 b1.2 타임라인/b1.3 상세/b2 승인 AI0이며 RX87 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

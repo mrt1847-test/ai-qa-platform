@@ -559,3 +559,9 @@ MobileAgentModelPort는 exact engine의 detached claim과 canonical stripped fra
 ### MA04b1 · durable mobile evidence delivery (C05/C06)
 
 mobile namespace만 logical80+source81과 선택 durable journal을 사용한다. 정제 packet과 ACK를 owner·checksum·strict schema/cursor로 검증하고 atomic write 이후 HTTP를 보낸다. lost ACK/재시작은 같은 key/time/body의 metadata만 복구하며 capture/model/native는 호출하지 않는다. 기존 step/prepare51은 유지한다. clock은 aware이며 full-state checksum은 인증 수단이 아니다. native prefix의 독립 보존과 handler 연결은 MA04b2, runtime/admission 전환은 MA04c다. [인계](../validation/tasks/AI-LIVE-04-MA04B1.md).
+
+### MA04b2 · original session/native ACK/source (C04/C05/C06)
+
+MobileAgentRecordingSession은 새 attempt 전용 directory에서 실제 upstream child와 정상 model/evidence API를 연결하는 내부 포트다. 모델 제안과 dispatch typed action/frame을 대조하고 fresh frame guard→STARTED fsync→최종 authority→OS send를 지킨다. physical ACK를 journal/native-prefix에 독립 저장한 후 parent에 반환하고 after capture를 수행한다. 후속 실패에도 native count를 보존하며 unknown 재전송0이다. wait/terminal은 logical evidence만 저장하고 native0이다.
+
+같은 turn after/log ACK 후에만 다음 model을 요청한다. session cutoff는 finalization까지 유지하며 callback/capture/source ACK 뒤 authority를 재확인한다. source ACK 뒤 취소는 ACK/IDs를 보존하되 compile-ready mapping/review 후보를 반환하지 않는다. 원본 success·nonempty physical source-v2·전후 증거·현재 authority·source ACK가 모두 필요하며 사람 승인은 별도다. zero-native replay는 미지원이다. durable owner는 모델/native 전 검증한다. runtime target/lease/finish·접수 marker 등록은 MA04c, canonical attempt 경로도 그 소유다. [인계](../validation/tasks/AI-LIVE-04-MA04B2.md).

@@ -2,7 +2,7 @@
 
 2026-11-15 Asia/Seoul. 실제 source/main/Luna/4동작 AI0 재생의 로컬 증거는 AI-LIVE-03이며 재실행하지 않는다. 이 카드는 그 재사용 engine을 정상 제품 요청에 연결하는 구현이다. 로컬 증거를 서버 수용으로 승격하지 않는다. 사용자 DB/기존 UI dirty/기존 승인/FAIL을 보존한다.
 
-> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 MA02a/b는 AI-LIVE-04-MA02 인계로 완료했고 MA03a는 AI-LIVE-04-MA03A 인계로 완료했고 MA03b는 AI-LIVE-04-MA03B2B2 인계로 완료했고 MA04a는 AI-LIVE-04-MA04A 인계로 완료했고 현재 준비 단위는 MA04b2다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
+> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 MA02a/b는 AI-LIVE-04-MA02 인계로 완료했고 MA03a는 AI-LIVE-04-MA03A 인계로 완료했고 MA03b는 AI-LIVE-04-MA03B2B2 인계로 완료했고 MA04a는 AI-LIVE-04-MA04A 인계로 완료했고 현재 준비 단위는 MA04c다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
 
 ## MA-01 · 정상 provider factory에 OpenAI 모드 연결
 
@@ -30,7 +30,9 @@ MA03b(B1 context/명시 포트 완료; [인계](../validation/tasks/AI-LIVE-04-M
 
 ## MA-04 · 정상 AndroidRecordingHandler에 원본 engine 연결
 
-MA04a worker model callback/ma-call before frame/receipt/evidence ACK 대기 완료([인계](../validation/tasks/AI-LIVE-04-MA04A.md))→MA04b1 durable evidence metadata 복구 완료([인계](../validation/tasks/AI-LIVE-04-MA04B1.md))→MA04b2 원본 subprocess native/capture/source coordinator→MA04c 지원 handler·admission 함께 등록. 기존 default는 c 전까지 보존한다.
+MA04a worker model callback/ma-call before frame/receipt/evidence ACK 대기 완료([인계](../validation/tasks/AI-LIVE-04-MA04A.md))→MA04b1 durable evidence metadata 복구 완료([인계](../validation/tasks/AI-LIVE-04-MA04B1.md))→MA04b2 원본 subprocess native/capture/source coordinator 완료([인계](../validation/tasks/AI-LIVE-04-MA04B2.md))→MA04c 지원 handler·admission 함께 등록. 기존 default는 c 전까지 보존한다.
+
+MA04c의 직접 입력은 MA04b2 인계/session result와 기존 android_jobs 운영 factory·runtime checkpoint/keepalive binder·AndroidTargetPreparer다. canonical runtime-root/attempt UUID 경로를 사용하고 session phase를 기존 current gate에 매핑한다. 준비 동작을 포함한 action/time cap과 case context/serial, ACK된 증거 IDs/cursor→HandlerResult→finish를 보존한다. runtime 지원과 server engine admission을 함께 검증한 뒤 일반 접수를 전환한다. 생성 키는 서버에만 남기고 Web/legacy는 별도 경로로 유지한다.
 
 - [ ] worker/android_jobs.py·runtime.py의 정상 recording handler가 MA03을 호출한다. fixture_response/자체 plan_provider가 정상 요청의 암묵적 성공 경로가 되지 않게 한다. 자연어 목표/선택앱/고정 한도/원본 이력을 소비한다.
 - [ ] 기존 before/after spool→서버 commit/ACK·native source seal→finish→검토 대기를 유지한다. source v2의 실제 text/key/swipe/좌표와 logical check binding은 보존하며 승인/QA를 자동 생성하지 않는다.

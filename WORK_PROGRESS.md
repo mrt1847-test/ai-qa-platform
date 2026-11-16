@@ -43,6 +43,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA04B1](docs/validation/tasks/AI-LIVE-04-MA04B1.md): 정제 증거 packet/ACK의 durable journal·동일 metadata 복구를37개 검사로 확인했다. 모델/기기 재실행 없이 lost ACK를 복구하며 다음은 MA04b2 native/capture/source coordinator다. 전체 완료 수와 기존 default는 유지한다.
 
+[AI-LIVE-04-MA04B2](docs/validation/tasks/AI-LIVE-04-MA04B2.md): 실제 원본 main subprocess를 정상 model API·native driver·journal/source prefix·전후 증거 ACK로 연결하는 내부 session을 구현했다. wait/terminal native0, 불명 재전송0, final cutoff/취소·독립 prefix·owner를 보완했다. 새 통합20pass는 실제 upstream+모의 OpenAI/ADB이며 일반 handler/admission/finish 등록은 다음 MA04c다. 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

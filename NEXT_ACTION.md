@@ -8,17 +8,15 @@ Updated: **2026-11-16 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — Android worker의 고정 한도·정책·제한 healing 연결.** 다음 RX-88.
+**RX-87 — Android worker의 고정 한도·정책·제한 healing 연결. 다음 세부 작업: MA04c · 정상 원본 handler/runtime·접수 engine 등록.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[RX-99](docs/validation/tasks/RX-99.md)의 정제 PNG/geometry 실제 입력 연결을 마쳤다. [세부 작업](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 A(녹화 한도)→B(재생 정책)→C(서버 check/episode 권한)→D(허용 native 치유) 순서로 구현한다. A의 녹화 고정 한도·실제 전송 경계는 구현/회귀 검증했다. B0.1/B0.2의 fresh server fence와 runtime 연결도 검증했다. B0.3 Android 녹화의 장기 heartbeat/renew와 안전 종료도 검증했다. B0.4의 단계별 증거 ACK 복구도 검증했다. B0.5의 evidence/event 서버 시각·job purpose 권한도 검증했다. B0.6의 파일 I/O/DB writer 분리·다른 artifact ingress의 시각도 검증했다. B1의 Android 재생 고정 한도·현재 제어도 검증했다. B2.1의 고정 검증·대상 metadata 공급도 검증했다. B2.2a의 worker metadata 파싱·owner/version/pin 대조·필수 current fence도 검증했다. [B2.2b 선택 앱 준비/저장 근거](docs/validation/tasks/RX-87-B2-TARGET.md)도 검증했다. [B2.3a 필수 검증 누락 방지](docs/validation/tasks/RX-87-B2-CHECK-COVERAGE.md)도 core 완료했다. 현재 [B2.3b 승인 logical 경계/검증 대상 binding·저장/UI](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)를 진행하고, 실제 hierarchy/정규화 결과 B2.3c와 C/D를 이어간다. subject/mapping 없는 필수 검증은 unknown이며 fixture 성공으로 바꾸지 않는다. C:/apk G마켓의 원본 Mobile-Agent/Luna 녹화와 AI0 로컬 재생은 AI-LIVE-03에서 확인했으며 정상 서버/전체 QA 수용과 구분한다. 부분 구현으로 RX87을 완료하지 않는다. 실제 운영 키 없이 정상 API pin·모의 ADB/HTTP로 구현하고, 실제 모델/기기 수용은 별도다.
+[원본 engine 연결 계획](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)의 MA01~MA03b 정상 모델 API, MA04a worker model port, [MA04b1 증거 전송 복구](docs/validation/tasks/AI-LIVE-04-MA04B1.md), [MA04b2 원본 session/native/source](docs/validation/tasks/AI-LIVE-04-MA04B2.md)를 구현했다. 실제 pinned main subprocess와 정상 ASGI model/evidence 경로를 모의 OpenAI/ADB로 연결했다. 현재 일반 웹 접수의 default는 이전 handler이며 이 내부 통합을 정상 웹 전체 녹화 완료로 해석하지 않는다.
 
-현재 보조 구현/실제 시험: [AI-LIVE-01](docs/validation/tasks/AI-LIVE-01.md)에서 로컬 env 키로 실제 OpenAI 이미지→명시 단일 Back 응답1회(2409tokens)→저장 JSON→AI0 재생을 관찰했다. 이것은 정상 서버 접수/사람 승인/다단계 자율 탐색의 완료가 아니다. OpenAI 직접 포트를 정상 model binding·비밀 참조·계측으로 연결하는 후속을 B2.3/C와 함께 구현한다. 웹 설정의 연결 검사는 아직 fixture이며 실제 OpenAI 연결 성공으로 해석하지 않는다. [native trace 정확 재생](docs/managed-pc/ANDROID_NATIVE_TRACE_TASKS.md)의 코드와 [리뷰 보완](docs/validation/tasks/RX-87-B2-NATIVE-TRACE.md)을 검증했다. 다음은 logical 검증 경계 binding/UI와 정상 OpenAI port의 서버 연결이다.
+MA04c는 실제 운영 factory/handler가 위 session을 호출하도록 연결한다. 선택 앱 준비·case context·serial과 고정 한도, current lease/checkpoint·keepalive, canonical attempt directory, session 결과→HandlerResult→finish/검토 대기를 소비한다. session parent phase를 기존 gate의 허용 phase에 명시 매핑하고 준비 동작을 포함한 action/time budget을 지킨다. 지원 runtime과 server admission engine marker를 함께 검증한 뒤 전환하며 Web/legacy fixture 경로를 암묵적으로 원본 성공 처리하지 않는다. 기존 API key를 worker/child로 보내지 않는다.
 
-선택 모델은 사용자 지정 **gpt-6-luna**다. [AI-LIVE-02](docs/validation/tasks/AI-LIVE-02.md)는 호환 어댑터/자체 루프 평가이며 실제 upstream 실행 증거가 아니다. [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)에서 고정 Mobile-Agent v3.5 원본 main·prompt·이력·파서와 Luna를 실제 연결해 4동작/5응답으로 검색 녹화 후, 같은 원본을 별도 키 없는 프로세스에서 4동작 AI0으로 재생했다. 4개 actual argv 동일, key/network/model0이다. 실제 서버 접수/DB ACK·사람 승인 수용과 구분하며 이 로컬 시험을 유료 반복하지 않는다. 실패 시도/usage unknown1회도 인계에 남겼다.
+그 뒤 MA05 정상 저장본 검토/사람 승인/승인 package AI0 재생을 확인한다. RX87의 [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), 실제 hierarchy 결과 B2.3c와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 기존 완료 인계/진행 수는 유지하며 UI 작업의 현재 파일 상태를 먼저 확인한다.
 
-**현재 세부 구현: MA04b2 · 원본 subprocess native/capture/source coordinator.** [연결 계획](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)의 MA01~MA03b 정상 model API와 MA04a worker model callback을 완료했다. [MA04b1 증거 전송 복구](docs/validation/tasks/AI-LIVE-04-MA04B1.md)는37pass이며 정제 metadata만 재전송한다. 다음은 실제 원본 main의 native ACK prefix를 journal/source에 after capture 전 보존하고, 동일 turn의 after/log ACK 후 다음 모델을 허용하는 coordinator다. wait/terminal은 native 수를 늘리지 않는다. 이후 MA04c runtime/admission을 함께 연결하고 MA05 저장본 검토/승인본 AI0 실행을 진행한다. 기존 default·전체 완료 수는 유지하며 실제 키/기기/비용 측정을 구현 선행으로 삼지 않는다.
-
-[B2.3b2 녹화 검증 연결 편집 UI](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md)의 기존 미커밋 코드는 보존하며 완료 처리하지 않는다. [b1 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BINDINGS.md)는 master f7cb466 완료다. 원본 engine 정상 연결을 우선하고 UI/worker 소비·정규화 결과·C/D를 이어간다. 로컬 구현은 실제 키·기기·배포를 기다리지 않는다.
+실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 키 없는 AI0 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 로컬 증거다. 이번 mock 통합을 유료/기기 수용으로 확대하지 않는다. 실제 키·기기·독립 서버·월3000건 비용 측정을 기능 구현의 선행으로 삼지 않는다.
 
 ## Next
 

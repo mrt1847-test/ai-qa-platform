@@ -1,0 +1,314 @@
+[
+  {
+    "scene": "detail-unknown",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "selected": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "전달 결과 확인 불가\n\n요청 명령 · 탭\n\n좌표 (50, 100)\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-unknown",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "selected": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "전달 결과 확인 불가\n\n요청 명령 · 탭\n\n좌표 (50, 100)\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-unknown",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "selected": "ma-8b7219a9-a0ae-4f81-ab7a-9f47518024be",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "전달 결과 확인 불가\n\n요청 명령 · 탭\n\n좌표 (50, 100)\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-swipe",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-fabd68bc-835c-4f12-9a16-692e4649281f",
+    "selected": "ma-376601c3-a80a-4b26-925d-84e2616a3c60",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 스와이프 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 스와이프\n\n시작 (9, 40) → 끝 (79, 179) · 800ms\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-swipe",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-fabd68bc-835c-4f12-9a16-692e4649281f",
+    "selected": "ma-376601c3-a80a-4b26-925d-84e2616a3c60",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 스와이프 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 스와이프\n\n시작 (9, 40) → 끝 (79, 179) · 800ms\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-swipe",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-fabd68bc-835c-4f12-9a16-692e4649281f",
+    "selected": "ma-376601c3-a80a-4b26-925d-84e2616a3c60",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 스와이프 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 스와이프\n\n시작 (9, 40) → 끝 (79, 179) · 800ms\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-text",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-f763dd17-093f-4db6-9946-43d78b1c7573",
+    "selected": "ma-de604536-2429-4291-9d7c-60b56dbf99fb",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 텍스트 입력 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 텍스트 입력 · 5자\n\n화면 100 × 200px · 회전 0°\n\n입력 내용은 원문 로그에서 확인할 수 있습니다.",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-text",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-f763dd17-093f-4db6-9946-43d78b1c7573",
+    "selected": "ma-de604536-2429-4291-9d7c-60b56dbf99fb",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 텍스트 입력 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 텍스트 입력 · 5자\n\n화면 100 × 200px · 회전 0°\n\n입력 내용은 원문 로그에서 확인할 수 있습니다.",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-text",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-f763dd17-093f-4db6-9946-43d78b1c7573",
+    "selected": "ma-de604536-2429-4291-9d7c-60b56dbf99fb",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 텍스트 입력 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 텍스트 입력 · 5자\n\n화면 100 × 200px · 회전 0°\n\n입력 내용은 원문 로그에서 확인할 수 있습니다.",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-key",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-2305f716-7369-4a78-903e-7e2cc075430f",
+    "selected": "ma-f6d5542d-ef51-407e-aba0-882a7202b3b3",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 뒤로가기 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 뒤로가기 · 키 코드 4\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-key",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-2305f716-7369-4a78-903e-7e2cc075430f",
+    "selected": "ma-f6d5542d-ef51-407e-aba0-882a7202b3b3",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 뒤로가기 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 뒤로가기 · 키 코드 4\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-key",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-2305f716-7369-4a78-903e-7e2cc075430f",
+    "selected": "ma-f6d5542d-ef51-407e-aba0-882a7202b3b3",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 뒤로가기 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "화면·로그 수신\n\n전달 명령 · 뒤로가기 · 키 코드 4\n\n화면 100 × 200px · 회전 0°",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-unreadable",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "legacy-unreadable",
+    "selected": "legacy-unreadable",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "관찰 기록\n\n기록 내용 · 명령 정보를 확인할 수 없습니다.\n\n자세한 내용은 원문 로그에서 확인하세요.",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-unreadable",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "legacy-unreadable",
+    "selected": "legacy-unreadable",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "관찰 기록\n\n기록 내용 · 명령 정보를 확인할 수 없습니다.\n\n자세한 내용은 원문 로그에서 확인하세요.",
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "detail-unreadable",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "legacy-unreadable",
+    "selected": "legacy-unreadable",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "controls": "fit/100/zoom/pan/full + keyboard details and selection",
+    "summary": "관찰 기록\n\n기록 내용 · 명령 정보를 확인할 수 없습니다.\n\n자세한 내용은 원문 로그에서 확인하세요.",
+    "errors": [],
+    "mutations": []
+  }
+]

@@ -61,6 +61,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05B12](docs/validation/tasks/AI-LIVE-04-MA05B12.md): saved log의 동작·전달 상태와 실제 증거 수신을 타임라인에 표시한다. poll 문자열 실행·포커스 소실·stale 선택·legacy ID 인코딩을 보완했고 관련49pass/Chrome18회를 확인했다. 다음 b1.3 선택 명령/좌표 상세, 전체 RX87 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05B13](docs/validation/tasks/AI-LIVE-04-MA05B13.md): 선택 동작의 저장 명령·좌표를 원본 receipt/관찰 근거에 묶어 표시하고 raw 참조/시각/로그를 접어 보존한다. 읽기/경로/비UTF8/원본 해석 오류의 페이지 실패를 보완했다. 관련41pass/JS2/Chrome15회, 다음 b2의 실제 승인·AI0 선행/부족 구현이다. 전체 RX87 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

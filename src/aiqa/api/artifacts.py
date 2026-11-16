@@ -282,6 +282,7 @@ class _ActionView:
     log_text: str
     check_status: str
     error_text: str
+    detail: object | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -329,18 +330,18 @@ def _state(root: object, row: object, now: datetime) -> str:
         return "delayed"
     if custody == "corrupt" or str(row[3]) != "ready":  # type: ignore[index]
         return "corrupt" if custody == "corrupt" or str(row[3]) == "quarantine" else "missing"  # type: ignore[index]
-    path = resolve_stored(root, str(row[1]))  # type: ignore[arg-type, index]
-    if path is None or not path.is_file():
-        return "missing"
-    if content_hash(path.read_bytes()) != str(row[2]):  # type: ignore[index]
-        return "corrupt"
+    try:
+        path = resolve_stored(root, str(row[1]))  # type: ignore[arg-type, index]
+        if path is None or not path.is_file():return "missing"
+        if content_hash(path.read_bytes()) != str(row[2]):return "corrupt"
+    except OSError:return "missing"
     return "stored"
 
 
 def _viewer(connection: object, root: object, project_id: UUID, selection: EvidenceViewerSelection, now: datetime, artifact_ids: frozenset[str] | None = None) -> _ViewerPage:
     rows = connection.execute(  # type: ignore[attr-defined]
         """
-        SELECT actions.action_id, actions.step_id
+        SELECT actions.action_id, actions.step_id, actions.action_seq, actions.dispatch_state
         FROM actions
         JOIN attempts ON attempts.project_id = actions.project_id AND attempts.attempt_id = actions.attempt_id
         JOIN jobs ON jobs.project_id = attempts.project_id AND jobs.job_id = attempts.job_id
@@ -375,20 +376,25 @@ def _viewer(connection: object, root: object, project_id: UUID, selection: Evide
     check_by_action = {str(item[0]): (str(item[1]), str(item[2])) for item in checks}
     actions: list[_ActionView] = []
     first = ""
-    for action_id, step_id in rows:
+    for action_id, step_id, action_seq, dispatch_state in rows:
         roles = by_action.get(str(action_id), {})
         check = check_by_action.get(str(action_id))
         if first == "" and check is not None and check[0] == "violated":
             first = str(action_id)
+        before=_shot(root,roles.get('before'),now);after=_shot(root,roles.get('after'),now);log_text=_log(root,roles.get('log'),now)
+        from aiqa.recording.action_evidence_display import describe_action_evidence
+        detail=describe_action_evidence(connection,project_id,selection,action_id=str(action_id),action_seq=int(action_seq),
+            dispatch_state=str(dispatch_state),roles=roles,before=before,after=after,log_text=log_text,check_status='' if check is None else str(check[0]))
         actions.append(
             _ActionView(
                 str(action_id),
                 str(step_id),
-                _shot(root, roles.get("before"), now),
-                _shot(root, roles.get("after"), now),
-                _log(root, roles.get("log"), now),
+                before,
+                after,
+                log_text,
                 "" if check is None else check[0],
                 "" if check is None or check[0] != "violated" else check[1],
+                detail,
                 )
         )
     return _ViewerPage(tuple(actions), first)
@@ -407,10 +413,13 @@ def _log(root: object, row: object, now: datetime) -> str:
     state = _state(root, (None, row[3], row[4], row[5], row[6], row[7]), now)
     if state != "stored":
         return _reason(state)
-    path = resolve_stored(root, str(row[3]))  # type: ignore[arg-type]
-    if path is None:
-        return "파일이 없습니다."
-    return path.read_text(encoding="utf-8")
+    try:
+        path = resolve_stored(root, str(row[3]))  # type: ignore[arg-type]
+        if path is None:return "파일이 없습니다."
+        raw=path.read_bytes()
+        if content_hash(raw)!=str(row[4]):return "파일 내용이 보관 hash와 다릅니다."
+        return raw.decode("utf-8")
+    except (UnicodeError,OSError):return "로그를 읽을 수 없습니다."
 
 
 def _reason(state: str) -> str:

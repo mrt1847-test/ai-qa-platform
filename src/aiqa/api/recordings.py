@@ -952,15 +952,7 @@ def _error(status: int, code: str, message: str, fields: dict[str, list[str]]) -
     )
 
 
-_LOG_ABSENT = frozenset(
-    {
-        "",
-        "파일이 없습니다.",
-        "보관 기한이 지났습니다.",
-        "파일 내용이 보관 hash와 다릅니다.",
-        "캡처가 늦었습니다.",
-    }
-)
+from aiqa.recording.timeline_display import LOG_ABSENT as _LOG_ABSENT
 
 
 @dataclass(frozen=True, slots=True)

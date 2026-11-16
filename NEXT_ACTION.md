@@ -8,9 +8,9 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05b1.3 · 선택 행동의 명령·좌표·근거 상세.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: MA05b2 · 정상 원본 저장본→사후 승인→동일 package AI0의 선행 연결.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[MA05b1.3 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b13--선택-행동의-명령좌표근거-상세)를 수행한다. 공통 evidence_panel은 긴 ID·geometry 코드가 주 내용이며 swipe 유무가 hardcoded다. 검증된 saved typed log/관찰로 요청·전달·명령·좌표를 구분하고 raw 근거는 접어 보존한다. unknown·control·legacy에서 실제 동작/좌표를 추정하지 않는다. valid-hash 비UTF8 log 등 읽기 오류는 실제 API로 재현해 원본을 보존하며 표시한다. REC/ITEM·offline·기존 이미지 컨트롤/선택/키보드·3폭을 확인한다.
+[MA05b2 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0)를 수행한다. 먼저 실제 original source/check binding/evaluator/trial 선행을 대조하고 미구현 logical binding worker 소비·실제 hierarchy 검증·normalized 결과가 있으면 B2.3b3/c 구현 단위를 먼저 수행한다. 기존 source/approval/required gate를 지우거나 force approval·fixture package로 바꿔 성공시키지 않는다. [선택 상세 완료 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 근거·제약을 재사용한다.
 
 직접 선행 [MA05b1.2](docs/validation/tasks/AI-LIVE-04-MA05B12.md)는 저장 log의 사람용 타임라인·안전 DOM 갱신·canonical 선택/포커스를49개 검사와 Chrome18회로 확인했다. [화면·재현](docs/validation/ux/ma05b12/). b1의 정확한 후보 검토/자기 입력 재녹화와 a1~4 실패 저장/ACK/서버 손실 계약도 유지한다. model/native0·source/승인·전체 완료 수를 바꾸지 않는다.
 

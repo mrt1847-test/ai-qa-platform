@@ -1,11 +1,20 @@
 <section id="evidence-viewer" tabindex="0" data-keynav="true" data-max-px="1024" data-owner-kind="{{ selection.owner_kind }}" data-owner-id="{{ selection.owner_id }}" data-attempt-id="{{ selection.attempt_id }}" data-action-id="{{ selection.action_id }}" data-first-failure="{{ first_failure|default('') }}" data-view="fit">
 <h2>단계 증거</h2><p class="hint">선택한 시도의 정제 캡처와 로그입니다. 민감 화면 차단·수집 결과는 개별 기록에서 확인하세요.</p>
-<details class="evidence-identity"><summary>{{ selection.owner_kind }} · {{ selection.action_id }} · 선택 근거</summary><p>소유 기록 {{ selection.owner_id }}</p><p>시도 {{ selection.attempt_id }}</p></details>
+<details class="evidence-identity"><summary>녹화·시도 참조</summary><p>소유 기록 {{ selection.owner_id }}</p><p>시도 {{ selection.attempt_id }}</p></details>
 {% if not embedded %}<nav aria-label="증거 단계"><a href="#previous" data-step="previous">이전</a><a href="#next" data-step="next">다음</a><a href="#first-failure" data-step="first-failure">첫 실패</a></nav>{% endif %}
 <nav class="viewer-toolbar" aria-label="이미지 보기"><a href="#fit" data-view-mode="fit" aria-current="true">맞추기</a><a href="#hundred" data-view-mode="hundred">100%</a><a href="#zoom" data-view-mode="zoom">확대</a><a href="#pan" data-view-mode="pan">이동</a><a href="#full" data-view-mode="full">전체보기</a></nav><p data-view-note role="status"></p>
 {% for action in actions %}<article data-action="{{ action.action_id }}" data-step-id="{{ action.step_id }}"{% if action.action_id != selection.action_id %} hidden{% endif %}>
-<h3>단계 {{ action.step_id }} · 행동 {{ action.action_id }}</h3><p>캡처 시각 {{ action.before.captured_at or action.after.captured_at or '관찰 없음' }}</p><p data-geometry>기록된 geometry만 표시합니다.</p><p data-swipe>이 행동의 swipe 좌표는 없습니다.</p>{% if action.check_status %}<p data-check>검증 {{ action.check_status }}</p>{% endif %}{% if action.error_text %}<p data-error>{{ action.error_text }}</p>{% endif %}
+<h3>{{ action.detail.label if action.detail else '동작 기록' }}</h3>
+<section class="action-command" data-command-summary aria-label="선택 동작의 명령">
+{% if action.detail %}<p><strong>{{ action.detail.state_label }}</strong></p><p>{{ action.detail.command_label }} · {{ action.detail.command_summary }}</p>
+{% if action.detail.coordinates %}<p data-coordinates>좌표 {{ action.detail.coordinates }}</p>{% endif %}
+{% if action.detail.swipe_path %}<p data-swipe>{{ action.detail.swipe_path }} · {{ action.detail.duration }}</p>{% endif %}
+{% if action.detail.geometry %}<p data-geometry>화면 {{ action.detail.geometry }}</p>{% endif %}
+{% if action.detail.notice %}<p class="hint">{{ action.detail.notice }}</p>{% endif %}{% else %}<p>명령 정보를 확인할 수 없습니다.</p>{% endif %}
+{% if action.check_status %}<p data-check>검증 {{ action.check_status }}</p>{% endif %}{% if action.error_text %}<p data-error>{{ action.error_text }}</p>{% endif %}
+</section>
+<details class="evidence-reference"><summary>원본 참조·시각</summary><p>단계 {{ action.step_id }} · 행동 {{ action.action_id }}</p><p>서버 보관 시각 {{ action.before.captured_at or action.after.captured_at or '기록 없음' }}</p>{% if action.detail and action.detail.captured_at %}<p>동작 전 캡처 시각 {{ action.detail.captured_at }}</p>{% endif %}</details>
 <div class="capture-pair">{% for role,shot,label in [('before',action.before,'이전 화면'),('after',action.after,'이후 화면')] %}<figure data-role="{{ role }}" data-state="{{ shot.state }}" data-artifact="{{ shot.artifact_id }}"><figcaption>{{ label }}</figcaption><div class="capture-viewport" tabindex="0" aria-label="{{ label }} 이미지 영역">{% if shot.state == 'stored' %}<img alt="{{ label }}" src="/api/v1/artifacts/{{ shot.artifact_id }}">{% else %}<p class="evidence-missing">{{ shot.reason }}</p>{% endif %}</div></figure>{% endfor %}</div>
-<details class="evidence-log" open><summary>이 행동의 로그</summary><pre data-log{% if action.log_text|length > 1024 %} data-long="true"{% endif %}>{{ action.log_text }}</pre></details>
+<details class="evidence-log"><summary>이 행동의 원문 로그</summary><pre data-log{% if action.log_text|length > 1024 %} data-long="true"{% endif %}>{{ action.log_text }}</pre></details>
 </article>{% else %}<p class="empty">이 시도에 저장된 동작·증거가 없습니다. 다른 실행의 이미지로 대체하지 않습니다.</p>{% endfor %}
 </section><script src="/static/evidence_viewer.js?v={{ ui_asset_version }}"></script>

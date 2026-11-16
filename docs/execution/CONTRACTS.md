@@ -159,6 +159,8 @@ MA05b1: REC 검토와 offline readiness는 실제 materialized produced version�
 
 MA05b1.2: timeline 표시 필드는 additive이며 원본 IDs/dispatch/QA와 독립이다. owner/hash 확인된 bounded known log로만 동작을 이름 붙이고 unknown/미전송/control 미관찰을 실행 성공으로 표시하지 않는다. observed도 실제 before/after/log가 모두 stored일 때만 화면·로그 수신으로 표시한다. SSR/poll은 canonical selected_action_id를 유지하며 action ID는 URL 인코딩하고 untrusted 문자열은 textContent로 넣는다. 저장 focus는 presentation 전용/no-resume이다.
 
+MA05b1.3: 선택 상세의 typed 명령/physical 좌표는 same REC/call/ACK before/hash/원본 engine/관찰 geometry와 완료 model receipt를 로컬 pinned parser로 대조한 뒤만 표시한다. 미확인·ITEM/legacy는 일반 기록이며 명령·좌표를 추정하지 않는다. unknown은 요청, nativeNone은 제어 단계다. 서버 보관 시각과 실제 캡처 시각을 구별한다. path/read/hash/UTF8/protocol 해석 실패는 확인 필요로 표시하며 raw bytes/metadata/source/승인을 변경하지 않는다. 모델·native 호출0이다.
+
 
 
 

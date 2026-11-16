@@ -24,11 +24,11 @@ Confirmed gap: recording.html은 materialized_version_id가 없어도 case/revie
 
 직접 선행 [b1.2](../validation/tasks/AI-LIVE-04-MA05B12.md). 소유 공통 _ActionView/_viewer/_log/evidence_panel과 기존 REC·ITEM viewer 테스트, 필요한 read-only typed display helper다. 화면의 긴 ID/geometry 코드가 주 내용이고 '이 행동의 swipe 좌표는 없습니다'가 hardcoded다. 새 모델/기기를 부르지 않는다.
 
-- [ ] RED 실제 saved tap/text/key/swipe source 또는 failure log를 선택해 요청/전달/관찰 상태와 명령을 읽을 수 있어야 한다. unknown은 실제 tap/성공으로 표시하지 않는다. swipe 두 점이 있을 때 정확히 표시하며 coincident endpoint를 long press로 추정하지 않는다. control/legacy/missing/corrupt는 알 수 없는 동작·좌표를 만들지 않는다.
-- [ ] native 종류/값은 bounded known saved schema+same action/call/before hash로 확인하고 geometry는 해당 저장 관찰에 묶여 확인된 경우만 사용한다. 비율 추정·source/package/원본 명령 재작성 금지. log/owner/hash가 불명하면 일반 기록과 사유로 낮춰 표시한다. Web/ITEM legacy는 Android로 추정하지 않는다.
-- [ ] 공통 viewer의 valid-hash 비UTF8 log·읽기 race를 실제 API로 재현한다. 페이지500 대신 읽기 불가/증거 확인 필요를 표시하고 원본 파일/metadata를 삭제·수정하지 않는다. ready/승인을 꾸미지 않는다.
-- [ ] 선택 패널의 사용자용 동작·전달·좌표를 먼저 보여주고 raw ID/시각/geometry/log는 접을 수 있는 근거로 보존한다. 현재 이미지 맞춤/100%/확대/이동/전체보기와 선택·키보드를 유지한다. REC뿐 아니라 ITEM/trial 공통 표시·offline·실제 파일 상태를 회귀한다.
-- [ ] actual API/mock driver+3폭 Chrome/키보드·한 fresh review/한 fix pass·인계/큐/master commit. 완료 수는 유지하고 이후 b2의 check 소비/사후 승인/AI0 선행을 대조한다.
+- [x] RED 실제 saved tap/text/key/swipe source 또는 failure log를 선택해 요청/전달/관찰 상태와 명령을 읽을 수 있어야 한다. unknown은 실제 tap/성공으로 표시하지 않는다. swipe 두 점이 있을 때 정확히 표시하며 coincident endpoint를 long press로 추정하지 않는다. control/legacy/missing/corrupt는 알 수 없는 동작·좌표를 만들지 않는다.
+- [x] native 종류/값은 bounded known saved schema+same action/call/before hash로 확인하고 geometry는 해당 저장 관찰에 묶여 확인된 경우만 사용한다. 비율 추정·source/package/원본 명령 재작성 금지. log/owner/hash가 불명하면 일반 기록과 사유로 낮춰 표시한다. Web/ITEM legacy는 Android로 추정하지 않는다.
+- [x] 공통 viewer의 valid-hash 비UTF8 log·읽기 race를 실제 API로 재현한다. 페이지500 대신 읽기 불가/증거 확인 필요를 표시하고 원본 파일/metadata를 삭제·수정하지 않는다. ready/승인을 꾸미지 않는다.
+- [x] 선택 패널의 사용자용 동작·전달·좌표를 먼저 보여주고 raw ID/시각/geometry/log는 접을 수 있는 근거로 보존한다. 현재 이미지 맞춤/100%/확대/이동/전체보기와 선택·키보드를 유지한다. REC뿐 아니라 ITEM/trial 공통 표시·offline·실제 파일 상태를 회귀한다.
+- [x] actual API/mock driver+3폭 Chrome/키보드·한 fresh review/한 fix pass·인계/큐/master commit. 완료 수는 유지하고 이후 b2의 check 소비/사후 승인/AI0 선행을 대조한다.
 
 ## MA05b2 · 정상 source→검토→사후 승인→동일 package AI0
 
@@ -39,3 +39,5 @@ Confirmed gap: recording.html은 materialized_version_id가 없어도 case/revie
 MA05b1 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B1.md), 관련45pass54.49s + Chrome12 renders/keyboard. b1.2/1.3/b2와 전체 RX87은 미완료다.
 
 MA05b1.2 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B12.md), 관련49pass67.42s + Chrome18회/안전 텍스트/선택·포커스. 다음 b1.3이다.
+
+MA05b1.3 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B13.md), 관련41pass92.17s/JS2/Chrome15회. 다음 b2의 실제 승인·AI0 선행 대조/부족 구현이다. 전체 RX87 완료 수는 유지한다.

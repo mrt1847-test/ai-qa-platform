@@ -67,6 +67,21 @@ def _known(action_id,dispatch,raw):
     return (label+suffix,None)
 
 
+LOG_ABSENT=frozenset({'','파일이 없습니다.','보관 기한이 지났습니다.','파일 내용이 보관 hash와 다릅니다.','캡처가 늦었습니다.','로그를 읽을 수 없습니다.'})
+
+
+def stored_log_state(text):return 'missing' if text in LOG_ABSENT else 'stored'
+
+
+def load_known_recorded_log(action_id,dispatch_state,raw,log_state):
+    """Return a fresh parsed document only for the same bounded known shape used by labels."""
+    if log_state!='stored' or type(raw) is not str or len(raw)>16384:return None
+    try:
+        if len(raw.encode('utf-8'))>16384 or _known(action_id,dispatch_state,raw) is None:return None
+        return json.loads(raw,object_pairs_hook=_unique)
+    except (ValueError,TypeError,KeyError,AttributeError,RecursionError):return None
+
+
 def describe_recorded_action(*,action_id,action_seq,dispatch_state,log_text,log_state,before_state,after_state,check_status=''):
     label='동작 '+str(action_seq);state=_STATES.get(dispatch_state,'상태 확인 필요')
     if dispatch_state=='observed' and before_state==after_state==log_state=='stored':state='화면·로그 수신'
@@ -79,5 +94,6 @@ def describe_recorded_action(*,action_id,action_seq,dispatch_state,log_text,log_
     if log_text=='파일 내용이 보관 hash와 다릅니다.':log_label='손상됨'
     elif log_text=='보관 기한이 지났습니다.':log_label='보관 만료'
     elif log_text=='캡처가 늦었습니다.':log_label='늦게 수신'
+    elif log_text=='로그를 읽을 수 없습니다.':log_label='읽기 불가'
     return TimelineDisplay(label,state,_SHOTS.get(before_state,'확인 필요'),_SHOTS.get(after_state,'확인 필요'),log_label,
         _CHECKS.get(check_status,'확인 필요') if check_status else '')

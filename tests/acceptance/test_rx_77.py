@@ -181,6 +181,8 @@ class _Journey:
                 (self.physical, self.now.isoformat()),
             )
             seed_presence(connection, self.project_id, _WORKER, self.now)
+            from authoring_metadata_support import seed_recording_capability
+            seed_recording_capability(connection,self.project_id,self.physical)
             connection.execute(
                 """
                 INSERT INTO environments (project_id, environment_id, name, next_revision, latest_revision_id)
@@ -314,6 +316,13 @@ class _Journey:
         before_cleanups = len(self.spy.cleanup_requests)
         with WorkerHttpClient(client_settings, transport=self.spy) as client:
             client.heartbeat(_BOOT)
+            if purpose=='recording':
+                capability_store=self.app.state.open_store()
+                try:
+                    with capability_store.transaction() as connection:
+                        from authoring_metadata_support import seed_recording_capability
+                        seed_recording_capability(connection,self.project_id,self.physical)
+                finally:capability_store.close()
             runtime = WorkerRuntime(
                 client,
                 WorkerRuntimeConfig(

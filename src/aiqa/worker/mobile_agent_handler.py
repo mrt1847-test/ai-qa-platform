@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
+from aiqa.adapters.mobile_agent_upstream import load_protocol
 from aiqa.contracts.mobile_agent_engine import mobile_agent_engine_ref
 from aiqa.worker.android_jobs import AndroidRecordingHandler
 from aiqa.worker.android_prepare import AndroidTargetPreparer,AppPreparationFailed
-from aiqa.worker.case_context import resolve_claim_case_context
+from aiqa.worker.case_context import resolve_claim_case_context,CaseContextRejected
 from aiqa.worker.mobile_agent_models import MobileAgentModelPort
 from aiqa.worker.mobile_agent_recording import MobileAgentRecordingSession
 from aiqa.worker.recording_limits import resolve_recording_limits
@@ -33,15 +34,17 @@ class OriginalAndroidRecordingHandler(AndroidRecordingHandler):
             self.stopped_reason=reason
             return HandlerResult(actions=prepared_actions,outcome='error',evidence_complete=False,
                 ambiguous_dispatch=ambiguous,source_artifact_hashes=self.preparation_artifact_ids)
+        try:self._case_context=resolve_claim_case_context(claim,required=True)
+        except CaseContextRejected:return failed('case_context_invalid')
         try:
             # Validate the exact authoring/owner before preparation can issue any native command.
             MobileAgentModelPort(self.client,claim)
+            load_protocol()
             if type(claim.get('worker_id')) is not str or not claim['worker_id'].strip():raise ValueError('owner invalid')
             snapshot=claim['snapshot']
             objective=snapshot['intent'].get('objective')
             if type(objective) is not str or not objective.strip() or len(objective.encode('utf-8'))>16000:
                 raise ValueError('original instruction invalid')
-            self._case_context=resolve_claim_case_context(claim,required=True)
             if self._case_context.target.kind!='android':raise ValueError('Android case required')
             serial=snapshot.get('serial') or snapshot.get('native_id')
             if serial!=self.context.expected_serial or self.driver.serial!=serial:raise ValueError('serial mismatch')

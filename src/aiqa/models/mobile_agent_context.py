@@ -92,10 +92,8 @@ def _image(frame):
     return 'data:image/png;base64,'+base64.b64encode(png).decode('ascii')
 
 
-def build_mobile_agent_context(*,intent,current,history,model='gpt-6-luna'):
-    if (type(intent) is not RecordingIntent or type(current) is not ProviderObservation or model!='gpt-6-luna'
-        or type(history) is not tuple or len(history)>79 or intent.secret_refs):
-        raise ValueError('server context invalid')
+def mobile_agent_instruction(intent):
+    if type(intent) is not RecordingIntent or intent.secret_refs:raise ValueError('server context invalid')
     if type(intent.objective) is not str or not intent.objective.strip():
         raise ValueError('server objective missing')
     reject_secret_plaintext(intent.variables)
@@ -103,6 +101,14 @@ def build_mobile_agent_context(*,intent,current,history,model='gpt-6-luna'):
     if len(instruction.encode('utf-8'))>12000:raise ValueError('server goal too large')
     literals=tuple(dict.fromkeys(value for value in intent.variables.values() if is_native_text_literal(value)))
     if len(literals)>32:raise ValueError('server input literals invalid')
+    return instruction,literals
+
+
+def build_mobile_agent_context(*,intent,current,history,model='gpt-6-luna'):
+    if (type(intent) is not RecordingIntent or type(current) is not ProviderObservation or model!='gpt-6-luna'
+        or type(history) is not tuple or len(history)>79 or intent.secret_refs):
+        raise ValueError('server context invalid')
+    instruction,literals=mobile_agent_instruction(intent)
     current_geometry=parse_geometry(current.geometry)
     protocol=load_protocol()
     images={f'server/screenshot_{len(history)}.png':_image(current)}

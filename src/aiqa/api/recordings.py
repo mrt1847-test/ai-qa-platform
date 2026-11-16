@@ -1,6 +1,7 @@
 """Recording recovery route. The route does not open a device or a model."""
 
 from __future__ import annotations
+from aiqa.recording.mobile_agent_admission import runtime_for_app
 
 import base64
 import json
@@ -170,7 +171,7 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(401, "unauthorized", "session is missing", {})
                 try:
                     with store.transaction() as connection:
-                        receipt = start_recording(connection, actor, project, spec, request_key)
+                        receipt = start_recording(connection, actor, project, spec, request_key,model_runtime=runtime_for_app(request.app))
                 except HashMismatch:
                     return _error(409, "conflict", "version hash does not match", {})
                 except ResourceBusy as exc:
@@ -564,10 +565,10 @@ def install_recordings(application: FastAPI) -> None:
                 try:
                     with store.transaction() as connection:
                         if proposal_id is None:
-                            receipt = start_rerecording(connection, actor, project_id, spec, request_key)
+                            receipt = start_rerecording(connection, actor, project_id, spec, request_key,model_runtime=runtime_for_app(request.app))
                         else:
                             receipt = adopt_repair_proposal(
-                                connection, actor, project_id, parsed, proposal_id, spec, request_key
+                                connection, actor, project_id, parsed, proposal_id, spec, request_key,model_runtime=runtime_for_app(request.app)
                             )
                         stored = connection.execute(
                             """

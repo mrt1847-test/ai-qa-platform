@@ -29,3 +29,9 @@
 2026-11-10 RX97 후 최종 전체: **9 failed, 652 passed, 1 skipped in 382.05s (0:06:22)**. 실패 node 집합은 기존9개와 정확히 같다. 집중31/JS32 passed. `.review-work/recording-model-pin/verified-full.log`. 새 실제 AI/장치 수용은 수행하지 않았다.
 
 2026-11-13 RX98 최종 전체: **9 failed, 696 passed, 1 skipped in 487.17s (0:08:07)**. 기존9개 failure node와 정확히 같다. 집중105/JS32 passed. 최초 새2개 RX45/RX47은 실제 전송 수와 정상 admission/ACK/generation fixture 계약 보완 후 해소했다. `.review-work/recording-model-requests/final-full.log`. 실제 모델/기기 수용 없음.
+
+## 2026-11-17 원본 녹화 연결 후 재검사
+
+C2 첫 전체 실행은15failed1393passed1skipped였다. 기존9외6개는 [C2 인계](AI-LIVE-04-MA04C2.md)의 후속53pass와 순서32pass에서 해소했다. AD-01 import 부작용 검사가 canonical android_observation을 reload해 guard 예외 class identity를 바꾸던 test isolation을 수정했다. production guard catch/geometry/sanitize 기준은 바꾸지 않았다.
+
+기존9 중 `test_rx_12.py::test_adapter_record_replay_and_sanitize_gates`, `test_rx_34.py::test_rx_34_digest_geometry_cancel_healing_off_and_no_retransmit`, `test_rx_48.py::test_rx_48_ambiguous_and_sanitize_preserve_prior`는 `test_android_observation.py` 뒤 순서 회귀에서 통과한다. 같은 원인의 새 `test_rx87_native_trace.py::test_native_physical_normalization_cannot_hide_invalid_original_frame`도 통과했다. 나머지 기존6(managed_pc_admission/RX46/W01/W07/W08/W30)은 이번 전체 실행에서도 실패했으며 미해소다. 전체를 다시 실행하지 않았으므로 새 전체 통과 수를 합산해 만들지 않는다. 로그는 .review-work/mobile-agent-engine-admission/{full,full-followup,ordered-followup}.log다.

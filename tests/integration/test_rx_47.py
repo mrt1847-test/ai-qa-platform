@@ -148,6 +148,8 @@ def test_rx_47_intent_frozen_on_claim_and_authoring(tmp_path: Path, monkeypatch)
         store = app.state.open_store()
         try:
             with store.transaction() as connection:
+                from authoring_metadata_support import seed_recording_capability
+                seed_recording_capability(connection,project.project_id,physical)
                 receipt = start_recording(connection, actor, project.project_id,
                     RecordingStartInput(case.case_id, version.id, version.content_hash, physical), "rx47-rec")
                 frozen = load_recording_intent(connection, project.project_id, receipt.recording_id)

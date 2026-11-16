@@ -216,6 +216,8 @@ def test_rx_71_browser_recording_trial_approve_suite_regression(tmp_path: Path, 
             (physical, now.isoformat()),
         )
         seed_presence(connection, project_id, _WORKER, now)
+        from authoring_metadata_support import seed_recording_capability
+        seed_recording_capability(connection,project_id,physical)
         connection.execute(
             """
             INSERT INTO environments (project_id, environment_id, name, next_revision, latest_revision_id)
@@ -349,6 +351,13 @@ def test_rx_71_browser_recording_trial_approve_suite_regression(tmp_path: Path, 
         )
         with WorkerHttpClient(client_settings, transport=transport) as client:
             client.heartbeat(_BOOT)
+            if purpose=='recording':
+                capability_store=app.state.open_store()
+                try:
+                    with capability_store.transaction() as connection:
+                        from authoring_metadata_support import seed_recording_capability
+                        seed_recording_capability(connection,project_id,physical)
+                finally:capability_store.close()
             runtime = WorkerRuntime(
                 client,
                 WorkerRuntimeConfig(

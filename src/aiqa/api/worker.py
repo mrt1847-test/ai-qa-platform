@@ -190,6 +190,8 @@ def install_worker(application: FastAPI) -> None:
                 return _error(422, "validation", "invalid heartbeat", {})
         return JSONResponse({
             "state": presence.state,
+            "boot_id": presence.boot_id,
+            "session_id": presence.session_id,
             "last_seen": presence.last_seen.isoformat(),
             "heartbeat_seconds": HEARTBEAT_SECONDS,
             "offline_after_seconds": int(OFFLINE_AFTER.total_seconds()),

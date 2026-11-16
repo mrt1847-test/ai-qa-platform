@@ -1,6 +1,6 @@
 # Next Actions
 
-Updated: **2026-11-16 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
+Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
@@ -8,15 +8,15 @@ Updated: **2026-11-16 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — Android worker의 고정 한도·정책·제한 healing 연결. 다음 세부 작업: MA04c2 · 운영 원본 handler 등록·접수 engine 전환.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: MA05a · 실패 녹화의 서버 종료 상태·불명 동작 로그 보존.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[원본 engine 연결 계획](docs/managed-pc/MOBILE_AGENT_SERVER_WIRING_TASKS.md)의 MA01~MA03b 정상 모델 API, MA04a worker model port, [MA04b1 증거 전송 복구](docs/validation/tasks/AI-LIVE-04-MA04B1.md), [MA04b2 원본 session/native/source](docs/validation/tasks/AI-LIVE-04-MA04B2.md)를 구현했다. 실제 pinned main subprocess와 정상 ASGI model/evidence 경로를 모의 OpenAI/ADB로 연결했다. 현재 일반 웹 접수의 default는 이전 handler이며 이 내부 통합을 정상 웹 전체 녹화 완료로 해석하지 않는다.
+[MA04c2 운영 원본 연결](docs/validation/tasks/AI-LIVE-04-MA04C2.md)을 구현했다. 정상 Android 운영 factory는 실제 Mobile-Agent 원본 subprocess/서버 모델 API·typed driver·증거·finish를 사용한다. actual inventory→browser start→true claim을 검사했고 선택 PC owner/current recording credential/project/boot/session을 admission·claim에서 대조한다. explicit fixture/Web은 분리하며 모델 key는 서버에만 남는다. 검사 등급은 원본 main+정상 API+모의 OpenAI/ADB이며 실제 과금/기기 수용은 아니다.
 
-[MA04c1 runtime handler](docs/validation/tasks/AI-LIVE-04-MA04C1.md)는 정상 finish의 manifest/package/미승인 버전 저장과 불명·cleanup 실패 격리를 구현했다. 다음 MA04c2는 실제 운영 factory가 이 handler를 선택하고 지원 source/protocol·현재 boot를 inventory로 보고하며 서버 접수에 engine pin을 넣도록 연결한다. 선택 앱 준비·case context·serial과 고정 한도, current lease/checkpoint·keepalive, canonical attempt directory, session 결과→HandlerResult→finish/검토 대기를 소비한다. session parent phase를 기존 gate의 허용 phase에 명시 매핑하고 준비 동작을 포함한 action/time budget을 지킨다. 지원 runtime과 server admission engine marker를 함께 검증한 뒤 전환하며 Web/legacy fixture 경로를 암묵적으로 원본 성공 처리하지 않는다. 기존 API key를 worker/child로 보내지 않는다.
+[MA05a 실행 카드](docs/managed-pc/MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md)의 gap을 확인했다. native timeout이면 local journal/quarantine은 남으나 서버 recording=(open,running,local,incomplete), ma-action=(observed,known1), remote artifact는 before만 남는다. 저장된 proposal/before를 실제 실행 ACK로 표시하지 않도록 planned/known/unknown을 구분하고 typed failure log·종료 상태를 서버에 남긴다. incomplete source 승격·unknown 재클릭·모델 재호출은 금지다. 서버 ACK 증거는 PC offline에도 확인한다. 기존 승인본·다른 후보는 보존한다.
 
-그 뒤 MA05 정상 저장본 검토/사람 승인/승인 package AI0 재생을 확인한다. RX87의 [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), 실제 hierarchy 결과 B2.3c와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 기존 완료 인계/진행 수는 유지하며 UI 작업의 현재 파일 상태를 먼저 확인한다.
+그 뒤 MA05b 저장본 검토/사후 사람 승인/승인 package AI0 여정을 확인한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy 결과와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 초기 샘플 UI·현재 계약을 유지하고 현재 파일과 완료 증거를 먼저 확인한다.
 
-실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 키 없는 AI0 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 로컬 증거다. 이번 mock 통합을 유료/기기 수용으로 확대하지 않는다. 실제 키·기기·독립 서버·월3000건 비용 측정을 기능 구현의 선행으로 삼지 않는다.
+실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용 측정을 기능 구현의 선행으로 삼지 않는다. 전체 완료 수는 유지한다.
 
 ## Next
 
@@ -29,7 +29,7 @@ Updated: **2026-11-16 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. trial/기본 healing은 OFF다. 실제 모델 수용을 구현 완료로 대신하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
 
-전체 회귀의 기준 커밋부터 존재하는 9개 실패는 [검사 기준선](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)에 정확한 node와 재현을 기록했다. 실패를 숨기거나 안전 gate를 완화하지 않는다. 독립 구현은 진행한다.
+전체 회귀의 기존9개 실패와 후속은 [검사 기준선](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)을 따른다. 2026-11-17 import reload 간섭3개는 순서 회귀로 해소했고 기존6개는 남아 있다. 전체 첫 실행과 후속 검사 결과를 합산해 전체 green으로 표시하지 않는다. 실패를 숨기거나 안전 gate를 완화하지 않는다. 독립 구현은 진행한다.
 
 ## 외부 대기와 재사용
 

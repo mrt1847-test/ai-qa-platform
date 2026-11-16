@@ -151,6 +151,7 @@ def adopt_repair_proposal(
     proposal_id: UUID,
     spec: RerecordInput,
     request_key: str,
+    *,model_runtime=None,
 ) -> RecordingReceipt:
     """Adopt a confirmed diff as a new full recording. The original source stays in place."""
 
@@ -161,7 +162,7 @@ def adopt_repair_proposal(
         raise ProposalRejected("proposal is for another case")
     if spec.reason.strip() == "":
         raise ProposalRejected("reason is required")
-    receipt = start_rerecording(connection, actor, project_id, spec, request_key)
+    receipt = start_rerecording(connection, actor, project_id, spec, request_key,model_runtime=model_runtime)
     if receipt.replayed:
         return receipt
     try:

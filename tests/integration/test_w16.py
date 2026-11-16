@@ -212,6 +212,8 @@ def _resource(database: Path, project_id: str) -> None:
             ) VALUES ('key-w1605', 'ready', 'build-1', '100x100', '[]', 'none', '2026-11-01T00:00:00+00:00')
             """
         )
+        from authoring_metadata_support import seed_recording_capability
+        seed_recording_capability(connection,project_id,'key-w1605')
 
 
 def _binding(database: Path, project_id: str, actor_id: str) -> None:

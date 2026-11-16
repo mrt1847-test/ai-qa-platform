@@ -47,6 +47,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA04C1](docs/validation/tasks/AI-LIVE-04-MA04C1.md): 선택 앱 준비·고정 한도/current fence·원본 session→HandlerResult→정상 finish의 manifest/package/미승인 버전을 연결했다. control evidence와 physical event 수를 분리해 strict source seal을 유지하고, unknown/child cleanup 실패는 resource quarantine으로 전달한다. 현재 operational factory/admission 전환은 다음 MA04c2이며 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA04C2](docs/validation/tasks/AI-LIVE-04-MA04C2.md): 운영 원본 handler/지원 보고/실제 서버 모델·가격·입력 readiness/접수 pin/선택 PC의 현재 인증 claim을 연결했다. 강제 pin/serial/claim 없는 public-API 경로에서 저장 manifest/package와 approval0을 확인했다. Focus106pass, 전체15failed1393passed1skipped 뒤 영향53pass·순서32pass; 기존 간섭3은 해소, 기존6은 남는다. 다음 MA05a failed recording 상태/remote log, 전체 RX87 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

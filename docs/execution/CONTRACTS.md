@@ -573,3 +573,11 @@ OriginalAndroidRecordingHandler는 exact engine·owner·Android case/serial·유
 model before artifact IDs와 preparation/failure ACK IDs는 확인 경계에서 current owner/context에만 보존한다. HandlerResult의 source refs는 preparation+model before+after/log/source를 포함한다. wait/terminal은 PNG/log/action row를 저장하지만 physical event prefix를 늘리지 않는다. final_seq=2*physical native의 기존 server seal은 유지한다. 사람 승인 이벤트는 자동 생성하지 않는다.
 
 ProcessResult/SessionResult/HandlerResult cleanup_failed는 child teardown 실패를 known count/cursor와 함께 전달한다. runtime은 ambiguous_dispatch 또는 cleanup_failed일 때 generic attempt-closed proof로 대체하지 않고 빈 cleanup proof를 보내 기기를 격리한다. lost finish 확인에서도 이 분류를 보존한다. 기존 missing preparation after capture의 unknown 분류는 유지한다. 실제 operational factory/admission은 MA04c2다. [인계](../validation/tasks/AI-LIVE-04-MA04C1.md).
+
+### MA04c2 · current authoring report and selected-PC claim (C04/C05/C06/C14)
+
+worker heartbeat는 authoritative boot/session을 반환한다. 실제 prepared Original 또는 ExplicitFixture recording route만 mode/원본 ref/current boot+session을 보고하고, 서버는 project/worker/recording token/purpose/current incarnation을 검증해 authoring_report를 덮어쓴다. generic ready·probe token·미지원/빈 metadata는 fixture 권한이 아니다. 기존 global inventory JSON은 project-scoped stamp를 재사용하지 않으며 credential expiry도 확인한다.
+
+정상 Android 녹화는 actual OpenAI gateway+estimate(quote 미구현)·OpenAI Luna 공식 endpoint와 immutable input 제약(민감 참조 제외/준비 포함2 actions/구성 goal12KB/literals)을 enqueue와 preview에서 대조한다. 키는 읽지 않는다. Web/명시 fixture는 별도이고 idempotent accepted pin은 기존값을 보존한다. marked 및 새 Android authoring pin의 claim은 lease 전에 selected physical owner/current report를 다시 검사한다. 다른 PC의 같은 emulator serial은 신원이 아니다. 운영 source 누락은 authoring만 비활성화한다.
+
+Settings UI official endpoint는 OpenAI provider를 유지하고 기존 동일 endpoint의 provider를 보존한다. canonical endpoint predicate는 normal send와 공유한다. source/control/저장본 human approval은 별개다. 실패 recording의 상태와 remote unknown log 공백은 MA05a에 남아 있으며 완료 QA로 해석하지 않는다. [인계](../validation/tasks/AI-LIVE-04-MA04C2.md).

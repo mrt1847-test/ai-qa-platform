@@ -21,10 +21,27 @@ def sha(raw):return 'sha256:'+hashlib.sha256(raw).hexdigest()
 
 @pytest.fixture
 def engine_job(recording,monkeypatch,request):
-    import aiqa.recording.model_pin as pin
-    from aiqa.contracts.mobile_agent_engine import mobile_agent_engine_ref
-    freeze=pin.freeze_authoring_limits
-    monkeypatch.setattr(pin,'freeze_authoring_limits',lambda *args,**kwargs:freeze(*args,**kwargs,engine_ref=mobile_agent_engine_ref()))
+    import sqlite3,asyncio
+    from ux_support import session
+    f=recording
+    with sqlite3.connect(f['database']) as db:
+        row=db.execute('SELECT definition_json,settings_json FROM case_versions WHERE version_id=?',(f['body']['input_case_version_id'],)).fetchone()
+        definition=json.loads(row[0]);settings=json.loads(row[1])
+    if settings['target_kind']!='android':
+        settings.update(target_kind='android',android_package='com.example.saved')
+        async def save():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=f['app']),base_url='http://127.0.0.1') as c:
+                headers=await session(c,f['project'])
+                response=await c.post(f"/api/v1/projects/{f['project']}/cases/{f['body']['case_id']}/versions",json={
+                    'definition':definition,'settings':settings,'parent_version_id':f['body']['input_case_version_id'],'expected_head':f['body']['input_case_version_id']},
+                    headers={**headers,'Idempotency-Key':'original-android-input'})
+                assert response.status_code==201,response.text
+                return response.json()
+        saved=asyncio.run(save());f['body'].update(input_case_version_id=saved['id'],input_version_hash=saved['content_hash'])
+    with sqlite3.connect(f['database']) as db:
+        db.execute("UPDATE resource_aliases SET target_kind='android' WHERE project_id=? AND physical_key_id=?",(f['project'],f['body']['resource_id']))
+        from authoring_metadata_support import seed_recording_capability
+        seed_recording_capability(db,f['project'],f['body']['resource_id'],mode='original')
     f=openai_job.__wrapped__(recording,monkeypatch,request)
     def http(req):
         f['openai_sent'].append(req);raw=response();raw['output'][-1]['content'][0]['text']=reply()

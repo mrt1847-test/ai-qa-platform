@@ -196,7 +196,7 @@ class WorkerRuntime:
             return CycleReport("stopped", False, 0, False, "stopped")
 
         try:
-            self._client.heartbeat(self._config.boot_id)
+            presence=self._client.heartbeat(self._config.boot_id)
             self._guard.note_heartbeat(MonotonicInstant(self._mono()))
         except WorkerHttpError as exc:
             if exc.retry_class is RetryClass.auth:
@@ -210,6 +210,10 @@ class WorkerRuntime:
         if self._inventory_provider is not None:
             payload = self._inventory_provider()
             if payload is not None:
+                from aiqa.worker.mobile_agent_registration import inventory_with_recording_engine
+                payload=inventory_with_recording_engine(payload,self._handler,self._config.boot_id,
+                    prepared='recording' in self._config.prepared_adapters,
+                    session_id=presence.get('session_id') if type(presence) is dict and presence.get('boot_id')==self._config.boot_id else None)
                 if not self._config.prepared_adapters and payload.get("state") == "ready":
                     payload = {**payload, "state": "offline"}
                 try:

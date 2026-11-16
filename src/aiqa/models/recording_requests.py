@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime,timezone
 from urllib.parse import urlsplit
 from uuid import uuid4
+from aiqa.contracts.mobile_agent_engine import is_openai_endpoint
 from aiqa.models.broker import ModelRequestDenied,ModelRequestConflict
 from aiqa.models.recording_authorization import authorize_recording
 from aiqa.recording.intent import IntentRejected,bind_authoring_sanitized_inputs
@@ -24,7 +25,7 @@ def _provider_endpoint(provider, grant):
     if getattr(provider,'kind',None)=='openai':
         from aiqa.models.openai_server import OpenAIServerProvider
         if (type(provider) is not OpenAIServerProvider or grant.provider!='openai' or grant.endpoint_kind!='https'
-            or grant.endpoint.rstrip('/') not in {'https://api.openai.com','https://api.openai.com/v1/responses'}
+            or not is_openai_endpoint(grant.endpoint)
             or fixed.username or fixed.password or fixed.query or fixed.fragment):
             raise ModelRequestDenied('provider_endpoint',status=503)
         return

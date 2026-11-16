@@ -17,19 +17,24 @@ def openai_job(recording,monkeypatch,request):
     original=seed._new_revision
     def revision(*args,**kwargs):return original(*args,**{**kwargs,'provider':'openai','endpoint':'https://api.openai.com','endpoint_kind':'https','model':'gpt-6-luna',**changes})
     monkeypatch.setattr(seed,'_new_revision',revision)
-    f=seed.model_job.__wrapped__(recording,SimpleNamespace(param='operational'))
-    sent=[];mode={'status':200,'after':None}
+    f=recording;sent=[];mode={'status':200,'after':None}
     def handle(req):
         sent.append(req)
         if mode['after']:mode['after']()
         raw=response();raw['output'][-1]['content'][0]['text']='finish()'
         if mode.get('omit_usage'):raw.pop('usage')
         return httpx.Response(mode['status'],json=raw)
-    transport=httpx.MockTransport(handle)
-    settings=replace(f['app'].state.settings,model_provider=ModelProviderSettings(mode='openai'))
-    f['app'].state.settings=settings
-    provider=build_provider_from_settings(settings,transport=transport)
-    f['app'].state.model_gateway=ServerModelGateway(provider=provider,resolver=f['resolver'])
+    transport=httpx.MockTransport(handle);original_start=seed.start
+    def prepared_start(f,*args,**kwargs):
+        settings=replace(f['app'].state.settings,model_provider=ModelProviderSettings(mode='openai'))
+        f['app'].state.settings=settings
+        provider=build_provider_from_settings(settings,transport=transport)
+        f['app'].state.model_gateway=ServerModelGateway(provider=provider,resolver=f['app'].state.secret_resolver)
+        return original_start(f,*args,**kwargs)
+    with monkeypatch.context() as initial:
+        initial.setattr(seed,'start',prepared_start)
+        f=seed.model_job.__wrapped__(recording,SimpleNamespace(param='operational'))
+    provider=f['app'].state.model_gateway.provider
     f.update(provider=provider,openai_sent=sent,openai_transport=transport,openai_mode=mode)
     seed.ack(f)
     return f

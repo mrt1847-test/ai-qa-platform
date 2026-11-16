@@ -14,3 +14,7 @@ def require_mobile_agent_engine(value):
     if type(value) is not dict or value!=expected:
         raise ValueError('recording engine pin invalid')
     return expected
+
+
+def is_openai_endpoint(endpoint):
+    return type(endpoint) is str and endpoint.rstrip('/') in {'https://api.openai.com','https://api.openai.com/v1/responses'}

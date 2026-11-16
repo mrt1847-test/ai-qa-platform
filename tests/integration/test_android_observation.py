@@ -209,7 +209,11 @@ def test_import_has_no_adb_side_effects(monkeypatch):
         calls.append(args)
         raise AssertionError('Import must not launch a process')
     monkeypatch.setattr(subprocess, 'Popen', forbidden_process)
-    importlib.reload(provider_module())
+    original=provider_module()
+    spec=importlib.util.spec_from_file_location('_aiqa_ad01_import_probe',original.__file__)
+    fresh=importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules,spec.name,fresh)
+    spec.loader.exec_module(fresh)
     assert calls == []
 
 

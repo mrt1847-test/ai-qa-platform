@@ -152,10 +152,11 @@ def _guides_present() -> bool:
     text = readme.read_text(encoding="utf-8")
     report = guide.read_text(encoding="utf-8")
     required = (
-        'python -m pip install -e ".[dev]" -c requirements.lock',
-        "python -m uvicorn aiqa.api.app:create_app --factory --host 127.0.0.1 --port 8000",
+        '-m pip install -e ".[dev]" -c requirements.lock',
+        "-m uvicorn aiqa.api.app:create_app --factory --host 127.0.0.1 --port 8000",
         "/api/v1/health",
-        "W01-02",
+        "WORK_PROGRESS.md",
+        "NEXT_ACTION.md",
         "Ctrl+C",
     )
     fields = (

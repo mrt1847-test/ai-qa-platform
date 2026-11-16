@@ -1058,7 +1058,9 @@ def _device(
     ).fetchone() is None:
         return False, None
     try:
-        pinned_resource = _snapshot_resource(purpose, json.loads(limits))
+        parsed_limits=json.loads(limits)
+        if type(parsed_limits) is not dict:return False,None
+        pinned_resource = _snapshot_resource(purpose, parsed_limits)
         refs = json.loads(source_refs) if pinned_resource is None else [pinned_resource]
     except json.JSONDecodeError:
         return False, None
@@ -1079,6 +1081,15 @@ def _device(
         ).fetchone()
         if alias is None:
             continue
+        marked=purpose=='recording' and 'authoring_engine' in parsed_limits
+        if purpose=='recording' and (marked or alias[0]=='android' and 'authoring_schema' in parsed_limits):
+            from aiqa.recording.mobile_agent_admission import require_recording_report,MobileAgentAdmissionRejected
+            try:
+                if marked:
+                    from aiqa.contracts.mobile_agent_engine import require_mobile_agent_engine
+                    require_mobile_agent_engine(parsed_limits['authoring_engine'])
+                require_recording_report(connection,project_id,ref,worker_id=worker_id,mode='original' if marked else 'fixture')
+            except (MobileAgentAdmissionRejected,ValueError,TypeError):continue
         if purpose != "resource_probe" and not resource_readiness(
             connection, UUID(project_id), ref, alias[0], now=now,
         ).ready:

@@ -249,6 +249,8 @@ def report_inventory(worker: WorkerScope, report: InventoryReport) -> InventoryR
                 """,
                 (alias_id, str(project_id), physical_key_id),
             )
+        from aiqa.recording.mobile_agent_admission import authenticated_authoring_permissions
+        permissions=authenticated_authoring_permissions(connection,worker,report.permissions,target_kind=target_kind)
         connection.execute(
             """
             INSERT INTO resource_inventory (
@@ -267,7 +269,7 @@ def report_inventory(worker: WorkerScope, report: InventoryReport) -> InventoryR
                 report.state,
                 report.os_build,
                 report.geometry,
-                report.permissions,
+                permissions,
                 report.ime,
                 report.observed_at,
             ),

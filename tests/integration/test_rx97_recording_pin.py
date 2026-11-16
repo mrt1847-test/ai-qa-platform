@@ -42,6 +42,8 @@ def recording(ux_app,request):
         c.execute("INSERT OR IGNORE INTO secret_refs VALUES (?, 'ref-w1605', 1, 'fixture', 'available', ?, ?)",
                   (project,datetime.now(timezone.utc).isoformat(),str(uuid4())))
         _new_revision(c,project,revision_id="rev-seven",revision=7)
+        from authoring_metadata_support import seed_recording_capability
+        seed_recording_capability(c,project,physical)
     caps={"timeout_seconds":31,"max_actions":4,"max_model_calls":3,"budget":"0.70","currency":"USD"}
     target_refs={}
     if hasattr(request,"param"):

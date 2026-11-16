@@ -1,6 +1,7 @@
 """Dataset, environment, and model-binding routes. No provider calls."""
 
 from __future__ import annotations
+from aiqa.recording.mobile_agent_admission import runtime_for_app
 
 import json
 from collections.abc import Iterator
@@ -964,7 +965,7 @@ async def preview_recording_start(project_id: str, request: Request) -> JSONResp
         try:
             authorize_browser(request, project, "recording_preview")
             from aiqa.worker.resources import _bound_store
-            report = inspect_recording(_bound_store()._connection, project, spec)
+            report = inspect_recording(_bound_store()._connection, project, spec,model_runtime=runtime_for_app(request.app))
         except HashMismatch:
             return _error(409, "conflict", "version hash does not match", {})
         except PreflightRejected:

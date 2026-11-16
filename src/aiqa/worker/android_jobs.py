@@ -1971,7 +1971,8 @@ def build_fixture_android_recording_handler(
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
 
     from aiqa.worker.android_prepare import AndroidTargetPreparer
-    return AndroidRecordingHandler(
+    from aiqa.worker.mobile_agent_registration import FixtureAndroidRecordingHandler
+    return FixtureAndroidRecordingHandler(
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
         broker=recording_broker(),
@@ -2004,6 +2005,7 @@ def build_operational_android_recording_handler(
     """Live ADB recording that uses management-server operational model responses."""
 
     from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter, recording_broker
+    from aiqa.worker.mobile_agent_handler import OriginalAndroidRecordingHandler
 
     capture, prepare = _live_android_capture_pair(
         adb_path=adb_path, serial=serial, expected_avd=expected_avd
@@ -2013,7 +2015,8 @@ def build_operational_android_recording_handler(
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
 
     from aiqa.worker.android_prepare import AndroidTargetPreparer
-    return AndroidRecordingHandler(
+    return OriginalAndroidRecordingHandler(
+        client=client,runtime_root=runtime_root,
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
         broker=recording_broker(),
@@ -2031,7 +2034,6 @@ def build_operational_android_recording_handler(
             mono_seconds=None,
             live_capture=capture,
             target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
-            plan_provider=server_model_plan_provider(client),
         ),
     )
 

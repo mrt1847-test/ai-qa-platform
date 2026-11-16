@@ -1,6 +1,7 @@
 """Project defaults and the settings page. Approved case rows are not rewritten here."""
 
 from __future__ import annotations
+from aiqa.contracts.mobile_agent_engine import is_openai_endpoint
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -216,7 +217,7 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                         actor_id=actor.actor_id,
                         name=str(item.get("role", "")),
                         role=str(item.get("role", "")),
-                        provider="local",
+                        provider="openai" if is_openai_endpoint(item.get("endpoint")) else next((binding["provider"] for binding in reversed(prior["bindings"]) if binding["role"]==item.get("role") and binding["endpoint"]==item.get("endpoint")),"local"),
                         endpoint_kind="https",
                         endpoint=str(item.get("endpoint", "https://model.local")),
                         model=model,
@@ -267,7 +268,7 @@ def _read(project: UUID) -> dict[str, object]:
         bindings = connection.execute(
             """
             SELECT binding_revisions.role, binding_revisions.model, binding_revisions.endpoint,
-                   binding_revisions.binding_id, binding_revisions.revision_id, binding_revisions.revision
+                   binding_revisions.binding_id, binding_revisions.revision_id, binding_revisions.revision, binding_revisions.provider
             FROM binding_revisions
             JOIN model_bindings
               ON model_bindings.project_id = binding_revisions.project_id
@@ -289,7 +290,7 @@ def _read(project: UUID) -> dict[str, object]:
             "healing_scope": str(row[4]),
         }
     stored["bindings"] = [
-        {"role": str(item[0]), "model": str(item[1]), "endpoint": str(item[2]), "binding_id": str(item[3]), "revision_id": str(item[4]), "revision": int(item[5])}
+        {"role": str(item[0]), "model": str(item[1]), "endpoint": str(item[2]), "binding_id": str(item[3]), "revision_id": str(item[4]), "revision": int(item[5]), "provider": str(item[6])}
         for item in bindings
     ]
     return stored

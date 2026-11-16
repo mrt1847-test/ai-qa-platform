@@ -97,6 +97,7 @@ def start_recording(
     project_id: UUID,
     spec: RecordingStartInput,
     request_key: str,
+    *,model_runtime=None,
 ) -> RecordingReceipt:
     """Check the version, resource, permission, secret, binding, and budget, then enqueue."""
 
@@ -115,7 +116,7 @@ def start_recording(
     if existing is None:
         _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
         _require_secrets(connection, project_id, settings.get("secret_refs", {}))
-        limits = _recording_limits(connection, project_id, settings, spec.input_case_version_id, stored_hash)
+        limits = _recording_limits(connection, project_id, settings, spec.input_case_version_id, stored_hash, spec.resource_id, model_runtime)
     else:
         row = connection.execute("SELECT limits FROM jobs WHERE project_id=? AND job_id=?",(str(project_id),str(existing[0]))).fetchone()
         if row is None:
@@ -190,8 +191,8 @@ def _require_secrets(connection: object, project_id: UUID, refs: object) -> None
             raise PreflightRejected("secret ref is missing")
         found = connection.execute(  # type: ignore[attr-defined]
             """
-            SELECT 1 FROM secret_revisions
-            WHERE project_id = ? AND ref_id = ? AND revision = ?
+            SELECT 1 FROM secret_refs
+            WHERE project_id = ? AND ref_id = ? AND revision = ? AND availability='available'
             """,
             (str(project_id), str(value.get("ref_id")), int(value.get("revision", 0))),
         ).fetchone()
@@ -207,18 +208,25 @@ def _require_authoring(connection: object, project_id: UUID) -> dict[str, object
         raise PreflightRejected(str(exc)) from exc
 
 
-def _recording_limits(connection, project_id, settings, version_id, version_hash):
+def _recording_limits(connection, project_id, settings, version_id, version_hash, resource_id=None,model_runtime=None):
     from aiqa.recording.model_pin import freeze_authoring_limits
     from aiqa.domain.versions import SettingsRejected
+    from aiqa.recording.mobile_agent_admission import engine_for_recording,MobileAgentAdmissionRejected,require_original_input
     binding = _require_authoring(connection, project_id)
     try:
+        engine=engine_for_recording(connection,project_id,binding,settings,resource_id,model_runtime)
+        if engine is not None:
+            require_original_input(connection,project_id,version_id,settings)
+            return freeze_authoring_limits(binding,settings.get("limits",{}),version_id,version_hash,engine_ref=engine)
         return freeze_authoring_limits(binding,settings.get("limits",{}),version_id,version_hash)
+    except MobileAgentAdmissionRejected as exc:
+        raise PreflightRejected(str(exc)) from exc
     except (ValueError, SettingsRejected) as exc:
         raise PreflightRejected("authoring budget is unavailable") from exc
 
 
 def start_rerecording(
-    connection: object, actor: Actor, project_id: UUID, spec: RerecordInput, request_key: str
+    connection: object, actor: Actor, project_id: UUID, spec: RerecordInput, request_key: str,*,model_runtime=None
 ) -> RecordingReceipt:
     """Copy the base into a new input and recording. A moved head stays a branch."""
 
@@ -239,7 +247,7 @@ def start_rerecording(
     settings = json.loads(version[1])
     _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))
     _require_secrets(connection, project_id, settings.get("secret_refs", {}))
-    limits = _recording_limits(connection, project_id, settings, version_id, content_hash)
+    limits = _recording_limits(connection, project_id, settings, version_id, content_hash, spec.resource_id, model_runtime)
     queued = enqueue_job(
         Transaction(connection),  # type: ignore[arg-type]
         JobSubmission(
@@ -900,8 +908,15 @@ def _require_budget(limits: object) -> None:
         raise PreflightRejected("authoring budget is unavailable") from exc
 
 
-def inspect_recording(connection: object, project_id: UUID, spec: RecordingStartInput) -> dict[str, object]:
+def _recording_engine_readiness(connection,project,spec,settings,runtime):
+    from aiqa.recording.mobile_agent_admission import engine_for_recording,require_original_input
+    engine=engine_for_recording(connection,project,_require_authoring(connection,project),settings,spec.resource_id,runtime)
+    if engine is not None:require_original_input(connection,project,spec.input_case_version_id,settings)
+
+
+def inspect_recording(connection: object, project_id: UUID, spec: RecordingStartInput,*,model_runtime=None) -> dict[str, object]:
     """Report current blockers without creating a recording, lease, job or model call."""
+    from aiqa.recording.mobile_agent_admission import engine_for_recording,MobileAgentAdmissionRejected,require_original_input
     version = _version(connection, project_id, spec)
     if version is None:
         raise PreflightRejected("case version is missing")
@@ -914,12 +929,16 @@ def inspect_recording(connection: object, project_id: UUID, spec: RecordingStart
         ("resource", lambda: _require_resource(connection, project_id, spec.resource_id, str(settings.get("target_kind", "")))),
         ("secrets", lambda: _require_secrets(connection, project_id, settings.get("secret_refs", {}))),
         ("authoring", lambda: _require_authoring(connection, project_id)),
+        ("engine", lambda: _recording_engine_readiness(connection,project_id,spec,settings,model_runtime)),
         ("budget", lambda: _require_budget(settings.get("limits", {}))),
     ]
     for code, check in checks:
+        if code=='engine' and any(r['code'] in {'resource','authoring'} for r in reasons):continue
         try:
             check()
-        except (PreflightRejected, ResourceBusy) as exc:
-            label = {"base":"재녹화 기준과 사유·확인을 보완해 주세요.", "resource":"기기 연결·권한·점유 상태를 확인해 주세요.", "secrets":"사용할 계정의 비밀 참조를 확인해 주세요.", "authoring":"녹화 AI 모델 연결이 필요합니다.", "budget":"녹화 시간·비용 한도를 확인해 주세요."}[code]
-            reasons.append({"code":code, "message":label, "detail":str(exc), "href":f"/ui/projects/{project_id}/"+("settings" if code in {"authoring","budget","secrets"} else "environments")})
+        except (PreflightRejected, ResourceBusy, MobileAgentAdmissionRejected) as exc:
+            label = {"base":"재녹화 기준과 사유·확인을 보완해 주세요.", "resource":"기기 연결·권한·점유 상태를 확인해 주세요.", "secrets":"사용할 계정의 비밀 참조를 확인해 주세요.", "authoring":"녹화 AI 모델 연결이 필요합니다.", "engine":"실행 PC의 원본 녹화 엔진 지원과 AI 모델 설정을 확인해 주세요.", "budget":"녹화 시간·비용 한도를 확인해 주세요."}[code]
+            destination='settings' if code in {'authoring','budget','secrets'} or getattr(exc,'kind',None)=='settings' else 'environments'
+            if getattr(exc,'kind',None)=='input':destination='cases/'+str(spec.case_id)
+            reasons.append({"code":code, "message":label, "detail":str(exc), "href":f"/ui/projects/{project_id}/"+destination})
     return {"ready":not reasons,"reasons":reasons,"input_case_version_id":str(spec.input_case_version_id),"input_version_hash":spec.input_version_hash}

@@ -1854,16 +1854,19 @@ def finish_worker_attempt(
         if finish.final_seq > 0 and finish.last_ack_seq < 1:
             raise FinishRejected("evidence is missing")
 
-    other = connection.execute(
+    prior_finish = connection.execute(
         """
         SELECT worker_id FROM attempt_finish_requests
-        WHERE project_id = ? AND attempt_id = ? AND worker_id != ?
+        WHERE project_id = ? AND attempt_id = ?
         LIMIT 1
         """,
-        (str(finish.project_id), str(finish.attempt_id), worker.worker_id),
+        (str(finish.project_id), str(finish.attempt_id)),
     ).fetchone()
-    if other is not None:
-        raise LeaseDenied("worker cannot use this lease")
+    if prior_finish is not None:
+        if str(prior_finish[0]) != worker.worker_id:
+            raise LeaseDenied("worker cannot use this lease")
+        # Same-key confirmations returned above. A new key cannot reseal an attempt.
+        raise FinishConflict("attempt already has a finish receipt")
 
     verdict: str | None = None
     if finish.outcome in _SUCCESS_OUTCOMES:
@@ -1927,6 +1930,17 @@ def finish_worker_attempt(
         )
         status = snapshot.status
         verdict = snapshot.verdict
+        if purpose == "recording" and recording_id is not None:
+            from aiqa.recording.service import finish_incomplete_recording
+
+            cancellation = connection.execute(
+                "SELECT 1 FROM job_cancellations WHERE project_id = ? AND job_id = ?",
+                (str(finish.project_id), str(finish.job_id)),
+            ).fetchone()
+            # A control checkpoint can already have terminalized the job as error.
+            # The accepted browser cancellation remains the authoritative stop fact.
+            recording_outcome = "cancelled" if cancellation is not None else finish.outcome
+            finish_incomplete_recording(connection, finish.project_id, recording_id, recording_outcome)
 
     case_run_raw = job[3]
     if purpose in {"trial", "regression"} and case_run_raw is not None:

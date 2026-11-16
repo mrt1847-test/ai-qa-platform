@@ -13,3 +13,11 @@ Confirmed gap: genuine API inventory→browser REC→claim→original main→fak
 - [ ] actual original+ASGI/mock provider/ADB 집중 회귀, one fresh review/single TDD fix pass, 인계/계약/큐/master commit. 실제 기기/유료 호출/사람 승인0. 이후 MA05b 저장본 검토·사람 승인·AI0 여정과 B2.3 binding/evaluator/C/D/UI를 진행한다.
 
 Ruling: 실패 녹화는 성공 replay source가 아니다. 로그와 저장 종료 상태는 보존하되 incomplete/unknown을 PASS나 승인으로 바꾸지 않는다. metadata 복구는 녹화 재개가 아니다. 새 manifest/version 필요 여부는 기존 실패 저장 계약과 실제 UI 사용 흐름을 대조해 최소 변경으로 결정하고 인계에 기록한다.
+
+## 실행 단위 분리 (2026-11-17)
+
+MA05a1: 인증된 worker failure/cancel/lost finish에서 해당 REC만 stopped / error 또는 interrupted / stored / incomplete로 끝낸다. 서버 ACK 증거의 PC offline 조회와 성공 seal 회귀를 확인한다. incomplete에는 manifest/version/package/승인을 만들지 않는다. finish receipt 재전송은 같은 결과다.
+
+MA05a2: 별도 failure codec·planned/acknowledged/unknown lifecycle·동일 packet metadata 복구·unknown 로그를 구현한다. a1 완료를 a2 완료나 RX87 완료로 해석하지 않는다.
+
+MA05a1 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A1.md), 관련64pass82.43s. MA05a2는 미완료이며 아래 원 gap은 행동 상태/로그 측면에서 여전히 재현된다.

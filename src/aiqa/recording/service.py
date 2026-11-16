@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime,timezone
 from uuid import UUID, uuid4
@@ -413,6 +414,29 @@ def stop_recording(connection: object, actor: Actor, project_id: UUID, recording
     return RecordingView(recording_id, str(row[0]), str(row[1]), None)
 
 
+def finish_incomplete_recording(
+    connection: sqlite3.Connection, project_id: UUID, recording_id: UUID, outcome: str
+) -> None:
+    """Store a failed worker's ACK prefix without creating a replay source or candidate.
+
+    The authenticated attempt finish owns idempotency and lease/cursor validation.
+    'stored' describes server custody of the saved prefix, not evidence completeness.
+    Existing terminal recordings and all case approval/version pointers stay intact.
+    """
+    if outcome not in {"error", "crash", "lost", "interrupted", "cancelled"}:
+        raise ValueError("incomplete finish outcome is invalid")
+    completion = "error" if outcome in {"error", "crash"} else "interrupted"
+    connection.execute(
+        """
+        UPDATE recordings
+        SET stop_status = 'stopped', completion_status = ?,
+            storage_status = 'stored', evidence_status = 'incomplete'
+        WHERE project_id = ? AND recording_id = ? AND completion_status = 'open'
+        """,
+        (completion, str(project_id), str(recording_id)),
+    )
+
+
 def materialize_recording(
     connection: object,
     actor: Actor,
@@ -577,6 +601,8 @@ def _seal(connection: object, actor: Actor, project_id: UUID, spec: RecordingFin
         if str(stored[1]) != body_hash:
             raise FinishConflict("finish body does not match")
         return ManifestReceipt(UUID(str(stored[0])), spec.recording_id, body_hash, True)
+    if str(recording[2]) != "open":
+        raise FinishConflict("recording already ended")
     if spec.outcome != "interrupted":
         _require_artifacts(connection, project_id, spec.artifact_ids)
     outcome = "interrupted" if spec.outcome == "interrupted" else spec.outcome

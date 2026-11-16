@@ -49,6 +49,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA04C2](docs/validation/tasks/AI-LIVE-04-MA04C2.md): 운영 원본 handler/지원 보고/실제 서버 모델·가격·입력 readiness/접수 pin/선택 PC의 현재 인증 claim을 연결했다. 강제 pin/serial/claim 없는 public-API 경로에서 저장 manifest/package와 approval0을 확인했다. Focus106pass, 전체15failed1393passed1skipped 뒤 영향53pass·순서32pass; 기존 간섭3은 해소, 기존6은 남는다. 다음 MA05a failed recording 상태/remote log, 전체 RX87 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05A1](docs/validation/tasks/AI-LIVE-04-MA05A1.md): 실패·중단 REC의 stopped/stored/incomplete 저장과 PC offline ACK PNG/timeline 조회를64개 모의 통합 검사로 확인했다. 첫 finish 불변·late browser 재seal409로 실패 source 승격을 차단한다. 다음 MA05a2 typed failure log/행동 상태이며 RX87 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

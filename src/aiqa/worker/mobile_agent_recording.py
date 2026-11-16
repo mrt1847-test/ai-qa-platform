@@ -121,8 +121,10 @@ class MobileAgentRecordingSession:
             raise ValueError('model frame changed')
         def boundary():
             self._checkpoint('before_model');before_send()
-        content=self.model_port(request,before_send=boundary)
-        return content
+        try:return self.model_port(request,before_send=boundary)
+        except Exception:
+            self._fault='authoring_unavailable'
+            raise
 
     def _dispatch(self,action,before,*,before_send):
         turn=self.model_port.pending
@@ -195,6 +197,20 @@ class MobileAgentRecordingSession:
             self._fault='evidence_commit_failed'
             raise
 
+    def _flush_authoring_failure(self):
+        observation=self.model_port.unaccepted_observation
+        if observation is None:return
+        proof={'schema':'mobile-agent-authoring-failure-v1','call_id':observation.call_id,'action_id':observation.action_id,
+            'state':'planned','native_calls':0,'native':None,'before_image_hash':observation.image_hash,
+            'stage':'authoring','outcome':'no_accepted_action','reason':'authoring_unavailable'}
+        raw=_json(proof).encode('utf-8')
+        part={'filename':observation.action_id+'-authoring-failure.log','media_type':'text/plain','declared_hash':_hash(raw),
+            'declared_length':len(raw),'body_b64':base64.b64encode(raw).decode('ascii'),'role':'log','owner_kind':'REC',
+            'attempt_id':self.claim['attempt_id'],'action_id':observation.action_id}
+        ack=self.delivery(action_seq=self._turns+1,action_id=observation.action_id,events=[],artifacts=[part])
+        self._accept_ack(ack)
+
+
     def _flush_failure(self):
         turn=self.model_port.pending
         if turn is None:return
@@ -241,6 +257,9 @@ class MobileAgentRecordingSession:
         if self.model_port.pending is not None:
             try:self._flush_failure()
             except Exception:pass  # Preserve the execution fault/count and durable packet for metadata recovery.
+        elif self.model_port.unaccepted_observation is not None:
+            try:self._flush_authoring_failure()
+            except Exception:pass  # Same durable metadata recovery; no replacement model/action.
         mapping='{}';ready=False
         if (result.status=='claimed_success' and not self._fault and not self._uncertain and self._native_actions>0
             and self._native_actions==result.native_actions and self.model_port.pending is None

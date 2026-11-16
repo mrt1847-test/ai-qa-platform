@@ -59,6 +59,17 @@ def authorize_recording(connection,worker,request,project_id,item_id,now):
         pin=validate_authoring_pin({'purpose':row[2],'limits':limits,'policy_ref':row[7],
             'intent':None if intent is None else intent_to_document(intent)})
         if pin is None:deny('recording_policy_missing')
+        if pin.get('authoring_engine') is not None and connection.execute(
+            """SELECT 1 FROM actions a JOIN artifact_objects o
+                ON o.project_id=a.project_id AND o.attempt_id=a.attempt_id AND o.action_id=a.action_id
+                WHERE a.project_id=? AND a.attempt_id=? AND a.action_id LIKE 'ma-%'
+                  AND a.dispatch_state='planned' AND a.outcome_known=0
+                  AND o.job_id=? AND o.generation=? AND o.owner_kind='REC' AND o.role='log'
+                  AND o.status='ready' AND o.acked=1 LIMIT 1""",
+            (str(project_id),item_id,row[0],row[1])).fetchone() is not None:
+            # Only the strict authoring diagnostic can commit a ma-call log while still planned.
+            # Fence failures have no charged model row, so history alone cannot stop a fresh call.
+            deny('mobile_authoring_stopped')
         binding=pin['authoring_binding']
         selected=connection.execute("""SELECT binding_id,revision_id,revision,content_hash,key_ref_id,key_revision,
             model,endpoint,compatibility_status,provider,endpoint_kind FROM binding_revisions

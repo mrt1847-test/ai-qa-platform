@@ -151,6 +151,9 @@ MA05a1: worker failure/error/crash finish는 해당 REC를 stopped/error/stored/
 
 MA05a2: reserved ma-call before는 planned/known0이다. observed step-v1은 same-call 원본 typed action/worker/generation/before ACK, 전후 이벤트 exact pair/hash/순서/연속 prefix, 같은 geometry PNG를 요구한다. diagnostic failure-v1은 log-only로 unknown0 / acknowledged1 / known not_sent(lookup_failed1)를 저장하고 history/physical event/source 승격을 하지 않는다. 같은 call/role ACK bytes는 불변이다. normal packet이 시작되면 그 exact payload만 재확인한다. ACK 미확인은 내부 pending evidence 상태이며 finish body를 아직 만들지 않는다. metadata-only confirm_turn 후 정확한 cursor로 error/incomplete 종료하며 새 claim/native/model/capture0, 재시작 no-resume을 유지한다. 모델 turn 이전 실패 로그는 MA05a3다.
 
+MA05a3: registered before 뒤 정상 모델 turn 수용 전 오류는 authoring-failure-v1 진단으로 구분한다. exact original policy·worker/attempt/call·관찰/before ACK에 묶고 planned/known0·native0을 유지한다. 청구/dispatch는 model receipts가 근거다. 진단은 history/실행 ACK가 아니며 ACK된 진단이 있는 원본 attempt의 cached action과 새 observation/model 요청을 모두 차단한다. 로그 복구는 고정 metadata만 확인한다. 이미지/관찰 등록 자체가 불명일 때 caller snapshot을 추정하지 않는다.
+
+
 
 
 2026-11-01 runtime 보완: PreparedAction의 attempt identity는 Observation ID와 다르다. 같은 attempt/action의 dispatch_started 이후에는 재호출·프로세스 재시작으로 전송을 반복하지 않는다. 실제 dispatch 전과 journal flush 후에 제어/lease 여유를 검사하며, phase 객체를 다시 만들어 예산을 초기화하지 않는다.

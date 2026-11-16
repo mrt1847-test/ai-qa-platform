@@ -189,8 +189,13 @@ def test_denied_model_boundary_retains_already_acked_before_artifact(android_eng
     f=android_engine_job;c,h,job,sent,launches,_=setup(f,tmp_path);remote=h.context.remote_checkpoint
     h.context.remote_checkpoint=lambda phase:ControlDecision(False,'fixture model denied') if phase=='before_model' else remote(phase)
     with c:r=h.handle(job)
-    assert r.actions==1 and len(r.source_artifact_hashes)==4
+    assert r.actions==1 and len(r.source_artifact_hashes)==5
     assert r.outcome=='error' and r.action_mapping=='{}' and f['openai_sent']==[] and sent==[]
+    with sqlite3.connect(f['database']) as db:
+        assert db.execute("SELECT dispatch_state,outcome_known FROM actions WHERE action_id LIKE 'ma-%'").fetchone()==('planned',0)
+        facts=db.execute("SELECT artifact_id,role FROM artifact_objects WHERE action_id LIKE 'ma-%' ORDER BY rowid").fetchall()
+    assert [role for _,role in facts]==['before','log']
+    assert all(identity in r.source_artifact_hashes for identity,_ in facts)
 
 
 def test_child_teardown_failure_keeps_prior_native_and_server_ack(android_engine_job,tmp_path,monkeypatch):

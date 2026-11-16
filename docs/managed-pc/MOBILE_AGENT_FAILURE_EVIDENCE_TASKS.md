@@ -34,12 +34,25 @@ MA05a4 (별도): worker finish가 전혀 오지 않은 서버 watchdog/lost·lea
 
 직접 선행: MA05a2 인계와 저장 packet/상태 검사. 전체 이력 문서를 다시 읽지 않는다. 파일은 worker/mobile_agent_models.py·mobile_agent_recording.py, recording/mobile_agent_evidence.py, 새 통합 테스트만 먼저 본다.
 
-- [ ] RED: observation 등록 후 before_model 거절이면 provider0/native0, HTTPS503이면 provider mock1/native0, 정상 모델 응답을 worker가 받지 못하거나 거절하면 재요청0이다. 세 경우 REC stopped/stored/incomplete, before+bounded 진단 log를 PC offline에서 읽는다. 실제 비용/usage는 서버 model receipt에만 따른다.
-- [ ] model port는 현재 등록된 관찰의 frozen call/action/before artifact ID/hash만 별도로 노출한다. 정상 evidence release에서 해제하고 다른 call/attempt와 섞지 않는다. 모델 turn을 만들기 전 오류를 원본 turn이 실행된 것처럼 만들지 않는다.
-- [ ] 별도 `mobile-agent-authoring-failure-v1`의 exact fields(call/action/before hash, stage=authoring, outcome=no_accepted_action, native_calls0/native=None, bounded reason)만 저장한다. raw 예외/provider body/키/추론0. action은 planned/known0을 유지하며 캐시된 모델 응답으로 실행을 재개하지 않는다.
-- [ ] server는 exact original pin과 현재 project/worker/attempt/call의 등록된 model observation·before ACK를 검사한다. 다른 call/hash/owner/type/임의 schema/추가 field 거절, same-call role immutable 규칙 유지. normal step-v1/history release로 인정하지 않는다.
-- [ ] 같은 durable metadata seq와 pending recovery를 재사용한다. 로그 ACK 유실은 같은 body/time/key만 재확인하며 capture/model/native0이다. 정상 원본 녹화·모델 history·ma05a1/a2·finish/cleanup 집중 회귀 후 한 fresh review/한 fix pass, 인계·큐·master commit.
+- [x] RED: observation 등록 후 before_model 거절이면 provider0/native0, HTTPS503이면 provider mock1/native0, 정상 모델 응답을 worker가 받지 못하거나 거절하면 재요청0이다. 세 경우 REC stopped/stored/incomplete, before+bounded 진단 log를 PC offline에서 읽는다. 실제 비용/usage는 서버 model receipt에만 따른다.
+- [x] model port는 현재 등록된 관찰의 frozen call/action/before artifact ID/hash만 별도로 노출한다. 정상 evidence release에서 해제하고 다른 call/attempt와 섞지 않는다. 모델 turn을 만들기 전 오류를 원본 turn이 실행된 것처럼 만들지 않는다.
+- [x] 별도 `mobile-agent-authoring-failure-v1`의 exact fields(call/action/before hash, stage=authoring, outcome=no_accepted_action, native_calls0/native=None, bounded reason)만 저장한다. raw 예외/provider body/키/추론0. action은 planned/known0을 유지하며 캐시된 모델 응답으로 실행을 재개하지 않는다.
+- [x] server는 exact original pin과 현재 project/worker/attempt/call의 등록된 model observation·before ACK를 검사한다. 다른 call/hash/owner/type/임의 schema/추가 field 거절, same-call role immutable 규칙 유지. normal step-v1/history release로 인정하지 않는다.
+- [x] 같은 durable metadata seq와 pending recovery를 재사용한다. 로그 ACK 유실은 같은 body/time/key만 재확인하며 capture/model/native0이다. 정상 원본 녹화·모델 history·ma05a1/a2·finish/cleanup 집중 회귀 후 한 fresh review/한 fix pass, 인계·큐·master commit.
 
 범위 제외: before image upload 자체가 불명인 경우의 새 payload 추정, 정상 관찰 등록 전 caller가 주장한 call metadata, 미확인 모델 결과를 성공으로 분류, 운영 키 실호출. 이 경계는 보존된 서버 이미지/미ACK spool로 추후 조사하며 source/승인 gate를 완화하지 않는다.
 
 MA05a2 native/control 범위 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A2.md), 관련157pass263.30s 후 visible ACK rename 보완의 영향73pass193.48s. 모델 turn 이전 오류는 위 MA05a3이며 전체 MA05/RX87은 미완료다.
+
+## MA05a4 실행 체크리스트 · worker finish 없는 서버 종료
+
+직접 선행: a1의 `finish_incomplete_recording`(source/승인 생성0)과 a2/a3의 ACK prefix 불변. 소유 코드 queue.reconcile_stored(현재 lost job/quarantine만 갱신)와 cancel_job(queued→cancelled)이다. 외부 PC·유료 키를 선행으로 요구하지 않는다.
+
+- [ ] RED: 실제 브라우저 녹화 접수 후 queued 취소하면 worker/모델/native0, REC interrupted/stopped/stored/incomplete다. 등록 worker가 ACK before를 저장한 뒤 서버 fake-clock lease/session/runner 손실을 reconcile하면 같은 상태이고 PNG는 PC offline에 읽힌다.
+- [ ] 서버가 job을 terminal로 바꾸는 같은 transaction에서 해당 project/job의 recording만 incomplete 종료한다. 다른 REC/승인/terminal 상태·기존 manifest/version/package는 바꾸지 않는다. queued 보존·live generation continue·quarantine/no-resume 규칙을 유지한다.
+- [ ] 반복 reconcile/취소 receipt 재확인은 불변이다. terminal worker late finish는 오류 사실/서버 ACK metadata만 확인하며 새 source를 만들지 않는다. normal success와 trial/regression QA는 바뀌지 않는다.
+- [ ] 실제 API/DB/fake-clock 집중 회귀, 한 fresh review/한 fix pass, 인계/큐/master commit. 실제 PC 종료 수용으로 표시하지 않는다.
+
+MA05b 후속 UI: 실패본에 materialized version이 없을 때 기존 recording.html의 무조건 case/review 링크가 다른 최신/승인 후보를 가리키지 않도록 한다. 해당 실패의 타임라인·로그를 계속 읽고, 승인 대상 없음/재녹화 경로를 분명히 표시한다. 완전 저장본은 실제 후보 version으로 사후 검토·승인한 뒤 같은 package의 AI0 trial/regression 여정을 확인한다.
+
+MA05a3 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A3.md). 관련201pass/old expectation1fail 뒤 영향40pass, 추가 offline1pass. 다음 MA05a4이며 전체 MA05/RX87은 미완료다.

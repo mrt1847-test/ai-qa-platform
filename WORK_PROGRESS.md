@@ -53,6 +53,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05A2](docs/validation/tasks/AI-LIVE-04-MA05A2.md): 원본 native/control 실패의 typed log와 planned/acknowledged/unknown 사실을 서버에 보존한다. 전후 증거 검증·same-call bytes 불변·미확인 ACK의 metadata-only 종료 복구를 구현했고 관련157pass 후 영향73pass를 확인했다. 다음 MA05a3 pre-turn 진단 log, MA05a4 server lost이며 RX87 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05A3](docs/validation/tasks/AI-LIVE-04-MA05A3.md): 정상 모델 turn 수용 전 실패는 등록된 before에 묶은 별도 진단과 planned0으로 저장한다. malformed/truncated 응답·새 모델 call/캐시 실행 재개를 차단하고 고정 log ACK 복구를 유지한다. 관련201pass/기대값1fail 뒤 영향40pass·추가 offline1pass. 다음 server lost/queued cancel MA05a4, RX87 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

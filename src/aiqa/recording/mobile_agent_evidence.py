@@ -51,6 +51,11 @@ def parse_mobile_packets(artifacts, events=(), *, validate_images=True):
             if (set(doc)!=common|{'after_image_hash'} or set(roles)!={'after','log'} or doc['state']!='observed'
                 or roles['after'].media_type!='image/png' or doc['after_image_hash']!=roles['after'].declared_hash):
                 raise ValueError('mobile observed proof invalid')
+        elif doc.get('schema')=='mobile-agent-authoring-failure-v1':
+            if (set(doc)!=common|{'stage','outcome','reason'} or set(roles)!={'log'} or events
+                or doc['state']!='planned' or doc['stage']!='authoring' or doc['outcome']!='no_accepted_action'
+                or doc['reason']!='authoring_unavailable' or doc['native'] is not None):
+                raise ValueError('mobile authoring diagnostic invalid')
         elif doc.get('schema')=='mobile-agent-failure-v1':
             if set(doc)!=common|{'reason'} or set(roles)!={'log'} or events:raise ValueError('mobile failure packet invalid')
             reasons={'unknown':{'dispatch_unknown'},'acknowledged':{'after_capture_failed','execution_stopped','native_persistence_failed'},
@@ -102,10 +107,22 @@ def mobile_dispositions(connection, *, project, job, attempt, worker, generation
     if not packets:return {}
     limits=connection.execute('SELECT limits FROM jobs WHERE project_id=? AND job_id=?',(project,job)).fetchone()
     if limits is None:raise ValueError('mobile job missing')
-    require_mobile_agent_engine(_json(limits[0]).get('authoring_engine'))
+    pin=_json(limits[0])
+    require_mobile_agent_engine(pin.get('authoring_engine'))
     result={}
     for action,doc in packets.items():
         if doc is None:
+            result[action]='planned'
+            continue
+        if doc['schema']=='mobile-agent-authoring-failure-v1':
+            observation=connection.execute("""SELECT o.image_hash FROM model_observations o JOIN artifact_objects a
+                ON a.project_id=o.project_id AND a.artifact_id=o.artifact_id AND a.attempt_id=o.attempt_id
+                WHERE o.project_id=? AND o.attempt_id=? AND o.call_id=? AND o.worker_id=? AND o.policy_ref=?
+                  AND a.job_id=? AND a.generation=? AND a.action_id=? AND a.owner_kind='REC' AND a.role='before'
+                  AND a.status='ready' AND a.acked=1 AND a.content_hash=o.image_hash""",
+                (project,attempt,action[3:],worker,pin.get('policy_ref'),job,generation,action)).fetchone()
+            if observation is None or observation[0]!=doc['before_image_hash']:
+                raise ValueError('mobile authoring observation mismatch')
             result[action]='planned'
             continue
         row=connection.execute("""SELECT r.response_json,o.image_hash,o.geometry_json,o.artifact_id,o.captured_at

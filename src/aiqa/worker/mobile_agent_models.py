@@ -36,6 +36,16 @@ class MobileAgentWorkerTurn:
     def receipt(self):return json.loads(self._receipt_json)
 
 
+@dataclass(frozen=True,slots=True)
+class MobileAgentRegisteredObservation:
+    """A bound image is not an accepted action or a physical ACK."""
+    call_id:str
+    action_id:str
+    before_artifact_id:str
+    image_hash:str
+    observation_id:str
+
+
 class MobileAgentModelPort:
     def __init__(self,client,claim,*,token_output_limit=512):
         if type(claim) is not dict:raise ModelPortRejected('claim invalid')
@@ -56,10 +66,14 @@ class MobileAgentModelPort:
         self._client=client;self._claim=claim;self._pin=pin;self._output_limit=token_output_limit
         self._deadline=(datetime.now(timezone.utc)+timedelta(seconds=pin['timeout_seconds'])).isoformat()
         self._lock=Lock();self._seen=set();self._consumed_artifacts=set();self._pending=None;self._last=None;self._stopped=False
-        self.model_requests=0;self._before_ids=[]
+        self.model_requests=0;self._before_ids=[];self._registered=None
 
     @property
     def before_artifact_ids(self):return tuple(self._before_ids)
+
+    @property
+    def unaccepted_observation(self):
+        return self._registered if self._pending is None else None
 
     @property
     def pending(self):return self._pending
@@ -97,6 +111,7 @@ class MobileAgentModelPort:
                 if type(before_id) is not str or str(UUID(before_id))!=before_id:raise ValueError()
             except (ValueError,TypeError,AttributeError):raise ModelPortRejected('before artifact receipt invalid') from None
             self._before_ids.append(before_id)
+            self._registered=MobileAgentRegisteredObservation(call,'ma-'+call,before_id,bound['image_hash'],bound['observation_id'])
             payload.update(model_observation_id=bound['observation_id'],sanitized_inputs=bound['sanitized_inputs'])
             before_send();self.model_requests+=1
             receipt=self._client.request_model(project_id=claim['project_id'],item_id=claim['attempt_id'],
@@ -109,7 +124,11 @@ class MobileAgentModelPort:
                 or receipt.get('image_hash')!='sha256:'+hashlib.sha256(frame.png).hexdigest()
                 or type(receipt.get('content')) is not str or not 0<len(receipt['content'].encode('utf-8'))<=16384):
                 raise ModelPortRejected('model receipt does not match')
-            protocol=load_protocol();raw=protocol.parse_action(render_reply(receipt['content']))
+            rendered=render_reply(receipt['content'])
+            # Match the process supervisor's framing check before this becomes an accepted turn.
+            if rendered.count('<tool_call>')!=1 or rendered.count('</tool_call>')!=1:
+                raise ModelPortRejected('model tool block invalid')
+            protocol=load_protocol();raw=protocol.parse_action(rendered)
             action=upstream_action(protocol,raw,frame.geometry)
             terminal=action is not None and action.kind=='finish'
             # Store a detached allowlisted receipt; never retain arbitrary server fields.
@@ -136,5 +155,5 @@ class MobileAgentModelPort:
                 or receipt.get('attempt_id')!=self._claim['attempt_id'] or after_id==log_id
                 or type(receipt.get('artifact_ids')) is not list or receipt['artifact_ids']!=[after_id,log_id]
                 or after_id in self._consumed_artifacts or log_id in self._consumed_artifacts):raise ModelPortRejected('evidence receipt invalid')
-            self._consumed_artifacts.update((after_id,log_id));self._pending=None
+            self._consumed_artifacts.update((after_id,log_id));self._pending=None;self._registered=None
         finally:self._lock.release()

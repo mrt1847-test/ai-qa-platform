@@ -51,6 +51,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05A1](docs/validation/tasks/AI-LIVE-04-MA05A1.md): 실패·중단 REC의 stopped/stored/incomplete 저장과 PC offline ACK PNG/timeline 조회를64개 모의 통합 검사로 확인했다. 첫 finish 불변·late browser 재seal409로 실패 source 승격을 차단한다. 다음 MA05a2 typed failure log/행동 상태이며 RX87 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05A2](docs/validation/tasks/AI-LIVE-04-MA05A2.md): 원본 native/control 실패의 typed log와 planned/acknowledged/unknown 사실을 서버에 보존한다. 전후 증거 검증·same-call bytes 불변·미확인 ACK의 metadata-only 종료 복구를 구현했고 관련157pass 후 영향73pass를 확인했다. 다음 MA05a3 pre-turn 진단 log, MA05a4 server lost이며 RX87 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

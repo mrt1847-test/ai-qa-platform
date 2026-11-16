@@ -48,6 +48,7 @@ class MobileAgentRecordingResult:
     process:MobileAgentProcessResult
     before_artifact_ids:tuple[str,...]=()
     cleanup_failed:bool=False
+    evidence_pending:bool=False
 
 
 class MobileAgentRecordingSession:
@@ -68,7 +69,7 @@ class MobileAgentRecordingSession:
         self._checkpoint_port=checkpoint;self._allowed_port=allowed;self._secrets=secrets
         self._serial=expected_serial;self._current=None;self._seen=set();self._ack_turn=None
         self._native=[];self._native_actions=0;self._turns=0;self._ids=[];self._seq=0;self._prefix=_hash(b'')
-        self._fault='';self._uncertain=False;self._deadline=None
+        self._fault='';self._uncertain=False;self._deadline=None;self._turn_evidence_started=False
         self.journal=DispatchJournal(self.output/'dispatch.jsonl')
         self.delivery=StepEvidenceCommitter(client,claim,namespace='mobile',pending_path=self.output/'evidence-delivery.json')
 
@@ -184,14 +185,41 @@ class MobileAgentRecordingSession:
         events=list(android_evidence_events(attempt_id=self.claim['attempt_id'],action_id=turn.action_id,
             before=before,after=after,seq_base=self._seq,action_seq=self._turns+1)) if physical else []
         try:
+            self._turn_evidence_started=True
             ack=self.delivery(action_seq=self._turns+1,action_id=turn.action_id,events=events,artifacts=parts)
             self.model_port.accept_evidence(turn.call_id,ack,after_id=ack['artifact_ids'][0],log_id=ack['artifact_ids'][1])
             self._accept_ack(ack);self._turns+=1
             if physical:self.journal.append(self.claim['attempt_id'],turn.action_id,'observed')
-            self._ack_turn=None
+            self._ack_turn=None;self._turn_evidence_started=False
         except Exception:
             self._fault='evidence_commit_failed'
             raise
+
+    def _flush_failure(self):
+        turn=self.model_port.pending
+        if turn is None:return
+        if self._turn_evidence_started:
+            # The durable normal packet may already have committed. Never replace it.
+            ack=self.delivery.confirm_turn(self._turns+1)
+            self._accept_ack(ack)
+            return
+        physical=turn.action is not None and not turn.terminal
+        state='unknown' if self._uncertain else 'acknowledged' if self._ack_turn==turn.call_id else 'not_sent'
+        reason=('dispatch_unknown' if state=='unknown' else
+                'after_capture_failed' if state=='acknowledged' and self._fault=='capture_failed' else
+                'native_persistence_failed' if state=='acknowledged' and self._fault=='native_persistence_failed' else
+                'execution_stopped' if state=='acknowledged' else 'native_not_sent' if physical else 'control_unobserved')
+        proof={'schema':'mobile-agent-failure-v1','call_id':turn.call_id,'action_id':turn.action_id,'state':state,
+            'native_calls':int(state=='acknowledged'),'native':asdict(turn.action) if physical else None,
+            'before_image_hash':turn.image_hash,'reason':reason}
+        raw=_json(proof).encode('utf-8')
+        part={'filename':turn.action_id+'-failure.log','media_type':'text/plain','declared_hash':_hash(raw),
+            'declared_length':len(raw),'body_b64':base64.b64encode(raw).decode('ascii'),'role':'log','owner_kind':'REC',
+            'attempt_id':self.claim['attempt_id'],'action_id':turn.action_id}
+        ack=self.delivery(action_seq=self._turns+1,action_id=turn.action_id,events=[],artifacts=[part])
+        self._accept_ack(ack)
+        # Diagnostic evidence cannot release the pending model turn or advance its history.
+
 
     def _accept_ack(self,ack):
         self._ids.extend(ack['artifact_ids']);self._seq=ack['contiguous_seq'];self._prefix=ack['prefix_hash']
@@ -210,6 +238,9 @@ class MobileAgentRecordingSession:
             try:self._flush_turn(self._read_capture('after_final_turn'))
             except Exception:
                 if not self._fault:self._fault='final_evidence_failed'
+        if self.model_port.pending is not None:
+            try:self._flush_failure()
+            except Exception:pass  # Preserve the execution fault/count and durable packet for metadata recovery.
         mapping='{}';ready=False
         if (result.status=='claimed_success' and not self._fault and not self._uncertain and self._native_actions>0
             and self._native_actions==result.native_actions and self.model_port.pending is None
@@ -223,4 +254,4 @@ class MobileAgentRecordingSession:
             except Exception:self._fault='source_commit_failed'
         return MobileAgentRecordingResult('completed' if ready else 'failed',self._fault or ('no_native_actions' if result.status=='claimed_success' and not self._native_actions else result.reason),
             self._native_actions,self.model_port.model_requests,result.ambiguous_dispatch or self._uncertain,
-            self.model_port.pending is None and not self._fault,ready,mapping,tuple(self._ids),self._seq,self._prefix,result,self.model_port.before_artifact_ids,result.cleanup_failed)
+            self.model_port.pending is None and not self._fault,ready,mapping,tuple(self._ids),self._seq,self._prefix,result,self.model_port.before_artifact_ids,result.cleanup_failed,self.delivery.pending_sequence is not None)

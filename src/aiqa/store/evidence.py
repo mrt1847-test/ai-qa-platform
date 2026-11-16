@@ -252,6 +252,8 @@ def commit_sanitized_evidence(
             raise EvidenceHashRejected("artifact size is invalid")
 
     _preparation_dispositions(artifacts, events)
+    from aiqa.recording.mobile_agent_evidence import parse_mobile_packets
+    parse_mobile_packets(artifacts, events)
     from aiqa.store.evidence_io import commit_staged_evidence
     clock = authority_clock or binding.authority_clock
     return commit_staged_evidence(binding, lease, events=events, artifacts=artifacts,
@@ -431,6 +433,7 @@ def _commit_evidence_metadata(
                     attempt_id=attempt_id,
                     artifacts=artifacts,
                     prepared=prepared,
+                    events=events,
                 )
 
         finish_after = connection.execute(
@@ -483,6 +486,7 @@ def _place_active_artifacts(
     attempt_id: str,
     artifacts: list[EvidenceArtifactPart],
     prepared: tuple[DurableObject, ...],
+    events: list[EventEnvelope],
 ) -> list[str]:
     """Publish ready PNG/log bytes, link actions, and return durable artifact ids."""
 
@@ -513,6 +517,16 @@ def _place_active_artifacts(
         case_id = None if job[5] is None else str(job[5])
         case_version_id = None if job[6] is None else str(job[6])
     dispositions = _preparation_dispositions(artifacts)
+    from aiqa.recording.mobile_agent_evidence import mobile_dispositions
+    for part in artifacts:
+        if part.action_id and part.action_id.startswith('ma-'):
+            existing_roles=connection.execute(
+                "SELECT content_hash FROM artifact_objects WHERE project_id=? AND attempt_id=? AND action_id=? AND role=? AND status='ready' AND acked=1",
+                (str(lease.project_id),attempt_id,part.action_id,part.role)).fetchall()
+            if any(row[0]!=part.declared_hash for row in existing_roles):
+                raise EventConflict('mobile action role content is immutable')
+    dispositions.update(mobile_dispositions(connection,project=str(lease.project_id),job=str(lease.job_id),
+        attempt=attempt_id,worker=binding.worker.worker_id,generation=lease.generation,artifacts=artifacts,events=events))
     stored_ids: list[str] = []
     stamped = binding.now.astimezone(timezone.utc).isoformat()
     for index, part in enumerate(artifacts):
@@ -630,6 +644,12 @@ def _ensure_recording_action(
     if row is not None:
         if action_id.startswith('prepare-') and row[0]!=disposition:
             raise EventConflict('preparation disposition is immutable')
+        if action_id.startswith('ma-') and row[0]!=disposition:
+            if disposition=='planned':return  # Repeated before upload cannot undo a terminal fact.
+            if row[0]!='planned':raise EventConflict('mobile action disposition is immutable')
+            connection.execute(
+                "UPDATE actions SET dispatch_state=?,outcome_known=? WHERE project_id=? AND attempt_id=? AND action_id=?",
+                (disposition,int(disposition in {'observed','acknowledged','lookup_failed'}),project_id,attempt_id,action_id))
         return
     seq_row = connection.execute(  # type: ignore[attr-defined]
         "SELECT COALESCE(MAX(action_seq), 0) FROM actions WHERE project_id = ? AND attempt_id = ?",
@@ -653,7 +673,7 @@ def _ensure_recording_action(
             disposition,
             case_id,
             case_version_id,
-            int(disposition == "observed"),
+            int(disposition in {"observed", "acknowledged", "lookup_failed"}),
         ),
     )
 

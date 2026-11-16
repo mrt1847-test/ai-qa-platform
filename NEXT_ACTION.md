@@ -8,13 +8,15 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05a2 · 불명 동작 로그·서버 행동 상태 보존.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: MA05a3 · 모델 응답 수신 전 실패의 진단 로그.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
 [MA04c2 운영 원본 연결](docs/validation/tasks/AI-LIVE-04-MA04C2.md)을 구현했다. 정상 Android 운영 factory는 실제 Mobile-Agent 원본 subprocess/서버 모델 API·typed driver·증거·finish를 사용한다. actual inventory→browser start→true claim을 검사했고 선택 PC owner/current recording credential/project/boot/session을 admission·claim에서 대조한다. explicit fixture/Web은 분리하며 모델 key는 서버에만 남는다. 검사 등급은 원본 main+정상 API+모의 OpenAI/ADB이며 실제 과금/기기 수용은 아니다.
 
 [MA05a1 실패 저장 상태](docs/validation/tasks/AI-LIVE-04-MA05A1.md)를 구현했다. failed worker finish는 해당 REC를 stopped/stored/incomplete로 종료하고 사용자 취소는 interrupted로 보존한다. receipt 재전송과 late browser 재seal을 구분하며 source/version/package/approval 생성0, PC offline timeline/ACK PNG 조회와 성공 경로 등64pass다.
 
-다음 [MA05a2 실행 카드](docs/managed-pc/MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md): native timeout의 local journal/quarantine은 있으나 server ma-action=(observed,known1), remote artifact before만 남는 gap을 해결한다. proposal/before를 실행 ACK로 표시하지 않고 planned/acknowledged/unknown을 구분하며 typed failure log를 저장한다. incomplete source 승격·unknown 재클릭·모델 재호출은 금지다.
+[MA05a2 실패 행동 증거](docs/validation/tasks/AI-LIVE-04-MA05A2.md)를 구현했다. before만으로 observed를 만들지 않고 planned0에서 검증된 unknown0/acknowledged1/not_sent 또는 observed로 전환한다. unknown·캡처 실패의 별도 log는 원본 history/source 승격에 쓰지 않는다. 전후 event/hash/geometry와 same-call role bytes를 검사하고, ACK 미확인은 새 동작/claim 없이 metadata만 확인한 뒤 실제 cursor로 종료한다. 관련157pass 뒤 저장 완료 직후 로컬 오류 보완의 영향73pass다.
+
+다음 [MA05a3 체크리스트](docs/managed-pc/MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md#ma05a3-실행-체크리스트--등록된-관찰-뒤-authoring-실패): before가 ACK/등록됐지만 before_model 거절·provider 오류·응답 유실로 정상 turn을 받지 못한 경우의 bounded 진단 log다. 현재 이 경우 action planned/before는 보존되나 진단 log가 없다. native0·모델 재요청0·same-call 관찰/role 불변을 유지한다. 이후 MA05a4는 worker finish가 없는 서버 lost/만료 경로를 조사한다.
 
 그 뒤 MA05b 저장본 검토/사후 사람 승인/승인 package AI0 여정을 확인한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy 결과와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 초기 샘플 UI·현재 계약을 유지하고 현재 파일과 완료 증거를 먼저 확인한다.
 

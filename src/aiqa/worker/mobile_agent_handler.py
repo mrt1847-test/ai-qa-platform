@@ -91,4 +91,5 @@ class OriginalAndroidRecordingHandler(AndroidRecordingHandler):
             outcome='completed' if result.outcome=='completed' else 'error',
             evidence_complete=result.evidence_complete,ambiguous_dispatch=result.ambiguous_dispatch,
             final_seq=result.last_ack_seq,last_ack_seq=result.last_ack_seq,last_ack_hash=result.last_ack_hash,
-            source_artifact_hashes=ids,review_pending=result.review_pending,action_mapping=result.action_mapping,cleanup_failed=result.cleanup_failed)
+            source_artifact_hashes=ids,review_pending=result.review_pending,action_mapping=result.action_mapping,cleanup_failed=result.cleanup_failed,
+            evidence_recovery=(lambda seq=session.delivery.pending_sequence:session.delivery.confirm_turn(seq)) if result.evidence_pending else None)

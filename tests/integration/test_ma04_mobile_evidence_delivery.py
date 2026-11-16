@@ -3,7 +3,7 @@ from datetime import datetime,timezone,timedelta
 import sqlite3
 import pytest
 from test_rx97_recording_pin import recording,ux_app
-from test_ma03b_mobile_history import engine_job,client,proof_parts
+from test_ma03b_mobile_history import engine_job,client,proof_parts,events_for_proof
 from test_ma04_mobile_model_port import frame,make_port
 from test_rx_65 import _observation
 from aiqa.worker.step_evidence import StepEvidenceCommitter
@@ -53,7 +53,8 @@ def test_ack_journal_write_failure_preserves_recoverable_packet(engine_job,tmp_p
     with client(f) as c:
         port=make_port(f,c);port({'current':frame()},before_send=lambda:None);turn=port.pending;parts=post_parts(f,port)
         delivery=StepEvidenceCommitter(c,f['job'],namespace='mobile',pending_path=path)
-        with pytest.raises(WorkerHttpError):delivery(action_seq=1,action_id=turn.action_id,events=[],artifacts=parts)
+        with pytest.raises(WorkerHttpError,match='journal unavailable'):delivery(action_seq=1,action_id=turn.action_id,events=events_for_proof(f,parts),artifacts=parts)
+        assert len(writes)==2
         assert port.pending==turn and len(f['openai_sent'])==1
         ack=StepEvidenceCommitter(c,f['job'],namespace='mobile',pending_path=path).resume_pending()
         assert ack['late'] is False and len(f['openai_sent'])==1

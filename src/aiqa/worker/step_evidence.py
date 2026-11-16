@@ -89,11 +89,17 @@ class StepEvidenceCommitter:
                     continue
                 raise
         self._validate_receipt(receipt,owner,expected_seq,len(frozen['artifacts']))
+        previous=copy.deepcopy(entry);previous_seq=self._last_seq
         self._last_seq = max(self._last_seq,receipt['contiguous_seq'])
         entry['receipt'] = copy.deepcopy(receipt)
         entry['payload'] = None  # Retain only the small receipt after ACK, not every PNG body.
         self._pending_seq = None
-        self._save()
+        try:self._save()
+        except WorkerHttpError:
+            # Until the receipt is durable, retain the exact pending payload in memory too.
+            # Repeated ACK-save failures must not make the caller freeze an older cursor.
+            self._entries[action_seq]=previous;self._last_seq=previous_seq;self._pending_seq=action_seq
+            raise
         return copy.deepcopy(receipt)
 
     def _validate_receipt(self,receipt,owner,expected_seq,artifact_count):
@@ -199,6 +205,20 @@ class StepEvidenceCommitter:
             self._entries=entries;self._pending_seq=state['pending_seq'];self._last_seq=last
         except (ValueError,TypeError,KeyError,AttributeError,OSError,RecursionError,WorkerHttpError):
             raise WorkerHttpError('invalid durable evidence journal',retry_class=RetryClass.fatal) from None
+
+    @property
+    def pending_sequence(self):
+        return self._pending_seq
+
+    def confirm_turn(self, action_seq):
+        """Return this frozen turn's ACK, including one recovered by another owner-safe reader."""
+        with self._lock, self._disk_lock():
+            self._load()
+            entry=self._entries.get(action_seq)
+            if entry is None:raise WorkerHttpError('evidence turn missing',retry_class=RetryClass.fatal)
+            if entry['receipt'] is not None:return copy.deepcopy(entry['receipt'])
+            payload=entry['payload']
+            return self._commit(action_seq,payload['events'],payload['artifacts'])
 
     def resume_pending(self):
         """Recover only the exact stored metadata packet, never a capture/model/device."""

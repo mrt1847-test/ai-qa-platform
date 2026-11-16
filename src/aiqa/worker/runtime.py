@@ -40,6 +40,7 @@ class HandlerResult:
     action_mapping: str = "{}"
     cleanup_proof_refs: tuple[str, ...] = ()
     cleanup_failed: bool = False
+    evidence_recovery: Callable[[], dict[str, Any]] | None = field(default=None,repr=False,compare=False)
 
 
 # Default proof after a local handler returned and the finish receipt exists. Real device
@@ -134,6 +135,7 @@ class WorkerRuntime:
         self._active_attempt: str | None = None
         self._pending_finish: dict[str, Any] | None = None
         self._pending_cleanup: dict[str, Any] | None = None
+        self._pending_evidence: tuple[dict[str, Any], HandlerResult] | None = None
 
     @property
     def state(self) -> str:
@@ -146,6 +148,10 @@ class WorkerRuntime:
     @property
     def pending_cleanup(self) -> dict[str, Any] | None:
         return self._pending_cleanup
+
+    @property
+    def pending_evidence(self) -> bool:
+        return self._pending_evidence is not None
 
     @property
     def total_actions(self) -> int:
@@ -234,6 +240,10 @@ class WorkerRuntime:
                     self._state = "offline"
                     return CycleReport("offline", False, 0, False, "offline")
 
+        if self._pending_evidence is not None:
+            receipt=self.confirm_pending_evidence()
+            return CycleReport(self._state,False,0,receipt is not None,self._last_reason)
+
         if self._stopping:
             self._state = "stopped"
             return CycleReport("stopped", False, 0, False, "claim_blocked")
@@ -317,13 +327,16 @@ class WorkerRuntime:
         if control is not None and control.failed and result.outcome == "completed":
             result = replace(result, outcome="error", evidence_complete=False,
                 review_pending=False, action_mapping="{}")
+        self._total_actions += int(result.actions)
+        if result.evidence_recovery is not None:self._pending_evidence=(bound,result)
         try:
             result = self._commit_evidence(bound, result)
         except WorkerHttpError:
             self._active_attempt = None
             self._state = "offline"
-            return CycleReport("offline", True, int(result.actions), False, "evidence_commit_failed")
-        self._total_actions += int(result.actions)
+            self._last_reason="evidence_commit_pending" if self._pending_evidence is not None else "evidence_commit_failed"
+            return CycleReport("offline", True, int(result.actions), False, self._last_reason)
+        self._pending_evidence=None
         receipt = self._submit_finish(bound, result)
         self._active_attempt = None
         if receipt is None:
@@ -347,8 +360,29 @@ class WorkerRuntime:
         self._active_attempt = None
         self._pending_finish = None
         self._pending_cleanup = None
+        self._pending_evidence = None
         self._resumed_past = 0
         self._state = "restarted"
+
+    def confirm_pending_evidence(self) -> dict[str, Any] | None:
+        """Recover only the saved packet, then freeze a finish with its actual server cursor."""
+        pending=self._pending_evidence
+        if pending is None:return None
+        claimed,result=pending
+        try:result=self._commit_evidence(claimed,result)
+        except WorkerHttpError:
+            self._state='offline';self._last_reason='evidence_commit_pending'
+            return None
+        self._pending_evidence=None
+        receipt=self._submit_finish(claimed,result)
+        if receipt is None:
+            self._state='finish_pending';self._last_reason='finish_receipt_missing'
+            return None
+        self._finished+=1
+        cleanup=self._submit_cleanup(claimed,result)
+        self._state='running' if cleanup is not None else 'cleanup_pending'
+        self._last_reason='evidence_confirmed' if cleanup is not None else 'cleanup_pending'
+        return receipt
 
     def confirm_pending_finish(self) -> dict[str, Any] | None:
         """Confirm a lost finish with the same idempotency key and body. No new dispatch."""
@@ -536,6 +570,11 @@ class WorkerRuntime:
             StepEvidenceCommitter(self._client, claimed, clock=self._now))
 
     def _commit_evidence(self, claimed: dict[str, Any], result: HandlerResult) -> HandlerResult:
+        if result.evidence_recovery is not None:
+            ack=result.evidence_recovery()
+            return replace(result,evidence_recovery=None,outcome='error',evidence_complete=False,review_pending=False,action_mapping='{}',
+                final_seq=int(ack['contiguous_seq']),last_ack_seq=int(ack['contiguous_seq']),last_ack_hash=str(ack['prefix_hash']),
+                source_artifact_hashes=tuple(dict.fromkeys((*result.source_artifact_hashes,*ack['artifact_ids']))))
         events = list(result.evidence_events)
         artifacts = list(result.evidence_artifacts)
         purpose = ""

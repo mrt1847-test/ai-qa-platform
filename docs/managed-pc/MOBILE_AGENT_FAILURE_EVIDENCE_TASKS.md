@@ -21,3 +21,25 @@ MA05a1: 인증된 worker failure/cancel/lost finish에서 해당 REC만 stopped 
 MA05a2: 별도 failure codec·planned/acknowledged/unknown lifecycle·동일 packet metadata 복구·unknown 로그를 구현한다. a1 완료를 a2 완료나 RX87 완료로 해석하지 않는다.
 
 MA05a1 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A1.md), 관련64pass82.43s. MA05a2는 미완료이며 아래 원 gap은 행동 상태/로그 측면에서 여전히 재현된다.
+
+## MA05a2 보완과 후속 경계
+
+MA05a2는 모델이 반환한 turn의 native/control 실패를 대상으로 한다. diagnostic failure-v1만 서버에 저장하며 normal step-v1 history와 분리한다. before는 planned/known0, same-call ACK proof로만 observed/acknowledged/unknown 또는 known not-sent로 바꾼다. observed 전후 이벤트는 exact pair/hash/action/순서/연속 prefix이며 after PNG는 같은 call geometry다. same-call role bytes는 불변이다. normal packet ACK가 미확인인 동안 finish payload를 만들지 않고 metadata-only 재확인으로 정확한 cursor를 얻은 뒤 error/incomplete로 종료한다. 새 claim/기기/모델 호출0. 재시작 no-resume 유지.
+
+MA05a3 (다음): before는 ACK됐지만 모델 요청이 거절되거나 정상 turn 수신 전에 실패한 경우 별도 bounded 진단 로그를 남긴다. 실제 native 호출0·planned 사실을 유지하고 모델 제안/실행 ACK를 만들어내지 않는다. same worker/project/attempt/call/before hash에 묶고 cached receipt·로그 복구를 확인한다. raw provider 오류/키/추론은 저장하지 않는다.
+
+MA05a4 (별도): worker finish가 전혀 오지 않은 서버 watchdog/lost·lease 만료 경로의 REC 종료 상태를 조사한다. 기존 terminal job fact와 ACK prefix만으로 interrupted/incomplete 저장하고 승인/source를 생성하지 않는다. a1의 인증 worker finish 수용을 실제 PC 전원 종료 수용으로 과장하지 않는다.
+
+## MA05a3 실행 체크리스트 · 등록된 관찰 뒤 authoring 실패
+
+직접 선행: MA05a2 인계와 저장 packet/상태 검사. 전체 이력 문서를 다시 읽지 않는다. 파일은 worker/mobile_agent_models.py·mobile_agent_recording.py, recording/mobile_agent_evidence.py, 새 통합 테스트만 먼저 본다.
+
+- [ ] RED: observation 등록 후 before_model 거절이면 provider0/native0, HTTPS503이면 provider mock1/native0, 정상 모델 응답을 worker가 받지 못하거나 거절하면 재요청0이다. 세 경우 REC stopped/stored/incomplete, before+bounded 진단 log를 PC offline에서 읽는다. 실제 비용/usage는 서버 model receipt에만 따른다.
+- [ ] model port는 현재 등록된 관찰의 frozen call/action/before artifact ID/hash만 별도로 노출한다. 정상 evidence release에서 해제하고 다른 call/attempt와 섞지 않는다. 모델 turn을 만들기 전 오류를 원본 turn이 실행된 것처럼 만들지 않는다.
+- [ ] 별도 `mobile-agent-authoring-failure-v1`의 exact fields(call/action/before hash, stage=authoring, outcome=no_accepted_action, native_calls0/native=None, bounded reason)만 저장한다. raw 예외/provider body/키/추론0. action은 planned/known0을 유지하며 캐시된 모델 응답으로 실행을 재개하지 않는다.
+- [ ] server는 exact original pin과 현재 project/worker/attempt/call의 등록된 model observation·before ACK를 검사한다. 다른 call/hash/owner/type/임의 schema/추가 field 거절, same-call role immutable 규칙 유지. normal step-v1/history release로 인정하지 않는다.
+- [ ] 같은 durable metadata seq와 pending recovery를 재사용한다. 로그 ACK 유실은 같은 body/time/key만 재확인하며 capture/model/native0이다. 정상 원본 녹화·모델 history·ma05a1/a2·finish/cleanup 집중 회귀 후 한 fresh review/한 fix pass, 인계·큐·master commit.
+
+범위 제외: before image upload 자체가 불명인 경우의 새 payload 추정, 정상 관찰 등록 전 caller가 주장한 call metadata, 미확인 모델 결과를 성공으로 분류, 운영 키 실호출. 이 경계는 보존된 서버 이미지/미ACK spool로 추후 조사하며 source/승인 gate를 완화하지 않는다.
+
+MA05a2 native/control 범위 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A2.md), 관련157pass263.30s 후 visible ACK rename 보완의 영향73pass193.48s. 모델 turn 이전 오류는 위 MA05a3이며 전체 MA05/RX87은 미완료다.

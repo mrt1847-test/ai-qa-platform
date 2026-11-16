@@ -1,7 +1,7 @@
 from dataclasses import asdict,fields,replace
 from datetime import datetime,timezone
 from uuid import UUID,uuid4
-import base64,hashlib,json
+import base64,hashlib,json,sqlite3
 import httpx,pytest
 from aiqa.api.auth import bound_auth_store,worker_scope_from_token
 from aiqa.config import WorkerClientSettings
@@ -61,9 +61,19 @@ def part(f,call_id,role,raw,media):
         'owner_kind':'REC','attempt_id':f['job']['attempt_id'],'action_id':'ma-'+str(call_id),'role':role}
 
 
+def events_for_proof(f,parts):
+    if not any(p['role']=='log' for p in parts):return []
+    action=parts[0]['action_id'];before,after=f['_proof_frames'][action[3:]]
+    from aiqa.worker.android_jobs import android_evidence_events
+    with sqlite3.connect(f['database']) as db:
+        seq=db.execute('SELECT COALESCE(MAX(local_seq),0) FROM attempt_events WHERE project_id=? AND attempt_id=?',
+            (f['project'],f['job']['attempt_id'])).fetchone()[0]
+    return list(android_evidence_events(attempt_id=f['job']['attempt_id'],action_id=action,before=before,after=after,seq_base=seq,action_seq=seq//2+1))
+
+
 def commit(f,parts,key):
     with client(f) as c:return c.commit_evidence(sanitized=True,project_id=f['project'],job_id=f['job']['job_id'],generation=f['job']['generation'],
-        now=datetime.now(timezone.utc).isoformat(),events=[],artifacts=parts,idempotency_key=key)
+        now=datetime.now(timezone.utc).isoformat(),events=events_for_proof(f,parts),artifacts=parts,idempotency_key=key)
 
 
 def prepare(f,*,source_id=None):
@@ -96,6 +106,7 @@ def proof_parts(f,payload,obs,*,native_x=50):
     from aiqa.replay.android_plan import build_typed_android_action
     action=build_typed_android_action('tap',width=100,height=200,rotation=0,x=native_x,y=100)
     after=_observation(fill=b'\x00\xff\x00')
+    f.setdefault('_proof_frames',{})[payload['call_id']]=(obs,after)
     log={'schema':'mobile-agent-step-v1','call_id':payload['call_id'],'action_id':'ma-'+payload['call_id'],
         'state':'observed','native_calls':1,'native':asdict(action),'before_image_hash':sha(obs.png),'after_image_hash':sha(after.png)}
     parts=[part(f,payload['call_id'],'after',after.png,'image/png'),part(f,payload['call_id'],'log',json.dumps(log).encode(),'text/plain')]
@@ -126,8 +137,12 @@ def test_only_same_action_acked_native_and_screen_log_enters_history(engine_job)
 
 
 def test_wrong_physical_native_ack_is_not_a_completed_step(engine_job):
-    f=engine_job;old,parts=complete_step(f,native_x=51);commit(f,parts,'after-'+old['call_id']);current,_=prepare(f)
-    with pytest.raises(ModelRequestDenied,match='mobile_history_ack_invalid'):load(f,current)
+    from aiqa.worker.http_client import WorkerHttpError
+    f=engine_job;old,parts=complete_step(f,native_x=51)
+    with pytest.raises(WorkerHttpError) as denied:commit(f,parts,'after-'+old['call_id'])
+    assert denied.value.status_code==422  # Now rejected before it can become stored history.
+    current,_=prepare(f)
+    with pytest.raises(ModelRequestDenied,match='mobile_history_ack_required'):load(f,current)
 
 
 def test_current_registration_must_follow_previous_ack(engine_job):
@@ -231,10 +246,13 @@ def test_history_disk_and_pixel_processing_do_not_hold_db_writer(engine_job,monk
 
 
 def test_ack_evidence_cannot_precede_the_model_proposal(engine_job):
-    f=engine_job;old,obs=prepare(f);parts=proof_parts(f,old,obs);commit(f,parts,'premature-ack')
+    from aiqa.worker.http_client import WorkerHttpError
+    f=engine_job;old,obs=prepare(f);parts=proof_parts(f,old,obs)
+    with pytest.raises(WorkerHttpError) as denied:commit(f,parts,'premature-ack')
+    assert denied.value.status_code==422
     result=seed.post(f,old,key='late-proposal');assert result.status_code==200
     current,_=prepare(f)
-    with pytest.raises(ModelRequestDenied,match='mobile_history_order'):load(f,current)
+    with pytest.raises(ModelRequestDenied,match='mobile_history_ack_required'):load(f,current)
 
 
 def test_next_frame_registered_during_ack_staging_is_not_after_ack(engine_job,monkeypatch):

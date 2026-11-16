@@ -207,7 +207,7 @@ def test_child_teardown_failure_keeps_prior_native_and_server_ack(android_engine
     f=android_engine_job;c,h,job,sent,launches,_=setup(f,tmp_path)
     with c:
         r=h.handle(job)
-        assert r.actions==2 and r.last_ack_seq==2 and len(r.source_artifact_hashes)==7
+        assert r.actions==2 and r.last_ack_seq==2 and len(r.source_artifact_hashes)==8
         assert r.outcome=='error' and r.cleanup_failed and r.action_mapping=='{}'
         runtime=WorkerRuntime(c,WorkerRuntimeConfig('fixture-boot',frozenset({'recording'})),h)
         assert runtime._submit_finish(job,r) is not None

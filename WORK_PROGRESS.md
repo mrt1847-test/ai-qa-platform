@@ -55,6 +55,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05A3](docs/validation/tasks/AI-LIVE-04-MA05A3.md): 정상 모델 turn 수용 전 실패는 등록된 before에 묶은 별도 진단과 planned0으로 저장한다. malformed/truncated 응답·새 모델 call/캐시 실행 재개를 차단하고 고정 log ACK 복구를 유지한다. 관련201pass/기대값1fail 뒤 영향40pass·추가 offline1pass. 다음 server lost/queued cancel MA05a4, RX87 전체 완료 수는 유지한다.
 
+[AI-LIVE-04-MA05A4](docs/validation/tasks/AI-LIVE-04-MA05A4.md): worker finish 없는 queued 취소/lease·watchdog·offline/session 손실에서 서버가 해당 REC를 interrupted/stored/incomplete로 보존한다. ACK PNG·다른 REC·late error·quarantine/no-resume의 관련30pass를 확인했다. 다음 MA05b1 검토 UI, RX87 전체 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -153,6 +153,9 @@ MA05a2: reserved ma-call before는 planned/known0이다. observed step-v1은 sam
 
 MA05a3: registered before 뒤 정상 모델 turn 수용 전 오류는 authoring-failure-v1 진단으로 구분한다. exact original policy·worker/attempt/call·관찰/before ACK에 묶고 planned/known0·native0을 유지한다. 청구/dispatch는 model receipts가 근거다. 진단은 history/실행 ACK가 아니며 ACK된 진단이 있는 원본 attempt의 cached action과 새 observation/model 요청을 모두 차단한다. 로그 복구는 고정 metadata만 확인한다. 이미지/관찰 등록 자체가 불명일 때 caller snapshot을 추정하지 않는다.
 
+MA05a4: 서버 reconcile의 lost와 queued→cancelled도 같은 transaction에서 해당 REC만 stopped/interrupted/stored/incomplete로 끝낸다. 이 stop은 물리 cleanup 증거가 아니며 quarantine/no-resume을 유지한다. 기존 terminal REC/승인/source/다른 REC와 trial/regression QA는 바꾸지 않는다. 늦은 worker error는 저장 사실만 확인하고 source를 만들지 않는다.
+
+
 
 
 

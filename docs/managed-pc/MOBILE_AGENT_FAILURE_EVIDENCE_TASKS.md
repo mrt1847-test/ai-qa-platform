@@ -48,11 +48,13 @@ MA05a2 native/control 범위 완료: [인계](../validation/tasks/AI-LIVE-04-MA0
 
 직접 선행: a1의 `finish_incomplete_recording`(source/승인 생성0)과 a2/a3의 ACK prefix 불변. 소유 코드 queue.reconcile_stored(현재 lost job/quarantine만 갱신)와 cancel_job(queued→cancelled)이다. 외부 PC·유료 키를 선행으로 요구하지 않는다.
 
-- [ ] RED: 실제 브라우저 녹화 접수 후 queued 취소하면 worker/모델/native0, REC interrupted/stopped/stored/incomplete다. 등록 worker가 ACK before를 저장한 뒤 서버 fake-clock lease/session/runner 손실을 reconcile하면 같은 상태이고 PNG는 PC offline에 읽힌다.
-- [ ] 서버가 job을 terminal로 바꾸는 같은 transaction에서 해당 project/job의 recording만 incomplete 종료한다. 다른 REC/승인/terminal 상태·기존 manifest/version/package는 바꾸지 않는다. queued 보존·live generation continue·quarantine/no-resume 규칙을 유지한다.
-- [ ] 반복 reconcile/취소 receipt 재확인은 불변이다. terminal worker late finish는 오류 사실/서버 ACK metadata만 확인하며 새 source를 만들지 않는다. normal success와 trial/regression QA는 바뀌지 않는다.
-- [ ] 실제 API/DB/fake-clock 집중 회귀, 한 fresh review/한 fix pass, 인계/큐/master commit. 실제 PC 종료 수용으로 표시하지 않는다.
+- [x] RED: 실제 브라우저 녹화 접수 후 queued 취소하면 worker/모델/native0, REC interrupted/stopped/stored/incomplete다. 등록 worker가 ACK before를 저장한 뒤 서버 fake-clock lease/session/runner 손실을 reconcile하면 같은 상태이고 PNG는 PC offline에 읽힌다.
+- [x] 서버가 job을 terminal로 바꾸는 같은 transaction에서 해당 project/job의 recording만 incomplete 종료한다. 다른 REC/승인/terminal 상태·기존 manifest/version/package는 바꾸지 않는다. queued 보존·live generation continue·quarantine/no-resume 규칙을 유지한다.
+- [x] 반복 reconcile/취소 receipt 재확인은 불변이다. terminal worker late finish는 오류 사실/서버 ACK metadata만 확인하며 새 source를 만들지 않는다. normal success와 trial/regression QA는 바뀌지 않는다.
+- [x] 실제 API/DB/fake-clock 집중 회귀, 한 fresh review/한 fix pass, 인계/큐/master commit. 실제 PC 종료 수용으로 표시하지 않는다.
 
 MA05b 후속 UI: 실패본에 materialized version이 없을 때 기존 recording.html의 무조건 case/review 링크가 다른 최신/승인 후보를 가리키지 않도록 한다. 해당 실패의 타임라인·로그를 계속 읽고, 승인 대상 없음/재녹화 경로를 분명히 표시한다. 완전 저장본은 실제 후보 version으로 사후 검토·승인한 뒤 같은 package의 AI0 trial/regression 여정을 확인한다.
 
 MA05a3 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A3.md). 관련201pass/old expectation1fail 뒤 영향40pass, 추가 offline1pass. 다음 MA05a4이며 전체 MA05/RX87은 미완료다.
+
+MA05a4 완료: [인계](../validation/tasks/AI-LIVE-04-MA05A4.md), 최종 관련30pass30.58s. 전체 MA05/RX87 미완료, 다음 MA05b1 저장본 검토 UI다.

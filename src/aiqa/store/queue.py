@@ -1275,6 +1275,16 @@ def _require_matching_incarnation(
         raise StaleGeneration("worker incarnation is stale")
 
 
+def _finish_abandoned_recording(connection: sqlite3.Connection, project_id: str, job_id: str, outcome: str) -> None:
+    """Close only this server-terminal REC; no runner/QA/source/approval is fabricated."""
+    if outcome not in {'lost','cancelled'}:raise ValueError('abandoned outcome invalid')
+    job=connection.execute('SELECT purpose,recording_id,status FROM jobs WHERE project_id=? AND job_id=?',
+        (project_id,job_id)).fetchone()
+    if job is not None and job[0]=='recording' and job[1] is not None and job[2]==outcome:
+        from aiqa.recording.service import finish_incomplete_recording
+        finish_incomplete_recording(connection,UUID(project_id),UUID(str(job[1])),outcome)
+
+
 def reconcile_stored(connection: sqlite3.Connection, now: datetime, boot_id: str) -> ReconciliationReport:
     """Keep queued jobs. Continue only a live generation. Do not resume the rest."""
 
@@ -1297,6 +1307,7 @@ def reconcile_stored(connection: sqlite3.Connection, now: datetime, boot_id: str
             """.format(marks),
             (str(project_id), str(job_id), *_ACTIVE),
         )
+        _finish_abandoned_recording(connection,str(project_id),str(job_id),'lost')
         if physical is not None:
             connection.execute(
                 """
@@ -1527,6 +1538,8 @@ def cancel_job(
     )
     if updated.rowcount != 1:
         raise CancelRejected("job can no longer be cancelled")
+    if status_after == "cancelled":
+        _finish_abandoned_recording(connection,project_id,str(job_id),'cancelled')
     return JobSnapshot(
         project_id=actor.project_scope,
         job_id=job_id,

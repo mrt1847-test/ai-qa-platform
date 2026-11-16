@@ -8,13 +8,13 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05a4 · worker finish 없는 서버 손실·취소 시 녹화 종료.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: MA05b1 · 저장된 녹화에 정확히 묶인 검토 UI.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[MA05a4 실행 체크리스트](docs/managed-pc/MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md#ma05a4-실행-체크리스트--worker-finish-없는-서버-종료)를 수행한다. `queue.reconcile_stored`는 연결/lease/runner 손실의 job·quarantine만 갱신하고 REC를 끝내지 않는다. `cancel_job`의 queued 취소도 worker finish가 없어 REC가 open/local로 남는다. 같은 transaction에서 해당 REC만 stopped/interrupted/stored/incomplete로 보존하고 source/version/package/승인은 생성하지 않는다. live/queued 보존·quarantine·no-resume·기존 승인본/다른 REC는 유지한다. 현재 PC/임시 DB·정상 API·fake clock으로 구현하며 외부 장비나 유료 키를 기다리지 않는다.
+[MA05b1 실행 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b1--저장된-녹화에-정확히-묶인-검토-ui)를 수행한다. 실패 REC에 새 후보 version이 없는데 recording.html은 case/review로 보내 다른 최신/승인 후보를 열 수 있다. 실제 materialized version이 있을 때만 해당 후보로 검토하고, 실패본은 자신의 timeline/PNG/log와 명시 재녹화 경로를 제공한다. 내부 compiler/package 설명과 raw 상태 표시를 사용자 용어로 정리하며 기존 sample 구성·polling data 계약·키보드를 유지한다.
 
-직접 선행은 [a1 서버 실패 저장](docs/validation/tasks/AI-LIVE-04-MA05A1.md), [a2 불명 행동/증거 ACK](docs/validation/tasks/AI-LIVE-04-MA05A2.md), [a3 모델 turn 수용 전 진단](docs/validation/tasks/AI-LIVE-04-MA05A3.md)이다. 완료 증거와 실제 기기/유료 수용을 구분하며 과거 완료 작업을 다시 구현하지 않는다. 전체 완료 수는 유지한다.
+직접 선행은 [a4 서버 손실/queued 취소 종료](docs/validation/tasks/AI-LIVE-04-MA05A4.md)와 [a3 모델 전 진단](docs/validation/tasks/AI-LIVE-04-MA05A3.md)이며 a1/a2 증거 ACK·불명 동작 계약도 보존한다. 구현 완료와 실제 기기/유료 수용을 구분하고 전체 완료 수는 유지한다.
 
-그 뒤 MA05b 저장본 검토/사후 사람 승인/승인 package AI0 여정을 확인한다. 실패본의 검토 링크가 다른 최신/승인 후보를 가리키지 않도록 하고 실패 타임라인·재녹화 경로를 제공한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy 결과와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)도 남아 있다. 초기 샘플 UI와 현재 계약을 유지한다.
+그 뒤 MA05b2 저장본의 사후 사람 승인/동일 package AI0 여정을 확인한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy 결과와 [C/D 제한 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 선행 기능을 실제 코드로 확인하고 필요한 구현을 편성한다. 미구현을 fixture 승인이나 assertion 제거로 대체하지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용 측정을 기능 구현의 선행으로 삼지 않는다.
 

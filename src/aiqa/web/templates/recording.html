@@ -31,26 +31,27 @@
   >
     <aside class="panel review-actions">
       <h2>타임라인</h2>
-      <p data-ack-count>서버 ACK {{ timeline.entries|length if timeline else 0 }}</p>
+      <p data-ack-count>수신 기록 {{ timeline.entries|length if timeline else 0 }}개</p>
       <p class="hint">녹화 중에도 선택 스텝을 유지한 채 진행을 갱신합니다. 실행 PC가 끊겨도 서버에 저장된 증거는 조회할 수 있습니다.</p>
       <nav id="recording-timeline" aria-label="녹화 행동">
         {% if timeline and timeline.entries %}
           {% for entry in timeline.entries %}
           <a
             class="review-step"
-            href="?action_id={{ entry.action_id }}"
+            href="?action_id={{ entry.action_id|urlencode }}"
             data-timeline-action="{{ entry.action_id }}"
             data-action-seq="{{ entry.action_seq }}"
+            title="원본 참조: {{ entry.step_id }}"
             {% if selection and entry.action_id == selection.action_id %}aria-current="step"{% endif %}
           >
-            순서 {{ entry.action_seq }} · 단계 {{ entry.step_id }}
-            <small data-dispatch>{{ entry.dispatch_state }}</small>
-            <small data-shot-state>이전 {{ entry.before_state }} · 이후 {{ entry.after_state }} · 로그 {{ entry.log_state }}</small>
-            {% if entry.error_text %}<small data-error>오류 {{ entry.error_text }}</small>{% elif entry.check_status %}<small data-check>검증 {{ entry.check_status }}</small>{% endif %}
+            <span data-action-label>순서 {{ entry.action_seq }} · {{ entry.label }}</span>
+            <small data-dispatch data-dispatch-state="{{ entry.dispatch_state }}">{{ entry.state_label }}</small>
+            <small data-shot-state>이전 {{ entry.before_label }} · 이후 {{ entry.after_label }} · 로그 {{ entry.log_label }}</small>
+            {% if entry.error_text %}<small data-error>오류 {{ entry.error_text }}</small>{% elif entry.check_status %}<small data-check>검증 {{ entry.check_label }}</small>{% endif %}
           </a>
           {% endfor %}
         {% else %}
-          <p class="empty">서버에 ACK된 행동이 아직 없습니다.</p>
+          <p class="empty">아직 수신된 동작이 없습니다.</p>
         {% endif %}
       </nav>
     </aside>

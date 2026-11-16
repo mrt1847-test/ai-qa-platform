@@ -1,0 +1,290 @@
+[
+  {
+    "scene": "failed",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "failed",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "failed",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "completed",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-c8a4d55b-381d-4197-8df2-673db9235d2c",
+    "selected": "prepare-9dc7e018-3636-41b5-bc89-2bf5ebb23b97",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "completed",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-c8a4d55b-381d-4197-8df2-673db9235d2c",
+    "selected": "prepare-9dc7e018-3636-41b5-bc89-2bf5ebb23b97",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "completed",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-c8a4d55b-381d-4197-8df2-673db9235d2c",
+    "selected": "prepare-9dc7e018-3636-41b5-bc89-2bf5ebb23b97",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 기록",
+      "순서 3 · 제어 단계"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "화면·로그 수신",
+      "화면·로그 수신"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "open",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "open",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "open",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "interrupted",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "interrupted",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "interrupted",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": null,
+    "selected": "",
+    "labels": [],
+    "stateLabels": [],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "attack",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "attack",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "attack",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "selected": "ma-06b0a429-1c42-4c88-a6dd-3a9dfd21439d",
+    "labels": [
+      "순서 1 · 앱 준비",
+      "순서 2 · 탭 요청"
+    ],
+    "stateLabels": [
+      "화면·로그 수신",
+      "전달 결과 확인 불가"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "stale",
+    "width": 360,
+    "scroll": 360,
+    "injected": false,
+    "focused": "legacy&part#+next",
+    "selected": "legacy&part#+next",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "stale",
+    "width": 768,
+    "scroll": 768,
+    "injected": false,
+    "focused": "legacy&part#+next",
+    "selected": "legacy&part#+next",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "errors": [],
+    "mutations": []
+  },
+  {
+    "scene": "stale",
+    "width": 1440,
+    "scroll": 1440,
+    "injected": false,
+    "focused": "legacy&part#+next",
+    "selected": "legacy&part#+next",
+    "labels": [
+      "순서 1 · 동작 1"
+    ],
+    "stateLabels": [
+      "관찰 기록"
+    ],
+    "errors": [],
+    "mutations": []
+  }
+]

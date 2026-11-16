@@ -157,6 +157,9 @@ MA05a4: 서버 reconcile의 lost와 queued→cancelled도 같은 transaction에�
 
 MA05b1: REC 검토와 offline readiness는 실제 materialized produced version에만 묶고 None을 최신 case 후보로 fallback하지 않는다. 재녹화 base는 해당 REC의 produced/input 버전이며 준비 화면만 연다. 화면/로그 보관 표시는 complete flag뿐 아니라 해당 타임라인의 실제 stored before/after/log를 확인한다. UI 요약으로 QA/사후 승인을 생성하지 않는다.
 
+MA05b1.2: timeline 표시 필드는 additive이며 원본 IDs/dispatch/QA와 독립이다. owner/hash 확인된 bounded known log로만 동작을 이름 붙이고 unknown/미전송/control 미관찰을 실행 성공으로 표시하지 않는다. observed도 실제 before/after/log가 모두 stored일 때만 화면·로그 수신으로 표시한다. SSR/poll은 canonical selected_action_id를 유지하며 action ID는 URL 인코딩하고 untrusted 문자열은 textContent로 넣는다. 저장 focus는 presentation 전용/no-resume이다.
+
+
 
 
 

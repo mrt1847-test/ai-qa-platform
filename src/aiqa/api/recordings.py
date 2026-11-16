@@ -399,6 +399,12 @@ def install_recordings(application: FastAPI) -> None:
                         "log": item.log_state,
                         "check_status": item.check_status,
                         "error_text": item.error_text,
+                        "label": item.label,
+                        "state_label": item.state_label,
+                        "before_label": item.before_label,
+                        "after_label": item.after_label,
+                        "log_label": item.log_label,
+                        "check_label": item.check_label,
                     }
                     for item in timeline.entries
                 ],
@@ -968,6 +974,12 @@ class _TimelineEntry:
     log_state: str
     check_status: str
     error_text: str
+    label: str = ""
+    state_label: str = ""
+    before_label: str = ""
+    after_label: str = ""
+    log_label: str = ""
+    check_label: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -1036,6 +1048,9 @@ def _recording_timeline(
         if view is None:
             continue
         ordered.append(view)
+        from aiqa.recording.timeline_display import describe_recorded_action
+        display=describe_recorded_action(action_id=str(action_id),action_seq=int(action_seq),dispatch_state=str(dispatch_state),
+            log_text=view.log_text,log_state=_log_state(view.log_text),before_state=view.before.state,after_state=view.after.state,check_status=view.check_status)
         entries.append(
             _TimelineEntry(
                 str(action_id),
@@ -1047,6 +1062,7 @@ def _recording_timeline(
                 _log_state(view.log_text),
                 view.check_status,
                 view.error_text,
+                display.label,display.state_label,display.before_label,display.after_label,display.log_label,display.check_label,
             )
         )
     return _RecordingTimeline(attempt_id, selected, page.first_failure, tuple(ordered), tuple(entries))

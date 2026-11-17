@@ -93,5 +93,9 @@ def load_case_context(connection, receipt):
         'verification':[{key:item.get(key) for key in ('method','binding_id','allow_unknown_supplement')}
             for item in settings.get('verifier_bindings',[]) if type(item) is dict],
     }
+    if owner_kind=='ITEM' and settings.get('target_kind')=='android':
+        from aiqa.recording.check_bindings import load_runtime_check_binding_pin
+        annotation=load_runtime_check_binding_pin(connection,project,package)
+        if annotation is not None:context['check_bindings']=annotation
     context['context_hash'] = canonical_hash(context,'canon-json-v1')
     return context

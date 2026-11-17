@@ -14,6 +14,8 @@ class NativeSource:
     package_id: str
     package_hash: str
     plan: str
+    manifest_id: str
+    manifest_hash: str
 
 
 def resolve_claim_native_source(claim, *, case_context=None):
@@ -47,6 +49,6 @@ def resolve_claim_native_source(claim, *, case_context=None):
         expected=physical_plan(steps)
         if compiled.body_hash!=raw['package_hash'] or plan!=expected:
             raise ValueError('native source package/plan differs')
-        return NativeSource(steps,raw['package_id'],raw['package_hash'],expected)
+        return NativeSource(steps,raw['package_id'],raw['package_hash'],expected,raw['source_manifest_id'],raw['source_manifest_hash'])
     except (ValueError,TypeError,KeyError,PlanRejected,UnicodeError) as exc:
         raise ValueError('native source invalid') from exc

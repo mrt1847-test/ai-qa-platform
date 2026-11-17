@@ -196,6 +196,8 @@ DispatchState = planned|lookup_failed|dispatch_started|acknowledged|observed|unk
 
 ## C06 · 모델 역할·Check·usage·예산
 
+B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-context-v1.check_bindings로 투영한다. Android replay의 immutable input/source-content/derived-manifest/binding hash와 resolved NativeSource의 frozen manifest_id/hash를 대조하고 불변 boundary/target pin으로 보존한다. raw claim을 바꿔 다른 source를 섞거나 최신 head로 fallback하지 않는다. 기록/Web annotation은 거절한다. 저장/투영/worker의131072bytes는 compact UTF8 논리 문서 한도이며 escaped JSON/envelope로 재정의하지 않는다. valid pin은 검증/모델/승인 grant가 아니고 b3b/c 전 required unknown을 유지한다.
+
 ```text
 ModelBinding = {id, revision, role, provider, endpoint_kind, endpoint, model,
  secret_ref, prompt_ref, prompt_hash, compatibility_hash, tariff_id}

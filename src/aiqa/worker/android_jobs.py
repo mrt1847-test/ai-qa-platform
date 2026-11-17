@@ -40,6 +40,7 @@ from aiqa.worker.healing_pin import WorkerHealingPin, resolve_claim_healing_pin
 from aiqa.worker.case_context import CaseContextRejected, WorkerCaseContext, resolve_claim_case_context
 from aiqa.worker.android_prepare import AppPreparationFailed
 from aiqa.worker.native_source import NativeSource, resolve_claim_native_source
+from aiqa.worker.check_binding_pin import WorkerCheckBindingPin, resolve_claim_check_binding_pin
 from aiqa.worker.replay_check_coverage import (RequiredCheckCoverage, required_check_coverage,
     coverage_log_document, validate_coverage_source, validate_observed_at)
 from aiqa.worker.runner import ACTION_LIMIT
@@ -1159,10 +1160,12 @@ class AndroidReplayHandler:
 
     check_coverage: tuple[RequiredCheckCoverage, ...] = field(default=(), init=False)
     _native_source: NativeSource | None = field(default=None,init=False,repr=False)
+    _check_binding_pin: WorkerCheckBindingPin | None = field(default=None,init=False,repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         self.check_coverage = ()
         self._native_source = None
+        self._check_binding_pin = None
         self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
@@ -1208,6 +1211,12 @@ class AndroidReplayHandler:
         except ValueError:
             self.stopped_reason='native_source_invalid'
             return _fail_closed('native_source_invalid',evidence_complete=False)
+
+        try:
+            self._check_binding_pin=resolve_claim_check_binding_pin(claim,case_context=self._case_context,native_source=self._native_source)
+        except ValueError:
+            self.stopped_reason='check_bindings_invalid'
+            return _fail_closed(self.stopped_reason,evidence_complete=False)
 
         pin = resolve_claim_replay_pin(snapshot)
         approved_digest = pin.package_hash or self.context.approved_digest

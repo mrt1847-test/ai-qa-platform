@@ -9,6 +9,20 @@ class BindingConflict(ValueError):pass
 class BindingNotFound(ValueError):pass
 
 
+MAX_BINDING_BYTES=131072
+
+
+def binding_document_bytes(document):
+    """One UTF-8 compact-document budget for storage and remote consumption."""
+    import json
+    try:
+        body=json.dumps(document,sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False).encode('utf-8')
+        if len(body)>MAX_BINDING_BYTES:raise BindingRejected('binding document size invalid')
+        return body
+    except (TypeError,ValueError,UnicodeError,RecursionError):
+        raise BindingRejected('binding document size invalid') from None
+
+
 def _id(value):
     if type(value) is not str or not value or len(value.encode('utf-8'))>256 or any(ord(c)<32 for c in value):
         raise BindingRejected('binding identity invalid')
@@ -62,7 +76,9 @@ def validate_bindings(raw, *, definition,settings,action_ids):
             if check not in check_ids or check in targets:raise BindingRejected('target check invalid')
             if type(resource) is not str or len(resource.encode('utf-8'))>512 or re.fullmatch(re.escape(package)+r':id/[A-Za-z_][A-Za-z0-9_]{0,127}',resource) is None:raise BindingRejected('target resource invalid')
             targets[check]=resource
-        return BindingDocument(ordered,tuple((check,targets[check]) for check in check_ids if check in targets))
+        result=BindingDocument(ordered,tuple((check,targets[check]) for check in check_ids if check in targets))
+        binding_document_bytes(result.to_document())
+        return result
     except (TypeError,KeyError,UnicodeError,RecursionError) as exc:
         raise BindingRejected('binding source invalid') from None
 
@@ -182,3 +198,26 @@ def _save(connection,actor,project,recording,expected_manifest_id,expected_manif
          json.dumps(document,sort_keys=True,separators=(',',':')),binding_hash,body_hash,request_key,str(actor.actor_id),datetime.now(timezone.utc).isoformat()))
     materialize_android_recording(connection,actor,project,manifest)
     return _receipt(connection,project,recording,manifest,replayed=False)
+
+
+def load_runtime_check_binding_pin(connection,project,package_id):
+    """Project only this immutable package's annotation, never the recording head."""
+    import json
+    row=connection.execute("""SELECT b.recording_id,b.manifest_id,m.body_hash,b.source_manifest_id,
+        b.source_manifest_hash,b.input_case_version_id,v.content_hash,b.binding_hash,b.bindings_json
+        FROM replay_packages p JOIN recording_check_bindings b
+          ON b.project_id=p.project_id AND b.manifest_id=p.source_manifest_id
+        JOIN recording_manifests m ON m.project_id=b.project_id AND m.manifest_id=b.manifest_id
+          AND m.recording_id=b.recording_id AND m.prior_manifest_id=b.source_manifest_id
+        JOIN recordings r ON r.project_id=b.project_id AND r.recording_id=b.recording_id
+          AND r.input_case_version_id=b.input_case_version_id
+        JOIN case_versions v ON v.project_id=r.project_id AND v.version_id=b.input_case_version_id AND v.case_id=r.case_id
+        WHERE p.project_id=? AND p.package_id=? AND p.ready=1 AND p.compiler_ref='android-native-plan-v2'""",
+        (str(project),str(package_id))).fetchone()
+    if row is None:return None
+    # Existing rows use escaped JSON; bound decoding separately from logical UTF-8 bytes.
+    if type(row[8]) is not str or len(row[8])>MAX_BINDING_BYTES*6:raise BindingRejected('runtime binding size invalid')
+    bindings=json.loads(row[8]);binding_document_bytes(bindings)
+    return {'schema':'recording-check-binding-pin-v1',**dict(zip(('recording_id','manifest_id','manifest_hash',
+        'source_manifest_id','source_manifest_hash','input_case_version_id','source_content_hash','binding_hash'),row[:8])),
+        'bindings':bindings}

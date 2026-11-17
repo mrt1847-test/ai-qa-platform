@@ -63,6 +63,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05B13](docs/validation/tasks/AI-LIVE-04-MA05B13.md): 선택 동작의 저장 명령·좌표를 원본 receipt/관찰 근거에 묶어 표시하고 raw 참조/시각/로그를 접어 보존한다. 읽기/경로/비UTF8/원본 해석 오류의 페이지 실패를 보완했다. 관련41pass/JS2/Chrome15회, 다음 b2의 실제 승인·AI0 선행/부족 구현이다. 전체 RX87 완료 수는 유지한다.
 
+[RX-87-B2-CHECK-BINDING-PIN](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md): exact 후보 package의 저장 검증 연결을 실제 claim에 공급하고 worker가 원본/hash/대상/순서를 조기 검증한다. 불변 native manifest 근거·일관된 문서 한도·Web 차단을 보완했고 관련144pass52.20s다. 실제 경계 평가/hierarchy/normalized 저장은 b3b/c이며 required unknown과 전체 RX87 미완료는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

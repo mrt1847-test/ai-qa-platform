@@ -8,13 +8,11 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05b2 · 정상 원본 저장본→사후 승인→동일 package AI0의 선행 연결.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: B2.3b3b · 저장 경계에서 실제 Android 관찰·검증.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[MA05b2 체크리스트](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0)를 수행한다. 먼저 실제 original source/check binding/evaluator/trial 선행을 대조하고 미구현 logical binding worker 소비·실제 hierarchy 검증·normalized 결과가 있으면 B2.3b3/c 구현 단위를 먼저 수행한다. 기존 source/approval/required gate를 지우거나 force approval·fixture package로 바꿔 성공시키지 않는다. [선택 상세 완료 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 근거·제약을 재사용한다.
+[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#b3b--경계별-실제-관찰평가-다음)을 수행한다. 직접 선행 [b3a 인계](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md)는 exact package annotation의 실제 claim 공급·조기 검증을 완료했다. 아직 AndroidObservationProvider는 PNG/geometry 중심이고 deterministic Android validator는 fixture hierarchy를 읽는다. 먼저 실제 hierarchy 관찰과 명시 resource 대상 해석의 작은 leaf를 확정·구현한 뒤 승인 mapping 경계에서만 평가한다. step ordinal=gesture ordinal 추정·PNG/engine 완료만으로 PASS·정적 fixture verifier 대체0이다.
 
-직접 선행 [MA05b1.2](docs/validation/tasks/AI-LIVE-04-MA05B12.md)는 저장 log의 사람용 타임라인·안전 DOM 갱신·canonical 선택/포커스를49개 검사와 Chrome18회로 확인했다. [화면·재현](docs/validation/ux/ma05b12/). b1의 정확한 후보 검토/자기 입력 재녹화와 a1~4 실패 저장/ACK/서버 손실 계약도 유지한다. model/native0·source/승인·전체 완료 수를 바꾸지 않는다.
-
-그 뒤 b2 저장본 사후 사람 승인/동일 package AI0 여정을 진행한다. [B2.3b 검증 연결 UI·소비](docs/managed-pc/CASE_CONTEXT_CONSUMER_TASKS.md), B2.3c hierarchy·[C/D 검증·치유](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)의 필요한 구현을 실제 코드로 확인해 편성한다. 미구현을 fixture 승인이나 assertion 제거로 대신하지 않는다.
+[MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

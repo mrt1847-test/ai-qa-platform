@@ -101,8 +101,10 @@ def resolve_claim_case_context(claim, *, required=False):
                 raise CaseContextRejected('case context missing')
             return None
         raw = snapshot['case_context']
-        if type(raw) is not dict or set(raw) not in (_FIELDS,_FIELDS|{'replay_compiler_ref'}) or raw['schema']!='case-context-v1':
+        if type(raw) is not dict or not (_FIELDS<=set(raw)<=_FIELDS|{'replay_compiler_ref','check_bindings'}) or raw['schema']!='case-context-v1':
             raise CaseContextRejected('case context schema invalid')
+        if 'check_bindings' in raw and (raw.get('purpose') not in {'trial','regression'} or type(raw['check_bindings']) is not dict):
+            raise CaseContextRejected('replay check binding context invalid')
         compiler=raw.get('replay_compiler_ref')
         if compiler is not None:_text(compiler)
         if raw['purpose']=='recording' and compiler is not None:raise CaseContextRejected('recording compiler context invalid')
@@ -160,6 +162,8 @@ def resolve_claim_case_context(claim, *, required=False):
         target = raw['target']
         if type(target) is not dict or set(target)!={'kind','android_package'} or target['kind'] not in {'web','android'}:
             raise CaseContextRejected('case target invalid')
+        if 'check_bindings' in raw and target['kind']!='android':
+            raise CaseContextRejected('Android check binding target required')
         package = _text(target['android_package'],empty=True)
         if target['kind']=='android' and (len(package)>255 or _PACKAGE.fullmatch(package) is None):
             raise CaseContextRejected('case package invalid')

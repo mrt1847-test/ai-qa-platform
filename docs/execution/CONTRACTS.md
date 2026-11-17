@@ -198,6 +198,8 @@ DispatchState = planned|lookup_failed|dispatch_started|acknowledged|observed|unk
 
 B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-context-v1.check_bindings로 투영한다. Android replay의 immutable input/source-content/derived-manifest/binding hash와 resolved NativeSource의 frozen manifest_id/hash를 대조하고 불변 boundary/target pin으로 보존한다. raw claim을 바꿔 다른 source를 섞거나 최신 head로 fallback하지 않는다. 기록/Web annotation은 거절한다. 저장/투영/worker의131072bytes는 compact UTF8 논리 문서 한도이며 escaped JSON/envelope로 재정의하지 않는다. valid pin은 검증/모델/승인 grant가 아니고 b3b/c 전 required unknown을 유지한다.
 
+B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
+
 ```text
 ModelBinding = {id, revision, role, provider, endpoint_kind, endpoint, model,
  secret_ref, prompt_ref, prompt_hash, compatibility_hash, tariff_id}

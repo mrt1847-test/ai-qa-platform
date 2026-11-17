@@ -65,6 +65,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-B2-CHECK-BINDING-PIN](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md): exact 후보 package의 저장 검증 연결을 실제 claim에 공급하고 worker가 원본/hash/대상/순서를 조기 검증한다. 불변 native manifest 근거·일관된 문서 한도·Web 차단을 보완했고 관련144pass52.20s다. 실제 경계 평가/hierarchy/normalized 저장은 b3b/c이며 required unknown과 전체 RX87 미완료는 유지한다.
 
+[RX-87-B2-ANDROID-HIERARCHY](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY.md): bounded strict UTF8 XML→명시 resource의 불변 관찰 포트를 구현했다. 비밀번호/중복/없는 사실을 추정하지 않고 BOMlessUTF16 우회·민감 예외 context를 차단했다. 관련76pass0.60s, 실제 reader/경계 평가·normalized 저장은 b3b1/c이며 전체 RX87 미완료는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -4,6 +4,16 @@ Web과 Android의 테스트를 자연어로 녹화하고, 저장된 동작을 �
 
 아래는 프로젝트가 목표로 하는 제품 방향과 사용 흐름입니다. 구현 현황과 검증 결과는 [개발 진행 문서](WORK_PROGRESS.md)에서 확인할 수 있습니다.
 
+## Android 동작 영상
+
+웹에서 자연어 시나리오를 입력하고, Mobile-Agent가 G마켓 검색 화면을 여는 동작을 녹화·저장한 뒤 같은 동작을 시범 재생하는 실제 데모입니다. 대기 구간을 줄여 편집했습니다.
+
+[![Android 자연어 노코드 자동화 녹화·재생 미리보기](docs/media/android-no-code-demo.gif)](docs/media/android-no-code-demo.mp4)
+
+[전체 영상 보기 · MP4, 약 45초](docs/media/android-no-code-demo.mp4) · [촬영 범위와 실행 근거](docs/media/README.md)
+
+녹화는 모델 2회 호출, 저장된 탭의 재생은 모델 호출 0회로 확인했습니다. 최종 검증 연결은 개발 중이며, 이 시범의 QA 결과는 `INCONCLUSIVE`입니다.
+
 ## 목표 사용 흐름
 
 1. **녹화 준비:** Web 또는 Android 실행 자원과 대상 앱/URL을 선택하고, 필요한 설정과 검증 목표를 입력합니다. TC 연결은 선택 사항이며 검증 목표와 녹화 기록은 자동화 케이스에서 함께 관리합니다.

@@ -1,8 +1,10 @@
 <section id="evidence-viewer" tabindex="0" data-keynav="true" data-max-px="1024" data-owner-kind="{{ selection.owner_kind }}" data-owner-id="{{ selection.owner_id }}" data-attempt-id="{{ selection.attempt_id }}" data-action-id="{{ selection.action_id }}" data-first-failure="{{ first_failure|default('') }}" data-view="fit">
-<h2>단계 증거</h2><p class="hint">선택한 시도의 정제 캡처와 로그입니다. 민감 화면 차단·수집 결과는 개별 기록에서 확인하세요.</p>
+<header class="evidence-heading"><h2>단계 증거</h2><p class="hint">선택한 시도의 정제 캡처와 로그입니다. 민감 화면 차단·수집 결과는 개별 기록에서 확인하세요.</p>
 <details class="evidence-identity"><summary>녹화·시도 참조</summary><p>소유 기록 {{ selection.owner_id }}</p><p>시도 {{ selection.attempt_id }}</p></details>
+</header><div class="evidence-controls">
 {% if not embedded %}<nav aria-label="증거 단계"><a href="#previous" data-step="previous">이전</a><a href="#next" data-step="next">다음</a><a href="#first-failure" data-step="first-failure">첫 실패</a></nav>{% endif %}
-<nav class="viewer-toolbar" aria-label="이미지 보기"><a href="#fit" data-view-mode="fit" aria-current="true">맞추기</a><a href="#hundred" data-view-mode="hundred">100%</a><a href="#zoom" data-view-mode="zoom">확대</a><a href="#pan" data-view-mode="pan">이동</a><a href="#full" data-view-mode="full">전체보기</a></nav><p data-view-note role="status"></p>
+<nav class="viewer-toolbar" aria-label="이미지 보기"><a href="#fit" data-view-mode="fit" aria-current="true">맞추기</a><a href="#hundred" data-view-mode="hundred">100%</a><a href="#zoom" data-view-mode="zoom">확대</a><a href="#pan" data-view-mode="pan">이동</a><a href="#full" data-view-mode="full" aria-expanded="false">전체보기</a></nav><p data-view-note role="status"></p>
+</div>
 {% for action in actions %}<article data-action="{{ action.action_id }}" data-step-id="{{ action.step_id }}"{% if action.action_id != selection.action_id %} hidden{% endif %}>
 <h3>{{ action.detail.label if action.detail else '동작 기록' }}</h3>
 <section class="action-command" data-command-summary aria-label="선택 동작의 명령">

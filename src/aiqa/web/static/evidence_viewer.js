@@ -6,7 +6,7 @@
   var params = new URLSearchParams(window.location.search);
   var actions = Array.prototype.slice.call(root.querySelectorAll("[data-action]"));
   var fullscreenActive=false;
-  function fullscreenState(open){fullscreenActive=open;root.querySelectorAll('[data-view-mode="full"]').forEach(function(link){link.textContent=open?'전체보기 닫기':'전체보기';link.setAttribute('aria-expanded',String(open));});}
+  function fullscreenState(open){fullscreenActive=open;root.setAttribute('data-fullscreen',String(open));root.querySelectorAll('[data-view-mode="full"]').forEach(function(link){link.textContent=open?'전체보기 닫기':'전체보기';link.setAttribute('aria-expanded',String(open));});}
 
   function show(actionId) {
     actions.forEach(function (node) {
@@ -28,6 +28,7 @@
   }
 
   root.addEventListener("keydown", function (event) {
+    if(event.key==='Escape'&&fullscreenActive&&document.fullscreenElement!==root){fullscreenState(false);return;}
     if(event.target.closest('input,textarea,select,[contenteditable="true"]'))return;
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
       return;
@@ -50,19 +51,28 @@
   root.querySelectorAll("[data-view-mode]").forEach(function (link) {
     link.addEventListener("click", function (event) {
       event.preventDefault();
-      root.setAttribute("data-view", link.getAttribute("data-view-mode"));
       var mode=link.getAttribute('data-view-mode');
+      var note=root.querySelector('[data-view-note]');
+      // Fullscreen changes the available space, not the selected image scale.
+      if(mode==='full'){
+        if(fullscreenActive||document.fullscreenElement===root){
+          fullscreenState(false);
+          if(document.fullscreenElement===root&&document.exitFullscreen)Promise.resolve(document.exitFullscreen()).catch(function(){fullscreenState(document.fullscreenElement===root);if(note)note.textContent='전체보기 상태를 다시 확인하세요.';});
+          else if(note)note.textContent='';
+        }else{
+          fullscreenState(true);
+          if(root.requestFullscreen)Promise.resolve(root.requestFullscreen()).catch(function(){if(note)note.textContent='브라우저 안에서 전체보기 중 · Esc로 닫기';});
+          else if(note)note.textContent='브라우저 안에서 전체보기 중 · Esc로 닫기';
+        }
+        return;
+      }
+      root.setAttribute("data-view", mode);
       root.querySelectorAll('[data-view-mode]').forEach(function(item){if(item===link)item.setAttribute('aria-current','true');else item.removeAttribute('aria-current');});
       root.querySelectorAll('img').forEach(function(img){
         if(mode==='fit'){img.style.width='';img.style.maxWidth='100%';img.style.maxHeight='100%';}
         else{img.style.maxWidth='none';img.style.maxHeight='none';img.style.width=Math.round((img.naturalWidth||img.width)*(mode==='zoom'?1.5:1))+'px';}
       });
-      var note=root.querySelector('[data-view-note]');if(note)note.textContent=mode==='pan'?'이미지 영역을 끌거나 스크롤해 이동하세요.':mode==='hundred'?'원본 크기 100%':mode==='zoom'?'원본 크기 150%':mode==='fit'?'영역에 맞춘 크기':'';
-      if(mode==='full'){
-        if((fullscreenActive||document.fullscreenElement===root)&&document.exitFullscreen){fullscreenState(false);Promise.resolve(document.exitFullscreen()).catch(function(){if(note)note.textContent='전체보기 상태를 다시 확인하세요.';});}
-        else if(root.requestFullscreen){fullscreenState(true);Promise.resolve(root.requestFullscreen()).catch(function(){fullscreenState(false);if(note)note.textContent='전체 화면을 열지 못했습니다. 100% 이미지 영역에서 확인하세요.';});}
-        else if(note)note.textContent='이 브라우저는 전체보기를 지원하지 않습니다. 100% 이미지 영역에서 확인하세요.';
-      }
+      if(note)note.textContent=mode==='pan'?'이미지 영역을 끌거나 스크롤해 이동하세요.':mode==='hundred'?'원본 크기 100%':mode==='zoom'?'원본 크기 150%':mode==='fit'?'영역에 맞춘 크기':'';
     });
   });
   root.addEventListener('fullscreenchange',function(){fullscreenState(document.fullscreenElement===root);});

@@ -4,7 +4,7 @@
 
 ## 결론
 
-최근 검증 연결 pin/명시 resource XML 관찰은 Mobile-Agent의 AI 행동 판단 재구현이 아니다. 다만 프로젝트 내부에 기존 XML 수집 CLI와 별도 frame guard XML 해석이 있다. 새 수집기를 병렬로 만들지 않고 기존 수집·관찰 경로를 제품 공통 포트로 추출해 재사용해야 한다. 현재 새 production native XML reader는 아직 작성하지 않았으며 이번 검토가 그 구현 방향을 수정한다.
+최근 검증 연결 pin/명시 resource XML 관찰은 Mobile-Agent의 AI 행동 판단 재구현이 아니다. 다만 프로젝트 내부에 기존 XML 수집 CLI와 별도 frame guard XML 해석이 있다. 새 수집기를 병렬로 만들지 않고 기존 수집·관찰 경로를 제품 공통 포트로 추출해 재사용해야 한다. 검토 당시 새 production native XML reader는 아직 작성하지 않았으며 이 검토로 구현 방향을 수정했다. 이후 [b3b1a 인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md)대로 공통 수집 포트를 추출하고 기존 CLI가 이를 소비하도록 전환했다. 일반 managed 녹화의 PNG 경로는 XML을 요구하지 않는다.
 
 | 책임 | 실제 원본/현재 코드 | 판단 |
 |---|---|---|

@@ -78,7 +78,7 @@ def test_invalid_or_excessive_xml_has_a_fixed_nonsensitive_error(raw):
 
 @pytest.mark.parametrize('changes',[{'package':'com.example.app;cmd'}, {'package':'-package'},
     {'resource_ids':('other.app:id/query',)}, {'resource_ids':[RESOURCE]},
-    {'resource_ids':(RESOURCE,)*257},{'rotation':True},{'rotation':45}])
+    {'resource_ids':(RESOURCE,)*257},{'rotation':True},{'rotation':45},{'rotation':None}])
 def test_target_and_rotation_input_are_explicit(changes):
     from aiqa.environments.android_hierarchy import AndroidHierarchyRejected
     with pytest.raises(AndroidHierarchyRejected):parse(**changes)

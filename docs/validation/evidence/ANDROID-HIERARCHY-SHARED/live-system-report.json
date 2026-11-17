@@ -1,0 +1,30 @@
+{
+  "grade": "native_system_ui_read_transport",
+  "serial": "emulator-5580",
+  "avd": "Medium_Phone_API_36",
+  "package": "com.google.android.apps.nexuslauncher",
+  "read_only_avd": true,
+  "model_calls": 0,
+  "native_gestures": 0,
+  "raw_xml_saved": false,
+  "raw_png_saved": false,
+  "product_approval": false,
+  "assertion_evaluated": false,
+  "status": "readable",
+  "elapsed_seconds": 8.594,
+  "foreground": "com.google.android.apps.nexuslauncher",
+  "geometry": {
+    "width": 1080,
+    "height": 2400,
+    "rotation": 0
+  },
+  "selected_target_count": 3,
+  "target_states": {
+    "available": 3
+  },
+  "screenshot_calls": 1,
+  "check_read_screenshot_calls": 0,
+  "hierarchy_read_calls": 2,
+  "captured_at": "2026-11-17T06:17:15.002726+00:00",
+  "native_app_launches": 0
+}

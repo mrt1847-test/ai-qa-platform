@@ -25,13 +25,19 @@ def require_frame_pixels(reference,current,action):
 
 
 def _anchor(xml,x,y):
-    import re,xml.etree.ElementTree as ET
+    import re
+    from aiqa.environments.android_hierarchy_xml import read_hierarchy_xml,AndroidHierarchyRejected
     if not xml or not xml.lstrip().startswith('<'):return None
-    if len(xml.encode('utf-8'))>1_000_000 or '<!DOCTYPE' in xml or '<!ENTITY' in xml:raise FrameDrift('hierarchy invalid')
-    try:root=ET.fromstring(xml)
-    except ET.ParseError:raise FrameDrift('hierarchy invalid') from None
+    try:root=read_hierarchy_xml(xml.encode('utf-8'))
+    except (AndroidHierarchyRejected,UnicodeError):pass
+    else:return _anchor_nodes(root,x,y)
+    del xml
+    raise FrameDrift('hierarchy invalid')
+
+
+def _anchor_nodes(root,x,y):
+    import re
     nodes=list(root.iter('node'))
-    if len(nodes)>5000:raise FrameDrift('hierarchy too large')
     hits=[]
     for node in nodes:
         if node.get('clickable')!='true' or node.get('enabled')!='true':continue

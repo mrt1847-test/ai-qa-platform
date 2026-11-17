@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+B2.3b3b1a: 기존 CLI XML 수집은 공통 AndroidHierarchyReader로 추출한다. observe_targets는 check-time/noPNG/noModel 사실이며 capture_once의 raw DOM/PNG는 local이며 caller 정제를 거친다. managed 녹화의 원본 vision/default PNG 경로는 XML을 요구하지 않는다. observer의 optional deadline/checkpoint/command_timeout은 개별 cap·잔여 시간의 최솟값을 전달하고 각 native read와 최종 projection 뒤 현재 제어를 확인한다. 원래 wire 크기/공식 suffix/선택 serial·AVD·foreground·전후 geometry를 검증한다. source/replay XML 한도는 공통1MiB다. known read transition만 제한 재시도하며 취소/wrong target/invalid evidence는 즉시 중단한다.
+
 ```text
 ModelBinding = {id, revision, role, provider, endpoint_kind, endpoint, model,
  secret_ref, prompt_ref, prompt_hash, compatibility_hash, tariff_id}

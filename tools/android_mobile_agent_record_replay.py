@@ -4,11 +4,10 @@ Both modes target the named dedicated Gmarket emulator. No application data rese
 """
 from __future__ import annotations
 import argparse,hashlib,json,re,socket,subprocess,sys,time
-from dataclasses import replace
-from uuid import uuid4
 from pathlib import Path
 from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter
 from aiqa.environments.android_observation import AndroidObservationProvider
+from aiqa.environments.android_hierarchy_reader import AndroidHierarchyReader,AndroidHierarchyReadError
 from aiqa.environments.android_app_launch import AndroidAppLauncher
 from aiqa.replay.android_runner import AndroidDeterministicDriver
 from aiqa.recording.mobile_agent_session import persist,capture_stable,TransientCapture
@@ -39,28 +38,20 @@ def main():
     adapter=MobileAgentAndroidAdapter()
     def run(argv,timeout=10):
         return subprocess.run(argv,stdin=subprocess.DEVNULL,capture_output=True,timeout=timeout,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    transitions=[]
-    def focus():
-        r=run([a.adb,'-s',a.serial,'shell','dumpsys','window'])
-        names=re.findall(r'mCurrentFocus=Window\{[^\r\n]*?\bu[0-9]+[ \t]+([A-Za-z0-9_.$]+)/[A-Za-z0-9_.$]+',r.stdout.decode('utf-8',errors='replace'))
-        if r.returncode or len(names)!=1:
-            transitions.append({'returncode':r.returncode,'focus_count':len(names),'elapsed':time.monotonic()})
-            persist(out/'capture-transitions.json',transitions[-50:])
-            raise TransientCapture('foreground unavailable')
-        return names[0]
+    hierarchy=AndroidHierarchyReader(provider,package=a.package,checkpoint=lambda:True,
+        extra_packages=('com.google.android.permissioncontroller',))
+    transitions=[];transition_count=[0]
     def capture_once():
-        first=focus()
-        if first not in {a.package,'com.google.android.permissioncontroller'}:raise ValueError('capture foreground outside evaluation')
-        device_xml='/sdcard/aiqa-upstream-'+uuid4().hex+'.xml'
-        dumped=run([a.adb,'-s',a.serial,'shell','uiautomator','dump',device_xml],timeout=15)
-        if dumped.returncode:raise TransientCapture('hierarchy transition')
-        hierarchy=run([a.adb,'-s',a.serial,'exec-out','cat',device_xml],timeout=10)
-        run([a.adb,'-s',a.serial,'shell','rm',device_xml],timeout=10)
-        if hierarchy.returncode or not 0<len(hierarchy.stdout)<=1_000_000:raise TransientCapture('hierarchy unavailable')
-        r=provider.observe()
-        if r.state!='ready' or r.observation is None:raise RuntimeError('named emulator capture unavailable')
-        if focus()!=first:raise TransientCapture('foreground changed across capture')
-        return adapter.sanitize(replace(r.observation,dom=hierarchy.stdout.decode('utf-8'))),first
+        try:observation,foreground=hierarchy.capture_once()
+        except AndroidHierarchyReadError as exc:
+            if str(exc) in {'foreground_unavailable','foreground_changed','hierarchy_transition'}:
+                transition_count[0]+=1
+                transitions.append({'reason':str(exc),'count':transition_count[0],'elapsed':time.monotonic()})
+                transitions[:]=transitions[-50:]
+                persist(out/'capture-transitions.json',transitions)
+                raise TransientCapture('capture transition') from None
+            raise
+        return adapter.sanitize(observation),foreground
     def capture():return capture_stable(capture_once)
     # Verify the named resource before any write, then establish the same cold app entry.
     initial=provider.observe()

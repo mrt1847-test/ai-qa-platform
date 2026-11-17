@@ -8,9 +8,9 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: B2.3b3b1a · 기존 Android XML 수집의 공통 포트 추출.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: B2.3b3b1b · 저장한 검증 경계의 deterministic 평가.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#b3b1a--기존-실제-xml-수집의-공통-포트-추출-다음)을 수행한다. 직접 선행 [b3a 인계](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md)는 exact package annotation의 실제 claim 공급·조기 검증을 완료했다. 아직 AndroidObservationProvider는 PNG/geometry 중심이고 deterministic Android validator는 fixture hierarchy를 읽는다. [b3b0 인계](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY.md)의 pure XML 해석을 재사용한다. [중복 검토](docs/managed-pc/MOBILE_AGENT_RESPONSIBILITY_AUDIT.md)에서 기존 실제 검증 CLI에 XML 수집 코드가 있음을 확인했다. 새 worker 사본을 만들지 않고 기존 수집을 공통 포트로 추출해 CLI/worker가 재사용하게 한다. frame 보호와 assertion은 구별하며 이후 b3b1b에서 정확한 mapping 경계 평가를 연결한다. step ordinal=gesture ordinal 추정·PNG/engine 완료만으로 PASS·정적 fixture verifier 대체0이다.
+[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#b3b1b--정확한-경계의-deterministic-평가-다음)을 수행한다. 직접 선행 [공통 reader 인계](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md)는 기존 CLI 수집의 공통화와 worker check-only/noPNG 포트를 완료했다. [b3a pin 인계](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md)의 exact package/명시 boundary/target에 묶어 지정 시점에서만 평가한다. logical ordinal=gesture ordinal 추정·정적 fixture expected 대체·PNG/engine 완료만으로 PASS0이다. XML은 보조 관찰이며 Mobile-Agent의 원본 화면 판단/일반 녹화 PNG는 그대로 유지한다. actual normalized check_results/ITEM 저장은 c다.
 
 [MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
 

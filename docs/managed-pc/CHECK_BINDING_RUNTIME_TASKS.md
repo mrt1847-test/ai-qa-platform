@@ -45,13 +45,18 @@ Ruling: password flag 없는 node를 안전하다고 추정하지 않는다 — 
 
 직접 선행 b3b0 인계와 [Mobile-Agent/프로젝트 중복 검토](MOBILE_AGENT_RESPONSIBILITY_AUDIT.md)를 읽는다. tools/android_mobile_agent_record_replay.py의 capture_once가 이미 XML을 수집하고 mobile_agent_frames._anchor가 XML을 해석한다. 수집 알고리즘을 worker에 복제하지 않는다.
 
-- [ ] 기존 CLI capture_once/native XML read·focus 검사를 공통 environments 포트로 추출하고 CLI가 그 포트를 소비하도록 전환한다. 기존 AndroidObservationProvider/_run_bounded를 재사용한다. serial/AVD/package·현재 제어·모든 deadline·capture 정제·raw local 데이터 경계를 유지한다. 기본값 fixture 성공/새 AI 루프/새 클릭 실행기0.
-- [ ] 원문 XML/file/stderr를 remote artifact나 오류에 복사하지 않는다. 선택 resource 대상은 b3b0을 소비한다. 고정 stdout 경로(/proc/self/fd/1) 방법은 실제 probe에서 XML+공식 완료 suffix를 확인했으며 argv/한도/정확한 framing을 테스트한 뒤만 사용한다. 남는 임시 device 파일을 만들지 않는 방향을 우선한다.
-- [ ] _anchor와 새 parser의 낮은 XML decode/한도 검사가 공유 가능한지 대조한다. frame target 보호와 assertion 의미는 합치지 않는다. CLI/worker가 동일 공통 수집 포트를 사용하는 부정/호출 수·취소·변경 target/rotation 회귀·명시 실제 AVD read를 검증하고 인계/master commit한다.
+- [x] 기존 CLI capture_once/native XML read·focus 검사를 공통 environments 포트로 추출하고 CLI가 그 포트를 소비하도록 전환한다. 기존 AndroidObservationProvider/_run_bounded를 재사용한다. serial/AVD/package·현재 제어·모든 deadline·capture 정제·raw local 데이터 경계를 유지한다. 기본값 fixture 성공/새 AI 루프/새 클릭 실행기0.
+- [x] 원문 XML/file/stderr를 remote artifact나 오류에 복사하지 않는다. 선택 resource 대상은 b3b0을 소비한다. 고정 stdout 경로(/proc/self/fd/1) 방법은 실제 probe에서 XML+공식 완료 suffix를 확인했으며 argv/한도/정확한 framing을 테스트한 뒤만 사용한다. 남는 임시 device 파일을 만들지 않는 방향을 우선한다.
+- [x] _anchor와 새 parser의 낮은 XML decode/한도 검사가 공유 가능한지 대조한다. frame target 보호와 assertion 의미는 합치지 않는다. CLI/worker가 동일 공통 수집 포트를 사용하는 부정/호출 수·취소·변경 target/rotation 회귀·명시 실제 AVD read를 검증하고 인계/master commit한다.
 
 ## b3b1b · 정확한 경계의 deterministic 평가 (다음)
 
-b3b1a 공유 observer와 b3a pin의 step boundary에서만 step checks, 마지막 승인 action 후 final checks를 평가한다. 읽기 실패/누락·중복/미연결·지원 안 되는 필드는 unknown/error다. source check ID/expected를 보존하고 PNG/engine 완료 문구만으로 PASS0이다. 매 행동의 AI 호출이나 불필요한 중복 PNG 수집을 추가하지 않는다.
+직접 선행 [공통 reader 인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md)와 b3a pin/기존 replay_check_coverage를 읽는다. 소유 새 worker/bound_check_evaluation.py(순수 일정/비교), android_jobs.AndroidReplayHandler._verify_and_heal와 호출부, 관련 focused tests다. actual port는 context.hierarchy_observer(package,resource_ids,checkpoint,timeout)다.
+
+- [ ] RED 원본 NativeSource.steps의 현재 action ID와 binding.boundaries를 대조해 그 동작 뒤에만 step checks를 예약한다. logical ordinal=gesture ordinal 추정0. final checks는 마지막 승인 action 뒤만이다. 미연결 required는 마지막에 unknown으로 보존하며 중간 실패/취소 후 성공을 꾸미지 않는다.
+- [ ] due checks 중 승인된 deterministic 정책/명시 resource만 공통 reader로 묶어1회 읽는다. 현재 claim의 read-only checkpoint와 남은 총 시간/명령 cap을 전달하고 extra PNG/model/입력 한도 차감0이다. 마지막 native 예산을 소진했어도 합법적 조회를 잘못 막지 않는지 검사한다. caller fixture check/expected를 섞지 않는다.
+- [ ] source CheckSpec id/expected/phase/context/content hash를 보존한 RequiredCheckCoverage를 만든다. text는 실제 text field와 exact 비교, state는 명시 boolean 의미가 지원될 때만 비교한다. 없는 value/visible을 text/존재로 추정하지 않고 missing/ambiguous/redacted/unavailable/지원 안 되는 kind는 unknown이다. AI 정책은 C 연결 전 unknown이며 여기서 호출0이다. assertion 실패는 healing하지 않는다.
+- [ ] worker 정상 claim→여러 gesture/같은·여러 boundary→마지막 final·미연결/누락/모순/취소/한도·actor AI0를 검증한다. coverage의 기존 원문 생략 log 정책/FAIL/승인/source를 보존한다. actual check_results 영속은 c이며 검증되지 않은 결과를 완료로 세지 않는다. fresh review1/한 fix pass/인계/큐/master commit한다.
 
 ## c · 정규화 결과/ITEM 영속 (다음)
 
@@ -60,3 +65,5 @@ check ID·source hash·expected/observed·판정·evidence를 durable commit/nor
 b3a 완료: [인계](../validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md), 관련144pass52.20s. NativeSource는 verified manifest_id/hash도 frozen으로 보존한다. 크기는 compact UTF8 문서131072bytes이며 envelope/escaped DB 표현 한도와 구별한다. actual evaluator/normalized 결과/전체 RX87은 미완료다.
 
 b3b0 완료: [인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY.md), 관련76pass0.60s. pure selected-resource XML port이며 실제 native reader/경계 평가·QA 저장은 b3b1/c다.
+
+b3b1a 완료: [인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md), 관련192pass55.45s + 실제 Android launcher read8.594s(앱 QA 아님). XML은 check-time 보조 경로이며 일반 녹화 PNG/원본 main을 유지한다.

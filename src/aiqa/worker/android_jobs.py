@@ -1121,6 +1121,7 @@ class AndroidReplayContext:
     healing_context: object | None = None
     step_observations: tuple[tuple[Observation, Observation], ...] = ()
     live_capture: Callable[[], Observation] | None = None
+    hierarchy_observer: Callable[..., object] | None = None
     max_seconds: float | None = None
     max_actions: int = 50
     remote_checkpoint: Callable[[str], object] | None = None
@@ -2070,6 +2071,12 @@ def build_approved_android_replay_handler(
     journal = DispatchJournal(runtime_root / "journal-replay.jsonl")
     driver = AndroidDeterministicDriver(adb_path, serial, spool=spool)
     from aiqa.worker.android_prepare import AndroidTargetPreparer
+    from aiqa.environments.android_observation import AndroidObservationProvider
+    from aiqa.environments.android_hierarchy_reader import AndroidHierarchyReader
+    source=AndroidObservationProvider(adb_path,serial,expected_avd=expected_avd)
+    def observe_hierarchy(*,package,resource_ids,checkpoint,timeout):
+        reader=AndroidHierarchyReader(source,package=package,checkpoint=checkpoint,total_timeout=timeout)
+        return reader.observe_targets(resource_ids)
     return AndroidReplayHandler(
         adapter=MobileAgentAndroidAdapter(),
         driver=driver,
@@ -2088,6 +2095,7 @@ def build_approved_android_replay_handler(
             heal_budget_remaining=0,
             checks=checks,
             live_capture=capture,
+            hierarchy_observer=observe_hierarchy,
             target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
         ),
     )

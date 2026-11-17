@@ -6,6 +6,7 @@ from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter
 from aiqa.recording.mobile_agent_session import persist
 from aiqa.recording.mobile_agent_frames import require_guarded_frame
 from aiqa.replay.android_native_trace import parse_native_trace
+from aiqa.environments.android_hierarchy_xml import MAX_XML_BYTES
 from aiqa.worker.recording_reasoning import require_evaluation_action,require_current_frame
 
 
@@ -33,7 +34,7 @@ def load_replay_reference(source,expected_hash,pin_path,pin_hash,target):
         image_bytes=image.read_bytes()
         if hashlib.sha256(image_bytes).hexdigest()!=row['before_sha256']:raise ValueError('recording frame changed')
         hierarchy_path=pin_path.parent/(stem+'-before.xml')
-        if hierarchy_path.stat().st_size>1_000_000:raise ValueError('hierarchy too large')
+        if hierarchy_path.stat().st_size>MAX_XML_BYTES:raise ValueError('hierarchy too large')
         hierarchy=hierarchy_path.read_bytes()
         if hashlib.sha256(hierarchy).hexdigest()!=row['before_hierarchy_sha256']:raise ValueError('hierarchy changed')
         references.append((image_bytes,row['foreground'],hierarchy.decode('utf-8')))

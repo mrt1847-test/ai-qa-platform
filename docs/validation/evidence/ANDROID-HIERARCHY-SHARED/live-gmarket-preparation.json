@@ -1,0 +1,17 @@
+{
+  "grade": "native_read_transport",
+  "serial": "emulator-5580",
+  "avd": "Medium_Phone_API_36",
+  "package": "com.ebay.kr.gmarket",
+  "read_only_avd": true,
+  "model_calls": 0,
+  "native_gestures": 0,
+  "raw_xml_saved": false,
+  "raw_png_saved": false,
+  "product_approval": false,
+  "assertion_evaluated": false,
+  "status": "unavailable",
+  "error_type": "AppLaunchUnknown",
+  "native_app_launches": 1,
+  "gmarket_installed": false
+}

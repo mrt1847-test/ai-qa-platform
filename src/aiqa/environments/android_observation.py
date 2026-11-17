@@ -138,19 +138,30 @@ class AndroidObservationProvider:
         self.adb_path, self.serial, self.expected_avd = path, serial, expected_avd
         self.command_timeout, self.observation_timeout = command_timeout, observation_timeout
 
-    def observe(self, *, capture: bool = True) -> AndroidObservationResult:
+    def observe(self, *, capture: bool = True, deadline: float | None = None, checkpoint=None, command_timeout: float | None = None) -> AndroidObservationResult:
         if type(capture) is not bool:
             raise ValueError('capture must be a boolean')
-        deadline = time.monotonic() + self.observation_timeout
+        if deadline is not None and (type(deadline) not in (int,float) or not math.isfinite(deadline)):
+            raise ValueError('shared deadline must be finite')
+        if checkpoint is not None and not callable(checkpoint):raise ValueError('checkpoint must be callable')
+        if command_timeout is not None and (type(command_timeout) not in (int,float) or not math.isfinite(command_timeout) or not 0<command_timeout<=90):
+            raise ValueError('per-call command timeout invalid')
+        command_cap=self.command_timeout if command_timeout is None else min(self.command_timeout,command_timeout)
+        deadline = min(time.monotonic()+self.observation_timeout,deadline) if deadline is not None else time.monotonic()+self.observation_timeout
+        def permitted():
+            if checkpoint is None:return True
+            try:return checkpoint() is True
+            except Exception:return False
         metadata: dict[str, object] = {}
 
         def run(*command: str) -> bytes:
+            if not permitted():raise _ReadFailure('unavailable','observation_not_allowed')
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise _ReadFailure('unavailable', 'observation_timeout')
             try:
                 response = _run_bounded([str(self.adb_path), '-s', self.serial, *command],
-                    timeout=min(self.command_timeout, remaining))
+                    timeout=min(command_cap, remaining))
             except subprocess.TimeoutExpired:
                 raise _ReadFailure('unavailable', 'command_timeout') from None
             except OSError:
@@ -200,6 +211,8 @@ class AndroidObservationProvider:
             return CaptureGeometry(width, height, width, height, 'identity', rotation * 90, (0, 0, width, height)), density
 
         def result(state: str, reason: str, geometry=None, density=None, observation=None):
+            if state=='ready' and not permitted():
+                state,reason,geometry,density,observation='unavailable','observation_not_allowed',None,None,None
             if state == 'ready' and time.monotonic() >= deadline:
                 state, reason, geometry, density, observation = 'unavailable', 'observation_timeout', None, None, None
             return AndroidObservationResult(self.serial, state, reason, datetime.now(timezone.utc).isoformat(),

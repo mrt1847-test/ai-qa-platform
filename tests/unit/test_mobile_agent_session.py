@@ -170,8 +170,21 @@ def test_stable_resource_target_survives_only_pixel_animation():
     from aiqa.replay.android_plan import TypedAndroidAction
     from PIL import Image
     from io import BytesIO
-    xml='<hierarchy><node resource-id="com.ebay.kr.gmarket:id/search" package="com.ebay.kr.gmarket" class="android.view.View" bounds="[0,0][100,100]" clickable="true" enabled="true" text="" content-desc="Search"/></hierarchy>'
+    xml='<hierarchy rotation="0"><node resource-id="com.ebay.kr.gmarket:id/search" package="com.ebay.kr.gmarket" class="android.view.View" bounds="[0,0][100,100]" clickable="true" enabled="true" text="" content-desc="Search"/></hierarchy>'
     original=_observation().png;b=BytesIO();Image.new('RGB',(100,200),'white').save(b,format='PNG')
     assert require_guarded_frame(original,b.getvalue(),TypedAndroidAction('tap',x=50,y=50),xml,xml)['kind']=='resource_id'
     with pytest.raises(ValueError):require_guarded_frame(original,b.getvalue(),TypedAndroidAction('tap',x=50,y=50),xml,xml.replace(':id/search',':id/buy'))
     with pytest.raises(ValueError):require_guarded_frame(original,b.getvalue(),TypedAndroidAction('tap',x=50,y=50),xml,xml.replace('</hierarchy>','<node resource-id="" package="com.ebay.kr.gmarket" bounds="[0,0][100,100]" clickable="true" enabled="true"/></hierarchy>'))
+
+
+def test_recorded_hierarchy_between_decimal_and_binary_megabyte_limits_is_replayable(tmp_path):
+    from dataclasses import replace
+    from aiqa.replay.mobile_agent_replay import load_replay_reference
+    s,_=setup(tmp_path)
+    raw='<hierarchy rotation="0">'+' '*1000000+'</hierarchy>'
+    s.capture=lambda:(replace(_observation(),dom=raw),s.package)
+    s.get_screenshot(str(tmp_path/'frame.png'));s.predict([{'role':'user','content':[{'text':'goal'}]}]);s.click(*s.scaled['coordinate'])
+    target={'serial':'emulator-5580','avd':'fixture','package':s.package};s.report['status']='model_claimed_success';s.save_pin(target)
+    source=s.output/'native-trace.json';pin=s.output/'recording-pin.json'
+    steps,refs=load_replay_reference(source,hashlib.sha256(source.read_bytes()).hexdigest(),pin,hashlib.sha256(pin.read_bytes()).hexdigest(),target)
+    assert len(steps)==1 and refs[0][2]==raw

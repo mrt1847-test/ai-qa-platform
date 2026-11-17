@@ -67,6 +67,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-B2-ANDROID-HIERARCHY](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY.md): bounded strict UTF8 XML→명시 resource의 불변 관찰 포트를 구현했다. 비밀번호/중복/없는 사실을 추정하지 않고 BOMlessUTF16 우회·민감 예외 context를 차단했다. 관련76pass0.60s, 실제 reader/경계 평가·normalized 저장은 b3b1/c이며 전체 RX87 미완료는 유지한다.
 
+[RX-87-B2-ANDROID-HIERARCHY-READER](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md): 기존 CLI XML 수집을 공통화하고 worker check-only/noPNG 포트를 공급했다. 공유 XML 해석·시한/제어/전송 한도·재시도/기존 재생 호환을 보완해192pass, 실제 Android launcher 읽기8.594s를 확인했다. 현재 인스턴스 G마켓 미설치는 별도 준비 실패이며 앱 QA로 세지 않는다. 다음 b3b1b 경계 평가/c 영속, 전체 RX87 미완료 유지다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

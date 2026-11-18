@@ -1,5 +1,5 @@
 <section id="evidence-viewer" tabindex="0" data-keynav="true" data-max-px="1024" data-owner-kind="{{ selection.owner_kind }}" data-owner-id="{{ selection.owner_id }}" data-attempt-id="{{ selection.attempt_id }}" data-action-id="{{ selection.action_id }}" data-first-failure="{{ first_failure|default('') }}" data-view="fit">
-<header class="evidence-heading"><h2>단계 증거</h2><p class="hint">선택한 시도의 정제 캡처와 로그입니다. 민감 화면 차단·수집 결과는 개별 기록에서 확인하세요.</p>
+<header class="evidence-heading"><h2>단계 증거</h2>
 <details class="evidence-identity"><summary>녹화·시도 참조</summary><p>소유 기록 {{ selection.owner_id }}</p><p>시도 {{ selection.attempt_id }}</p></details>
 </header><div class="evidence-controls">
 {% if not embedded %}<nav aria-label="증거 단계"><a href="#previous" data-step="previous">이전</a><a href="#next" data-step="next">다음</a><a href="#first-failure" data-step="first-failure">첫 실패</a></nav>{% endif %}

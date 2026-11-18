@@ -311,7 +311,7 @@ def test_w10_03(tmp_path: Path) -> None:
             blank["new_recording_href"] in pages["page"].text
             and pages["device"].status_code == 200
             and 'id="recording-form"' in device_text
-            and "디바이스 선택" in device_text
+                and "기기 선택" in device_text
         ),
     }
     assert observed == {
@@ -931,7 +931,8 @@ def test_w10_06(tmp_path: Path) -> None:
     assert stale["server"]["version_id"] == saved["id"]
     assert stale["server"]["raw_text"] == "다시 볼 문장"
     assert "다시 볼 문장" in page
-    assert "자연어" in page and "목적" in page and "기대" in page and "필수 경로" in page
+    assert "자연어" in page and "사전조건" in page and "Assertion" in page and "필수 경로" in page
+    assert 'name="objective"' not in page
     assert observed == {
         "incomplete_draft_saved": True,
         "formal_runnable": False,
@@ -1584,8 +1585,8 @@ def test_w10_11(tmp_path: Path) -> None:
     assert "plain-secret-not-shown" not in foreign.text
     assert stored["healing_policy"]["allowed"] is False
     assert stored["environment_revision_id"] == "env-1"
-    assert "전역 기본" in page and "기본 OFF" in page and 'name="web_url"' in page
-    assert "실행은 여기서 시작하지 않습니다." in page
+    assert 'name="healing_allowed"' in page and 'name="web_url"' in page
+    assert 'id="start-recording"' not in page and 'id="enqueue-trial"' not in page
     assert observed == {
         "new_case_revision": True,
         "old_approval_scope_changed": False,

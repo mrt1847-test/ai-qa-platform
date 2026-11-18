@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 {% block title %}녹화 준비 · AI QA{% endblock %}
 {% block content %}
-<header class="page-heading"><div><p class="eyebrow">자동화 케이스 / AI 녹화</p><h1>녹화 준비</h1><p class="muted">기기와 검증 내용을 정하고 초안을 저장하세요. 녹화 기록은 먼저 보관하고, 완료 후 사람이 검토·승인합니다.</p></div><a class="secondary-link" href="/ui/projects/{{ project_id }}/cases">케이스 목록</a></header>
-<nav class="wizard-steps" aria-label="녹화 준비 단계"><a href="#device" data-step-link="1">디바이스 선택</a><a href="#target" data-step-link="2">필요 정보</a><a href="#definition" data-step-link="3">검증 내용</a><span class="future-step">AI 녹화</span></nav>
+<header class="page-heading"><h1>녹화 준비</h1><a class="secondary-link" href="/ui/projects/{{ project_id }}/cases">케이스 목록</a></header>
+<nav class="wizard-steps" aria-label="녹화 준비 단계"><a href="#device" data-step-link="1">기기</a><a href="#target" data-step-link="2">대상</a><a href="#definition" data-step-link="3">테스트 내용</a><span class="future-step">녹화</span></nav>
 <p class="sr-only" id="wizard-step-note" role="status">현재 단계 {{ step }}</p>
 <div class="wizard-workspace">
 <form id="recording-form" data-project="{{ project_id }}" data-case="{{ case_id }}" data-step="{{ step }}" novalidate>
 {% if draft.get('rerecord_base_version_id') %}<section class="panel"><h2>전체 재녹화 · 새 후보</h2><p>기준 v{{ draft.version_revision }}의 검증 의도를 가져왔습니다. 기존 승인본·녹화·의견은 유지하고 새 동작은 별도로 수집합니다.</p><label>재녹화 사유 <textarea name="rerecord_reason" rows="2">{{ draft.get('rerecord_reason','') }}</textarea></label><label class="checkbox-label"><input type="checkbox" name="rerecord_confirmed"{% if draft.get('rerecord_confirmed') %} checked{% endif %}>아래 기기·대상 URL/앱·데이터·초기화 설정을 확인했습니다.</label><p class="hint">확인 전에도 초안은 저장할 수 있습니다. 녹화 시작에는 확인이 필요합니다.</p></section>{% endif %}
-<section class="panel" data-wizard-step="1"><h2>어떤 기기에서 검증할까요?</h2><p class="muted">오프라인 기기도 초안을 준비할 수 있습니다. 실제 녹화 시작 전에는 연결을 확인합니다.</p>
+<section class="panel" data-wizard-step="1"><h2>기기 선택</h2>
 <div class="device-grid">
 {% for item in resources %}<label class="device-card" data-state="{{ item.state }}"{% if item.is_emulator %} data-device-kind="android_emulator"{% endif %}><input type="radio" name="resource_id" value="{{ item.resource_id }}" data-kind="{{ item.target_kind }}" data-geometry="{{ item.geometry }}" data-rotation="{{ item.rotation if item.rotation is not none else '' }}" data-observed-at="{{ item.observed_at }}" data-last-seen="{{ item.last_seen or '' }}" data-connection="{{ item.connection_state }}" aria-label="{{ item.display_name }}"{% if item.resource_id == draft.get("resource_id") %} checked{% endif %}><strong>{{ item.display_name }}</strong><span>{{ item.kind_label }} · 상태 {{ item.state_label }}{% if item.geometry and item.geometry != 'unknown' %} · {{ item.geometry }}{% endif %}{% if item.is_emulator %} · 에뮬레이터{% endif %}</span><small class="muted">{% if item.observed_at %}관찰 {{ item.observed_at }}{% else %}관찰 없음{% endif %} · PC {{ item.connection_label }}{% if item.last_seen %} · heartbeat {{ item.last_seen }}{% endif %}</small></label>{% else %}<p>연결된 기기가 없습니다. <a href="/ui/projects/{{ project_id }}/environments">연결 방법 확인</a></p>{% endfor %}
 </div>
 </section>
-<section class="panel" data-wizard-step="2"><h2>무엇을 실행할까요?</h2>
+<section class="panel" data-wizard-step="2"><h2>대상</h2>
 <label>케이스 이름 <input name="case_name" value="{{ draft.get('case_name','') }}"{% if case_id %} readonly{% endif %} placeholder="예: 로그인 후 주문 내역 조회"></label>
 <div class="form-grid"><label>대상 종류 <select name="target_kind"><option value="web"{% if target == "web" %} selected{% endif %}>Web</option><option value="android"{% if target == "android" %} selected{% endif %}>Android</option></select></label>
 <label>환경 프로필 (선택) <select name="environment_revision_id"><option value="">케이스에서 직접 설정</option>{% for item in profiles %}<option value="{{ item.id }}" data-kind="{{ item.profile.target_kind }}"{% if item.id == draft.get('environment_revision_id') %} selected{% endif %}>{{ item.name }} · v{{ item.revision }}</option>{% endfor %}</select></label></div>
@@ -20,28 +20,27 @@
 <fieldset data-target-fields="android"><legend>Android</legend>
 <label>설치 앱 선택 <select name="android_package_select" id="android-package-select"><option value="">조회 후 선택</option></select></label>
 <input type="button" class="secondary" id="refresh-installed-apps" value="설치 앱 조회">
-<p id="installed-apps-observed" class="muted" role="status">과거 관찰이 있으면 시각과 함께 표시됩니다. 조회는 lease가 있는 Android에서만 읽기 전용으로 실행됩니다.</p>
+<p id="installed-apps-observed" class="muted" role="status"></p>
 <label>앱 패키지 <input name="android_package" id="android-package" value="{{ draft.get('android_package','') }}" placeholder="com.example.app"></label>
-<label>빌드 참조 (선택) <input name="build" value="{{ draft.get('build','') }}" placeholder="등록된 빌드의 참조 ID"></label>
-<label>계정 참조 (선택) <input name="account_ref" value="{{ draft.get('account_ref','') }}" placeholder="저장된 비밀 참조"></label>
-<p class="hint">설치 앱 조회 중에는 설치·초기화를 하지 않습니다. 선택 값은 패키지 필드에 반영되며 초안 저장 시 유지됩니다.</p>
+<details><summary>추가 앱 설정</summary><label>빌드 참조 (선택) <input name="build" value="{{ draft.get('build','') }}" placeholder="등록된 빌드의 참조 ID"></label>
+<label>계정 참조 (선택) <input name="account_ref" value="{{ draft.get('account_ref','') }}" placeholder="저장된 비밀 참조"></label></details>
 </fieldset>
 <label>테스트 데이터 (선택) <select name="data_revision_id"><option value="">사용하지 않음</option>{% for item in datasets %}<option value="{{ item.id }}"{% if item.id == draft.get('data_revision_id') %} selected{% endif %}>{{ item.name }} · v{{ item.revision }} · {{ item.rows|length }}행</option>{% endfor %}</select></label>
 <details><summary>초기화·실행 한도</summary><div class="form-grid"><label>초기화 정책 <select name="reset_policy"><option value="none">초기화하지 않음</option>{% if draft.get('reset_policy') and draft.reset_policy != 'none' %}<option selected value="{{ draft.reset_policy }}">저장된 정책 · {{ draft.reset_policy }}</option>{% endif %}</select></label><label>시간 한도 (초) <input name="timeout_seconds" type="number" min="1" max="600" value="{{ draft.get('limits',{}).get('timeout_seconds',600) }}"></label><label>동작 한도 (회) <input name="max_actions" aria-describedby="android-action-limit-note" type="number" min="1" value="{{ draft.get('limits',{}).get('max_actions',50) }}"></label><label>AI 비용 한도 (USD) <input name="budget" inputmode="decimal" value="{{ draft.get('limits',{}).get('budget','1') }}"></label></div><p class="hint" id="android-action-limit-note">Android는 앱 열기 1회를 포함해 전체 최대 50회입니다. 탭·스와이프 등의 동작은 입력한 한도 내에서 최대 49회 실행합니다.</p></details>
 </section>
-<section class="panel" data-wizard-step="3"><h2>무엇을 검증할까요?</h2>
-<label>자연어 검증 내용 <textarea name="raw_text" rows="6" placeholder="로그인한 뒤 주문 내역에서 첫 주문을 열고, 주문번호와 결제 금액이 표시되는지 확인해줘.">{{ draft.get('definition',{}).get('raw_text',draft.get('definition_buffer',draft.get('raw_text',''))) }}</textarea></label>
-<label>검증 목적 (선택) <input name="objective" value="{{ draft.get('definition',{}).get('objective','') }}"></label>
-<label>최종 기대 결과 (선택) <textarea name="expected_text" rows="3">{% for check in draft.get('definition',{}).get('final_expected',[]) %}{{ check.expected if check.expected is string else '' }}{% if not loop.last %}{{ '\n' }}{% endif %}{% endfor %}</textarea></label>
-<p class="hint">기대 값은 비어 있어도 초안을 저장합니다. TC가 없어도 접수를 막지 않습니다. AI 구조화 제안은 지원된 기능을 명시 요청할 때만 적용합니다.</p>
+<section class="panel" data-wizard-step="3"><h2>테스트 내용</h2>
+<label>자연어 <textarea name="raw_text" rows="4" placeholder="G마켓에서 ‘노트북’을 검색해 줘.">{{ draft.get('definition',{}).get('raw_text') or draft.get('definition_buffer') or draft.get('definition',{}).get('objective','') }}</textarea></label>
+<label>사전조건 (선택) <textarea name="preconditions" rows="2" placeholder="G마켓 앱이 설치되어 있다.">{{ draft.get('definition',{}).get('preconditions',[])|join('\n') }}</textarea></label>
+<label>Assertion <textarea name="expected_text" rows="3" placeholder="검색 결과 목록에 ‘노트북’ 관련 상품이 표시된다.">{% for check in draft.get('definition',{}).get('final_expected',[]) %}{{ check.expected if check.expected is string else '' }}{% if not loop.last %}{{ '\n' }}{% endif %}{% endfor %}</textarea></label>
 </section>
 {% include "components/form_feedback.html" %}
 <div class="action-bar"><input type="button" class="secondary" data-step-previous value="이전"><input type="submit" data-save-button value="초안 저장"><input type="button" data-step-next value="다음"><span id="recording-save-summary" class="muted"></span></div>
-<section class="panel" id="recording-preflight"><div class="section-heading"><h2>녹화 시작 전 확인</h2><input type="button" class="secondary" id="check-recording" value="준비 상태 확인"></div><p>초안을 저장한 뒤 현재 기기·녹화 AI·한도를 확인합니다. 시작 검사는 예약을 만들지 않습니다.</p><ul id="recording-blockers"></ul><p id="recording-ready-note" role="status"></p><input type="button" id="start-recording" value="AI 녹화 시작" disabled><p class="muted">시작 시 AI 비용이 발생할 수 있습니다. 녹화 후 반복 테스트는 저장된 동작·코드를 재생하고 필요한 검증만 AI를 사용합니다.</p><p>점유 중이면 진행 링크 또는 대기열을 고릅니다. 현재 지원하지 않는 대기 동작은 자동 접수하지 않습니다.</p></section>
+<section class="panel" id="recording-preflight"><div class="section-heading"><h2>시작 준비</h2><input type="button" class="secondary" id="check-recording" value="준비 상태 확인"></div><ul id="recording-blockers"></ul><p id="recording-ready-note" role="status"></p><input type="button" id="start-recording" value="AI 녹화 시작" disabled><p class="muted">AI 녹화에는 비용이 발생합니다.</p></section>
 </form>
-<aside class="wizard-preview" aria-label="선택 기기 미리보기"><h2>선택 기기 미리보기</h2>{% include "components/pc_availability.html" %}<div class="preview-frame" id="wizard-preview-frame"><p id="wizard-preview-note">기기를 선택하면 저장된 최근 관찰을 확인할 수 있습니다.</p><img id="wizard-preview-image" alt="선택한 기기의 정제된 최근 화면" hidden></div><strong id="wizard-preview-name">기기 선택 전</strong><small id="wizard-preview-time">실시간 제어 화면이 아닙니다.</small></aside>
+<aside class="wizard-preview" aria-label="선택 기기 미리보기"><h2>기기 화면</h2>{% include "components/pc_availability.html" %}{% set live_video_inline = true %}{% include "components/live_video.html" %}<details class="stored-device-preview"><summary>최근 저장된 관찰</summary><div class="preview-frame" id="wizard-preview-frame"><p id="wizard-preview-note">기기를 선택하면 저장된 최근 관찰을 확인할 수 있습니다.</p><img id="wizard-preview-image" alt="선택한 기기의 정제된 최근 화면" hidden></div><strong id="wizard-preview-name">기기 선택 전</strong><small id="wizard-preview-time">저장된 관찰 화면입니다.</small></details></aside>
 </div>
 <script id="recording-snapshot" type="application/json">{{ draft|tojson }}</script>
 <script id="recording-profiles" type="application/json">{{ profiles|tojson }}</script>
 <script src="/static/recording_setup.js?v={{ ui_asset_version }}"></script>
+<script src="/static/live_video.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

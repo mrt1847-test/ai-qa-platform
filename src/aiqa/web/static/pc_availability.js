@@ -31,8 +31,8 @@
     const time = root.querySelector('[data-pc-last-seen]');
     const reason = root.querySelector('[data-pc-reason]');
     const stamp = item && item.last_seen;
-    const label = item ? '실행 PC ' + item.connection_label + ' · ' + item.worker_id + ' · 기기 ' + item.state_label :
-      selected ? '실행 PC 상태 확인 필요' : '기기를 선택하면 실행 PC 상태를 확인합니다.';
+    const label = item ? '실행 PC ' + item.connection_label + ' · 기기 ' + item.state_label :
+      selected ? '연결 확인 필요' : '기기를 선택해 주세요.';
     const detail = item ? item.block_reason : selected ? '서버에서 기기 연결 상태를 확인해 주세요.' : '';
     // Avoid repeating live announcements on every poll.
     if (status.textContent !== label) status.textContent = label;

@@ -775,6 +775,10 @@ async def _lease_call(request: Request, renew: bool) -> Response:
     with _bound(request) as store:
         try:
             worker = worker_scope_from_token(token)
+            if not renew:
+                from aiqa.api.video import before_device_ack
+                if not await before_device_ack(request.app,worker,lease.project_id,lease.job_id,lease.generation):
+                    return _error(503,"video_stopping","device video is stopping before this job",{})
             with bind_claim_store(store):
                 if renew:
                     view = renew_lease(worker, lease, now, model_wait, server_now=_server_now())

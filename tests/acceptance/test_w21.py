@@ -666,11 +666,8 @@ def test_w21_04(tmp_path: Path) -> None:
     assert extra["suite_ids"] == ["suite-a", "suite-b"] and extra["suite_silent"] == 0
     assert extra["empty_suite_status"] == 422
     assert extra["release_floor_runs"] == 30 and extra["proposed_n"] == 100
-    assert "케이스 버전과 데이터 행과 대상으로 펼칩니다." in page
-    assert "같은 항목 번호는 거절됩니다." in page
-    assert "미승인 항목을 자동으로 빼지 않습니다." in page
-    assert "월 3000은 release label의 최소 30회 수행으로 집계합니다." in page
-    assert "항목이 0이거나 100을 넘으면 시작하지 않습니다." in page
+    assert 'name="case_version_id"' in page and 'name="resource_id"' in page
+    assert 'id="preview-trial"' in page and 'id="enqueue-trial"' in page
     assert "PASS" not in page
     assert observed == {
         "limit_100_accepted": True,

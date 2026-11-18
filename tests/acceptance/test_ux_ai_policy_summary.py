@@ -20,5 +20,5 @@ def test_settings_distinguishes_stored_cost_records_from_unknown_totals(ux_app):
             assert '누적 원본 비용 기록 1건 · 보정 기록 1건' in page.text
             assert '3.15 USD' in page.text and '금액 확인 전' in page.text
             assert '최종 누적 금액: 집계 연결 전' in page.text
-            assert '3,000' in page.text and '시범 healing OFF' in page.text
+            assert '시범 healing OFF' in page.text
     asyncio.run(run())

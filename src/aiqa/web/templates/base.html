@@ -47,5 +47,9 @@
   {% endif %}
   <main id="content" class="shell">{% block content %}{% endblock %}</main>
   {% if shell %}<script src="/static/navigation.js?v={{ ui_asset_version }}"></script>{% endif %}
+  {% if project_nav and project_id and ('/recordings/' in request.url.path or '/cases/' in request.url.path or '/executions/' in request.url.path or '/case-runs/' in request.url.path) and 'recordings/wizard' not in request.url.path and 'recordings/new' not in request.url.path %}
+  {% include "components/live_video.html" %}
+  <script src="/static/live_video.js?v={{ ui_asset_version }}"></script>
+  {% endif %}
 </body>
 </html>

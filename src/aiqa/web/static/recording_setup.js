@@ -34,7 +34,7 @@
     var revision=++previewRevision;
     var resource=chosen(),label=document.getElementById('wizard-preview-name'),message=document.getElementById('wizard-preview-note'),image=document.getElementById('wizard-preview-image'),frame=document.getElementById('wizard-preview-frame'),time=document.getElementById('wizard-preview-time');
     image.hidden=true;image.removeAttribute('src');time.textContent='실시간 제어 화면이 아닙니다.';
-    if(!resource){label.textContent='기기 선택 전';message.textContent='기기를 선택해 주세요.';return;}
+    if(!resource){label.textContent='기기 미선택';message.textContent='기기를 선택해 주세요.';return;}
     var id=resource.value;label.textContent=resource.getAttribute('aria-label');frame.dataset.kind=resource.dataset.kind;message.textContent='최근 관찰을 확인하는 중입니다.';
     try{
       var response=await window.aiqaRequest('/api/v1/resources/'+encodeURIComponent(id)+'/preview?project_id='+form.dataset.project,{method:'GET'});var body=await response.json();
@@ -72,7 +72,7 @@
     });
     if(body&&body.observed_at){
       var when=new Date(body.observed_at);appsNote.textContent='관찰 '+((isNaN(when.getTime())?body.observed_at:when.toLocaleString('ko-KR')))+' · 상태 '+(body.state||'unknown')+' · 설치/초기화 '+(body.install_calls||0)+'/'+(body.reset_calls||0);
-    }else appsNote.textContent='저장된 설치 앱 관찰이 없습니다. lease가 있는 Android에서 조회하세요.';
+    }else appsNote.textContent='앱 목록이 없습니다. 설치 앱 조회를 눌러 주세요.';
   }
   async function loadInstalledApps(){
     var resource=chosen();if(!resource||resource.dataset.kind!=='android'){renderInstalledApps(null);return;}
@@ -109,7 +109,9 @@
   });
   function read(){
     var definition=Object.assign({raw_text:'',objective:'',preconditions:[],variables:{},secret_refs:{},steps:[],final_expected:[],path_policy:{must_use:[],forbidden:[]}},JSON.parse(JSON.stringify(snapshot.definition||{})));
-    definition.raw_text=value('raw_text');definition.objective=value('objective');
+    definition.raw_text=value('raw_text');definition.objective=definition.raw_text;
+    var preconditions=value('preconditions');
+    if(preconditions!==definition.preconditions.join('\n'))definition.preconditions=preconditions.split('\n').map(function(text){return text.trim();}).filter(Boolean);
     if(expectedEdited)definition.final_expected=value('expected_text').split('\n').filter(function(text){return text.trim();}).map(function(text,i){var old=definition.final_expected[i];if(!expectedCheckIds[i])expectedCheckIds[i]=crypto.randomUUID();return old?Object.assign({},old,{expected:text}):{id:expectedCheckIds[i],kind:'text',expected:text};});
     var settings=JSON.parse(JSON.stringify(snapshot));
     ['definition','version_id','input_version_hash','version_revision','expected_head','case_name','raw_text','recorded_steps'].forEach(function(key){delete settings[key];});
@@ -131,13 +133,13 @@
   },onConflict:function(body){if(body.server_snapshot){var local=read();window.aiqaCompareConflict(form,{definition:body.server_snapshot.definition,settings:body.server_snapshot.settings},{definition:local.definition,settings:local.settings},function(){head=body.server_snapshot.expected_head;prepared=false;start.disabled=true;});}},onSaved:function(body,payload){
     head=body.id;versionHash=body.content_hash;form.elements.namedItem('case_name').readOnly=true;
     var savedUrl=new URL(location.href);savedUrl.searchParams.delete('base');history.replaceState(null,'',savedUrl);
-    document.getElementById('recording-save-summary').textContent='초안 v'+body.revision+' 저장됨 · 승인 전';
+    document.getElementById('recording-save-summary').textContent='v'+body.revision;
     var visibleExpected=value('expected_text').split('\n').filter(function(text){return text.trim();}).join('\n');
     var submittedExpected=payload.definition.final_expected.map(function(check){return typeof check.expected==='string'?check.expected:'';}).join('\n');
     snapshot.definition=payload.definition;snapshot.recorded_steps=payload.recorded_steps;expectedEdited=visibleExpected!==submittedExpected;
     prepared=false;start.disabled=true;step(currentStep);
-  },successMessage:function(body){return '초안 v'+body.revision+'을 저장했습니다. 녹화 시작 조건은 별도로 확인합니다.';}});
-  function invalidate(){prepared=false;start.disabled=true;document.getElementById('recording-blockers').replaceChildren();note.textContent='입력이 바뀌면 저장 후 준비 상태를 다시 확인하세요.';}
+  },successMessage:function(body){return '초안 v'+body.revision+' 저장됨';}});
+  function invalidate(){prepared=false;start.disabled=true;document.getElementById('recording-blockers').replaceChildren();note.textContent='';}
   form.addEventListener('input',invalidate);form.addEventListener('change',invalidate);
   document.querySelectorAll('[data-step-link]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();step(Number(link.dataset.stepLink));});});
   form.querySelector('[data-step-previous]').addEventListener('click',function(){step(currentStep-1);});
@@ -166,7 +168,7 @@
       var list=document.getElementById('recording-blockers');list.replaceChildren();
       if(!response.ok){note.textContent='준비 상태를 확인하지 못했습니다. 저장 버전과 연결을 다시 확인해 주세요.';return;}
       result.reasons.forEach(function(reason){var li=document.createElement('li');var a=document.createElement('a');a.textContent=reason.message;a.href=reason.href;li.appendChild(a);list.appendChild(li);});
-      prepared=result.ready&&(!availability||availability.allowed());start.disabled=!prepared;note.textContent=prepared?'시작할 수 있습니다. 시작 시 다시 검사합니다.':'초안은 저장되어 있습니다. 위 항목을 준비하면 녹화를 시작할 수 있습니다.';
+      prepared=result.ready&&(!availability||availability.allowed());start.disabled=!prepared;note.textContent=prepared?'시작할 수 있습니다.':'위 항목을 확인해 주세요.';
     }catch(_){note.textContent='준비 상태 응답을 받지 못했습니다. 잠시 후 다시 확인하세요.';}
     finally{check.disabled=false;}
   });
@@ -182,6 +184,6 @@
     }catch(_){note.textContent='응답을 받지 못했습니다. 연결된 상태에서 같은 요청으로 다시 접수할 수 있습니다.';start.value='같은 요청으로 다시 접수';start.disabled=!!(availability&&!availability.connected());}
     finally{sending=false;}
   });
-  if(snapshot.version_revision)document.getElementById('recording-save-summary').textContent='초안 v'+snapshot.version_revision+' 저장됨 · 승인 전';
+  if(snapshot.version_revision)document.getElementById('recording-save-summary').textContent='v'+snapshot.version_revision;
   target(false);step(currentStep);preview();loadInstalledApps();
 })();

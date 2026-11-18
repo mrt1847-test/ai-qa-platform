@@ -55,6 +55,11 @@ def test_failed_recording_never_opens_another_candidate_and_rerecord_pins_own_in
     with sqlite3.connect(f['database']) as db:
         produced=db.execute('SELECT produced_version_id FROM materialization_receipts').fetchone()[0]
     normal,timeline=page(f,complete['recording_id']);export(f,'completed',normal,timeline)
+    assert normal.count('id="android-live-video"')==1
+    assert 'data-resource="'+str(w.resource_id)+'"' in normal
+    assert '<video autoplay muted playsinline' in normal
+    assert 'data-video-connect' in normal and 'data-video-stop' in normal
+    assert 'data-video-save' not in normal and 'data-video-download' not in normal
     assert link(normal,'recording-review-link')==f"/ui/projects/{f['project']}/cases/{f['body']['case_id']}/review?version={produced}"
     assert 'data-approved="false"' in normal
     # Another recording of the same case fails; the previous candidate remains a valid stored version.

@@ -1,8 +1,7 @@
-<section class="panel" id="recording-check-bindings-panel">
-<h2>검증 시점 연결</h2>
+<details class="panel" id="recording-check-bindings-panel">
+<summary>Assertion 세부 설정</summary>
 {% if check_binding_context %}
-<p>각 검증 단계가 녹화의 어느 동작 뒤에 해당하는지 선택하세요. 한 단계가 여러 동작으로 이루어질 수 있습니다.</p>
-<p class="hint">연결을 저장하면 새 후보가 생기며 기존 녹화와 기본 승인본은 유지됩니다. 현재는 연결 저장만 가능하며 실행 적용은 아직 지원하지 않습니다. 미지정 검증을 자동 통과로 처리하지 않습니다.</p>
+<p class="hint">검증 시점과 대상을 저장합니다. 실행 적용은 준비 중입니다.</p>
 <form id="recording-check-bindings" action="/api/v1/projects/{{ project_id }}/recordings/{{ recording_id }}/check-bindings" data-recording-url="/ui/projects/{{ project_id }}/recordings/{{ recording_id }}" data-review-url="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review" novalidate>
 {% for step in check_binding_context.logical_steps %}
 {% set matched=check_binding_context.bindings.step_boundaries|selectattr('step_id','equalto',step.id)|list %}
@@ -27,5 +26,5 @@
 <script type="application/json" id="recording-check-binding-source">{{ check_binding_context|tojson }}</script>
 {% elif completion_status=='open' %}<p class="empty">녹화가 완료되면 저장된 동작에 검증 시점을 연결할 수 있습니다.</p>
 {% else %}<p class="empty">이 저장본은 검증 시점 연결을 지원하는 동작 기록이 준비되지 않았습니다. 저장된 화면과 로그는 아래에서 확인할 수 있습니다.</p>{% endif %}
-</section>
+</details>
 <script src="/static/recording_check_bindings.js?v={{ ui_asset_version }}"></script>

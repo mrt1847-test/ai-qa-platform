@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function host(definition,metadata={}){
  class N extends EventTarget{constructor(value=''){super();this.value=value;this.dataset={};this.hidden=false;this.disabled=false;this.children=[];}setAttribute(){}removeAttribute(){}replaceChildren(){this.children=[];}appendChild(node){this.children.push(node);}}
- const nodes={},names=['resource_id','target_kind','environment_revision_id','expected_text','case_name','raw_text','objective','web_url','android_package','build','account_ref','data_revision_id','reset_policy','timeout_seconds','max_actions','budget'];
+ const nodes={},names=['resource_id','target_kind','environment_revision_id','expected_text','case_name','raw_text','objective','preconditions','web_url','android_package','build','account_ref','data_revision_id','reset_policy','timeout_seconds','max_actions','budget'];
  names.forEach(name=>nodes[name]=new N());Object.assign(nodes.target_kind,{value:'web'});nodes.environment_revision_id.options=[];nodes.case_name.value='Case';nodes.timeout_seconds.value='600';nodes.max_actions.value='50';nodes.budget.value='1';
  const resource=new N('res');resource.dataset.kind='web';resource.checked=true;resource.getAttribute=()=> 'Resource';const form=new N();form.dataset={project:'p',case:'c',step:'1'};form.elements={namedItem:name=>nodes[name]};form.querySelectorAll=()=>[];form.querySelector=selector=>selector.includes(':checked')?resource:new N();
  nodes.rerecord_reason=new N('reason');nodes.rerecord_confirmed=new N();nodes.rerecord_confirmed.checked=true;
@@ -12,3 +12,21 @@ function host(definition,metadata={}){
 test('first recording draft from an empty case accepts a final expectation with a stable check ID',()=>{const h=host({});h.edit('로그인됨');const first=h.opts.read();assert.equal(first.definition.final_expected[0].expected,'로그인됨');assert.equal(h.opts.read().definition.final_expected[0].id,first.definition.final_expected[0].id);});
 test('expectation changed during save remains in the next payload after acknowledgement',()=>{const h=host({raw_text:'',final_expected:[]});h.edit('old');const submitted=h.opts.read();h.edit('new');h.opts.onSaved({id:'v1',content_hash:'hash',revision:1},submitted);assert.equal(h.opts.read().definition.final_expected[0].expected,'new');});
 test('rerecord draft persists the exact base column used by candidate diff',async()=>{const h=host({raw_text:'',final_expected:[]},{rerecord_base_version_id:'base-version'});await h.opts.persist(h.opts.read(),'request');assert.equal(h.sent.base_version_id,'base-version');assert.equal(h.sent.parent_version_id,'base-version');});
+
+test('natural test content is the complete executable goal without a second objective input',()=>{
+ const h=host({objective:'검색 화면 열기'});
+ h.nodes.raw_text.value='G마켓에서 노트북을 검색하고 결과 목록을 확인해 줘.';
+ h.nodes.objective.value='검색 화면 열기';
+ const saved=h.opts.read();
+ assert.equal(saved.definition.objective,h.nodes.raw_text.value);
+ delete h.nodes.objective;
+ assert.equal(h.opts.read().definition.objective,h.nodes.raw_text.value);
+});
+test('optional preconditions and independently edited assertions both survive saving',()=>{
+ const h=host({preconditions:['앱 설치됨'],final_expected:[]});
+ h.nodes.raw_text.value='노트북을 검색해 줘.';h.nodes.preconditions.value='앱 설치됨\n로그아웃 상태';
+ h.edit('노트북 관련 상품이 표시된다.');
+ const saved=h.opts.read();
+ assert.deepEqual(Array.from(saved.definition.preconditions),['앱 설치됨','로그아웃 상태']);
+ assert.equal(saved.definition.final_expected[0].expected,'노트북 관련 상품이 표시된다.');
+});

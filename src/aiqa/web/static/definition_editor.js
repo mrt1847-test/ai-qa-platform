@@ -35,7 +35,7 @@
   }
   function drawChecks(root,checks,prefix,readOnly){
     root.replaceChildren();checks.forEach(function(check,index){
-      var line=element('div',{class:'check-row'}),field=input('textarea',prefix+'.'+index+'.expected','검증 '+(index+1)+' 기대 값',check.expected,function(v){check.expected=v;});field.node.rows=2;field.node.readOnly=readOnly;line.appendChild(field.wrap);line.appendChild(element('small',{},check.kind==='text'?'화면 텍스트 검증':'저장된 유형 · '+check.kind));
+      var line=element('div',{class:'check-row'}),field=input('textarea',prefix+'.'+index+'.expected','Assertion '+(index+1),check.expected,function(v){check.expected=v;});field.node.rows=2;field.node.readOnly=readOnly;line.appendChild(field.wrap);line.appendChild(element('small',{},check.kind==='text'?'화면 텍스트 검증':'저장된 유형 · '+check.kind));
       if(!readOnly)line.appendChild(button('검증 삭제',function(){checks.splice(index,1);drawChecks(root,checks,prefix,readOnly);changed();}));root.appendChild(line);
     });
   }
@@ -52,7 +52,7 @@
   }
   function read(){
     var body=model.serialize(),definition=body.definition,fields={};
-    definition.raw_text=form.elements.raw_text.value;definition.objective=form.elements.objective.value;
+    definition.raw_text=form.elements.raw_text.value;definition.objective=definition.raw_text;
     [['preconditions',definition.preconditions],['must_use',definition.path_policy.must_use],['forbidden',definition.path_policy.forbidden]].forEach(function(pair){var raw=form.elements.namedItem(pair[0]).value;if(raw!==pair[1].join('\n')){var lines=raw.split('\n').map(function(s){return s.trim();}).filter(Boolean);if(pair[0]==='preconditions')definition.preconditions=lines;else definition.path_policy[pair[0]]=lines;}});
     var temporary=window.aiqaDefinitionModel(body);temporary.data.definition.variables={};
     variableRows.forEach(function(row,i){try{temporary.setVariable(null,row.name.trim(),row.kind,row.value);}catch(error){fields['variables.'+i+'.'+error.field]=[error.message];}});definition.variables=temporary.data.definition.variables;
@@ -66,7 +66,7 @@
   document.getElementById('add-secret-reference').addEventListener('click',function(){secretRows.push({name:'secret'+(secretRows.length+1),ref:null});drawSecrets();changed();});
   document.getElementById('add-definition-step').addEventListener('click',function(){if(locked)return;model.data.definition.steps.push({id:crypto.randomUUID(),instruction:'',expected:[],point:null});drawSteps();changed();});
   document.getElementById('add-final-check').addEventListener('click',function(){model.data.definition.final_expected.push(newCheck());drawChecks(document.getElementById('definition-final-checks'),model.data.definition.final_expected,'final_expected',false);changed();});
-  window.aiqaForms.register(form,{read:read,persist:function(body,key){return window.aiqaRequest(form.action,{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify(Object.assign({},body,{expected_head:head,parent_version_id:head}))});},onConflict:function(body){if(body.server_snapshot)window.aiqaCompareConflict(form,Object.assign({},body.server_snapshot.definition,{settings:body.server_snapshot.settings,recorded_steps:body.server_snapshot.recorded_steps}),Object.assign({},read().definition,{settings:read().settings,recorded_steps:read().recorded_steps}),function(){head=body.server.version_id;document.getElementById('expected-head').value=head;});},onSaved:function(body){head=body.id;document.getElementById('expected-head').value=head;form.querySelector('[data-conflict-comparison]').hidden=true;var note=document.getElementById('readiness');if(note)note.textContent='초안 v'+body.revision+'을 저장했습니다. 변경된 버전의 시범·검토 상태를 확인하세요.';}});
+  window.aiqaForms.register(form,{read:read,persist:function(body,key){return window.aiqaRequest(form.action,{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify(Object.assign({},body,{expected_head:head,parent_version_id:head}))});},onConflict:function(body){if(body.server_snapshot)window.aiqaCompareConflict(form,Object.assign({},body.server_snapshot.definition,{settings:body.server_snapshot.settings,recorded_steps:body.server_snapshot.recorded_steps}),Object.assign({},read().definition,{settings:read().settings,recorded_steps:read().recorded_steps}),function(){head=body.server.version_id;document.getElementById('expected-head').value=head;});},onSaved:function(body){head=body.id;document.getElementById('expected-head').value=head;form.querySelector('[data-conflict-comparison]').hidden=true;var note=document.getElementById('readiness');if(note)note.textContent='초안 v'+body.revision+' 저장됨';}});
   function preview(){try{document.getElementById('definition-preview').textContent=JSON.stringify(read().definition,null,2);}catch(_){document.getElementById('definition-preview').textContent='입력을 완성하면 원본을 확인할 수 있습니다.';}}form.addEventListener('input',preview);form.addEventListener('change',preview);preview();
   var project=/\/projects\/([^/]+)/.exec(form.action)[1];window.aiqaRequest('/api/v1/projects/'+project+'/secret-refs',{method:'GET'}).then(function(response){return response.ok?response.json():{refs:[]};}).then(function(body){choices=body.refs||[];drawSecrets();}).catch(function(){});
 })();

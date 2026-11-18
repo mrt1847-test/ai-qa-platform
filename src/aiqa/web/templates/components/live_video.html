@@ -1,0 +1,5 @@
+<section id="android-live-video" class="android-video-panel{% if live_video_inline|default(false) %} inline{% endif %}" data-project="{{ project_id }}" data-resource="{{ live_video_resource_id|default('') }}" data-open="false" hidden aria-label="Android 실시간 화면">
+  <div class="android-video-heading"><h2>Android 실시간 화면</h2><button type="button" class="secondary" data-video-connect>실시간 보기</button><button type="button" class="secondary" data-video-stop hidden>연결 종료</button></div>
+  <p data-video-status role="status">Android 기기를 선택해 주세요.</p>
+  <video autoplay muted playsinline disablepictureinpicture aria-label="현재 Android 기기의 실시간 영상" hidden></video>
+</section>

@@ -136,6 +136,10 @@ class WorkerHttpClient:
             idempotency_key=None,
         )
 
+    def video(self,payload:dict[str,Any])->dict[str,Any]:
+        """Video has its own bounded session/sequence, never an evidence or model API."""
+        return self._json('POST','/api/v1/worker/video',json_body=payload,idempotency_key=None)
+
     def report_inventory(self, payload: dict[str, Any], *, idempotency_key: str) -> dict[str, Any]:
         if payload.get("raw_handle") is not None:
             raise WorkerHttpError("raw device handles cannot be uploaded", retry_class=RetryClass.fatal)

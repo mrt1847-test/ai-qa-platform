@@ -2,7 +2,7 @@
 {% block title %}녹화{% endblock %}
 {% block content %}
   <header class="page-heading">
-    <div><p class="eyebrow">RECORDING / 저장 기록</p><h1>녹화 기록</h1><p class="muted">동작별 화면과 로그를 확인하고 저장된 후보를 검토합니다.</p></div>
+    <h1>녹화 기록</h1>
     <div class="actions">
       {% if case_id %}<a id="recording-case-link" class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition">케이스로</a>{% endif %}
       {% if case_id and rerecord_base_version_id and completion_status != 'open' %}<a id="recording-rerecord-link" class="secondary-link" href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/rerecord?base={{ rerecord_base_version_id }}">재녹화 준비</a>{% endif %}
@@ -32,7 +32,6 @@
     <aside class="panel review-actions">
       <h2>타임라인</h2>
       <p data-ack-count>수신 기록 {{ timeline.entries|length if timeline else 0 }}개</p>
-      <p class="hint">녹화 중에도 선택 스텝을 유지한 채 진행을 갱신합니다. 실행 PC가 끊겨도 서버에 저장된 증거는 조회할 수 있습니다.</p>
       <nav id="recording-timeline" aria-label="녹화 행동">
         {% if timeline and timeline.entries %}
           {% for entry in timeline.entries %}
@@ -60,7 +59,7 @@
         {% include "components/evidence_panel.html" %}
       {% else %}
         <h2>단계 증거</h2>
-        <p class="empty">행동이 ACK되면 전후 화면과 로그가 여기에 나타납니다. 미수신·오류 상태는 타임라인과 증거 영역에 함께 표시됩니다.</p>
+        <p class="empty">수신된 화면과 로그가 없습니다.</p>
       {% endif %}
     </div>
   </section>

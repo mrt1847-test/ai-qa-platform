@@ -229,6 +229,7 @@ def install_recordings(application: FastAPI) -> None:
         row = None
         binding_context=None
         version_approved=False
+        live_video_resource_id = ""
         try:
             migrate_store(store)
             with bound_auth_store(store):
@@ -262,6 +263,13 @@ def install_recordings(application: FastAPI) -> None:
                     ).fetchone()
                     if row is None:
                         return HTMLResponse(status_code=404, content="녹화를 찾지 못했습니다.")
+                    video_resource = connection.execute("""SELECT a.physical_key_id FROM jobs j
+                        JOIN attempts a ON a.project_id=j.project_id AND a.job_id=j.job_id
+                        JOIN resource_aliases r ON r.project_id=j.project_id AND r.physical_key_id=a.physical_key_id
+                        WHERE j.project_id=? AND j.recording_id=? AND r.target_kind='android'
+                        ORDER BY a.generation DESC LIMIT 1""", (str(project),str(recording))).fetchone()
+                    if video_resource is not None:
+                        live_video_resource_id = str(video_resource[0])
                     from aiqa.recording.check_bindings import load_check_binding_context,BindingRejected,BindingNotFound
                     try:binding_context=load_check_binding_context(connection,project,recording)
                     except (BindingRejected,BindingNotFound):binding_context=None
@@ -316,6 +324,7 @@ def install_recordings(application: FastAPI) -> None:
                 "request": request,
                 "project_id": str(project),
                 "recording_id": str(recording),
+                "live_video_resource_id": live_video_resource_id,
                 "case_id": case_id,
                 "completion_status": str(row[0]),
                 "storage_status": str(row[5]),

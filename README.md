@@ -4,15 +4,23 @@ Web과 Android의 테스트를 자연어로 녹화하고, 저장된 동작을 �
 
 아래는 프로젝트가 목표로 하는 제품 방향과 사용 흐름입니다. 구현 현황과 검증 결과는 [개발 진행 문서](WORK_PROGRESS.md)에서 확인할 수 있습니다.
 
-## Android 동작 영상
+## Android 실시간 화면
 
-웹에서 자연어 시나리오를 입력하고, Mobile-Agent가 G마켓 검색 화면을 여는 동작을 녹화·저장한 뒤 같은 동작을 시범 재생하는 실제 데모입니다. 대기 구간을 줄여 편집했습니다.
+웹의 녹화·시범 재생 화면에서 실제 Android 에뮬레이터 영상을 실시간으로 볼 수 있습니다. Android 기기를 선택하고 **실시간 보기**를 누르면 연결되며, 같은 기기의 녹화 상세와 시범 준비 화면으로 이동해도 이어 볼 수 있습니다.
 
-[![Android 자연어 노코드 자동화 녹화·재생 미리보기](docs/media/android-no-code-demo.gif)](docs/media/android-no-code-demo.mp4)
+웹에서 자연어·Assertion 입력 → Mobile-Agent의 실제 에뮬레이터 조작 → 저장본 시범 재생을 연속 촬영했습니다. 아래 GIF를 누르면 전체 MP4를 볼 수 있습니다. 약 96초이며 대기 구간은 빠르게 편집했습니다.
 
-[전체 영상 보기 · MP4, 약 45초](docs/media/android-no-code-demo.mp4) · [촬영 범위와 실행 근거](docs/media/README.md)
+[![Android 자연어 자동화 녹화와 저장본 재생](docs/media/android-no-code-demo.gif)](docs/media/android-no-code-demo.mp4)
 
-녹화는 모델 2회 호출, 저장된 탭의 재생은 모델 호출 0회로 확인했습니다. 최종 검증 연결은 개발 중이며, 이 시범의 QA 결과는 `INCONCLUSIVE`입니다.
+[MP4 영상](docs/media/android-no-code-demo.mp4) · [촬영·실행 근거](docs/media/README.md)
+
+녹화와 저장된 탭의 재생을 확인했습니다. 시범의 최종 Assertion 평가 연결은 아직 없어 QA 결과는 **INCONCLUSIVE**입니다.
+
+샘플 시나리오:
+
+- 자연어: G마켓 홈에서 베스트 탭을 열고 상품 이미지와 가격이 한 개 이상 표시되는지 확인해 줘. 표시되면 성공으로 종료해 줘. 스크롤, 구매, 로그인은 하지 마.
+- 사전조건: G마켓 앱이 설치되어 있고 홈 화면이 열려 있다.
+- Assertion: 베스트 화면에 상품 이미지와 가격이 있는 상품이 한 개 이상 표시된다.
 
 ## 목표 사용 흐름
 
@@ -64,6 +72,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]" -c requirements.lock
 .\.venv\Scripts\python.exe -m pip check
 ```
+
+Android 실시간 화면을 보려면 실행 PC에서 `pip install -e ".[android-video]"`도 설치하세요. Android 기기 선택 후 **실시간 보기**를 누르면 실제 기기 영상이 웹에 표시됩니다. 녹화 상세와 시범 준비 화면에서도 같은 연결을 이어 볼 수 있습니다. **연결 종료**를 누르면 캡처와 메모리 재생 버퍼를 비우며, 영상 파일 저장·다운로드 기능은 제공하지 않습니다.
 
 `dev`에는 테스트 도구와 Mobile-Agent 이미지 처리에 필요한 Pillow가 포함됩니다. 기존 가상환경이 있다면 재사용할 수 있습니다.
 

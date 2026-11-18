@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mobile-agent = ["Pillow>=11,<13", "httpx"]
+android-video = ["httpx", "imageio-ffmpeg>=0.6,<1"]
 dev = [
     "Pillow>=11,<13",
     "pytest",

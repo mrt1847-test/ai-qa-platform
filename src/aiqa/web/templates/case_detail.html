@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}검증 정의{% endblock %}
 {% block content %}
-  <header class="page-heading"><div><p class="eyebrow">AUTOMATION CASE / 검증 정의</p><h1>{{ board.case_name }}</h1><p class="muted">검증 내용과 녹화 기록을 하나의 케이스에서 관리합니다.</p></div><div class="actions"><a class="secondary-link" href="{{ list_href_full }}">목록으로</a><a class="primary-link" href="/ui/projects/{{ project_id }}/recordings/wizard?case={{ case_id }}">녹화 준비</a></div></header>
+  <header class="page-heading"><h1>{{ board.case_name }}</h1><div class="actions"><a class="secondary-link" href="{{ list_href_full }}">목록으로</a><a class="primary-link" href="/ui/projects/{{ project_id }}/recordings/wizard?case={{ case_id }}">녹화 준비</a></div></header>
   {% if board.selected_version_id != board.latest_draft_version_id %}<p class="hint">과거 v{{ (board.versions|selectattr('id','equalto',board.selected_version_id)|first).revision }}를 읽고 있습니다. 검증·설정 편집은 최신 초안에서 진행합니다.</p>{% endif %}<section class="case-state-grid" aria-label="케이스 상태"><article class="metric"><span class="metric-label">최신 초안</span><strong>{% if board.draft_revision %}v{{ board.draft_revision }} 저장됨{% else %}작성 전{% endif %}</strong></article><article class="metric"><span class="metric-label">현재 승인본</span><strong>{% if board.approved_revision %}v{{ board.approved_revision }}{% else %}승인 전{% endif %}</strong></article><article class="metric"><span class="metric-label">재생 절차</span><strong>{{ '준비됨' if board.package.ready else '준비 필요' }}</strong></article></section>
   <nav class="case-tabs" aria-label="케이스 탭">
     <a href="/ui/projects/{{ project_id }}/cases/{{ case_id }}/definition?tab=definition"{% if tab == 'definition' %} aria-current="page"{% endif %}>검증</a>

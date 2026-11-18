@@ -106,6 +106,8 @@ def create_app(
     install_resources(application)
     install_jobs(application)
     install_worker(application)
+    from aiqa.api.video import install_video
+    install_video(application)
     install_artifacts(application)
     install_retention(application)
     install_backups(application)

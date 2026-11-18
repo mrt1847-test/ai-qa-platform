@@ -786,6 +786,7 @@ def run_worker_process(
     if provider is None and binding is not None:
         provider = make_android_inventory_provider(binding)
     assembled_web = None
+    video_service = None
     with WorkerHttpClient(settings) as client:
         try:
             if resolved_handler is None and binding is not None and model_mode in {"fixture", "operational"}:
@@ -904,8 +905,14 @@ def run_worker_process(
                 registered_serial=None if binding is None else binding.serial,
                 approved_web_origin=None if web_binding is None else web_binding.approved_origin,
             )
+            if binding is not None and model_mode=='operational' and cycles is None and str(source.get('AIQA_ANDROID_VIDEO','1'))=='1':
+                from aiqa.worker.video import AndroidVideoService
+                video_service=AndroidVideoService(settings,binding)
+                video_service.start()
             runtime.run()
         finally:
+            if video_service is not None:
+                video_service.close()
             if assembled_web is not None:
                 assembled_web.close()
     return 0

@@ -37,7 +37,7 @@ B2.3a의 공식 strict 경로에서 고정 required의 누락·중간 final 평�
 
 저장/API 선행 [B2.3b1](../validation/tasks/RX-87-B2-CHECK-BINDINGS.md)을 완료했다. 원본 보존 새 후보/정확한 source CAS/immutable annotation/API는 구현했으며 편집 UI(b2)·실제 worker 소비(b3)는 아래 상위 체크와 함께 미완료다.
 
-- [ ] 자연어 Step 하나는 여러 gesture가 될 수 있다. logical step 순번을 plan line 순번과 임의로 동일시하지 않는다. 승인된 mapping이 없으면 required step check를 성공 처리하지 않는다. AI recording annotation/사후 검토 mapping의 불변 owner·저장/UI를 별도 구현 단위로 정한다.
+- [ ] 자연어 Step 하나는 여러 gesture가 될 수 있다. logical step 순번을 plan line 순번과 임의로 동일시하지 않는다. 승인된 mapping이 없으면 required step check를 성공 처리하지 않는다. 저장·검토 UI는 [B2.3b2](CHECK_BINDING_EDITOR_TASKS.md)다. 키보드와 화면 폭 확인이 남아 있다.
 b3a exact package annotation 공급·조기 검증은 [인계](../validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md)로 완료했다. typed pin 수신은 평가/PASS가 아니며 worker 경계 평가·hierarchy·normalized 저장은 [다음 구현](CHECK_BINDING_RUNTIME_TASKS.md)의 b3b/c다. 상위 체크와 전체 RX87은 유지한다.
 
 ### B2.3c · 실제 평가와 정규화 결과 저장

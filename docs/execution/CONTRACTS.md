@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+RX-87 검증 연결 편집: 녹화 페이지는 검증 시점 후보만 저장한다. 실행 적용은 아직 지원하지 않으며, 승인된 연결이 없으면 단계 검증을 성공으로 처리하지 않는다. 저장 manifest hash가 다음 CAS이고 검토 링크는 그 version만 연다. 새 후보는 승인이 아니다.
+
 RX-87 fixture check: `require_case_context`가 꺼진 Android replay는 `context.checks`를 제품 판정이나 모델 호출로 쓰지 않는다. 서버 pin 평가는 그 경로가 켜진 replay만 한다. replay worker 호출과 `model_call_facts`는 모두 0이다. 실기기 수용은 RX-23이다.
 
 RX-87 상위 대조: OFF 반복, locator만 복구, episode 상한, 취소·임대, OFF0/ON/소진/실패/재사용은 로컬 증명으로 체크했다. replay 모델 호출량과 RX-98 서버 gate의 일치, 그리고 `require_case_context`가 꺼진 경로의 fixture check 분리는 아직이다.

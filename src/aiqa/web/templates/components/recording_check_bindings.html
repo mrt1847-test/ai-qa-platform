@@ -1,7 +1,7 @@
 <details class="panel" id="recording-check-bindings-panel">
 <summary>Assertion 세부 설정</summary>
 {% if check_binding_context %}
-<p class="hint">검증 시점과 대상을 저장합니다. 실행 적용은 준비 중입니다.</p>
+<p class="hint">검증 시점과 대상을 저장합니다. 실행 적용은 아직 지원하지 않습니다. 승인된 연결이 없으면 단계 검증을 성공으로 처리하지 않습니다.</p>
 <form id="recording-check-bindings" action="/api/v1/projects/{{ project_id }}/recordings/{{ recording_id }}/check-bindings" data-recording-url="/ui/projects/{{ project_id }}/recordings/{{ recording_id }}" data-review-url="/ui/projects/{{ project_id }}/cases/{{ case_id }}/review" novalidate>
 {% for step in check_binding_context.logical_steps %}
 {% set matched=check_binding_context.bindings.step_boundaries|selectattr('step_id','equalto',step.id)|list %}

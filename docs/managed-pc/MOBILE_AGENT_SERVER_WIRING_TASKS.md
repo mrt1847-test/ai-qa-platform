@@ -2,7 +2,7 @@
 
 2026-11-15 Asia/Seoul. 실제 source/main/Luna/4동작 AI0 재생의 로컬 증거는 AI-LIVE-03이며 재실행하지 않는다. 이 카드는 그 재사용 engine을 정상 제품 요청에 연결하는 구현이다. 로컬 증거를 서버 수용으로 승격하지 않는다. 사용자 DB/기존 UI dirty/기존 승인/FAIL을 보존한다.
 
-> Use superpowers:executing-plans, TDD. MA-01은 AI-LIVE-04-MA01 인계로 완료했고 MA02a/b는 AI-LIVE-04-MA02 인계로 완료했고 MA03a는 AI-LIVE-04-MA03A 인계로 완료했고 MA03b는 AI-LIVE-04-MA03B2B2 인계로 완료했고 MA04a는 AI-LIVE-04-MA04A 인계로 완료했고 MA04c2 운영 factory/지원 보고/admission/선택PC claim 완료 후 현재 준비 단위는 MA05a다. 각 단위에서 소유 계약/인계/큐를 갱신하고 독립 미완료 단위를 이어간다. 실제 키·기기·독립 서버가 없어도 transport/HTTP/ADB fixture로 구현한다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
+> Use superpowers:executing-plans, TDD. MA-01부터 MA04c2, MA05a1–a4, MA05b1–b2, RX-88~90과 검증 연결 편집은 각각 인계로 완료했다. 현재 남은 실행은 독립 서버·OIDC·AVD/브라우저·운영 키가 확인된 뒤의 실환경 수용이다. 그 수용을 fixture 성공으로 완료 처리하지 않는다. 유료 재시험은 별도 명시 요청/승인 없이는 반복하지 않는다.
 
 ## MA-01 · 정상 provider factory에 OpenAI 모드 연결
 
@@ -39,7 +39,7 @@ MA04c의 직접 입력은 MA04b2 인계/session result와 기존 android_jobs �
 
 ## MA-05 · 승인본 실행과 정상 웹 여정
 
-현재 [MA05a 실패 저장 상태/증거](MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md)를 먼저 구현한다. normal source/finish 성공을 실패/unknown 저장까지 완료한 것으로 확대하지 않는다.
+[MA05a 실패 저장](MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md)과 MA05b 검토·같은 package AI0는 인계로 끝났다. 아래 부모 항목의 실환경 수용은 아직 시작하지 않는다.
 
 - [ ] 정상 REC 접수→claim→원본 main→서버 증거/manifest→저장본 검토를 fixture API+원본 main으로 확인한다. worker offline에 조회/검토가 가능해야 한다. 사람이 실제 승인하기 전 실제 승인됐다고 기록하지 않는다.
 - [ ] 승인 package ITEM/trial/regression은 기존 deterministic runner의 AI0/healing OFF 경로를 사용한다. 정상 DB source/package/witness/pin을 검증하고 표시 코드/좌표를 추정 재작성하지 않는다. 검증/치유 호출은 승인 지점·정책·C/D만 허용한다.
@@ -47,6 +47,6 @@ MA04c의 직접 입력은 MA04b2 인계/session result와 기존 android_jobs �
 
 ## 보존할 독립 작업
 
-B2.3b2 편집 UI는 기존 미커밋 구현과 CHECK_BINDING_EDITOR_TASKS.md를 보존한다. 원본 engine 서버 연결을 우선하고, model/secret/lease 변경과 충돌하지 않는 UI 작업은 독립 수행 가능하다. 이후 b3/c hierarchy·정규화 결과와 C/D, RX88~90를 이어간다. RX 전체 완료 수는 올리지 않는다.
+B2.3b2 편집, b3/c 평가·저장, C/D, RX-88~90은 각각 인계로 끝났다. RX 전체 완료 수와 RX-23은 올리지 않는다.
 
 Ruling: 설정의 명시 openai는 해당 서버 프로세스의 선택이고 key/binding은 기존 서버 비밀 참조를 이용한다. 로컬 env 키를 자동 수입하지 않는다. 비용: 정상 제품용 비밀 등록/권한 연결은 별도 수용이 필요하다.

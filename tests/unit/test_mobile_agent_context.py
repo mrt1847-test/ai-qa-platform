@@ -50,6 +50,14 @@ def test_server_goal_and_real_original_prompt_with_1000_square_images():
     assert 'file://' not in json.dumps(messages) and 'image_hash' not in json.dumps(messages)
 
 
+def test_visual_assertion_sentence_is_in_the_recording_goal_and_is_not_a_pass():
+    from aiqa.models.mobile_agent_context import mobile_agent_instruction
+    goal=replace(intent(),final_expected=({'id':'look','kind':'visual','expected':'상품 이미지와 가격이 표시된다'},))
+    text,_=mobile_agent_instruction(goal)
+    assert 'final:look:visual:상품 이미지와 가격이 표시된다' in text
+    assert 'PASS' not in text and 'satisfied' not in text
+
+
 def test_older_turns_become_original_summaries_and_only_four_history_images():
     build,Turn=api();history=tuple(Turn(reply(summary='Action '+str(i)),None if i<2 else frame()) for i in range(6))
     messages=build(intent=intent(),current=frame(),history=history).messages()

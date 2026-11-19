@@ -123,6 +123,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [정의 저장](docs/validation/tasks/RX-87-DEFINITION-VISUAL.md): 화면 의미는 `kind=visual`로 저장되고, 시각 검증 정책이 없으면 unknown이다. 평가10pass, 편집기1pass. 다음은 녹화 목표에 그 문장을 싣는 일이다.
 
+[녹화 목표](docs/validation/tasks/RX-87-GOAL-ASSERTION.md): `kind=visual` 문장은 목표에 실리고 PASS로 적히지 않는다. 1pass0.19s. 다음은 연결 없는 AI 검증 저장 거부다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**녹화 목표의 Assertion 문장.** 정의 화면의 화면 의미 저장은 기록했다.
+**시각 검증 연결 없는 저장 거부.** 녹화 목표의 화면 의미 문장은 기록했다.
 
-[정의 저장](docs/validation/tasks/RX-87-DEFINITION-VISUAL.md)은 화면 의미 문장을 `kind=visual`로 저장하고, 시각 검증 정책이 없으면 unknown으로 둔다는 기록이다.
+[녹화 목표](docs/validation/tasks/RX-87-GOAL-ASSERTION.md)는 `kind=visual` 문장이 목표에 실리고 PASS로 적히지 않는다는 기록이다.
 
-다음은 그 문장이 녹화 목표 프롬프트에 그대로 들어가 Mobile-Agent가 읽고 `terminate`를 고르게 하는지다. 재생 성공으로 바꾸지 않는다. RX-21·RX-23·RX-24는 이 작업으로 완료 처리하지 않는다.
+다음은 케이스 실행 설정에서 AI 화면 검증을 고르고 연결이 없으면 요청 전에 저장을 거절하는 일이다. 연결 없이는 성공으로 처리하지 않는다. RX-21·RX-23·RX-24는 이 작업으로 완료 처리하지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

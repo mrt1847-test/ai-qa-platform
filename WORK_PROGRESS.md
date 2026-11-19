@@ -99,7 +99,9 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 fixture check](docs/validation/tasks/RX-87-FIXTURE-CHECKS.md): 정적 check는 제품 판정이 아니고 replay 모델 호출과 서버 기록은 모두 0이다. 관련8pass1.89s. 상위 완료 수와 RX-23은 유지한다.
 
-[RX-87 검증 연결 편집](docs/validation/tasks/RX-87-B2-CHECK-BINDING-EDITOR.md): 녹화 폼은 후보 저장만 하고 실행 적용은 아직 없다고 표시한다. 1024·1440에서 저장과 version 검토가 되었고 승인 버튼은 비활성이었다. 원본 연결 문서의 다음 단위는 끝난 MA05를 가리키지 않는다.
+[RX-87 검증 연결 편집](docs/validation/tasks/RX-87-B2-CHECK-BINDING-EDITOR.md): 녹화 폼은 후보 저장만 하고 실행 적용은 아직 없다고 표시한다. 1024·1440에서 저장과 version 검토가 되었고 승인 버튼은 비활성이었다.
+
+[자식 종료](docs/validation/tasks/AI-LIVE-04-CHILD-CLOSED.md): 모델 응답 뒤 자식이 종료되면 native 전송은 0이고 사유는 `child_closed`다. 1pass0.77s. handler 연결과 실환경 수용은 유지한다.
 
 ## 1. 현재 상태
 

@@ -202,6 +202,8 @@ B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·ex
 
 RX-87 검증 연결 편집: 녹화 페이지는 검증 시점 후보만 저장한다. 실행 적용은 아직 지원하지 않으며, 승인된 연결이 없으면 단계 검증을 성공으로 처리하지 않는다. 저장 manifest hash가 다음 CAS이고 검토 링크는 그 version만 연다. 새 후보는 승인이 아니다.
 
+원본 자식이 모델 응답 뒤에 파이프를 닫으면 부모는 `child_closed`로 멈춘다. 그 경로의 native 전송은 0이고, 같은 자식을 다시 실행해 재클릭하지 않는다.
+
 RX-87 fixture check: `require_case_context`가 꺼진 Android replay는 `context.checks`를 제품 판정이나 모델 호출로 쓰지 않는다. 서버 pin 평가는 그 경로가 켜진 replay만 한다. replay worker 호출과 `model_call_facts`는 모두 0이다. 실기기 수용은 RX-23이다.
 
 RX-87 상위 대조: OFF 반복, locator만 복구, episode 상한, 취소·임대, OFF0/ON/소진/실패/재사용은 로컬 증명으로 체크했다. replay 모델 호출량과 RX-98 서버 gate의 일치, 그리고 `require_case_context`가 꺼진 경로의 fixture check 분리는 아직이다.

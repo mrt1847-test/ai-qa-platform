@@ -180,3 +180,11 @@ def test_malformed_child_sequence_stops_before_extra_callbacks(tmp_path,monkeypa
     r=run_mobile_agent_process(output=tmp_path/'process',instruction='Wait',capture=capture,model=model,dispatch=dispatch,secrets=(),max_steps=3)
     assert len(captures)==1 and len(models)==(0 if violation=='double_capture' else 1)
     assert r.reason in {'capture_order','model_order'} and not r.ambiguous_dispatch
+
+
+def test_child_crash_after_model_never_dispatches(tmp_path,monkeypatch):
+    children=_scripted_child(monkeypatch,"rpc('capture',{'path':path})\np=load_protocol()\nmessages=p.build_messages(path,tag+' ('+config['instruction']+')',[],'gpt-6-luna')\nrpc('model',{'messages':messages})\nimport os\nos._exit(1)\n")
+    r,seen,native=call(tmp_path)
+    assert r.status=='stopped' and r.reason=='child_closed'
+    assert native==[] and len(seen)==1 and r.native_actions==0 and not r.ambiguous_dispatch
+    assert children[0].poll() not in (None,0)

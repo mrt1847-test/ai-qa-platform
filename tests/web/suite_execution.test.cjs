@@ -12,7 +12,11 @@ function host(request, count=2, selection=false) {
   const form=new N();form.dataset={project:'p',version:'saved-v1',count:String(count)};
   form.elements={namedItem:n=>fields[n]};
   const rows=Array.from({length:count},(_,i)=>{const row=new N();row.dataset={entryId:'case-'+i,version:'approved-'+i,approval:'approval-'+i};const rowFields={environment_revision_id:new N('env-'+i),resource_id:new N('resource-'+i),dataset_version_id:new N('')};row.querySelector=s=>rowFields[s.match(/name="([^"]+)"/)[1]];return row;});
-  form.querySelectorAll=s=>s==='[data-execution-item]'?rows:Object.values(fields);
+  form.querySelectorAll=s=>{
+    if(s==='[data-execution-item]')return rows;
+    if(s==='[data-exclusion]')return form.exclusions||[];
+    return Object.values(fields);
+  };
   form.reportValidity=()=>true;
   const nodes={'suite-execution':form,'preview-suite':new N(),'enqueue-suite':new N(),'suite-status':new N(),'suite-blockers':new N(),'suite-items':new N()};
   if(selection){nodes['suite-execution']=null;nodes['selection-execution']=form;form.dataset.source='selection';['preview','enqueue','status','blockers','items'].forEach(n=>{const id=n==='preview'||n==='enqueue'?n+'-suite':'suite-'+n;const next=n==='preview'||n==='enqueue'?n+'-selection':'selection-'+n;nodes[next]=nodes[id];});}
@@ -106,6 +110,22 @@ test('formal healing stays off until checked and a healing block never enables a
   assert.match(ready.nodes['suite-items'].children[0].textContent,/키 고정 · 예산 0.50 · episode 1 · 호출 2 · 30초/);
   assert.match(ready.nodes['suite-status'].textContent,/서버가 이 승인본에 고정/);
   assert.equal(ready.nodes['enqueue-suite'].disabled,false);
+});
+
+test('a checked exclusion needs a reason and a confirmed exclusion is not a full run',async()=>{
+  const h=host(()=>preview({resolved_items:[resolved[0]],exclusions:[{entry_id:'case-1',reason:'이번 배포에서 제외'}]}));
+  const box={checked:true};
+  const reason={value:''};
+  h.nodes['suite-execution'].exclusions=[{getAttribute:()=>'case-1',querySelector:sel=>sel==='[data-exclude]'?box:reason}];
+  await h.preview();
+  assert.equal(h.calls.length,0);
+  assert.match(h.nodes['suite-status'].textContent,/사유 없는 제외/);
+  reason.value='이번 배포에서 제외';
+  await h.preview();
+  assert.deepEqual(h.calls[0].body.exclusions,[{entry_id:'case-1',reason:'이번 배포에서 제외',confirmed:true}]);
+  assert.match(h.nodes['suite-status'].textContent,/실행 1개, 제외 1개/);
+  assert.match(h.nodes['suite-status'].textContent,/실행 성공이 아닙니다/);
+  assert.equal(h.nodes['enqueue-suite'].disabled,false);
 });
 
 test('selected regression sends every explicit row with its pinned approval and chosen resource',async()=>{

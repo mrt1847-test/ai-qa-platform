@@ -589,8 +589,21 @@ def execution_page_fields(
         "suite_version_id": suite["suite_version_id"],
         "suite_name": suite["suite_name"],
         "suite_revision_label": suite["suite_revision_label"],
+        "exclusions": _execution_exclusions(connection, project_id, execution_id),
         **lineage_fields(connection, project_id, execution_id),
     }
+
+
+def _execution_exclusions(connection: object, project_id: UUID, execution_id: UUID) -> list[dict[str, str]]:
+    rows = connection.execute(  # type: ignore[attr-defined]
+        """
+        SELECT entry_id, reason FROM execution_exclusions
+        WHERE project_id = ? AND execution_id = ?
+        ORDER BY entry_id
+        """,
+        (str(project_id), str(execution_id)),
+    ).fetchall()
+    return [{"entry_id": str(row[0]), "reason": str(row[1])} for row in rows]
 
 
 def _suite_revision(connection: object, project_id: UUID, suite_version_id: object) -> dict[str, str]:

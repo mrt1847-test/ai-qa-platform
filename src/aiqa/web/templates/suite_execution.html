@@ -36,7 +36,7 @@
       <h2>저장된 실행 대상</h2>
       <ol>
       {% for entry in entries %}
-        <li>{{ entry.entry_id }} · {{ entry.target_kind }} · 데이터 {{ entry.data_name }}
+        <li data-exclusion data-entry-id="{{ entry.entry_id }}">{{ entry.entry_id }} · {{ entry.target_kind }} · 데이터 {{ entry.data_name }}
           <details><summary>고정된 승인본·환경·기기 확인</summary>
             <dl>
               <dt>케이스 버전</dt><dd>{{ entry.case_version_id }}</dd>
@@ -46,6 +46,8 @@
               <dt>초기화</dt><dd>{{ entry.reset_policy }}</dd>
             </dl>
           </details>
+          <label><input type="checkbox" data-exclude>이번 실행에서 제외</label>
+          <label>제외 사유 <input data-exclude-reason maxlength="200" autocomplete="off"></label>
         </li>
       {% endfor %}
       </ol>

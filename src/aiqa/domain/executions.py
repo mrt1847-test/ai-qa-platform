@@ -191,7 +191,7 @@ def enqueue_execution(
                 raise JobConflict("idempotency body does not match")
         return _stored_receipt(tx, project_id, str(existing[2]), str(existing[1]))
     preview = preview_execution(tx, actor, project_id, _preview_payload(payload))
-    if not preview.ready:
+    if not preview.ready or preview.silent_exclusions:
         raise ExecutionRejected("trial is not ready")
     if payload.get("preview_hash") != preview.preview_hash:
         raise JobConflict("preview is stale")
@@ -217,6 +217,14 @@ def enqueue_execution(
             requested_at,
         ),
     )
+    for excluded in preview.exclusions:
+        tx.connection.execute(
+            """
+            INSERT INTO execution_exclusions (project_id, execution_id, entry_id, reason)
+            VALUES (?, ?, ?, ?)
+            """,
+            (str(project_id), str(execution_id), excluded.entry_id, excluded.reason),
+        )
     job_ids: list[UUID] = []
     item_ids: list[UUID] = []
     for item in preview.resolved_items:
@@ -1205,8 +1213,9 @@ def _confirmed_exclusions(payload: dict[str, object]) -> dict[str, str]:
         reason = item.get("reason")
         if type(entry) is not str or entry.strip() == "":
             raise ExecutionRejected("exclusion is invalid")
-        if item.get("confirmed") is True and type(reason) is str and reason.strip() != "":
-            confirmed[entry] = reason.strip()
+        if item.get("confirmed") is not True or type(reason) is not str or reason.strip() == "":
+            raise ExecutionRejected("exclusion reason is required")
+        confirmed[entry] = reason.strip()
     return confirmed
 
 
@@ -1504,13 +1513,15 @@ def _preview_payload(payload: dict[str, object]) -> dict[str, object]:
             "release_label": payload.get("release_label"),
         }
     items = payload.get("items")
-    if type(items) is not list:
+    selection = payload.get("selection")
+    chosen = selection.get("items") if type(selection) is dict and type(selection.get("items")) is list else items
+    if type(chosen) is not list:
         raise ExecutionRejected("item is invalid")
     return {
         "name": payload.get("name"),
         "purpose": payload.get("purpose"),
         "source": payload.get("source"),
-        "selection": {"items": items},
+        "selection": {"items": chosen},
         "self_healing_enabled": _healing_enabled(payload),
         "release_label": payload.get("release_label"),
         "failure_policy": payload.get("failure_policy"),

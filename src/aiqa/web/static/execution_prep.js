@@ -62,7 +62,15 @@
         ? '켜짐 · episode ' + shown(healing.max_episodes_per_item) + ' · 호출 ' + shown(healing.max_model_calls_per_item) + ' · ' + shown(healing.max_seconds) + '초 · 예산 ' + shown(healing.budget)
         : '꺼짐');
     });
+    (body.exclusions || []).forEach(function (item) {
+      line(list, item.entry_id + ' 제외', item.reason);
+    });
     node.appendChild(list);
+    if ((body.exclusions || []).length) {
+      var warning = document.createElement('p');
+      warning.textContent = '제외한 항목은 실행되지 않습니다. 실행 성공이 아닙니다.';
+      node.appendChild(warning);
+    }
   }
 
   window.aiqaPrep = {

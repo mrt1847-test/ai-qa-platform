@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+RX-90 후속: 묶음·선택 준비에서 체크와 사유가 함께 있을 때만 `confirmed` 제외가 된다. 그 항목과 사유는 `execution_exclusions`에 남고 실행 항목에서는 빠진다. 사유가 없거나 `silent_exclusions`가 있으면 접수하지 않는다. 수행 화면은 제외 건수를 실행 성공과 따로 보여 준다.
+
 RX-90: 시범·선택·묶음·재실행 준비는 1대상, 2환경·데이터, 3사전 점검, 4최종 확인을 같은 순서로 연다. 최종 확인의 버전·승인·환경·기기·배포·초기화·실패 정책·검증 방식·행동/검증 호출 상한·복구 상한은 preview `confirmation`의 값이다. 호출 상한은 예상이며 실제 비용이 아니다. 검사 전 최종 확인과 조용한 제외로는 접수하지 않는다. 명시 제외 사유 화면은 후속이다.
 
 RX-89: 묶음/선택 정식 준비의 healing 토글은 기본 OFF다. 켠 요청만 preview가 승인 capability·키·예산·episode/호출/시간 상한과 항목별 차단을 반환하고, 그 차단이 있으면 접수 버튼을 열지 않는다. 변경은 다시 검사하고, 응답 유실의 재시도는 같은 요청이다. trial 토글은 비활성이며 진행 중 수행 화면의 토글은 실행 중에 바뀌지 않는다. 서버가 ready로 주지 않은 복구 성공을 표시하지 않는다.

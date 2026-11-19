@@ -16,7 +16,7 @@
     <p class="hint">기본은 꺼져 있습니다. 승인된 복구 범위·키·예산·상한이 있을 때만 켤 수 있으며, 시범에서는 켜지지 않습니다.</p>
   </section>
   {% for item in choices %}
-  <section class="panel" data-prep-panel="2" aria-label="{{ item.name }} 실행 대상" data-execution-item data-entry-id="{{ item.case_id }}" data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">
+  <section class="panel" data-prep-panel="2" data-exclusion data-entry-id="{{ item.case_id }}" aria-label="{{ item.name }} 실행 대상" data-execution-item data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">
     <h2>{{ loop.index }}. {{ item.name }}</h2>
     <p>{{ 'Android' if item.target_kind == 'android' else 'Web' }} · {% if item.version_id %}승인 버전 v{{ item.revision }}{% else %}승인 전{% endif %}</p>
     {% if item.problem %}<p role="status">{{ item.problem }} <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">저장본 검토</a> · <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/execution-setup">시범 준비</a></p>{% endif %}
@@ -25,6 +25,8 @@
     <label>실행 기기 <select name="resource_id" required><option value="">기기 선택</option>{% set saved = namespace(found=false) %}{% for resource in resources %}{% if resource.target_kind == item.target_kind %}<option value="{{ resource.resource_id }}"{% if resource.resource_id|string == item.resource_id|string %}{% set saved.found=true %} selected{% endif %}>{{ resource.display_name }} · {{ resource.state_label }} · {{ resource.connection_label }}</option>{% endif %}{% endfor %}{% if item.resource_id and not saved.found %}<option value="{{ item.resource_id }}" selected>저장된 기기 · {{ item.resource_id }} (검사 필요)</option>{% endif %}</select></label>
     <label>데이터 <select name="dataset_version_id"><option value="">데이터 없음</option>{% set saved = namespace(found=false) %}{% for data in datasets %}<option value="{{ data.version_id }}"{% if data.version_id|string == item.dataset_version_id|string %}{% set saved.found=true %} selected{% endif %}>{{ data.name }} · v{{ data.revision }}</option>{% endfor %}{% if item.dataset_version_id and not saved.found %}<option value="{{ item.dataset_version_id }}" selected>저장된 데이터 개정 · {{ item.dataset_version_id }} (검사 필요)</option>{% endif %}</select></label>
     <a href="/ui/projects/{{ project_id }}/environments">환경·기기 관리</a>
+    <label><input type="checkbox" data-exclude>이번 실행에서 제외</label>
+    <label>제외 사유 <input data-exclude-reason maxlength="200" autocomplete="off"></label>
   </section>
   {% endfor %}
   <section class="panel" data-prep-panel="3" aria-label="사전 점검">

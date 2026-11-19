@@ -32,6 +32,19 @@
     var node = form.elements.namedItem('healing_enabled');
     return !!(node && node.checked && !node.disabled);
   }
+  function readExclusions() {
+    var missing = false;
+    var items = [];
+    Array.from(form.querySelectorAll('[data-exclusion]')).forEach(function (node) {
+      var box = node.querySelector('[data-exclude]');
+      if (!box || !box.checked) return;
+      var reasonNode = node.querySelector('[data-exclude-reason]');
+      var reason = reasonNode ? reasonNode.value.trim() : '';
+      if (!reason) missing = true;
+      else items.push({entry_id: node.getAttribute('data-entry-id'), reason: reason, confirmed: true});
+    });
+    return {items: items, missing: missing};
+  }
   function read() {
     var selection = {suite_version_id: form.dataset.version};
     if (source === 'selection') selection = {items: rows.map(function (row) {
@@ -44,7 +57,7 @@
     return {
       name: value('name'), purpose: 'regression', source: source,
       failure_policy: value('failure_policy'), release_label: value('release_label'),
-      self_healing_enabled: healingRequested(), exclusions: [],
+      self_healing_enabled: healingRequested(), exclusions: readExclusions().items,
       selection: selection
     };
   }
@@ -74,6 +87,8 @@
   check.addEventListener('click', async function () {
     if (preparing || sending || gate.pending()) return;
     if (!validCount) { status.textContent = '저장된 구성이 1~100개인 묶음을 선택하세요.'; return; }
+    var exclusion = readExclusions();
+    if (exclusion.missing) { status.textContent = '제외할 항목의 사유를 입력하세요. 사유 없는 제외는 접수하지 않습니다.'; return; }
     if (!form.reportValidity()) return;
     var payload = read(), serialized = JSON.stringify(payload), stamp = generation;
     if (!payload.name) { status.textContent = '실행 이름을 입력하세요.'; return; }
@@ -110,20 +125,24 @@
         blockers.appendChild(li);
       });
       var resolved = body.resolved_items || [];
+      var excluded = (body.exclusions || []).length;
       resolved.forEach(function (item) {
         var li = document.createElement('li');
         li.textContent = item.entry_id + ' · 승인본 ' + item.case_version_id + ' · 기기 ' + item.resource_id + healingSummary(item);
         items.appendChild(li);
       });
-      if (!body.ready || (body.blockers || []).length || resolved.length !== count || !body.preview_hash ||
-          (body.exclusions || []).length || body.silent_exclusions) {
-        status.textContent = '전체 구성이 준비되지 않았습니다. 위 항목을 보완한 뒤 다시 확인하세요.';
+      if (!body.ready || (body.blockers || []).length || body.silent_exclusions ||
+          resolved.length !== count - excluded || resolved.length < 1 || !body.preview_hash) {
+        status.textContent = body.silent_exclusions
+          ? '조용히 빠진 항목이 있습니다. 제외할 항목과 사유를 직접 고르세요.'
+          : '전체 구성이 준비되지 않았습니다. 위 항목을 보완한 뒤 다시 확인하세요.';
         return;
       }
       prepared = {payload: payload, preview: body};
       enqueue.disabled = false;
       if (window.aiqaPrep) window.aiqaPrep.showFinal(body);
-      status.textContent = '전체 ' + resolved.length + '개가 준비되었습니다. '
+      status.textContent = '실행 ' + resolved.length + '개'
+        + (excluded ? ', 제외 ' + excluded + '개. 제외는 실행 성공이 아닙니다. ' : '. ')
         + (body.self_healing_enabled === true ? '자동 복구 조건은 서버가 이 승인본에 고정했습니다. ' : '자동 복구는 꺼져 있습니다. ')
         + '실행 버튼을 누르면 접수합니다.';
     } catch (_) {
@@ -145,8 +164,10 @@
           return Object.assign({}, choice, item);
         })
       });
-      if (source === 'suite') frozen.suite_version_id = form.dataset.version;
-      delete frozen.selection;
+      if (source === 'suite') {
+        frozen.suite_version_id = form.dataset.version;
+        delete frozen.selection;
+      }
       locked = Array.from(form.querySelectorAll('input,select')).filter(function (node) { return !node.disabled; });
       locked.forEach(function (node) { node.disabled = true; });
     }

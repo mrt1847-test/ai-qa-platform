@@ -158,10 +158,9 @@
 
 **직접 선행** RX-90. **계약** C00/C01/C09/C14. **환경** local_python, local_browser.
 
-- [ ] 준비 화면에서 항목과 사유를 고르면 그 제외만 snapshot에 남긴다. 사유 없는 제외와 조용한 제외는 접수를 열지 않는다.
-- [ ] 일부 항목만 실행된 상태를 전체 성공으로 표시하지 않는다.
+- [x] 준비 화면에서 항목과 사유를 고르면 그 제외만 snapshot에 남긴다. 사유 없는 제외와 조용한 제외는 접수를 열지 않는다.
+- [x] 일부 항목만 실행된 상태를 전체 성공으로 표시하지 않는다.
 **인계** docs/validation/tasks/RX-90-EXCLUSIONS.md.
-**인계** docs/validation/tasks/RX-90.md.
 
 <a id="rx-91"></a>
 ## RX-91 · 녹화 intent 검증 오류의 원자적 거절과 W31 fixture 동기화

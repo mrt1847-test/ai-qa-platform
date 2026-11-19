@@ -12,7 +12,11 @@
   <p>묶음 {{ suite_name|default('') }} · 개정 {{ suite_revision_label|default('') }}</p>
   <p>요청자 {{ requester }}</p>
   <p>환경 {{ environment }} · 빌드 {{ build }}</p>
-  <p>종료 {{ finished_count|default(0) }} · 성공 {{ pass_count|default(0) }}</p>
+  <p>종료 {{ finished_count|default(0) }} · 성공 {{ pass_count|default(0) }} · 실행 {{ items|length }} · 제외 {{ exclusions|default([])|length }}</p>
+  {% if exclusions|default([]) %}
+  <p>제외는 실행 성공이 아닙니다.</p>
+  <ul aria-label="제외한 항목">{% for item in exclusions %}<li>제외 {{ item.entry_id }} · {{ item.reason }}</li>{% endfor %}</ul>
+  {% endif %}
   <p>전체 취소는 대기 항목을 끝내고, 진행 항목은 취소 요청입니다.</p>
   <p>취소 요청, 정지, 정리는 서로 다릅니다. 정리는 정리가 끝난 뒤입니다.</p>
   <p>완료된 항목은 바꾸지 않습니다. 실패는 유지합니다.</p>

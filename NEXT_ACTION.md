@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**후속 — 실행 항목의 명시 제외와 사유.** RX-90 공통 4단계와 최종 확인은 기록했다.
+**실환경 수용은 외부 대기입니다.** 이 큐의 명시 제외까지 기록했다. RX-87 Android healing 소비는 아직 열려 있다.
 
-[명시 제외](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90-exclusions)를 수행한다. 준비 화면에서 고른 항목과 사유만 snapshot에 남긴다. 사유 없는 제외와 조용한 제외는 접수를 열지 않고, 일부 실행을 전체 성공으로 표시하지 않는다.
+독립 서버·OIDC·AVD/브라우저·운영 키가 확인되기 전에는 RX-21·RX-23·RX-24를 진행하지 않는다. 로컬 fixture 성공으로 그 수용을 완료 처리하지 않는다.
 
-[RX-90](docs/validation/tasks/RX-90.md)은 시범·선택·묶음·재실행의 4단계와 서버 confirmation 상한 표시를 기록했다. 그 확인은 실제 비용이나 복구 성공이 아니다.
+[명시 제외](docs/validation/tasks/RX-90-EXCLUSIONS.md)는 사유가 있는 항목만 실행에서 빼고 그 사유를 수행에 남긴다. 제외는 실행 성공이 아니다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

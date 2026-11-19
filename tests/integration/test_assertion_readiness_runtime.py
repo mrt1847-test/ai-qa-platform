@@ -96,3 +96,28 @@ def test_managed_source_check_mismatch_is_failed_without_healing(model_job,tmp_p
     result=handler._verify_and_heal(_observation(),action_index=1,total_actions=1)
     assert not result.success and result.check_results[0].status=='violated'
     assert handler.healer_calls==0 and calls==[]
+
+
+def test_screen_sentence_uses_visual_verification_without_a_resource(model_job,tmp_path):
+    job,pin=pin_with_checks(model_job['job'],method='ai_visual')
+    handler,calls=_replay(tmp_path);handler.context.require_case_context=True
+    handler._case_context=replace(pin,steps=())
+    handler._check_binding_pin=None
+    handler._native_source=SimpleNamespace(steps=(SimpleNamespace(action_id='source'),))
+    seen=[]
+    class Client:
+        def evaluate_replay_check(self,*,payload,idempotency_key):
+            seen.append(payload['check_id'])
+            return {'provider_dispatched':True,'replayed':False,'result':{'status':'satisfied','reason':'screen_match','observed_at':payload['captured_at']}}
+    observation=_observation()
+    handler.context.verification_client=Client()
+    handler._current_after_artifact='after-1'
+    handler._current_action_id='source'
+    handler._active_claim=job
+    from aiqa.contracts.jobs import ControlDecision
+    handler.context.remote_checkpoint=lambda phase:ControlDecision(True,phase)
+    result=handler._verify_and_heal(observation,action_index=1,total_actions=1)
+    row=result.check_results[0]
+    assert seen==['final-required'] and row.status=='satisfied' and row.method=='ai_visual'
+    assert row.reason=='screen_match' and handler.verifier_calls==1
+    assert handler.authoring_calls_seen==handler.healer_calls==0 and calls==[]

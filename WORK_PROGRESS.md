@@ -119,6 +119,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [동작 안 대기](docs/validation/tasks/RX-87-IN-ACTION-WAIT.md): 탭·스와이프·입력·키는 별도 wait 없이 입력 전에 화면을 보고 한 번만 보낸다. 관련7pass2.02s. 다음은 재생 Assertion의 unknown 판정이다.
 
+[화면 의미](docs/validation/tasks/RX-87-SCREEN-ASSERTION.md): 리소스 없는 최종 문장은 `ai_visual`에서 시각 검증 한 번으로 판정된다. authoring·healer·추가 입력은 0이다. 관련8pass2.44s. 정의 화면 저장 연결은 다음이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -233,3 +233,25 @@ def test_invalid_durable_owner_is_rejected_before_any_model_or_native(engine_job
             expected_serial='fixture-serial',checkpoint=lambda phase:True,allowed=lambda:True)
     assert driver.native_calls==0 and engine_job['openai_sent']==[]
     assert not (tmp_path/'session').exists()
+
+
+def test_child_closed_after_model_does_not_send_or_seal(engine_job,tmp_path,monkeypatch):
+    import sys
+    import aiqa.worker.mobile_agent_process as process
+    start=subprocess.Popen
+    children=[]
+    prelude="import sys,time,json\nfrom aiqa.worker.mobile_agent_ipc import read_packet,write_packet\nfrom aiqa.adapters.mobile_agent_upstream import load_protocol\nconfig=read_packet(sys.stdin.buffer)\nsequence=0\ntag='AIQA_'+'a'*32+'_'*43\npath=tag+'/screenshot_0.png'\ndef rpc(op,payload):\n    global sequence\n    sequence+=1\n    write_packet(sys.stdout.buffer,{'v':1,'id':sequence,'op':op,'payload':payload})\n    return read_packet(sys.stdin.buffer)['result']\n"
+    body="rpc('capture',{'path':path})\np=load_protocol()\nmessages=p.build_messages(path,tag+' ('+config['instruction']+')',[],'gpt-6-luna')\nrpc('model',{'messages':messages})\nimport os\nos._exit(1)\n"
+    def track(*args,**kwargs):
+        child=start([sys.executable,'-B','-c',prelude+body],**kwargs)
+        children.append(child);return child
+    monkeypatch.setattr(process.subprocess,'Popen',track)
+    c,session,sent=prepare(engine_job,tmp_path)
+    with c:result=session.run()
+    assert result.outcome=='failed' and result.reason=='child_closed'
+    assert sent==[] and result.native_actions==0 and result.model_requests==1
+    assert not result.ambiguous_dispatch and result.action_mapping=='{}' and not result.review_pending
+    assert children[0].poll() not in (None,0)
+    with sqlite3.connect(engine_job['database']) as db:
+        assert db.execute("SELECT COUNT(*) FROM artifact_objects WHERE role='source'").fetchone()[0]==0
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0

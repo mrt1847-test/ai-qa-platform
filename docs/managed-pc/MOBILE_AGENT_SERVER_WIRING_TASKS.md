@@ -26,7 +26,7 @@ MA03b(B1 context/명시 포트 완료; [인계](../validation/tasks/AI-LIVE-04-M
 
 
 - [x] 원본 main은 worker API 서버의 thread/cwd에서 실행하지 않는다. worker 전용 subprocess에 원본 engine을 두고 bounded typed capture/model/native IPC를 만든다. 실제 키/비밀 원문을 worker·child argv/환경/로그에 보내지 않는다. 실행 ID·case input/version·target·geometry pin과 부모 승인 callback만 전달한다.
-- [ ] MA03b의 서버 소유 원본 대화/이미지/receipt 이력과 MA04의 durable journal/evidence ACK를 정상 handler에 연결한다. MA03a 부모의 현재 allowed/before_send·한도·단계 대조는 완료했다. 중지/timeout/불명 전송의 재클릭 0은 기존 검사다. 모델 응답 뒤 자식이 종료되면 `child_closed`이고 native 전송은 0이다. 근거는 [자식 종료](../validation/tasks/AI-LIVE-04-CHILD-CLOSED.md). 이 항목의 handler 연결과 live 수용은 아직이다.
+- [ ] MA03b의 서버 소유 원본 대화/이미지/receipt 이력과 MA04의 durable journal/evidence ACK를 정상 handler에 연결한다. MA03a 부모의 현재 allowed/before_send·한도·단계 대조는 완료했다. 중지/timeout/불명 전송의 재클릭 0은 기존 검사다. 모델 응답 뒤 자식이 종료되면 프로세스와 녹화 세션 모두 native 전송 0이고 source·승인을 만들지 않는다. 근거는 [자식 종료](../validation/tasks/AI-LIVE-04-CHILD-CLOSED.md)와 [세션](../validation/tasks/AI-LIVE-04-CHILD-CLOSED-SESSION.md). 이 항목의 나머지 handler 연결과 live 수용은 아직이다.
 
 ## MA-04 · 정상 AndroidRecordingHandler에 원본 engine 연결
 

@@ -103,6 +103,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [자식 종료](docs/validation/tasks/AI-LIVE-04-CHILD-CLOSED.md): 모델 응답 뒤 자식이 종료되면 native 전송은 0이고 사유는 `child_closed`다. 1pass0.77s. handler 연결과 실환경 수용은 유지한다.
 
+[세션 종료](docs/validation/tasks/AI-LIVE-04-CHILD-CLOSED-SESSION.md): 녹화 세션도 같은 종료에서 ADB·source·승인을 만들지 않는다. 1pass2.39s.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

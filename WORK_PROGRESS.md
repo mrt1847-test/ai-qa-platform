@@ -77,6 +77,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-D-HEALING-RECOVERY](docs/validation/tasks/RX-87-D-HEALING-RECOVERY.md): locator/레이아웃 실패만 같은 대상으로 한 번 재동작한다. assertion 실패와 불명 전송은 재시도하지 않고 원본 QA는 유지한다. 관련8pass1.30s. 다음은 MA05b2이며 전체 RX87은 미완료다.
 
+[AI-LIVE-04-MA05B2](docs/validation/tasks/AI-LIVE-04-MA05B2.md): 저장 package를 실제 검토·승인으로 확정하고 같은 package를 actor AI0·healing OFF로 5동작 재생했다. 관련1pass1.45s. 실환경 수용과 전체 RX87은 미완료다. 다음은 RX-88이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

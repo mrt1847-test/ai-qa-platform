@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: MA05b2 · 정상 source에서 사후 승인 후 같은 package AI0.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-88 — Web 고정 정책·episode·허용 치유·한도 소비.** RX-87의 로컬 구현 여정은 MA05b2까지 기록했고 실환경 수용은 미완료다.
 
-[MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0)를 수행한다. 직접 선행 [제한 복구 인계](docs/validation/tasks/RX-87-D-HEALING-RECOVERY.md)는 locator/레이아웃 실패만 한 번 재동작하고 원본 QA를 바꾸지 않는다. 원본 main이 만든 서버 manifest/package를 사용하고 fixture 승인으로 성공시키지 않는다. 저장 후 검토와 실제 승인 API를 거친 같은 package의 trial/regression이 actor AI0, healing OFF로 재생되는지 확인한다.
+[RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88)을 수행한다. 직접 선행은 RX-86, RX-94, RX-95, RX-96, RX-98, RX-99, RX-54, RX-76이다. 승인된 Web replay context에 고정 정책·행동/시간 한도·서버 model gate를 연결한다. selector/레이아웃의 허용 실패만 제한 episode를 쓰고, 녹화 authoring 권한을 replay actor로 재사용하지 않는다. 임의 source 실행·target/expected 변경·불명 재클릭은 하지 않는다.
 
-[MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
+[MA05b2](docs/validation/tasks/AI-LIVE-04-MA05B2.md)는 저장 package의 실제 검토·승인과 같은 package AI0 재생을 기록했다. fixture 승인으로 그 여정을 대체하지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 
@@ -20,9 +20,8 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | [RX-88](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-88) | Web 고정 정책·episode·허용 치유·한도 소비 | RX-98/RX-99 및 기존 선행 |
-| 2 | [RX-89](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-89) | 정식 준비 ON/OFF와 이유 | RX-87/88 등 카드 |
-| 3 | [RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90) | 공통4단계·최종 버전/한도/호출 확인 | RX-89 |
+| 1 | [RX-89](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-89) | 정식 준비 ON/OFF와 이유 | RX-87/88 등 카드 |
+| 2 | [RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90) | 공통4단계·최종 버전/한도/호출 확인 | RX-89 |
 | 별도 | 실환경 수용 | 독립 서버·OIDC·AVD/브라우저·비용 계측 | 외부 대기 표 |
 
 운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. trial/기본 healing은 OFF다. 실제 모델 수용을 구현 완료로 대신하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.

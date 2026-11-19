@@ -41,3 +41,5 @@ MA05b1 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B1.md), 관련45pass5
 MA05b1.2 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B12.md), 관련49pass67.42s + Chrome18회/안전 텍스트/선택·포커스. 다음 b1.3이다.
 
 MA05b1.3 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B13.md), 관련41pass92.17s/JS2/Chrome15회. 다음 b2의 실제 승인·AI0 선행 대조/부족 구현이다. 전체 RX87 완료 수는 유지한다.
+
+MA05b2 완료: [인계](../validation/tasks/AI-LIVE-04-MA05B2.md). 저장 package를 실제 검토·승인 함수로 확정한 뒤 같은 package를 actor AI0·healing OFF로 재생한다. 전체 MA05/RX87 실환경 수용은 미완료다.

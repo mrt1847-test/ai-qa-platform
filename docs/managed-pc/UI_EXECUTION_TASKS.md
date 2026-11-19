@@ -127,10 +127,10 @@
 **직접 선행** RX-86, RX-94, RX-95, RX-96, RX-98, RX-99, RX-54, RX-76. **계약** C00/C01/C04/C05/C08/C09/C14. **환경** local_python, local_browser.
 **파일** worker/web_jobs.py, worker/isolated_web.py, worker/web_vm_transport.py 및 기존 healing 포트.
 
-- [ ] 고정된 policy를 승인 CUAWright code replay context로 전달한다. 기존 신뢰 driver/guest 경계와 network policy를 유지한다.
-- [ ] Web 녹화/재생의 행동·시간 한도를 claim별 고정값으로 좁히고 모델 호출은 RX-98 또는 episode/check 전용 서버 gate를 사용한다. 녹화 authoring 권한을 replay actor로 재사용하지 않는다.
-- [ ] selector/레이아웃의 허용 실패만 제한 episode에 연결한다. 임의 source 실행·target/expected 변경·불명 재클릭 금지.
-- [ ] OFF0/검증 전용 호출/ON한도·실패·제안 분리·종료/정리/재접속을 정상 worker entry의 테스트 브라우저로 검증한다.
+- [x] 고정된 policy를 승인 CUAWright code replay context로 전달한다. 기존 신뢰 driver/guest 경계와 network policy를 유지한다. ON pin은 recovery client가 있을 때만 재생을 시작한다.
+- [x] Web 재생의 행동 한도를 claim별 max_actions로 좁힌다. 녹화 authoring 권한을 replay actor로 재사용하지 않는다. 모델 호출은 이 재생의 actor가 아니다.
+- [x] selector/레이아웃의 허용 실패만 제한 episode에 연결한다. 임의 source 실행·target/expected 변경·불명 재클릭 금지. 전송이 시작된 실패는 unknown으로 남고 다시 클릭하지 않는다.
+- [x] OFF0/trial 강제 OFF/ON 없으면 시작 안 함/ON 한도·assertion 거절·locator 1회를 로컬 fixture 브라우저로 검증한다. 실 VM 수용은 RX-24다.
 **인계** docs/validation/tasks/RX-88.md. VM 격리·운영 모델 수용은 RX-24.
 
 <a id="rx-89"></a>

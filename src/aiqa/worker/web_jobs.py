@@ -386,6 +386,7 @@ class WebReplayContext:
     worker_model_call: object | None = None
     package_root: Path | None = None
     observe: Callable[[], Observation] | None = None
+    healing_client: object | None = None
 
 
 @dataclass
@@ -398,6 +399,7 @@ class WebReplayHandler:
     journal: DispatchJournal
     spool: EvidenceSpool
     context: WebReplayContext
+    stopped_reason: str = ""
     dispatch_count: int = 0
     actor_ai_calls: int = 0
     healer_calls: int = 0
@@ -406,6 +408,8 @@ class WebReplayHandler:
     package_digest_after: str = ""
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self.stopped_reason = ""
+        self.healer_calls = 0
         snapshot = claim.get("snapshot")
         if type(snapshot) is not dict:
             return _fail_closed("snapshot_missing")
@@ -433,6 +437,21 @@ class WebReplayHandler:
         healing_enabled = self.context.healing_enabled
         if pin.healing_enabled is not None:
             healing_enabled = pin.healing_enabled
+        try:
+            from aiqa.worker.healing_pin import resolve_claim_healing_pin
+            from aiqa.worker.replay_limits import resolve_replay_limits
+            healing_pin = resolve_claim_healing_pin(snapshot)
+            replay_limits = resolve_replay_limits(snapshot, worker_actions=50, worker_seconds=None)
+        except ValueError:
+            self.stopped_reason = "replay_pin_invalid"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
+        if purpose == "trial":
+            healing_enabled = False
+        elif healing_pin.enabled:
+            healing_enabled = True
+        if healing_enabled and self.context.healing_client is None:
+            self.stopped_reason = "healing_runtime_unavailable"
+            return _fail_closed(self.stopped_reason, evidence_complete=False)
 
         origin = str(snapshot.get("origin") or "")
         if origin == "" or origin != approved.origin:
@@ -488,7 +507,6 @@ class WebReplayHandler:
 
         try:
             self.journal.append(attempt_id, action_id, "planned")
-            self.journal.append(attempt_id, action_id, "dispatch_started")
         except JournalWriteError:
             return _fail_closed("journal_blocked", evidence_complete=False)
 
@@ -496,6 +514,13 @@ class WebReplayHandler:
             bundle = self.adapter.extract_trajectory(bundle_source)
             live = str(snapshot.get("live_source") or bundle.reviewable_source)
             self.adapter.assert_replay_source_unchanged(bundle, live)
+            if replay_limits is not None and len(bundle.summaries) > replay_limits.max_actions:
+                self.stopped_reason = "action_budget"
+                return _fail_closed(self.stopped_reason, evidence_complete=False)
+            if healing_enabled and not self._recover_web_locator(action_id):
+                self.stopped_reason = "replay_rejected"
+                return _fail_closed(self.stopped_reason, evidence_complete=False)
+            self.journal.append(attempt_id, action_id, "dispatch_started")
             results = self.adapter.run_allowlisted_steps(
                 bundle,
                 approved=approved,
@@ -512,9 +537,9 @@ class WebReplayHandler:
                 observe=observe,
             )
         except CuawrightRejected as exc:
-            self.journal.mark_started_only_unknown(attempt_id, action_id)
+            unknown = self.journal.mark_started_only_unknown(attempt_id, action_id) == "unknown"
             self.original_failure = str(exc.reason)
-            return _fail_closed("replay_rejected", evidence_complete=False, ambiguous=True)
+            return _fail_closed("replay_rejected", evidence_complete=False, ambiguous=unknown)
 
         if after is None and observe is not None:
             # Final post-action evidence comes from the owned browser, not a pre-made fixture.
@@ -580,6 +605,43 @@ class WebReplayHandler:
             evidence_events=events,
             source_artifact_hashes=hashes,
         )
+
+    def _recover_web_locator(self, action_id: str) -> bool:
+        """Authorize the original steps once, or refuse a non-locator failure. No second click."""
+
+        client = self.context.healing_client
+        if client is None:
+            return True
+        try:
+            reason = client.lookup(action_id=action_id, observation=self.context.before)
+        except Exception:
+            return False
+        if not reason:
+            return True
+        prior = self.journal.states(action_id)
+        if prior and prior[-1] in {"dispatch_started", "unknown"}:
+            return False
+        try:
+            receipt = client.reserve(reason=reason, action_id=action_id)
+            proposal = client.proposal(reason=reason, action_id=action_id, observation=self.context.before)
+        except Exception:
+            return False
+        from aiqa.healing.recovery import plan_bounded_recovery
+        decision = plan_bounded_recovery(
+            reason=reason,
+            product_violation=reason in {"text_mismatch", "check_failed", "product_violation"},
+            dispatch_sent=False,
+            proposal=proposal,
+            observation=self.context.before,
+            checkpoint=lambda: not self.context.cancelled,
+            reserved_calls=receipt.reserved_calls if getattr(receipt, "eligible", False) else 0,
+            already_used=False,
+        )
+        if not decision.dispatch_once or decision.changes_original_result:
+            return False
+        self.healer_calls += decision.healer_calls
+        self.original_failure = str(reason)
+        return True
 
     def _verify_and_heal(self, observation: Observation, *, healing_enabled: bool) -> object:
         from aiqa.worker.runner import verify_and_heal_after_replay

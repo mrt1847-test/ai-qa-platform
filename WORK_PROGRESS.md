@@ -79,6 +79,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [AI-LIVE-04-MA05B2](docs/validation/tasks/AI-LIVE-04-MA05B2.md): 저장 package를 실제 검토·승인으로 확정하고 같은 package를 actor AI0·healing OFF로 5동작 재생했다. 관련1pass1.45s. 실환경 수용과 전체 RX87은 미완료다. 다음은 RX-88이다.
 
+[RX-88](docs/validation/tasks/RX-88.md): Web replay가 claim healing pin과 행동 한도를 소비한다. locator 실패만 원래 step을 한 번 실행하고 actor AI는 0이다. 관련5pass1.00s. VM 수용은 RX-24이며 다음은 RX-89다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

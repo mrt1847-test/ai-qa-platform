@@ -136,7 +136,10 @@ class MobileAgentRecordingSession:
         fresh=self._read_capture('before_native_capture')
         if fresh.geometry!=before.geometry:raise ValueError('native geometry changed')
         require_guarded_frame(before.png,fresh.png,action,before.dom,fresh.dom)
-        event=native_event(action,before,action_id=turn.action_id,line=self._native_actions+1)
+        from aiqa.replay.readiness import readiness_condition
+        event=native_event(action,before,action_id=turn.action_id,line=self._native_actions+1,
+            readiness=readiness_condition(before.png,action,rotation=before.geometry.rotation),
+            post_wait_seconds=2.0)
         identity=_physical_identity(fresh);lock=GeometryLock.from_observation(self._serial,identity)
         attempt=self.claim['attempt_id'];started=False;sent=False
         self.journal.append(attempt,turn.action_id,'planned')
@@ -191,6 +194,11 @@ class MobileAgentRecordingSession:
             ack=self.delivery(action_seq=self._turns+1,action_id=turn.action_id,events=events,artifacts=parts)
             self.model_port.accept_evidence(turn.call_id,ack,after_id=ack['artifact_ids'][0],log_id=ack['artifact_ids'][1])
             self._accept_ack(ack);self._turns+=1
+            if not physical and not turn.terminal and self._native:
+                from aiqa.adapters.mobile_agent_upstream import load_protocol,render_reply
+                raw=load_protocol().parse_action(render_reply(turn.content))
+                wait=raw['arguments'].get('time',0)
+                self._native[-1]['post_wait_seconds']=min(30.0,self._native[-1].get('post_wait_seconds',0)+float(wait))
             if physical:self.journal.append(self.claim['attempt_id'],turn.action_id,'observed')
             self._ack_turn=None;self._turn_evidence_started=False
         except Exception:

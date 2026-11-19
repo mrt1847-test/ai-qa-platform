@@ -11,7 +11,7 @@ import json
 import re
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict, replace
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -1071,14 +1071,14 @@ class PurposeRoutedHandler:
 def bind_step_evidence_commit(handler: object, committer: StepEvidenceCommit | None) -> None:
     """Attach a per-step evidence committer to recording handlers under a router."""
 
-    if isinstance(handler, AndroidRecordingHandler):
+    if isinstance(handler, (AndroidRecordingHandler,AndroidReplayHandler)):
         handler.context.step_evidence_commit = committer
         return
     routes = getattr(handler, "routes", None)
     if type(routes) is not dict:
         return
     for route in routes.values():
-        if isinstance(route, AndroidRecordingHandler):
+        if isinstance(route, (AndroidRecordingHandler,AndroidReplayHandler)):
             route.context.step_evidence_commit = committer
 
 
@@ -1129,6 +1129,12 @@ class AndroidReplayContext:
     prepare_device: Callable[[], None] | None = None
     target_preparer: object | None = None
     require_case_context: bool = False
+    step_evidence_commit: StepEvidenceCommit | None = None
+    verification_client: object | None = None
+    readiness_enabled: bool = False
+    readiness_timeout: float = 30.0
+    readiness_clock: Callable[[],float] = time.monotonic
+    readiness_pause: Callable[[float],None] = time.sleep
 
 
 @dataclass
@@ -1164,6 +1170,17 @@ class AndroidReplayHandler:
     _check_binding_pin: WorkerCheckBindingPin | None = field(default=None,init=False,repr=False)
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
+        self._active_claim=claim;self._normalized_checks=[];self._step_ack=None;self._step_artifact_ids=[]
+        self._current_action_id='';self._current_after_artifact=None
+        result=self._handle(claim)
+        changes={'check_results':tuple(self._normalized_checks)}
+        if self._step_ack is not None:
+            changes.update(evidence_events=(),evidence_artifacts=(),last_ack_seq=self._step_ack['contiguous_seq'],
+                last_ack_hash=self._step_ack['prefix_hash'],final_seq=self._step_ack['contiguous_seq'],
+                source_artifact_hashes=tuple(self._step_artifact_ids))
+        return replace(result,**changes)
+
+    def _handle(self, claim: dict[str, Any]) -> HandlerResult:
         self.check_coverage = ()
         self._native_source = None
         self._check_binding_pin = None
@@ -1285,6 +1302,7 @@ class AndroidReplayHandler:
             action_id = (
                 base_action_id if len(plan_lines) == 1 else f"{base_action_id}-{step_index + 1}"
             )
+            self._current_action_id=action_id;self._current_after_artifact=None
             if self.journal.is_ambiguous(attempt_id, action_id):
                 if self.dispatch_count == 0:
                     return HandlerResult(
@@ -1372,11 +1390,20 @@ class AndroidReplayHandler:
             if after is None:
                 try:
                     live = self.context.live_capture
-                    after = None if live is None else live()
+                    after = self._capture_after_step(step_index) if live is not None else None
                     if after is None or not after.capture_ok or after.png == b"":
                         raise _ReplayCaptureFailed("after_evidence_missing")
                     if self.context.require_case_context:
                         validate_observed_at(after.captured_at)
+                except TimeoutError as exc:
+                    # The driver acknowledged the input; a loading timeout is a read failure,
+                    # not permission to send the same input again.
+                    after=getattr(exc,'last_observation',None)
+                    self.stopped_reason='loading_timeout'
+                    if after is None:
+                        self.dispatch_count+=1
+                        self.journal.append(attempt_id,action_id,'acknowledged')
+                        break
                 except Exception:
                     self.journal.mark_started_only_unknown(attempt_id, action_id)
                     self.original_failure = "after_evidence_missing"
@@ -1402,12 +1429,31 @@ class AndroidReplayHandler:
                 break
 
             coverage_start = len(self.check_coverage)
-            verify = self._verify_and_heal(
-                after,
-                healing_enabled=healing_enabled,
-                approved_digest=approved_digest,
-                action_index=step_index + 1, total_actions=len(plan_lines),
-            )
+            if self.context.step_evidence_commit is not None:
+                # Upload current evidence before a server verifier may use its image.
+                packet_events=android_evidence_events(attempt_id=attempt_id,before=before,after=after,
+                    action_id=action_id,seq_base=len(all_events),action_seq=step_index+1)
+                packet_artifacts=android_evidence_artifacts(attempt_id=attempt_id,before=before,after=after,
+                    action_id=action_id,action_seq=step_index+1,owner_kind='ITEM',include_observation_text=False)
+                try:
+                    ack=self.context.step_evidence_commit(action_seq=step_index+1,action_id=action_id,
+                        events=list(packet_events),artifacts=list(packet_artifacts))
+                    self._step_ack=ack;self._step_artifact_ids.extend(ack['artifact_ids'])
+                    self._current_after_artifact=ack['artifact_ids'][1]
+                except Exception:
+                    self.stopped_reason='evidence_commit_failed'
+                    break
+            if self.stopped_reason=='loading_timeout':break
+            try:
+                verify = self._verify_and_heal(
+                    after,
+                    healing_enabled=healing_enabled,
+                    approved_digest=approved_digest,
+                    action_index=step_index + 1, total_actions=len(plan_lines),
+                )
+            except _ReplayCaptureFailed as exc:
+                self.stopped_reason=exc.reason
+                break
             self.package_digest_after = verify.record.package_digest_after
             self.healer_calls += int(verify.record.healer_calls)
             self.verifier_calls += int(verify.record.verifier_calls)
@@ -1434,6 +1480,8 @@ class AndroidReplayHandler:
                     include_observation_text=not self.context.require_case_context,
                 )
             )
+            for row in self.check_coverage[coverage_start:]:
+                self._normalized_checks.append({**asdict(row),'action_id':action_id})
             previous_after = after
             if not verify.success:
                 self.stopped_reason = "check_failed"
@@ -1504,7 +1552,7 @@ class AndroidReplayHandler:
             value = max(0.0, value - self._mono_origin)
         return MonotonicInstant(value)
 
-    def _replay_gate(self, claim, *, phase):
+    def _replay_gate(self, claim, *, phase, read_only=False):
         if self._is_cancelled() or claim["snapshot"].get("cancel_requested") is True:
             raise _ReplayCaptureFailed("cancelled")
         remote = self.context.remote_checkpoint
@@ -1523,7 +1571,7 @@ class AndroidReplayHandler:
         if seconds is not None and now.seconds >= seconds:
             raise _ReplayCaptureFailed("time_budget")
         ceiling = self._limits.max_actions if self._limits is not None else self.context.max_actions
-        if self.dispatch_count >= ceiling:
+        if not read_only and self.dispatch_count >= ceiling:
             raise _ReplayCaptureFailed("action_budget")
         # Preserve the legacy fake-clock seam; live claims use a real current fence.
         self.guard.note_heartbeat(now)
@@ -1549,6 +1597,30 @@ class AndroidReplayHandler:
         if callable(flag):
             return bool(flag())
         return bool(flag)
+
+    def _read_checkpoint(self):
+        if self._is_cancelled():raise _ReplayCaptureFailed('cancelled')
+        claim=getattr(self,'_active_claim',None)
+        if claim is not None:self._replay_gate(claim,phase='before_lookup',read_only=True)
+        return True
+
+    def _remaining_read_time(self):
+        limit=self._limits.timeout_seconds if self._limits else self.context.max_seconds
+        remaining=30.0 if limit is None else limit-self._mono_now().seconds
+        if remaining<=0:raise _ReplayCaptureFailed('time_budget')
+        return min(float(self.context.readiness_timeout),remaining,30.0)
+
+    def _capture_after_step(self,index):
+        live=self.context.live_capture
+        if not self.context.readiness_enabled or self._native_source is None:return live()
+        from aiqa.replay.readiness import wait_for_settled
+        delay=self._native_source.steps[index].post_wait_seconds if self._native_source else 0
+        deadline=self.context.readiness_clock()+delay
+        while self.context.readiness_clock()<deadline:
+            self._read_checkpoint()
+            self.context.readiness_pause(min(.25,max(0,deadline-self.context.readiness_clock())))
+        return wait_for_settled(live,self._read_checkpoint,timeout=self._remaining_read_time(),
+            clock=self.context.readiness_clock,pause=self.context.readiness_pause)
 
     def _observations_for_step(
         self, step_index: int, previous_after: Observation | None
@@ -1577,6 +1649,15 @@ class AndroidReplayHandler:
 
         live = self.context.live_capture
         if live is not None:
+            condition=self._native_source.steps[step_index].readiness if self._native_source else None
+            if condition is not None:
+                from aiqa.replay.readiness import wait_for_ready,ReadinessTimeout,ReadinessCancelled
+                try:
+                    before=wait_for_ready(live,condition,self._read_checkpoint,timeout=self._remaining_read_time(),
+                        clock=self.context.readiness_clock,pause=self.context.readiness_pause)
+                except (ReadinessTimeout,ReadinessCancelled) as exc:
+                    raise _ReplayCaptureFailed(exc.reason) from exc
+                return checked(before,None)
             if previous_after is not None:
                 before = previous_after
             elif self._prepared_frame is not None:
@@ -1614,15 +1695,18 @@ class AndroidReplayHandler:
 
         if self.context.require_case_context:
             from aiqa.healing.service import ReplayVerifyHealResult, SeparateVerifyHealRecord
-            coverage = required_check_coverage(self._case_context, action_index=action_index,
-                total_actions=total_actions, observed_at=observation.captured_at)
+            from aiqa.worker.bound_check_evaluation import evaluate_bound_checks
+            coverage = evaluate_bound_checks(self._case_context,self._check_binding_pin,self._native_source,
+                action_index=action_index,total_actions=total_actions,observed_at=observation.captured_at,
+                hierarchy_observer=self.context.hierarchy_observer,checkpoint=self._read_checkpoint,
+                timeout=self._remaining_read_time(),visual=lambda check,phase,step:self._visual_check(check,observation))
             self.check_coverage += coverage
             digest = self.context.approved_digest if approved_digest is None else approved_digest
             # Coverage is not a runtime target binding or a verifier/healer grant.
             # Unknown required checks stay inconclusive; no product FAIL is invented.
             return ReplayVerifyHealResult(tuple(row.result for row in coverage),
                 SeparateVerifyHealRecord('', '', False, False, 'not_run', 0, 0, digest, digest),
-                not coverage)
+                all(row.result.status=='satisfied' for row in coverage))
 
         broker = self.context.verify_broker if self.context.verify_broker is not None else self.broker
         return verify_and_heal_after_replay(
@@ -1639,6 +1723,25 @@ class AndroidReplayHandler:
             healing_context=self.context.healing_context,
             heal_observation=observation,
         )
+
+    def _visual_check(self,check,observation):
+        from aiqa.worker.http_client import WorkerHttpError
+        client=self.context.verification_client
+        if client is None or self._current_after_artifact is None:
+            return {'status':'unknown','reason':'verifier_not_connected'}
+        self._read_checkpoint();claim=self._active_claim
+        try:
+            response=client.evaluate_replay_check(payload={'project_id':claim['project_id'],'job_id':claim['job_id'],
+                'attempt_id':claim['attempt_id'],'generation':claim['generation'],'action_id':self._current_action_id,
+                'check_id':check.id,'artifact_id':self._current_after_artifact,
+                'image_hash':'sha256:'+hashlib.sha256(observation.png).hexdigest(),
+                'geometry':asdict(observation.geometry),'captured_at':observation.captured_at},
+                idempotency_key='verify:'+claim['attempt_id']+':'+check.id)
+            self._read_checkpoint()
+            self.verifier_calls+=int(response.get('provider_dispatched') is True and not response.get('replayed'))
+            return response['result']
+        except (WorkerHttpError,KeyError,ValueError):
+            return {'status':'unknown','reason':'verifier_unavailable'}
 
 
 def _replay_plan_lines(plan: str) -> tuple[str, ...]:
@@ -2096,6 +2199,8 @@ def build_approved_android_replay_handler(
             checks=checks,
             live_capture=capture,
             hierarchy_observer=observe_hierarchy,
+            verification_client=client,
+            readiness_enabled=True,
             target_preparer=AndroidTargetPreparer(capture=capture,launch=prepare,client=client,journal=journal),
         ),
     )

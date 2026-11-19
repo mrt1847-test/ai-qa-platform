@@ -378,6 +378,9 @@ class WorkerHttpClient:
             idempotency_key=idempotency_key,
         )
 
+    def evaluate_replay_check(self, *, payload: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        return self._json('POST','/api/v1/worker/check-evaluations',json_body=payload,idempotency_key=idempotency_key)
+
     def get_app_build(self, project_id: str, build_id: str) -> dict[str, Any]:
         """Read one build's server-side metadata. Authentication is the worker Bearer token."""
 

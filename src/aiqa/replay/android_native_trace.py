@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
+import math
 
 from aiqa.replay.android_plan import PlanRejected, TypedAndroidAction, build_typed_android_action
 
@@ -11,6 +12,7 @@ COMPILER = 'android-native-plan-v2'
 LOCK = 'android-native-lock-v2'
 _FIELDS = frozenset(asdict(TypedAndroidAction('tap')))
 _EVENT_FIELDS = frozenset(('kind','action','intent','target','action_id','line','geometry','native'))
+_OPTIONAL_EVENT_FIELDS = frozenset(('readiness','post_wait_seconds'))
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +23,8 @@ class NativeStep:
     height: int
     rotation: int
     action: TypedAndroidAction
+    readiness: dict | None = None
+    post_wait_seconds: float = 0.0
 
 
 def _action(raw, width, height, rotation):
@@ -47,20 +51,26 @@ def _describe(action):
     raise PlanRejected('native action unsupported')
 
 
-def native_event(action, observation, *, action_id, line):
+def native_event(action, observation, *, action_id, line, readiness=None, post_wait_seconds=0.0):
     geo=observation.geometry
     if geo is None:raise PlanRejected('native geometry missing')
+    if (type(post_wait_seconds) not in (int,float) or not math.isfinite(post_wait_seconds)
+        or not 0<=post_wait_seconds<=30):
+        raise PlanRejected('native post wait invalid')
     action=_action(asdict(action),geo.physical_width,geo.physical_height,geo.rotation)
     name,target,bounds=_describe(action)
     event={'kind':'action','action':name,'intent':'open','target':target,'action_id':action_id,'line':line,
         'geometry':{'physical_width':geo.physical_width,'physical_height':geo.physical_height,
                     'rotation':geo.rotation,'content_bounds':bounds},'native':asdict(action)}
+    if readiness is not None:event['readiness']=readiness
+    if post_wait_seconds != 0:event['post_wait_seconds']=post_wait_seconds
     _step(event,line)
     return event
 
 
 def _step(item, index):
-    if type(item) is not dict or set(item)!=_EVENT_FIELDS or item['kind']!='action':
+    if (type(item) is not dict or not _EVENT_FIELDS <= set(item)
+        or set(item)-_EVENT_FIELDS-_OPTIONAL_EVENT_FIELDS or item['kind']!='action'):
         raise PlanRejected('native event shape invalid')
     identity=item['action_id']
     if (type(identity) is not str or not identity or len(identity.encode('utf-8'))>256
@@ -80,7 +90,14 @@ def _step(item, index):
         raise PlanRejected('native bounds type invalid')
     if item['action']!=name or item['intent']!='open' or item['target']!=target or geo['content_bounds']!=bounds:
         raise PlanRejected('native display metadata differs')
-    return NativeStep(identity,index,width,height,rotation,action)
+    readiness=None
+    if 'readiness' in item:
+        from aiqa.replay.readiness import validate_readiness_condition
+        readiness=validate_readiness_condition(item['readiness'],width=width,height=height,rotation=rotation)
+    post_wait=item.get('post_wait_seconds',0.0)
+    if type(post_wait) not in (int,float) or not math.isfinite(post_wait) or not 0<=post_wait<=30:
+        raise PlanRejected('native post wait invalid')
+    return NativeStep(identity,index,width,height,rotation,action,readiness,float(post_wait))
 
 
 def is_native_trace(raw):

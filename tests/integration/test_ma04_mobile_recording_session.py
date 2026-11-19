@@ -58,6 +58,17 @@ def test_wait_is_evidenced_without_native_and_then_original_main_continues(engin
     assert len(sent)==1 and r.last_ack_seq==2 and len(r.artifact_ids)==7
 
 
+def test_new_recording_preserves_target_condition_and_following_wait(engine_job,tmp_path):
+    actions=[{'action':'click','coordinate':[500,500]}, {'action':'wait','time':.1},
+        {'action':'terminate','status':'success'}]
+    c,session,sent=prepare(engine_job,tmp_path,actions=actions)
+    with c:result=session.run()
+    assert result.outcome=='completed' and len(sent)==1
+    event=json.loads(result.action_mapping)['events'][0]
+    assert event['readiness']['width']==100 and event['readiness']['height']==200
+    assert event['post_wait_seconds']>=2.1
+
+
 def test_after_capture_failure_preserves_known_ack_before_return(engine_job,tmp_path):
     captures=[]
     def capture():

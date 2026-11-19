@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
@@ -1700,12 +1700,14 @@ def _execution_id_for_case_run(
     return UUID(str(row[0]))
 
 
-def _item_result_from_finish(finish: WorkerAttemptFinishInput, control_verdict: str | None) -> tuple[str, bool]:
+def _item_result_from_finish(finish: WorkerAttemptFinishInput, control_verdict: str | None, checks_verdict: str | None = None) -> tuple[str, bool]:
     """Map one worker finish to an item core result. PASS needs a completed outcome with full evidence."""
 
     cancelled = finish.outcome in {"cancelled", "interrupted"}
     if finish.required_violation:
         return "FAIL", cancelled
+    if checks_verdict == "INCONCLUSIVE" and finish.outcome == "completed":
+        return "INCONCLUSIVE", False
     if finish.outcome == "completed":
         return ("PASS" if finish.evidence_complete else "INCONCLUSIVE"), False
     if finish.outcome == "cancelled":
@@ -1881,6 +1883,11 @@ def finish_worker_attempt(
         # Same-key confirmations returned above. A new key cannot reseal an attempt.
         raise FinishConflict("attempt already has a finish receipt")
 
+    from aiqa.store.replay_check_results import persist_replay_check_results
+
+    checks_verdict = persist_replay_check_results(connection, finish)
+    if checks_verdict == "FAIL":
+        finish = replace(finish, required_violation=True)
     verdict: str | None = None
     if finish.outcome in _SUCCESS_OUTCOMES:
         status = finish_job(connection, finish.project_id, finish.job_id)
@@ -1907,7 +1914,7 @@ def finish_worker_attempt(
             )
         elif purpose in {"resource_probe", "app_install"}:
             _apply_support_job_result(connection, finish.project_id, finish.job_id, finish.action_mapping)
-        elif purpose in {"trial", "regression"} and finish.required_violation:
+        elif purpose in {"trial", "regression"} and (finish.required_violation or checks_verdict == "INCONCLUSIVE"):
             from aiqa.domain.verdicts import JobFinishInput
 
             snapshot = finalize_job_control(
@@ -1916,7 +1923,7 @@ def finish_worker_attempt(
                     finish.project_id,
                     finish.job_id,
                     "crash",
-                    True,
+                    finish.required_violation,
                     True,
                     finish.cleanup_failed,
                 ),
@@ -1957,7 +1964,7 @@ def finish_worker_attempt(
 
     case_run_raw = job[3]
     if purpose in {"trial", "regression"} and case_run_raw is not None:
-        item_result, item_cancelled = _item_result_from_finish(finish, verdict)
+        item_result, item_cancelled = _item_result_from_finish(finish, verdict, checks_verdict)
         execution_id = _execution_id_for_case_run(connection, finish.project_id, UUID(str(case_run_raw)))
         if execution_id is not None:
             try:

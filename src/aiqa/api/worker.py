@@ -603,6 +603,9 @@ def install_worker(application: FastAPI) -> None:
 
 
 def _attempt_finish(payload: dict) -> WorkerAttemptFinishInput:
+    checks = payload.get("check_results", [])
+    if type(checks) is not list or len(checks) > 256 or any(type(item) is not dict for item in checks):
+        raise ValueError("check results are invalid")
     hashes = payload.get("source_artifact_hashes", [])
     if type(hashes) is not list or any(type(item) is not str for item in hashes):
         raise ValueError("source artifact hashes are invalid")
@@ -640,6 +643,7 @@ def _attempt_finish(payload: dict) -> WorkerAttemptFinishInput:
         mapping,
         bool(payload.get("cleanup_failed", False)),
         bool(payload.get("required_violation", False)),
+        tuple(checks),
     )
 
 

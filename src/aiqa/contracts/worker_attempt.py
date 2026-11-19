@@ -74,6 +74,7 @@ class WorkerAttemptFinishInput:
     action_mapping: str = "{}"
     cleanup_failed: bool = False
     required_violation: bool = False
+    check_results: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

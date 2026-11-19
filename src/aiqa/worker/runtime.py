@@ -41,6 +41,7 @@ class HandlerResult:
     cleanup_proof_refs: tuple[str, ...] = ()
     cleanup_failed: bool = False
     evidence_recovery: Callable[[], dict[str, Any]] | None = field(default=None,repr=False,compare=False)
+    check_results: tuple[dict[str, object], ...] = ()
 
 
 # Default proof after a local handler returned and the finish receipt exists. Real device
@@ -656,6 +657,7 @@ class WorkerRuntime:
             "now": self._now().isoformat(),
             "source_artifact_hashes": list(result.source_artifact_hashes),
             "action_mapping": result.action_mapping if result.action_mapping.strip() else "{}",
+            "check_results": list(result.check_results),
         }
         key = f"finish-{claimed['attempt_id']}"
         try:

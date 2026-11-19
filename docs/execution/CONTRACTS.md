@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+RX-87 상위 대조: OFF 반복, locator만 복구, episode 상한, 취소·임대, OFF0/ON/소진/실패/재사용은 로컬 증명으로 체크했다. replay 모델 호출량과 RX-98 서버 gate의 일치, 그리고 `require_case_context`가 꺼진 경로의 fixture check 분리는 아직이다. 실기기 수용은 RX-23이다.
+
 RX-87 claim 재사용: 한 Android replay handler가 서로 다른 API claim을 이어서 받아도 둘째 claim의 행동 수는 1이고 healer·dispatch 누적과 이전 시계의 시간 초과로 막히지 않는다. package hash는 두 claim이 같다. 이 상태 닫기는 PASS가 아니다. 실기기 수용은 RX-23이다.
 
 RX-87 취소·임대: 저장된 FAIL이 있으면 실행 취소는 409이고 package hash는 유지된다. cleanup은 임대를 반환하고 격리하지 않는다. `cancel_requested`와 임대 소진은 재생 동작 0이며 snapshot package hash를 바꾸지 않는다. 실기기 수용은 RX-23이다.

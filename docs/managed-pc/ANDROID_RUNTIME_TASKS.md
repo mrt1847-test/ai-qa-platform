@@ -57,13 +57,11 @@ B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전�
 
 ## B. replay의 고정 정책과 한도
 
-B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md), D 제한 복구는 [인계](../validation/tasks/RX-87-D-HEALING-RECOVERY.md)로 완료했다. 다음은 MA05b2다. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
+B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md), D 제한 복구는 [인계](../validation/tasks/RX-87-D-HEALING-RECOVERY.md)로 완료했다. 2026-11-19 상위 대조에서 B의 첫 두 체크만 닫았다. 서버 pin과 정적 fixture check의 분리는 아직이다.
 
-**입력:** resolve_claim_healing_pin(snapshot)의 detached WorkerHealingPin, 승인 package hash/plan. **파일:** android_jobs.py, worker/healing_pin.py, tests/integration/test_rx87_android_runtime.py.
-
-- [ ] OFF/trial은 actor0, 정상 승인 code/좌표 반복을 보존한다. ON의 typed policy를 runtime에 전달하고 worker 환경 boolean/budget으로 대체하지 않는다.
-- [ ] replay의 claim별 action/timeout·episode caps와 handler 재사용을 검증한다. 지원하지 않는 정상 ON 경로는 명시 실패로 남기며 fixture 성공을 넣지 않는다.
-- [ ] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다.
+- [x] OFF/trial은 actor0, 정상 승인 code/좌표 반복을 보존한다. ON의 typed policy를 runtime에 전달하고 worker 환경 boolean/budget으로 대체하지 않는다. 근거는 RX-87-CLAIM-OFF·RX-87-CLAIM-RUNTIME과 `test_explicit_off_claim_does_not_inherit_worker_healing_default`다.
+- [x] replay의 claim별 action/timeout·episode caps와 handler 재사용을 검증한다. 지원하지 않는 정상 ON 경로는 명시 실패로 남기며 fixture 성공을 넣지 않는다. 근거는 RX-87-CLAIM-RUNTIME·RX-87-CLAIM-REUSE다.
+- [ ] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다. `require_case_context`가 꺼지면 replay는 아직 `context.checks`를 판정에 쓴다.
 
 ### B 구현 전 확인한 실제 코드 누락
 

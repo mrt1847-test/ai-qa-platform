@@ -95,6 +95,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 claim 재사용](docs/validation/tasks/RX-87-CLAIM-REUSE.md): 한 handler의 다음 API claim은 이전 한도·시계·healer 횟수를 더하지 않는다. 관련1pass1.30s. 상위 RX87과 실기기 수용은 미완료다.
 
+[RX-87 상위 대조](docs/validation/tasks/RX-87-PARENT-CHECK.md): 증명된 UI 4개와 B 2개만 체크했다. RX-98 호출량 일치와 fixture check 분리는 열려 있다. 완료 수는 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

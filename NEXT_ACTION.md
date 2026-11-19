@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 상위 체크는 부분 증명으로 닫지 않는다.** 한 handler의 다음 API claim 한도는 기록했다.
+**RX-87 — replay 모델 호출과 fixture check 분리.** 증명된 상위 체크만 닫았다.
 
-상위 [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) 체크를 기존 증명과 대조한다. 증명된 항목만 체크하고, 비어 있는 계약과 RX-23 실기기 수용은 열어둡니다. 부분 구현으로 상위 완료를 세지 않는다.
+[RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)의 남은 두 계약을 수행한다. replay 모델 호출량이 RX-98 서버 gate와 같은지 확인하고, `require_case_context`가 꺼져도 정적 fixture check가 제품 판정이 되지 않게 한다. 이 작업으로 상위 RX-87이나 RX-23 실기기 수용을 완료 처리하지 않는다.
 
-[claim 재사용](docs/validation/tasks/RX-87-CLAIM-REUSE.md)은 둘째 claim이 이전 한도·시계·healer 횟수를 더하지 않는다는 기록이다.
+[상위 대조](docs/validation/tasks/RX-87-PARENT-CHECK.md)는 닫은 항목과 열어 둔 항목의 근거다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

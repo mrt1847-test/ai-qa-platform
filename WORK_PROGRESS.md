@@ -91,6 +91,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 OFF claim](docs/validation/tasks/RX-87-CLAIM-OFF.md): OFF claim은 actor 0이고 text_mismatch는 한 번만 재생한다. 다음 claim에 실패 통계가 남지 않는다. 관련2pass2.87s. 상위 RX87과 실기기 수용은 미완료다.
 
+[RX-87 취소·임대](docs/validation/tasks/RX-87-CLAIM-CANCEL.md): 저장된 FAIL은 취소를 거절하고 package hash는 유지된다. 취소 요청과 임대 소진은 동작 0이다. 관련2pass1.74s. 상위 RX87과 실기기 수용은 미완료다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

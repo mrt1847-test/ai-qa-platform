@@ -23,3 +23,15 @@ test('healer reference edits and revision appear in submission and conflict comp
  nodes.healing_binding_id.value='';nodes.healing_binding_revision.value='';
  assert.equal(opts.read().healing_binding_id,'');assert.equal(opts.read().healing_binding_revision,'');
 });
+
+test('ai screen verification without a binding is refused before the request',async()=>{
+ const values={web_url:'https://shop.example',android_package:'',environment_revision_id:'',data_revision_id:'',install_policy:'none',reset_policy:'none',cleanup_policy:'none',timeout_seconds:'300',verifier_method:'ai_visual',verifier_binding_id:'',healing_allowed:false,healing_scope:'',healing_max_episodes:'1',healing_max_calls:'2',healing_max_seconds:'30'};
+ const nodes=Object.fromEntries(Object.entries(values).map(([name,value])=>[name,{value:String(value),checked:false}]));
+ const form={elements:{namedItem:name=>nodes[name]},action:'/ui/projects/p/cases/c/settings'};let opts,requested=false;
+ const context={window:{aiqaForms:{register:(_,o)=>opts=o},aiqaRequest:async()=>{requested=true;}},document:{getElementById:id=>id==='settings-form'?form:id==='case-settings-snapshot'?{textContent:JSON.stringify({settings:{target_kind:'web'}})}:{value:'old-head'}}};
+ vm.runInNewContext(fs.readFileSync('src/aiqa/web/static/case_settings.js','utf8'),context);
+ const response=await opts.persist(opts.read(),'save-key');
+ const body=await response.json();
+ assert.equal(requested,false);assert.equal(response.status,422);
+ assert.equal(body.error.fields.verifier_binding_id[0],'AI 화면 검증에는 검증 연결이 필요합니다. 연결 없이는 성공으로 처리하지 않습니다.');
+});

@@ -125,6 +125,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [녹화 목표](docs/validation/tasks/RX-87-GOAL-ASSERTION.md): `kind=visual` 문장은 목표에 실리고 PASS로 적히지 않는다. 1pass0.19s. 다음은 연결 없는 AI 검증 저장 거부다.
 
+[검증 연결](docs/validation/tasks/RX-87-VERIFIER-BINDING.md): AI 화면 검증은 연결이 없으면 저장 요청 전에 거절된다. 설정 검사 3pass. RX-21·RX-23·RX-24는 시작하지 않는다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

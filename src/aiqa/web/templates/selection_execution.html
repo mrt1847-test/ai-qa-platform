@@ -2,12 +2,14 @@
 {% block title %}선택 케이스 · 정식 실행 준비{% endblock %}
 {% block content %}
 <header class="page-heading"><div><p class="eyebrow">CASES / REGRESSION</p><h1>선택 케이스 정식 실행</h1><p>선택한 {{ choices|length }}개 케이스의 현재 승인본을 이 화면에 고정했습니다. 환경·기기·데이터를 확인하세요.</p></div><a href="/ui/projects/{{ project_id }}/cases">케이스 목록으로</a></header>
-<p>녹화된 절차로 재생하며 셀프힐링은 OFF입니다. 검증 AI는 저장된 검증 단계에서만 호출합니다.</p>
+<p>녹화된 절차로 재생합니다. 자동 복구는 기본이 꺼져 있고, 아래 선택과 서버 검사가 이번 실행의 복구 조건을 정합니다. 검증 AI는 저장된 검증 단계에서만 호출합니다.</p>
 <form id="selection-execution" data-project="{{ project_id }}" data-source="selection" data-count="{{ choices|length }}" data-blocked="{{ 'true' if blocked else 'false' }}">
   <section class="panel"><h2>실행 설정</h2>
     <label>실행 이름 <input name="name" value="선택 케이스 회귀" required maxlength="200" autocomplete="off"></label>
     <label>배포 라벨 <input name="release_label" placeholder="예: 2026.11" autocomplete="off"></label>
     <label>항목 실패 시 <select name="failure_policy"><option value="stop_on_non_pass">나머지 실행 중단</option><option value="continue">다음 항목 계속 실행</option></select></label>
+    <label class="checkbox-label"><input id="healing-toggle" name="healing_enabled" type="checkbox" data-default="off">자동 복구를 이번 정식 실행에서 사용</label>
+    <p class="hint">기본은 꺼져 있습니다. 승인된 복구 범위·키·예산·상한이 있을 때만 켤 수 있으며, 시범에서는 켜지지 않습니다.</p>
   </section>
   {% for item in choices %}
   <section class="panel" aria-label="{{ item.name }} 실행 대상" data-execution-item data-entry-id="{{ item.case_id }}" data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">

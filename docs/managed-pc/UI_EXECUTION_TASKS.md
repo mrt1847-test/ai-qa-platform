@@ -138,9 +138,9 @@
 
 **직접 선행** RX-79, RX-80, RX-86, RX-87, RX-88. **계약** C00/C01/C08/C09/C14. **환경** local_python, local_browser.
 
-- [ ] 묶음/선택 정식 준비에 기본 OFF 토글을 제공한다. ON의 승인 capability·키·예산·상한과 항목별 차단을 preview 결과로 표시한다.
-- [ ] 변경 시 재검사, 명시 접수, 응답 유실의 동일 요청 복구, 진행 중 토글 금지를 유지한다. trial 토글은 계속 OFF다.
-- [ ] 동일 승인본/기기에서 OFF 모델0과 ON 조건을 실제 UI·fixture runtime으로 확인하고 서버/worker 미지원 성공을 만들지 않는다.
+- [x] 묶음/선택 정식 준비에 기본 OFF 토글을 제공한다. ON의 승인 capability·키·예산·상한과 항목별 차단을 preview 결과로 표시한다.
+- [x] 변경 시 재검사, 명시 접수, 응답 유실의 동일 요청 복구, 진행 중 토글 금지를 유지한다. trial 토글은 계속 OFF다.
+- [x] 동일 승인본/기기에서 OFF 모델0과 ON 조건을 실제 UI·fixture runtime으로 확인하고 서버/worker 미지원 성공을 만들지 않는다.
 **인계** docs/validation/tasks/RX-89.md.
 
 <a id="rx-90"></a>

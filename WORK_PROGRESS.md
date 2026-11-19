@@ -1,6 +1,6 @@
 # AI QA 플랫폼 작업 진행표 v0.8
 
-> **등록 PC 전환:** [PC-01](docs/validation/tasks/PC-01.md)·[PC-02](docs/validation/tasks/PC-02.md)·[PC-03](docs/validation/tasks/PC-03.md)의 core와 [PC-04](docs/validation/tasks/PC-04.md)의 소스 조사·설계를 완료했다(전환 4/4). [등록 PC 구현과 실환경 수용](docs/managed-pc/IMPLEMENTATION_TASKS.json)은 별도 87/99이며 [NEXT_ACTION](NEXT_ACTION.md)에서 현재 작업을 확인한다. [RX-01](docs/validation/tasks/RX-01.md)~[RX-20](docs/validation/tasks/RX-20.md)·[RX-28](docs/validation/tasks/RX-28.md)·[RX-30](docs/validation/tasks/RX-30.md)~[RX-78](docs/validation/tasks/RX-78.md) 로컬/현재 PC 배선·제품 흐름 이력 보존. [기능 구현 RX-47~62](docs/managed-pc/PRODUCT_FLOW_TASKS.md)는 16/16, 실환경 수용 RX-21~27·RX-29는 0/8이다. [정상 진입점 보완 RX-63~71](docs/managed-pc/ENTRY_COMPLETION_TASKS.md)은 9/9이며 전체 기능 구현 트랙은 49/53다. [결과·자원 복귀·실제 driver RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)은 7/7이다. [실행 준비 UI·회귀 보완 RX-79~91](docs/managed-pc/UI_EXECUTION_TASKS.md)은 9/13이다. 실제 외부 조건은 [ACCEPTANCE_RESUME](docs/validation/tasks/ACCEPTANCE_RESUME.md)에 보존한다.
+> **등록 PC 전환:** [PC-01](docs/validation/tasks/PC-01.md)·[PC-02](docs/validation/tasks/PC-02.md)·[PC-03](docs/validation/tasks/PC-03.md)의 core와 [PC-04](docs/validation/tasks/PC-04.md)의 소스 조사·설계를 완료했다(전환 4/4). [등록 PC 구현과 실환경 수용](docs/managed-pc/IMPLEMENTATION_TASKS.json)은 별도 88/99이며 [NEXT_ACTION](NEXT_ACTION.md)에서 현재 작업을 확인한다. [RX-01](docs/validation/tasks/RX-01.md)~[RX-20](docs/validation/tasks/RX-20.md)·[RX-28](docs/validation/tasks/RX-28.md)·[RX-30](docs/validation/tasks/RX-30.md)~[RX-78](docs/validation/tasks/RX-78.md) 로컬/현재 PC 배선·제품 흐름 이력 보존. [기능 구현 RX-47~62](docs/managed-pc/PRODUCT_FLOW_TASKS.md)는 16/16, 실환경 수용 RX-21~27·RX-29는 0/8이다. [정상 진입점 보완 RX-63~71](docs/managed-pc/ENTRY_COMPLETION_TASKS.md)은 9/9이며 전체 기능 구현 트랙은 49/53다. [결과·자원 복귀·실제 driver RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)은 7/7이다. [실행 준비 UI·회귀 보완 RX-79~91](docs/managed-pc/UI_EXECUTION_TASKS.md)은 11/13이다. 실제 외부 조건은 [ACCEPTANCE_RESUME](docs/validation/tasks/ACCEPTANCE_RESUME.md)에 보존한다.
 > Android 개발/누락 UI 보완 7개는 [별도 카드](docs/execution/11-development-follow-ups.md)·[별도 색인](docs/execution/DEV_FOLLOW_UP_INDEX.json)을 따른다. AD-01·UX-01·UX-02·UX-03 완료(4/7)와 기존 W 완료 126/163을 보존한다. AD-02~04의 실제 등록 PC 적용은 [RX 매핑](docs/managed-pc/RUNTIME_BOUNDARIES.md#카드-선택과-기존-이력)에 있고 UX는 공유 제품 보완이다.
 
 > UI 개선 및 병합 검증은 [결과](docs/validation/ux/README.md)를 참고한다. 아래 완료 수는 최신 master 작업 근거를 따르며 UI 변경으로 추가하지 않는다.
@@ -80,6 +80,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 [AI-LIVE-04-MA05B2](docs/validation/tasks/AI-LIVE-04-MA05B2.md): 저장 package를 실제 검토·승인으로 확정하고 같은 package를 actor AI0·healing OFF로 5동작 재생했다. 관련1pass1.45s. 실환경 수용과 전체 RX87은 미완료다. 다음은 RX-88이다.
 
 [RX-88](docs/validation/tasks/RX-88.md): Web replay가 claim healing pin과 행동 한도를 소비한다. locator 실패만 원래 step을 한 번 실행하고 actor AI는 0이다. 관련5pass1.00s. VM 수용은 RX-24이며 다음은 RX-89다.
+
+[RX-89](docs/validation/tasks/RX-89.md): 묶음/선택 정식 준비에 기본 OFF healing 토글을 두고, 서버 preview의 키·예산·상한과 항목별 차단만 표시한다. UI 8pass, fixture 2pass. trial 토글은 비활성이고 모델 호출 0이다. 다음은 RX-90이다.
 
 ## 1. 현재 상태
 
@@ -498,7 +500,7 @@ Web/Android replay·명시 verifier·bounded healing·사후 승인·CSV/인쇄H
 
 RX-92/93의 설정 저장·서버 healing 정책 해석은 로컬 계약/브라우저 검증을 마쳤다. 정상 ON 접수 RX-86과 claim RX-94/플랫폼 runtime은 진행 중인 별도 범위다. 전체 검사 기준 커밋의 [9개 실패](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)는 전체 green으로 오인하지 않는다.
 
-RX-86/94/95: 실제 API ON 접수/같은 구성 재실행·정확한 승인/키/정책 claim 재검사·워커 typed pin validation을 구현했다. 정상 ON 실행의 실제 모델/episode/locator 치유는 RX-87/88이며 UI는 RX-89에 남아 있다.
+RX-86/94/95: 실제 API ON 접수/같은 구성 재실행·정확한 승인/키/정책 claim 재검사·워커 typed pin validation을 구현했다. 정상 ON 실행의 실제 모델/episode/locator 치유는 RX-87/88이며 정식 준비 토글은 RX-89에서 로컬 확인했다.
 
 RX-96의 실제 공급자 응답 소비·잘못된 응답/timeout 호출 차감·unique locator proof를 로컬 gateway/HTTP 모의 전송으로 완료했다.
 

@@ -16,6 +16,22 @@
   var locked = [];
 
   function value(name) { return form.elements.namedItem(name).value.trim(); }
+  function healingSummary(item) {
+    var resolution = item.healing_resolution;
+    if (!resolution) return '';
+    if (resolution.effective_enabled !== true) return ' · 복구 꺼짐';
+    var limits = resolution.effective_limits || {};
+    var binding = item.healing_binding || {};
+    return ' · 복구 조건 고정 · ' + (binding.key_ref_id ? '키 고정' : '키 없음')
+      + ' · 예산 ' + (limits.budget != null ? limits.budget : '확인 필요')
+      + ' · episode ' + (limits.max_episodes_per_item != null ? limits.max_episodes_per_item : '확인 필요')
+      + ' · 호출 ' + (limits.max_model_calls_per_item != null ? limits.max_model_calls_per_item : '확인 필요')
+      + ' · ' + (limits.max_seconds != null ? limits.max_seconds : '확인 필요') + '초';
+  }
+  function healingRequested() {
+    var node = form.elements.namedItem('healing_enabled');
+    return !!(node && node.checked && !node.disabled);
+  }
   function read() {
     var selection = {suite_version_id: form.dataset.version};
     if (source === 'selection') selection = {items: rows.map(function (row) {
@@ -28,7 +44,7 @@
     return {
       name: value('name'), purpose: 'regression', source: source,
       failure_policy: value('failure_policy'), release_label: value('release_label'),
-      self_healing_enabled: false, exclusions: [],
+      self_healing_enabled: healingRequested(), exclusions: [],
       selection: selection
     };
   }
@@ -77,27 +93,37 @@
         RESOURCE_UNAVAILABLE: '기기 연결·환경·데이터를 확인하세요. 실행 PC가 꺼져 있으면 실행할 수 없습니다.',
         PACKAGE_MISSING: '승인된 재생 패키지가 필요합니다.',
         MODEL_BINDING_UNAVAILABLE: '검증에 사용할 AI 모델과 키 연결을 확인하세요.',
-        BUDGET_UNAVAILABLE: '시간·행동·비용 한도를 확인하세요.'
+        BUDGET_UNAVAILABLE: '시간·행동·비용 한도를 확인하세요.',
+        HEALING_NOT_APPROVED: '이 승인본은 자동 복구를 허용하지 않습니다.',
+        HEALING_KEY_UNAVAILABLE: '복구 AI 키가 없거나 사용할 수 없습니다.',
+        HEALING_BUDGET_UNAVAILABLE: '복구 예산·호출·시간 상한을 확인하세요.',
+        HEALING_BINDING_UNAVAILABLE: '승인된 복구 AI 연결을 찾을 수 없습니다.',
+        HEALING_APPROVAL_REQUIRED: '승인된 재생 패키지가 있어야 복구를 켤 수 있습니다.',
+        HEALING_REQUEST_EXCEEDS_APPROVAL: '요청한 복구 상한이 승인 범위를 넘습니다.',
+        HEALING_POLICY_INVALID: '저장된 복구 정책을 확인할 수 없습니다.',
+        HEALING_SNAPSHOT_CHANGED: '저장된 복구 조건이 바뀌었습니다. 다시 확인하세요.'
       };
       (body.blockers || []).forEach(function (reason) {
         var li = document.createElement('li');
-        li.textContent = labels[reason.code] || reason.message || reason.code;
+        li.textContent = (reason.entry_id ? reason.entry_id + ' · ' : '') + (labels[reason.code] || reason.message || reason.code);
         blockers.appendChild(li);
       });
       var resolved = body.resolved_items || [];
       resolved.forEach(function (item) {
         var li = document.createElement('li');
-        li.textContent = item.entry_id + ' · 승인본 ' + item.case_version_id + ' · 기기 ' + item.resource_id;
+        li.textContent = item.entry_id + ' · 승인본 ' + item.case_version_id + ' · 기기 ' + item.resource_id + healingSummary(item);
         items.appendChild(li);
       });
-      if (!body.ready || resolved.length !== count || !body.preview_hash ||
+      if (!body.ready || (body.blockers || []).length || resolved.length !== count || !body.preview_hash ||
           (body.exclusions || []).length || body.silent_exclusions) {
         status.textContent = '전체 구성이 준비되지 않았습니다. 위 항목을 보완한 뒤 다시 확인하세요.';
         return;
       }
       prepared = {payload: payload, preview: body};
       enqueue.disabled = false;
-      status.textContent = '전체 ' + resolved.length + '개가 준비되었습니다. 실행 버튼을 누르면 접수합니다.';
+      status.textContent = '전체 ' + resolved.length + '개가 준비되었습니다. '
+        + (body.self_healing_enabled === true ? '자동 복구 조건은 서버가 이 승인본에 고정했습니다. ' : '자동 복구는 꺼져 있습니다. ')
+        + '실행 버튼을 누르면 접수합니다.';
     } catch (_) {
       status.textContent = '검사 응답을 받지 못했습니다. 입력을 유지했으니 다시 확인하세요.';
     } finally {

@@ -7,7 +7,8 @@ function host(request, count=2, selection=false) {
     appendChild(node){this.children.push(node);}
     async fire(type){if(this.events[type])await this.events[type]({preventDefault(){}});}
   }
-  const fields={name:new N('월간 회귀'),failure_policy:new N('stop_on_non_pass'),release_label:new N('v1')};
+  const healing=new N('');healing.checked=false;
+  const fields={name:new N('월간 회귀'),failure_policy:new N('stop_on_non_pass'),release_label:new N('v1'),healing_enabled:healing};
   const form=new N();form.dataset={project:'p',version:'saved-v1',count:String(count)};
   form.elements={namedItem:n=>fields[n]};
   const rows=Array.from({length:count},(_,i)=>{const row=new N();row.dataset={entryId:'case-'+i,version:'approved-'+i,approval:'approval-'+i};const rowFields={environment_revision_id:new N('env-'+i),resource_id:new N('resource-'+i),dataset_version_id:new N('')};row.querySelector=s=>rowFields[s.match(/name="([^"]+)"/)[1]];return row;});
@@ -87,6 +88,25 @@ test('server rejection requires a new preview while preserving typed values',asy
   await h.admit();assert.equal(h.calls.length,2);
 });
 
+
+test('formal healing stays off until checked and a healing block never enables admission',async()=>{
+  const h=host(()=>preview({ready:false,blockers:[{code:'HEALING_KEY_UNAVAILABLE',message:'missing',entry_id:'case-0'}],resolved_items:resolved.map(item=>({...item,healing_resolution:{effective_enabled:false}}))}));
+  await h.preview();
+  assert.equal(h.calls[0].body.self_healing_enabled,false);
+  h.fields.healing_enabled.checked=true;
+  await h.preview();
+  assert.equal(h.calls[1].body.self_healing_enabled,true);
+  assert.match(h.nodes['suite-blockers'].children[0].textContent,/case-0 · 복구 AI 키/);
+  assert.match(h.nodes['suite-items'].children[0].textContent,/복구 꺼짐/);
+  assert.equal(h.nodes['enqueue-suite'].disabled,true);
+  const ready=host(()=>preview({self_healing_enabled:true,resolved_items:resolved.map(item=>({...item,resource_id:'device-1',healing_resolution:{effective_enabled:true,effective_limits:{budget:'0.50',max_episodes_per_item:1,max_model_calls_per_item:2,max_seconds:30}},healing_binding:{key_ref_id:'key-1'}}))}));
+  ready.fields.healing_enabled.checked=true;
+  await ready.preview();
+  assert.equal(ready.calls[0].body.self_healing_enabled,true);
+  assert.match(ready.nodes['suite-items'].children[0].textContent,/키 고정 · 예산 0.50 · episode 1 · 호출 2 · 30초/);
+  assert.match(ready.nodes['suite-status'].textContent,/서버가 이 승인본에 고정/);
+  assert.equal(ready.nodes['enqueue-suite'].disabled,false);
+});
 
 test('selected regression sends every explicit row with its pinned approval and chosen resource',async()=>{
   const h=host(c=>c.url.endsWith('execution-previews')?preview({resolved_items:[{entry_id:'case-0',case_version_id:'approved-0',approval_id:'approval-0'},{entry_id:'case-1',case_version_id:'approved-1',approval_id:'approval-1'}]}):response({execution_id:'selection-run'}),2,true);

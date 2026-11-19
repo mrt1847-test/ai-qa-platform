@@ -50,6 +50,40 @@ def test_actual_original_main_to_server_model_driver_evidence_and_source(engine_
     assert result.process.receipt['main_invocations']==1
 
 
+def test_source_seals_swipe_coordinates_without_approval(engine_job,tmp_path):
+    actions=[{'action':'swipe','coordinate':[100,200],'coordinate2':[300,400]},{'action':'terminate','status':'success'}]
+    c,session,sent=prepare(engine_job,tmp_path,actions=actions)
+    with c:result=session.run()
+    source=json.loads(result.action_mapping)
+    native=source['events'][0]['native']
+    assert result.outcome=='completed' and result.review_pending and source['schema']=='android-native-trace-v2'
+    assert native['kind']=='swipe' and (native['x'],native['y'],native['x2'],native['y2'],native['duration_ms'])==(9,40,29,79,800)
+    assert sent[0][-6:]==('swipe','9','40','29','79','800')
+    with sqlite3.connect(engine_job['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+
+
+def test_unlisted_text_is_not_sent_or_sealed(engine_job,tmp_path):
+    c,session,sent=prepare(engine_job,tmp_path,actions=[{'action':'type','text':'mouse'},{'action':'terminate','status':'success'}])
+    with c:result=session.run()
+    assert result.outcome=='failed' and result.reason=='authoring_unavailable'
+    assert sent==[] and result.native_actions==0 and result.action_mapping=='{}' and not result.review_pending
+    with sqlite3.connect(engine_job['database']) as db:
+        assert db.execute("SELECT COUNT(*) FROM artifact_objects WHERE role='source'").fetchone()[0]==0
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+
+
+def test_source_seals_back_key_without_approval(engine_job,tmp_path):
+    c,session,sent=prepare(engine_job,tmp_path,actions=[{'action':'system_button','button':'Back'},{'action':'terminate','status':'success'}])
+    with c:result=session.run()
+    native=json.loads(result.action_mapping)['events'][0]['native']
+    assert result.outcome=='completed' and result.review_pending and result.native_actions==1
+    assert native['kind']=='key' and native['keycode']==4 and sent[0][-2:]==('keyevent','4')
+    with sqlite3.connect(engine_job['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+
+
+
 def test_wait_is_evidenced_without_native_and_then_original_main_continues(engine_job,tmp_path):
     actions=[{'action':'wait','time':0},{'action':'click','coordinate':[500,500]},{'action':'terminate','status':'success'}]
     c,session,sent=prepare(engine_job,tmp_path,actions=actions)

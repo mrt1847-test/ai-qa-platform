@@ -105,6 +105,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [세션 종료](docs/validation/tasks/AI-LIVE-04-CHILD-CLOSED-SESSION.md): 녹화 세션도 같은 종료에서 ADB·source·승인을 만들지 않는다. 1pass2.39s.
 
+[source v2 동작](docs/validation/tasks/AI-LIVE-04-SOURCE-V2-ACTIONS.md): swipe는 물리 픽셀 `9,40→29,79`와 800ms, Back은 keycode 4로 봉인된다. 목록 밖 문자는 전송하지 않는다. 3pass11.70s. 허용 문자와 check binding은 아직이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

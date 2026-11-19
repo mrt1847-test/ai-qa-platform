@@ -111,6 +111,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [논리 검증](docs/validation/tasks/AI-LIVE-04-LOGICAL-CHECK.md): 단계 `s1`과 검증 `c1`은 봉인된 버전에 남고 native 동작 id가 아니다. 승인은 없다. 1pass5.46s.
 
+[handler 이력](docs/validation/tasks/AI-LIVE-04-HANDLER-HISTORY.md): 두 번째 모델 요청은 서버 assistant 이력과 첫 click을 담고, journal은 observed까지다. 승인은 없다. 1pass6.61s. live 수용은 아직이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

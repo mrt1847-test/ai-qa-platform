@@ -247,3 +247,21 @@ def test_unusable_original_instruction_is_rejected_before_preparation(android_en
     job['snapshot']['intent']['objective']=objective
     with c:r=h.handle(job)
     assert r.actions==0 and r.outcome=='error' and launches==[] and sent==[] and f['openai_sent']==[]
+
+
+def test_handler_second_model_uses_server_history_and_journal_ack(android_engine_job,tmp_path):
+    f=android_engine_job;c,h,job,sent,launches,_=setup(f,tmp_path)
+    with c:result=h.handle(job)
+    assert result.outcome=='completed' and result.review_pending and launches==['com.example.saved'] and len(sent)==1
+    bodies=[json.loads(request.content) for request in f['openai_sent']]
+    assert len(bodies)==2
+    def roles(body):return [item['role'] for item in body['input']]
+    assert 'assistant' not in roles(bodies[0]) and roles(bodies[1]).count('assistant')==1
+    assistant=next(item for item in bodies[1]['input'] if item['role']=='assistant')
+    text=''.join(part.get('text','') for part in assistant['content'])
+    assert 'click' in text and 'file://' not in text
+    action_id=json.loads(result.action_mapping)['events'][0]['action_id']
+    journal=DispatchJournal(tmp_path/'runtime'/'mobile-agent'/f['project']/job['attempt_id']/'session'/'dispatch.jsonl')
+    assert journal.states(action_id,job['attempt_id'])==('planned','dispatch_started','acknowledged','observed')
+    with sqlite3.connect(f['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0

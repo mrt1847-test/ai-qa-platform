@@ -64,6 +64,7 @@
     enqueue.disabled = true;
     blockers.replaceChildren();
     items.replaceChildren();
+    if (window.aiqaPrep) window.aiqaPrep.reset();
     status.textContent = '설정이 바뀌었습니다. 준비 상태를 다시 확인하세요.';
   }
   form.addEventListener('input', invalidate);
@@ -121,6 +122,7 @@
       }
       prepared = {payload: payload, preview: body};
       enqueue.disabled = false;
+      if (window.aiqaPrep) window.aiqaPrep.showFinal(body);
       status.textContent = '전체 ' + resolved.length + '개가 준비되었습니다. '
         + (body.self_healing_enabled === true ? '자동 복구 조건은 서버가 이 승인본에 고정했습니다. ' : '자동 복구는 꺼져 있습니다. ')
         + '실행 버튼을 누르면 접수합니다.';
@@ -161,7 +163,11 @@
       } else {
         status.textContent = response.status === 409
           ? '접수 조건이 달라졌습니다. 준비 상태를 다시 확인하세요.'
-          : '접수하지 못했습니다. 기기 연결·구성·권한을 확인한 뒤 다시 검사하세요.';
+          : response.status === 422
+            ? '접수한 구성이 검사 결과와 다릅니다. 준비 상태를 다시 확인하세요.'
+            : response.status === 403
+              ? '이 실행을 접수할 권한이 없습니다.'
+              : '접수하지 못했습니다. 기기 연결·구성·권한을 확인한 뒤 다시 검사하세요.';
       }
       locked.forEach(function (node) { node.disabled = false; });
       check.disabled = !validCount;

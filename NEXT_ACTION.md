@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-90 — 실행 준비의 공통 4단계와 최종 고정값 확인.** RX-89 정식 준비 UI의 healing ON/OFF는 기록했다.
+**후속 — 실행 항목의 명시 제외와 사유.** RX-90 공통 4단계와 최종 확인은 기록했다.
 
-[RX-90](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90)을 수행한다. 단일/선택/묶음/재실행의 대상→환경·데이터→사전 점검→최종 확인을 공통 구성으로 잇고, 고정 버전·승인·환경·기기·한도·healing 상한을 최종 확인에서 읽게 한다. 추정 호출을 실제 비용으로 표시하지 않는다.
+[명시 제외](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-90-exclusions)를 수행한다. 준비 화면에서 고른 항목과 사유만 snapshot에 남긴다. 사유 없는 제외와 조용한 제외는 접수를 열지 않고, 일부 실행을 전체 성공으로 표시하지 않는다.
 
-[RX-89](docs/validation/tasks/RX-89.md)는 기본 OFF 토글과 서버 preview의 차단·상한 표시를 기록했다. 그 화면 성공으로 복구 실행 성공을 만들지 않는다.
+[RX-90](docs/validation/tasks/RX-90.md)은 시범·선택·묶음·재실행의 4단계와 서버 confirmation 상한 표시를 기록했다. 그 확인은 실제 비용이나 복구 성공이 아니다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+RX-90: 시범·선택·묶음·재실행 준비는 1대상, 2환경·데이터, 3사전 점검, 4최종 확인을 같은 순서로 연다. 최종 확인의 버전·승인·환경·기기·배포·초기화·실패 정책·검증 방식·행동/검증 호출 상한·복구 상한은 preview `confirmation`의 값이다. 호출 상한은 예상이며 실제 비용이 아니다. 검사 전 최종 확인과 조용한 제외로는 접수하지 않는다. 명시 제외 사유 화면은 후속이다.
+
 RX-89: 묶음/선택 정식 준비의 healing 토글은 기본 OFF다. 켠 요청만 preview가 승인 capability·키·예산·episode/호출/시간 상한과 항목별 차단을 반환하고, 그 차단이 있으면 접수 버튼을 열지 않는다. 변경은 다시 검사하고, 응답 유실의 재시도는 같은 요청이다. trial 토글은 비활성이며 진행 중 수행 화면의 토글은 실행 중에 바뀌지 않는다. 서버가 ready로 주지 않은 복구 성공을 표시하지 않는다.
 
 RX-88: Web replay는 claim의 healing pin과 max_actions를 재생 전에 적용한다. trial은 healing OFF다. regression ON은 recovery client가 있을 때만 시작한다. `target_not_found`/`layout_shift`만 원래 allowlisted step을 한 번 실행하게 하고, assertion 실패와 전송 후 실패는 재클릭하지 않는다. actor AI 호출은 0이고 package digest는 유지한다. 실 VM 수용은 RX-24다.

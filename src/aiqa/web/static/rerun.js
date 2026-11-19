@@ -31,11 +31,24 @@
       text = item ? item.display_name + ' · ' + item.block_reason : '저장된 기기의 실행 PC 연결을 확인해 주세요.';
     }
     if (connection.textContent !== text) connection.textContent = text;
+    const summary = document.getElementById('rerun-confirmation');
+    if (window.aiqaPrep) {
+      if (selected.length) window.aiqaPrep.allowFinal();
+      else window.aiqaPrep.reset();
+    }
+    if (summary) {
+      summary.textContent = '원본 ' + (button.dataset.execution || '없음')
+        + ' · 범위 ' + scope.value
+        + ' · 항목 ' + selected.length
+        + ' · 사유 ' + (reason.value.trim() || '아직 없음')
+        + ' · 저장된 버전·승인·환경·기기·상한을 다시 사용합니다. 예상 비용을 계산하지 않습니다.';
+    }
     button.disabled = sending || !(command.pending() ? connected : available);
     button.textContent = command.pending() && !sending ? '같은 요청으로 다시 접수' : '다시 실행';
   }
 
   scope.addEventListener('change', update);
+  reason.addEventListener('input', update);
   const refresh = window.aiqaPcAvailability.watch(button.dataset.project, rows => {
     resources = rows;
     update();

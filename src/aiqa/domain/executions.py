@@ -61,6 +61,8 @@ class ResolvedTrialItem:
     limits: dict[str, object] = field(default_factory=dict)
     healing_resolution: dict[str, object] = field(default_factory=dict)
     healing_binding: dict[str, object] | None = None
+    reset_policy: str = ""
+    verifier_method: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +93,7 @@ class ExecutionPreview:
     reserved: bool = False
     release_label: str = ""
     release_floor_runs: int = 0
+    failure_policy: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +146,7 @@ def preview_execution(tx: Transaction, actor: Actor, project_id: UUID, payload: 
         reserved=False,
         release_label=release_label,
         release_floor_runs=30 if release_label != "" else 0,
+        failure_policy=payload.get("failure_policy") if type(payload.get("failure_policy")) is str else "",
     )
 
 
@@ -1305,6 +1309,8 @@ def _one_item(
         _case_execution_limits(settings),
         healing_resolution,
         healing_binding,
+        reset_policy=_stored_reset(settings),
+        verifier_method=_stored_verifier(settings),
     )
     return item, tuple(blockers)
 
@@ -1409,6 +1415,20 @@ def _has_check(definition: dict[str, object]) -> bool:
     if type(steps) is not list:
         return False
     return any(type(step) is dict and type(step.get("expected")) is list and step.get("expected") != [] for step in steps)
+
+
+def _stored_reset(settings: dict[str, object]) -> str:
+    value = settings.get("reset_policy", "none")
+    return value if type(value) is str and value.strip() != "" else "none"
+
+
+def _stored_verifier(settings: dict[str, object]) -> str:
+    bindings = settings.get("verifier_bindings")
+    if type(bindings) is list and bindings != [] and type(bindings[0]) is dict:
+        method = bindings[0].get("method", "deterministic")
+        return method if type(method) is str and method.strip() != "" else "deterministic"
+    method = settings.get("verifier_method", "deterministic")
+    return method if type(method) is str and method.strip() != "" else "deterministic"
 
 
 def _case_execution_limits(settings: dict[str, object]) -> dict[str, object]:

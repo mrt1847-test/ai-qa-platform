@@ -3,16 +3,20 @@
 {% block content %}
 <header class="page-heading"><div><p class="eyebrow">CASES / REGRESSION</p><h1>선택 케이스 정식 실행</h1><p>선택한 {{ choices|length }}개 케이스의 현재 승인본을 이 화면에 고정했습니다. 환경·기기·데이터를 확인하세요.</p></div><a href="/ui/projects/{{ project_id }}/cases">케이스 목록으로</a></header>
 <p>녹화된 절차로 재생합니다. 자동 복구는 기본이 꺼져 있고, 아래 선택과 서버 검사가 이번 실행의 복구 조건을 정합니다. 검증 AI는 저장된 검증 단계에서만 호출합니다.</p>
-<form id="selection-execution" data-project="{{ project_id }}" data-source="selection" data-count="{{ choices|length }}" data-blocked="{{ 'true' if blocked else 'false' }}">
-  <section class="panel"><h2>실행 설정</h2>
+<form id="selection-execution" data-prep data-project="{{ project_id }}" data-source="selection" data-count="{{ choices|length }}" data-blocked="{{ 'true' if blocked else 'false' }}">
+  {% include "components/prep_steps.html" %}
+  <section class="panel" data-prep-panel="1"><h2>1 대상</h2>
     <label>실행 이름 <input name="name" value="선택 케이스 회귀" required maxlength="200" autocomplete="off"></label>
+    <ol>{% for item in choices %}<li>{{ item.name }} · {% if item.version_id %}승인 버전 v{{ item.revision }}{% else %}승인 전{% endif %}</li>{% endfor %}</ol>
+  </section>
+  <section class="panel" data-prep-panel="2"><h2>2 환경·데이터</h2>
     <label>배포 라벨 <input name="release_label" placeholder="예: 2026.11" autocomplete="off"></label>
     <label>항목 실패 시 <select name="failure_policy"><option value="stop_on_non_pass">나머지 실행 중단</option><option value="continue">다음 항목 계속 실행</option></select></label>
     <label class="checkbox-label"><input id="healing-toggle" name="healing_enabled" type="checkbox" data-default="off">자동 복구를 이번 정식 실행에서 사용</label>
     <p class="hint">기본은 꺼져 있습니다. 승인된 복구 범위·키·예산·상한이 있을 때만 켤 수 있으며, 시범에서는 켜지지 않습니다.</p>
   </section>
   {% for item in choices %}
-  <section class="panel" aria-label="{{ item.name }} 실행 대상" data-execution-item data-entry-id="{{ item.case_id }}" data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">
+  <section class="panel" data-prep-panel="2" aria-label="{{ item.name }} 실행 대상" data-execution-item data-entry-id="{{ item.case_id }}" data-version="{{ item.version_id }}" data-approval="{{ item.approval_id }}">
     <h2>{{ loop.index }}. {{ item.name }}</h2>
     <p>{{ 'Android' if item.target_kind == 'android' else 'Web' }} · {% if item.version_id %}승인 버전 v{{ item.revision }}{% else %}승인 전{% endif %}</p>
     {% if item.problem %}<p role="status">{{ item.problem }} <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/review">저장본 검토</a> · <a href="/ui/projects/{{ project_id }}/cases/{{ item.case_id }}/execution-setup">시범 준비</a></p>{% endif %}
@@ -23,16 +27,27 @@
     <a href="/ui/projects/{{ project_id }}/environments">환경·기기 관리</a>
   </section>
   {% endfor %}
-  <section class="panel" aria-label="사전 검사와 실행">
-    <h2>사전 검사와 접수</h2>
+  <section class="panel" data-prep-panel="3" aria-label="사전 점검">
+    <h2>3 사전 점검</h2>
     <p>검사만으로 장치를 제어하거나 AI를 호출하지 않습니다. 준비되지 않은 케이스를 자동으로 제외하지 않습니다.</p>
     {% if blocked %}<p>위 케이스의 승인·보관 상태를 먼저 보완한 뒤 목록에서 다시 준비하세요.</p>{% endif %}
     <button id="preview-selection" type="button"{% if blocked %} disabled{% endif %}>준비 상태 확인</button>
     <ul id="selection-blockers" aria-label="실행 전 보완할 항목"></ul>
     <ol id="selection-items" aria-label="검사한 실행 대상"></ol>
     <p id="selection-status" role="status" aria-live="polite">모든 항목을 확인한 뒤 실행을 접수하세요.</p>
+  </section>
+  <section class="panel" data-prep-panel="4" aria-label="최종 확인">
+    <h2>4 최종 확인</h2>
+    <div id="selection-confirmation" data-prep-confirmation></div>
     <button id="enqueue-selection" type="button" disabled>이 구성으로 회귀 실행 접수</button>
   </section>
+  <div class="prep-actions">
+    <button type="button" data-prep-back>이전</button>
+    <a href="/ui/projects/{{ project_id }}/cases">취소</a>
+    <button type="button" data-prep-edit>수정</button>
+    <button type="button" data-prep-next>다음</button>
+  </div>
 </form>
+<script src="/static/execution_prep.js?v={{ ui_asset_version }}"></script>
 <script src="/static/suite_execution.js?v={{ ui_asset_version }}"></script>
 {% endblock %}

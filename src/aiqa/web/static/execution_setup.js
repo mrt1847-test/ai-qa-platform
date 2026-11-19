@@ -5,7 +5,7 @@
   function read(){return {purpose:'trial',source:'single',failure_policy:value('failure_policy'),self_healing_enabled:false,exclusions:[],selection:{items:[{entry_id:form.dataset.case,case_version_id:value('case_version_id'),environment_revision_id:value('environment_revision_id'),resource_id:value('resource_id'),dataset_version_id:value('dataset_version_id')||null}]}};}
   var handle=window.aiqaForms.register(form,{read:read,saveBeforeLeave:false,persist:async function(){throw Error('explicit admission required');}});
   var gate=window.aiqaCommand(function(body,key){return window.aiqaRequest(base+'/executions',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify(body)});});
-  function invalidate(){prepared=null;enqueue.disabled=true;blockers.replaceChildren();pins.textContent='';status.textContent='선택 내용이 바뀌었습니다. 준비 상태를 다시 확인해 주세요.';}
+  function invalidate(){prepared=null;enqueue.disabled=true;blockers.replaceChildren();pins.textContent='';if(window.aiqaPrep)window.aiqaPrep.reset();status.textContent='선택 내용이 바뀌었습니다. 준비 상태를 다시 확인해 주세요.';}
   form.addEventListener('input',invalidate);form.addEventListener('change',invalidate);
   var sending=false;
   var availability=window.aiqaPcAvailability && window.aiqaPcAvailability.selection(form,
@@ -31,8 +31,8 @@
       var labels={PACKAGE_MISSING:'재생 패키지가 필요합니다. 녹화를 준비하세요.',RESOURCE_UNAVAILABLE:'기기·환경·데이터의 연결 및 저장본을 확인하세요.',DEFINITION_AMBIGUOUS:'필수 검증의 기대 결과를 보완하세요.',MODEL_BINDING_UNAVAILABLE:'검증 AI의 키·모델 연결이 필요합니다.',BUDGET_UNAVAILABLE:'저장된 케이스의 시간·비용 한도를 확인하세요.'};
       body.blockers.forEach(function(reason){var li=document.createElement('li');li.textContent=labels[reason.code]||reason.message;blockers.appendChild(li);});
       var ready=body.ready&&(!availability||availability.allowed());
-      pins.textContent=JSON.stringify(body.resolved_items,null,2);status.textContent=ready?'준비되었습니다. 아래 버튼으로 명시 접수하세요.':'위 항목을 보완한 뒤 다시 검사하세요.';
-      if(ready){prepared={preview:body,selection:payload.selection.items[0]};enqueue.disabled=false;}
+      pins.textContent=JSON.stringify(body.resolved_items,null,2);status.textContent=ready?'준비되었습니다. 최종 확인에서 명시 접수하세요.':'위 항목을 보완한 뒤 다시 검사하세요.';
+      if(ready){prepared={preview:body,selection:payload.selection.items[0]};enqueue.disabled=false;if(window.aiqaPrep)window.aiqaPrep.showFinal(body);}
     }catch(_){status.textContent='검사 응답을 받지 못했습니다. 다시 확인해 주세요.';}
     finally{preparing=false;check.disabled=false;}
   });
@@ -47,7 +47,7 @@
     try{
       var response=await gate.send(frozen),body=await response.json();
       if(response.ok){handle.markSaved();status.textContent='시범을 접수했습니다. 실행 '+body.execution_id+' · ';var historyLink=document.createElement('a');historyLink.href='/ui/projects/'+form.dataset.project+'/cases/'+form.dataset.case+'/definition?tab=history';historyLink.textContent='케이스 실행 기록 확인';status.appendChild(historyLink);prepared=null;}
-      else{if(availability)availability.refresh();status.textContent=response.status===409?'접수 조건이 달라졌습니다. 다시 검사하세요.':'접수하지 못했습니다. 기기·버전·권한을 확인한 뒤 다시 검사하세요.';prepared=null;}
+      else{if(availability)availability.refresh();status.textContent=response.status===409?'접수 조건이 달라졌습니다. 다시 검사하세요.':response.status===422?'접수한 구성이 검사 결과와 다릅니다. 다시 검사하세요.':response.status===403?'이 시범을 접수할 권한이 없습니다.':'접수하지 못했습니다. 기기·버전·권한을 확인한 뒤 다시 검사하세요.';prepared=null;}
       locked.forEach(function(node){node.disabled=false;});check.disabled=false;enqueue.value='이 저장본으로 시범 접수';
     }catch(_){status.textContent='응답을 받지 못했습니다. 연결된 상태에서 같은 요청으로 다시 접수할 수 있습니다.';enqueue.value='같은 요청으로 다시 접수';enqueue.disabled=!!(availability&&!availability.connected());}
     finally{sending=false;}

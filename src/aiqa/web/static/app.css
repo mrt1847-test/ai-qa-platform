@@ -77,5 +77,9 @@ summary{cursor:pointer;font-weight:600}
 
 @media (min-width: 1024px){.shell{width:100%}}
 @media (min-width: 1440px){.shell{max-width:1328px}.project-nav{padding-inline:max(28px,calc((100vw - 1328px)/2 + 14px))}}
+.prep-steps{display:flex;gap:8px;margin:16px 0}.prep-steps button{flex:1 1 0}
+.prep-actions{display:flex;gap:8px;align-items:center;margin-top:16px}
+@media (max-width: 1024px){.prep-steps{flex-wrap:wrap}.prep-steps button{flex-basis:calc(50% - 8px)}}
+@media (min-width: 1440px){.prep-steps{gap:16px}}
 
 .wizard-steps{display:flex;gap:12px;margin:24px 0}.wizard-steps a{flex:1;padding:14px 18px;border:1px solid var(--line);background:#fff;border-radius:8px;text-decoration:none;color:var(--muted)}.wizard-steps a[aria-current]{background:var(--tint);border-color:var(--brand);color:var(--brand);font-weight:700}.device-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}.device-card{position:relative;border:1px solid var(--line);border-radius:10px;padding:20px 20px 20px 52px;cursor:pointer;margin:0}.device-card input{position:absolute;left:18px;top:25px}.device-card:has(input:checked){border:2px solid var(--brand);background:var(--tint)}.device-card span{font-weight:400;color:var(--muted);font-size:13px}fieldset[data-target-fields]{border:0;padding:0;margin:16px 0}fieldset[data-target-fields] legend{color:var(--brand)}

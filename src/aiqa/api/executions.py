@@ -973,6 +973,37 @@ def _page(query: Mapping[str, str]) -> int:
     return 1 if page < 1 else page
 
 
+def _confirmation(preview: object) -> dict[str, object]:
+    from aiqa.domain.executions import ExecutionPreview
+
+    assert isinstance(preview, ExecutionPreview)
+    items = []
+    for item in preview.resolved_items:
+        healing = item.healing_resolution if type(item.healing_resolution) is dict else {}
+        raw_limits = healing.get("effective_limits")
+        items.append({
+            "entry_id": item.entry_id,
+            "case_version_id": str(item.case_version_id),
+            "approval_id": None if item.approval_id is None else str(item.approval_id),
+            "environment_revision_id": str(item.environment_revision_id),
+            "resource_id": str(item.resource_id),
+            "dataset_version_id": None if item.dataset_version_id is None else str(item.dataset_version_id),
+            "reset_policy": item.reset_policy,
+            "verifier_method": item.verifier_method,
+            "execution_limits": item.limits,
+            "actor_call_cap": 0,
+            "healing_enabled": healing.get("effective_enabled") is True,
+            "healing_limits": raw_limits if type(raw_limits) is dict else {},
+        })
+    return {
+        "failure_policy": preview.failure_policy,
+        "release_label": preview.release_label,
+        "actor_call_cap": 0,
+        "calls_are_estimated": True,
+        "items": items,
+    }
+
+
 def _preview_json(preview: object) -> dict[str, object]:
     from aiqa.domain.executions import ExecutionPreview
 
@@ -986,6 +1017,7 @@ def _preview_json(preview: object) -> dict[str, object]:
         "silent_exclusions": preview.silent_exclusions,
         "release_label": preview.release_label,
         "release_floor_runs": preview.release_floor_runs,
+        "confirmation": _confirmation(preview),
         "exclusions": [{"entry_id": item.entry_id, "reason": item.reason} for item in preview.exclusions],
         "blockers": [{"code": blocker.code, "message": blocker.message, **({"entry_id": blocker.entry_id} if blocker.entry_id is not None else {})} for blocker in preview.blockers],
         "resolved_items": [

@@ -1,27 +1,48 @@
-<section>
-  <p>같은 구성으로 다시 실행합니다. 구성 변경은 명시합니다.</p>
-  <p>{{ configuration_label|default('같은 구성입니다') }}</p>
-  <p>원본과 사유가 남습니다. 원본 결과는 바꾸지 않습니다.</p>
-  <p>원본 {{ original_execution_id|default('') }} · 뿌리 {{ root_execution_id|default('') }}</p>
-  <p>사유 {{ rerun_reason|default('') }}</p>
-  <p>원본 결과 {{ original_result|default('') }}</p>
-  <p>새 결과는 따로 보입니다. 새 수행은 따로 셉니다.</p>
-  <p>철회된 승인은 다시 확인합니다. 확인 뒤에 새 수행을 만듭니다.</p>
-  <p><a href="/ui/projects/{{ project_id|default('') }}/cases">새 버전</a></p>
-  <p><a href="/ui/projects/{{ project_id|default('') }}/recordings">재녹화</a></p>
-  <label>재실행 사유 <input id="rerun-reason" value=""></label>
-  <label>범위
-    <select id="rerun-scope">
-      <option value="failed">실패 항목</option>
-      <option value="all">전체</option>
-      {% if case_run_id|default('') or selected_item_id|default('') %}<option value="items">선택한 항목</option>{% endif %}
-    </select>
-  </label>
-  <p id="rerun-connection" role="status">실행 PC 연결을 확인하는 중입니다.</p>
-  <button type="button" id="start-rerun" aria-describedby="rerun-connection" disabled
-          data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}"
-          data-selected="{{ case_run_id|default('') or selected_item_id|default('') }}">다시 실행</button>
+<section data-prep>
+  {% include "components/prep_steps.html" %}
+  <div data-prep-panel="1">
+    <h2>1 대상</h2>
+    <p>같은 구성으로 다시 실행합니다. 구성 변경은 명시합니다.</p>
+    <p>{{ configuration_label|default('같은 구성입니다') }}</p>
+    <p>원본과 사유가 남습니다. 원본 결과는 바꾸지 않습니다.</p>
+    <p>원본 {{ original_execution_id|default('') }} · 뿌리 {{ root_execution_id|default('') }}</p>
+    <p>원본 결과 {{ original_result|default('') }}</p>
+  </div>
+  <div data-prep-panel="2">
+    <h2>2 환경·데이터</h2>
+    <p>환경과 기기는 저장된 실행을 다시 사용합니다. 바꾸려면 사유와 함께 명시합니다.</p>
+    <label>재실행 사유 <input id="rerun-reason" value=""></label>
+    <label>범위
+      <select id="rerun-scope">
+        <option value="failed">실패 항목</option>
+        <option value="all">전체</option>
+        {% if case_run_id|default('') or selected_item_id|default('') %}<option value="items">선택한 항목</option>{% endif %}
+      </select>
+    </label>
+    <p><a href="/ui/projects/{{ project_id|default('') }}/cases">새 버전</a></p>
+    <p><a href="/ui/projects/{{ project_id|default('') }}/recordings">재녹화</a></p>
+  </div>
+  <div data-prep-panel="3">
+    <h2>3 사전 점검</h2>
+    <p id="rerun-connection" role="status">실행 PC 연결을 확인하는 중입니다.</p>
+    <p>철회된 승인은 다시 확인합니다. 확인 뒤에 새 수행을 만듭니다.</p>
+  </div>
+  <div data-prep-panel="4">
+    <h2>4 최종 확인</h2>
+    <p id="rerun-confirmation" data-prep-confirmation>저장된 버전·승인·환경·기기·상한을 다시 사용합니다. 예상 비용을 계산하지 않습니다.</p>
+    <p>새 결과는 따로 보입니다. 새 수행은 따로 셉니다.</p>
+    <p>사유 {{ rerun_reason|default('') }}</p>
+    <button type="button" id="start-rerun" aria-describedby="rerun-connection" disabled
+            data-execution="{{ execution_id|default('') }}" data-project="{{ project_id|default('') }}"
+            data-selected="{{ case_run_id|default('') or selected_item_id|default('') }}">다시 실행</button>
+  </div>
+  <div class="prep-actions">
+    <button type="button" data-prep-back>이전</button>
+    <button type="button" data-prep-edit>수정</button>
+    <button type="button" data-prep-next>다음</button>
+  </div>
   <p id="rerun-feedback" role="status"></p>
   <script type="application/json" id="rerun-targets">{{ rerun_targets|default([])|tojson }}</script>
+  <script src="/static/execution_prep.js?v={{ ui_asset_version }}"></script>
   <script src="/static/rerun.js?v={{ ui_asset_version }}"></script>
 </section>

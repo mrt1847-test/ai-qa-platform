@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**실환경 수용은 외부 대기입니다.** 이 큐의 명시 제외까지 기록했다. RX-87 Android healing 소비는 아직 열려 있다.
+**RX-87 — 실제 claim의 OFF·검증 실패·정리.** 실제 ON claim의 무치유 재생은 기록했다.
 
-독립 서버·OIDC·AVD/브라우저·운영 키가 확인되기 전에는 RX-21·RX-23·RX-24를 진행하지 않는다. 로컬 fixture 성공으로 그 수용을 완료 처리하지 않는다.
+[RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)의 남은 확인을 수행한다. 같은 API claim 경로에서 OFF actor0, 검증 실패의 재시도 금지, 이전 claim 통계가 다음 claim에 남지 않음을 확인한다. 이 확인으로 상위 RX-87이나 RX-23 실기기 수용을 완료 처리하지 않는다.
 
-[명시 제외](docs/validation/tasks/RX-90-EXCLUSIONS.md)는 사유가 있는 항목만 실행에서 빼고 그 사유를 수행에 남긴다. 제외는 실행 성공이 아니다.
+[claim runtime](docs/validation/tasks/RX-87-CLAIM-RUNTIME.md)은 client 없는 ON이 동작 0이고, client가 있어도 healer 0이며, 행동 한도 1에서 멈춘다는 기록이다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

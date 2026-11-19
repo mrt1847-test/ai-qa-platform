@@ -85,7 +85,11 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-90](docs/validation/tasks/RX-90.md): 시범·선택·묶음·재실행 준비가 같은 4단계로 이어지고, 최종 확인은 서버 confirmation의 상한을 예상 호출로 보여 준다. UI 2pass, fixture 2pass. 명시 제외 사유는 후속이다.
 
-[명시 제외](docs/validation/tasks/RX-90-EXCLUSIONS.md): 사유가 있는 제외만 실행에서 빠지고 `execution_exclusions`에 남는다. 사유 없는 제외는 422다. 관련 검사 24pass 28.40s. 모델 호출 0. 로컬 구현 큐의 다음은 실환경 수용이다.
+[명시 제외](docs/validation/tasks/RX-90-EXCLUSIONS.md): 사유가 있는 제외만 실행에서 빠지고 `execution_exclusions`에 남는다. 사유 없는 제외는 422다. 관련 검사 24pass 28.40s. 모델 호출 0이다.
+
+[RX-87 claim runtime](docs/validation/tasks/RX-87-CLAIM-RUNTIME.md): 실제 ON claim은 client 없이 동작 0, client가 있어도 healer 0, 행동 한도에서 멈춘다. 관련1pass2.61s. 상위 RX87과 실기기 수용은 미완료다.
+
+[RX-87 claim runtime](docs/validation/tasks/RX-87-CLAIM-RUNTIME.md): 실제 ON claim은 client 없이 동작 0, client가 있어도 healer 0, 행동 한도에서 멈춘다. 관련1pass2.61s. 상위 RX87과 실기기 수용은 미완료다.
 
 ## 1. 현재 상태
 

@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+RX-87 claim runtime: 실제 worker claim의 ON pin은 recovery client가 없으면 `healing_runtime_unavailable`이며 동작은 0이다. client가 있어도 정상 재생의 healer·actor 호출은 0이다. `max_actions` 1은 두 번째 승인 동작 앞에서 `action_budget`으로 멈춘다. 실기기 수용은 RX-23이다.
+
 RX-90 후속: 묶음·선택 준비에서 체크와 사유가 함께 있을 때만 `confirmed` 제외가 된다. 그 항목과 사유는 `execution_exclusions`에 남고 실행 항목에서는 빠진다. 사유가 없거나 `silent_exclusions`가 있으면 접수하지 않는다. 수행 화면은 제외 건수를 실행 성공과 따로 보여 준다.
 
 RX-90: 시범·선택·묶음·재실행 준비는 1대상, 2환경·데이터, 3사전 점검, 4최종 확인을 같은 순서로 연다. 최종 확인의 버전·승인·환경·기기·배포·초기화·실패 정책·검증 방식·행동/검증 호출 상한·복구 상한은 preview `confirmation`의 값이다. 호출 상한은 예상이며 실제 비용이 아니다. 검사 전 최종 확인과 조용한 제외로는 접수하지 않는다. 명시 제외 사유 화면은 후속이다.

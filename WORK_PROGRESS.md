@@ -89,7 +89,7 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 claim runtime](docs/validation/tasks/RX-87-CLAIM-RUNTIME.md): 실제 ON claim은 client 없이 동작 0, client가 있어도 healer 0, 행동 한도에서 멈춘다. 관련1pass2.61s. 상위 RX87과 실기기 수용은 미완료다.
 
-[RX-87 claim runtime](docs/validation/tasks/RX-87-CLAIM-RUNTIME.md): 실제 ON claim은 client 없이 동작 0, client가 있어도 healer 0, 행동 한도에서 멈춘다. 관련1pass2.61s. 상위 RX87과 실기기 수용은 미완료다.
+[RX-87 OFF claim](docs/validation/tasks/RX-87-CLAIM-OFF.md): OFF claim은 actor 0이고 text_mismatch는 한 번만 재생한다. 다음 claim에 실패 통계가 남지 않는다. 관련2pass2.87s. 상위 RX87과 실기기 수용은 미완료다.
 
 ## 1. 현재 상태
 

@@ -292,3 +292,34 @@ def test_finished_recording_stays_reviewable_after_the_worker_is_offline(android
     assert review_status==200 and '화면 방문만으로 승인하지 않습니다.' in review
     with sqlite3.connect(f['database']) as db:
         assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+
+
+def test_stored_package_replays_sealed_pixels_without_rewriting(android_engine_job,tmp_path):
+    from test_rx_34 import _geometry,_observation as replay_frame,_replay
+    from aiqa.replay.packages import resolve_claim_package_pin
+    f=android_engine_job;c,h,job,sent,launches,_=setup(f,tmp_path)
+    with c:
+        result=h.handle(job)
+        finish=WorkerRuntime(c,WorkerRuntimeConfig('fixture-boot',frozenset({'recording'})),h)._submit_finish(job,result)
+    assert result.outcome=='completed' and finish is not None and len(sent)==1
+    native=json.loads(result.action_mapping)['events'][0]['native']
+    assert (native['x'],native['y'])==(50,100)
+    with sqlite3.connect(f['database']) as db:
+        package_id,package_hash=db.execute('SELECT package_id, body_hash FROM replay_packages').fetchone()
+    store=f['app'].state.open_store()
+    try:
+        with store.transaction() as connection:
+            pin=resolve_claim_package_pin(connection,f['project'],package_id=package_id,package_hash=package_hash,purpose='trial')
+    finally:store.close()
+    assert pin.approved_plan=='physical:click(50, 100)' and '500' not in pin.approved_plan
+    assert json.loads(pin.native_source['mapping'])['events'][0]['native']==native
+    handler,calls=_replay(tmp_path,digest=package_hash)
+    frame=replay_frame(geometry=_geometry(physical=(100,200),model=(1000,2000)))
+    handler.context.step_observations=((frame,frame),)
+    handler.context.healing_enabled=False
+    replay={'project_id':f['project'],'job_id':job['job_id']+'replay','attempt_id':job['attempt_id'],'generation':1,'snapshot':{'purpose':'trial','serial':handler.context.expected_serial,'approved_plan':pin.approved_plan,'replay_package_id':package_id,'replay_package_hash':package_hash,'self_healing_enabled':False,'native_source':pin.native_source}}
+    played=handler.handle(replay)
+    assert played.actions==1 and calls[0][-3:]==('tap','50','100')
+    assert handler.authoring_calls_seen==handler.healer_calls==handler.verifier_calls==0
+    with sqlite3.connect(f['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0

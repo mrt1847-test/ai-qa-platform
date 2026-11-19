@@ -115,6 +115,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [오프라인 검토](docs/validation/tasks/AI-LIVE-04-OFFLINE-REVIEW.md): worker 연결을 닫아도 봉인된 version 검토 화면이 열리고 방문은 승인이 아니다. 1pass6.85s. live 수용은 아직이다.
 
+[봉인 좌표](docs/validation/tasks/AI-LIVE-04-SEALED-PIXELS.md): package pin은 `physical:click(50, 100)`만 재생하고 모델 좌표 500은 쓰지 않는다. AI 호출은 0이다. 1pass6.88s. live 수용은 아직이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -42,7 +42,7 @@ MA04c의 직접 입력은 MA04b2 인계/session result와 기존 android_jobs �
 [MA05a 실패 저장](MOBILE_AGENT_FAILURE_EVIDENCE_TASKS.md)과 MA05b 검토·같은 package AI0는 인계로 끝났다. 아래 부모 항목의 실환경 수용은 아직 시작하지 않는다.
 
 - [x] 정상 REC 접수→claim→원본 main→서버 증거/manifest→저장본 검토를 fixture API+원본 main으로 확인한다. worker 연결을 닫은 뒤에도 그 version 검토 화면이 열리고, 방문만으로 승인되지 않는다. 근거는 [오프라인 검토](../validation/tasks/AI-LIVE-04-OFFLINE-REVIEW.md).
-- [ ] 승인 package ITEM/trial/regression은 기존 deterministic runner의 AI0/healing OFF 경로를 사용한다. 정상 DB source/package/witness/pin을 검증하고 표시 코드/좌표를 추정 재작성하지 않는다. 검증/치유 호출은 승인 지점·정책·C/D만 허용한다.
+- [x] 승인 package ITEM/trial/regression은 기존 deterministic runner의 AI0/healing OFF 경로를 사용한다. 저장 pin은 봉인된 물리 좌표 `50,100`만 재생하고 모델 좌표로 다시 쓰지 않는다. 근거는 [봉인 좌표](../validation/tasks/AI-LIVE-04-SEALED-PIXELS.md)와 [MA05b2](../validation/tasks/AI-LIVE-04-MA05B2.md). live 수용은 다음 항목이다.
 - [ ] 실제 live 연결 수용은 구현 뒤 별도 opt-in, 기존 AI-LIVE-03과 새 정상 경로 증거를 구분한다. 월3000건 비용 수용은 마지막이며 선행 구현을 막지 않는다.
 
 ## 보존할 독립 작업

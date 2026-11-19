@@ -84,6 +84,33 @@ def test_source_seals_allowed_text_without_approval(engine_job,tmp_path):
 test_source_seals_allowed_text_without_approval.literal_text='mouse'
 
 
+def test_sealed_source_keeps_the_logical_check(engine_job,tmp_path):
+    from uuid import UUID
+    from aiqa.recording.manifests import RecordingFinishInput
+    from aiqa.recording.service import finish_recording
+    c,session,sent=prepare(engine_job,tmp_path)
+    with c:result=session.run()
+    assert result.outcome=='completed' and result.review_pending and len(sent)==1
+    with sqlite3.connect(engine_job['database']) as db:
+        recording_id=db.execute('SELECT recording_id FROM jobs WHERE job_id=?',(engine_job['job']['job_id'],)).fetchone()[0]
+    store=engine_job['app'].state.open_store()
+    try:
+        with store.transaction() as connection:
+            finish_recording(connection,engine_job['actor'],UUID(engine_job['project']),RecordingFinishInput(
+                UUID(recording_id),'completed',result.last_ack_seq,tuple(result.artifact_ids),'seal-logical',result.action_mapping))
+    finally:store.close()
+    source=json.loads(result.action_mapping)
+    with sqlite3.connect(engine_job['database']) as db:
+        produced=db.execute("""SELECT versions.definition_json FROM materialization_receipts receipts
+            JOIN case_versions versions ON versions.project_id=receipts.project_id AND versions.version_id=receipts.produced_version_id
+            WHERE receipts.project_id=?""",(engine_job['project'],)).fetchone()
+        approvals=db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]
+    definition=json.loads(produced[0])
+    assert definition['steps'][0]['id']=='s1' and definition['steps'][0]['expected'][0]=={'id':'c1','kind':'text','expected':'visible'}
+    assert source['events'][0]['action_id']!='s1' and approvals==0
+test_sealed_source_keeps_the_logical_check.logical_steps=[{'id':'s1','instruction':'search','expected':[{'id':'c1','kind':'text','expected':'visible'}]}]
+
+
 def test_source_seals_back_key_without_approval(engine_job,tmp_path):
     c,session,sent=prepare(engine_job,tmp_path,actions=[{'action':'system_button','button':'Back'},{'action':'terminate','status':'success'}])
     with c:result=session.run()

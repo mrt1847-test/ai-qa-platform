@@ -109,6 +109,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [허용 문자](docs/validation/tasks/AI-LIVE-04-SOURCE-V2-TEXT.md): 변수 `query=mouse`는 source와 ADB에 `mouse`로 봉인되고 승인은 없다. 변수가 없으면 같은 문자는 거절된다. 2pass7.47s. logical check binding은 아직이다.
 
+[논리 검증](docs/validation/tasks/AI-LIVE-04-LOGICAL-CHECK.md): 단계 `s1`과 검증 `c1`은 봉인된 버전에 남고 native 동작 id가 아니다. 승인은 없다. 1pass5.46s.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

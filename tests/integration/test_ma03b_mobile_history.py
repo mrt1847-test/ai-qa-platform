@@ -29,6 +29,8 @@ def engine_job(recording,monkeypatch,request):
         definition=json.loads(row[0]);settings=json.loads(row[1])
     literal=getattr(request.function,'literal_text',None)
     if type(literal) is str:definition['variables']={'query':literal}
+    steps=getattr(request.function,'logical_steps',None)
+    if type(steps) is list:definition['steps']=steps
     if settings['target_kind']!='android':
         settings.update(target_kind='android',android_package='com.example.saved')
         async def save():

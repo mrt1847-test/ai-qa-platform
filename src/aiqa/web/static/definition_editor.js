@@ -35,7 +35,15 @@
   }
   function drawChecks(root,checks,prefix,readOnly){
     root.replaceChildren();checks.forEach(function(check,index){
-      var line=element('div',{class:'check-row'}),field=input('textarea',prefix+'.'+index+'.expected','Assertion '+(index+1),check.expected,function(v){check.expected=v;});field.node.rows=2;field.node.readOnly=readOnly;line.appendChild(field.wrap);line.appendChild(element('small',{},check.kind==='text'?'화면 텍스트 검증':'저장된 유형 · '+check.kind));
+      var line=element('div',{class:'check-row'}),field=input('textarea',prefix+'.'+index+'.expected','Assertion '+(index+1),check.expected,function(v){check.expected=v;});field.node.rows=2;field.node.readOnly=readOnly;line.appendChild(field.wrap);
+      if(check.kind==='text'||check.kind==='visual'){
+        var mode=element('select',{name:prefix+'.'+index+'.kind','aria-label':'Assertion '+(index+1)+' 검증 방식'});
+        [['text','화면 텍스트·상태 비교'],['visual','화면 의미 검증']].forEach(function(pair){mode.appendChild(element('option',{value:pair[0]},pair[1]));});
+        mode.value=check.kind;mode.disabled=readOnly;
+        mode.addEventListener('change',function(){check.kind=mode.value;drawChecks(root,checks,prefix,readOnly);changed();});
+        line.appendChild(mode);
+        line.appendChild(element('p',{class:'hint'},check.kind==='visual'?'화면 의미입니다. 시각 검증 연결이 없으면 성공으로 처리하지 않습니다.':'리소스에 묶인 텍스트·상태만 비교합니다. 없으면 성공이 아닙니다.'));
+      }else line.appendChild(element('small',{},'저장된 유형 · '+check.kind));
       if(!readOnly)line.appendChild(button('검증 삭제',function(){checks.splice(index,1);drawChecks(root,checks,prefix,readOnly);changed();}));root.appendChild(line);
     });
   }

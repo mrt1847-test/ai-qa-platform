@@ -80,10 +80,12 @@ def evaluate_bound_checks(pin,binding,native_source,*,action_index,total_actions
         if not reason:
             if len(policies)!=1:reason='verifier_policy_missing' if not policies else 'verifier_policy_ambiguous'
             elif method!='ai_visual':
-                resource=targets.get(check.id)
-                if not resource:reason='deterministic_subject_missing'
-                elif read_reason:reason=read_reason
-                else:status,reason=_compare(check,snapshot.get(resource))
+                if check.kind=='visual':reason='visual_policy_missing'
+                else:
+                    resource=targets.get(check.id)
+                    if not resource:reason='deterministic_subject_missing'
+                    elif read_reason:reason=read_reason
+                    else:status,reason=_compare(check,snapshot.get(resource))
             if (method=='ai_visual' or method=='deterministic_then_ai_unknown' and status=='unknown'
                 and policy.get('allow_unknown_supplement') is True):
                 if visual is None:reason='verifier_not_connected'

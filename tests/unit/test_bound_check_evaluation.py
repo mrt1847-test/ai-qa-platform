@@ -22,6 +22,27 @@ def evaluate(pin=None,binding=None,**kwargs):
         observed_at='2026-11-19T00:00:00+09:00',checkpoint=lambda:True,timeout=1,**kwargs)
 
 
+def test_screen_meaning_without_visual_policy_stays_unknown():
+    pin=WorkerCaseContext('version','source','goal',CaseTarget('android','com.example.app'),(),
+        (CheckSpec('final','visual','상품 이미지와 가격이 표시된다'),),'context',
+        json.dumps({'verification':[{'method':'deterministic','binding_id':'','allow_unknown_supplement':False}]}))
+    called=[]
+    rows=evaluate(pin=pin,visual=lambda *args:called.append(args) or {'status':'satisfied'})
+    assert called==[] and rows[0].result.status=='unknown' and rows[0].result.reason=='visual_policy_missing'
+
+
+def test_screen_meaning_with_visual_policy_uses_the_verifier_once():
+    pin=WorkerCaseContext('version','source','goal',CaseTarget('android','com.example.app'),(),
+        (CheckSpec('final','visual','상품 이미지와 가격이 표시된다'),),'context',
+        json.dumps({'verification':[{'method':'ai_visual','binding_id':'verification','allow_unknown_supplement':False}]}))
+    called=[]
+    def visual(check,phase,step):
+        called.append((check.id,phase,step))
+        return {'status':'satisfied','reason':'screen_match','observed_at':'2026-11-19T00:00:02+09:00'}
+    rows=evaluate(pin=pin,visual=visual)
+    assert called==[('final','final',None)] and rows[0].result.status=='satisfied' and rows[0].result.reason=='screen_match'
+
+
 def test_checks_run_at_explicit_boundary_and_read_selected_resources_once():
     calls=[]
     binding=WorkerCheckBindingPin('manifest','hash',(('s1','a2'),),

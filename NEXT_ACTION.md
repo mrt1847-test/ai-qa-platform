@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**정의 화면의 Assertion 저장.** 재생의 화면 의미 판정은 기록했다.
+**녹화 목표의 Assertion 문장.** 정의 화면의 화면 의미 저장은 기록했다.
 
-[화면 의미](docs/validation/tasks/RX-87-SCREEN-ASSERTION.md)는 리소스 없는 최종 문장을 `ai_visual`일 때 시각 검증으로 한 번 판정하고, Mobile-Agent의 녹화 중 `terminate`는 바꾸지 않는다는 기록이다.
+[정의 저장](docs/validation/tasks/RX-87-DEFINITION-VISUAL.md)은 화면 의미 문장을 `kind=visual`로 저장하고, 시각 검증 정책이 없으면 unknown으로 둔다는 기록이다.
 
-다음은 정의 편집기가 그 문장을 화면 텍스트 비교가 아니라 케이스의 시각 검증 방식으로 저장하는지다. 연결이 없으면 성공으로 저장하지 않는다. RX-21·RX-23·RX-24는 이 작업으로 완료 처리하지 않는다.
+다음은 그 문장이 녹화 목표 프롬프트에 그대로 들어가 Mobile-Agent가 읽고 `terminate`를 고르게 하는지다. 재생 성공으로 바꾸지 않는다. RX-21·RX-23·RX-24는 이 작업으로 완료 처리하지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

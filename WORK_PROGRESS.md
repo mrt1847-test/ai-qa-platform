@@ -121,6 +121,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [화면 의미](docs/validation/tasks/RX-87-SCREEN-ASSERTION.md): 리소스 없는 최종 문장은 `ai_visual`에서 시각 검증 한 번으로 판정된다. authoring·healer·추가 입력은 0이다. 관련8pass2.44s. 정의 화면 저장 연결은 다음이다.
 
+[정의 저장](docs/validation/tasks/RX-87-DEFINITION-VISUAL.md): 화면 의미는 `kind=visual`로 저장되고, 시각 검증 정책이 없으면 unknown이다. 평가10pass, 편집기1pass. 다음은 녹화 목표에 그 문장을 싣는 일이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

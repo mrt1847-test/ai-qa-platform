@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 한 handler의 다음 API claim 한도.** 취소와 임대 반환이 승인본과 FAIL을 유지하는 것은 기록했다.
+**RX-87 상위 체크는 부분 증명으로 닫지 않는다.** 한 handler의 다음 API claim 한도는 기록했다.
 
-[RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)의 남은 확인을 수행한다. 한 handler가 서로 다른 API claim을 이어서 받을 때 이전 행동 한도·시계·healer 횟수가 다음 claim에 더해지지 않는지 확인한다. 이 확인으로 상위 RX-87이나 RX-23 실기기 수용을 완료 처리하지 않는다.
+상위 [RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87) 체크를 기존 증명과 대조한다. 증명된 항목만 체크하고, 비어 있는 계약과 RX-23 실기기 수용은 열어둡니다. 부분 구현으로 상위 완료를 세지 않는다.
 
-[취소·임대](docs/validation/tasks/RX-87-CLAIM-CANCEL.md)는 저장된 FAIL이 취소를 거절하고, 취소 요청과 임대 소진이 동작 0이라는 기록이다.
+[claim 재사용](docs/validation/tasks/RX-87-CLAIM-REUSE.md)은 둘째 claim이 이전 한도·시계·healer 횟수를 더하지 않는다는 기록이다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

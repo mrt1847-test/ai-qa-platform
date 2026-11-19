@@ -93,6 +93,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 취소·임대](docs/validation/tasks/RX-87-CLAIM-CANCEL.md): 저장된 FAIL은 취소를 거절하고 package hash는 유지된다. 취소 요청과 임대 소진은 동작 0이다. 관련2pass1.74s. 상위 RX87과 실기기 수용은 미완료다.
 
+[RX-87 claim 재사용](docs/validation/tasks/RX-87-CLAIM-REUSE.md): 한 handler의 다음 API claim은 이전 한도·시계·healer 횟수를 더하지 않는다. 관련1pass1.30s. 상위 RX87과 실기기 수용은 미완료다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

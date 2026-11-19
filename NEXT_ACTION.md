@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 B2.3b2 — 검증 연결 폼의 키보드와 화면 폭.** 저장 한계 문구는 기록했다.
+**실환경 수용은 외부 대기입니다.** 검증 연결 폼의 화면 폭과 검토 링크는 기록했다.
 
-[편집 UI](docs/managed-pc/CHECK_BINDING_EDITOR_TASKS.md)의 남은 확인을 수행한다. 녹화 페이지의 검증 연결 폼을 키보드와 1024/1440에서 저장·충돌·검토 링크까지 확인한다. 실행 적용이나 자동 승인을 만들지 않는다. 상위 RX-87 완료 수와 RX-23은 유지한다.
+독립 서버·OIDC·AVD/브라우저·운영 키가 확인되기 전에는 RX-21·RX-23·RX-24를 진행하지 않는다. 로컬 fixture 성공으로 그 수용을 완료 처리하지 않는다. 상위 RX-87 완료 수와 RX-23은 유지한다.
 
-[편집 한계](docs/validation/tasks/RX-87-B2-CHECK-BINDING-EDITOR.md)는 실행 적용이 아직 없고 후보가 승인으로 표시되지 않는다는 기록이다.
+[편집 확인](docs/validation/tasks/RX-87-B2-CHECK-BINDING-EDITOR.md)은 1024·1440에서 저장과 version 검토가 되고 승인은 열리지 않는다는 기록이다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

@@ -1135,6 +1135,7 @@ class AndroidReplayContext:
     readiness_timeout: float = 30.0
     readiness_clock: Callable[[],float] = time.monotonic
     readiness_pause: Callable[[float],None] = time.sleep
+    healing_client: object | None = None
 
 
 @dataclass
@@ -1187,6 +1188,7 @@ class AndroidReplayHandler:
         self._device_prepared = False
         self.dispatch_count = self.authoring_calls_seen = 0
         self.healer_calls = self.verifier_calls = 0
+        self._recovered_actions = set()
         self.original_failure = self.package_digest_after = self.stopped_reason = ""
         self._limits = self._healing_pin = self._mono_origin = None
         self._prepared_frame = None
@@ -1219,9 +1221,8 @@ class AndroidReplayHandler:
         except ValueError:
             self.stopped_reason = "replay_pin_invalid"
             return _fail_closed(self.stopped_reason, evidence_complete=False)
-        if self._healing_pin.enabled:
-            # C supplies the server episode/model ports. A legacy fixture budget is
-            # not a credential for a production ON claim.
+        if self._healing_pin.enabled and self.context.healing_client is None:
+            # An ON pin without the server recovery port is not permission to heal.
             self.stopped_reason = "healing_runtime_unavailable"
             return _fail_closed(self.stopped_reason, evidence_complete=False)
         try:
@@ -1280,6 +1281,7 @@ class AndroidReplayHandler:
         self.dispatch_count = 0
         self.authoring_calls_seen = 0
         self.healer_calls = 0
+        self._recovered_actions = set()
         self.verifier_calls = 0
         self.original_failure = ""
         self.package_digest_after = approved_digest
@@ -1363,14 +1365,23 @@ class AndroidReplayHandler:
                     replay_line=mobile_action(step.action)
                     replay_before=_physical_identity(before)
                     replay_after=_physical_identity(replay_after)
-                recorded = self.adapter.replay_step(
-                    plan_response=replay_line,
-                    observation=replay_before,
-                    after=replay_after,
-                    driver=self.driver,
-                    broker=self.broker,
-                    before_native_send=lambda: self._before_native_replay_send(claim, action_id),
-                )
+                def send():
+                    return self.adapter.replay_step(
+                        plan_response=replay_line,
+                        observation=replay_before,
+                        after=replay_after,
+                        driver=self.driver,
+                        broker=self.broker,
+                        before_native_send=lambda: self._before_native_replay_send(claim, action_id),
+                    )
+                try:
+                    recorded = send()
+                except MobileAgentRejected as exc:
+                    states = self.journal.states(action_id, attempt_id)
+                    sent = "dispatch_started" in states or "unknown" in states
+                    if sent or not self._accept_locator_recovery(action_id, str(exc.reason), replay_before):
+                        raise
+                    recorded = send()
                 if recorded.dispatch.native_calls != 1:
                     raise _ReplayCaptureFailed("replay_blocked")
             except _ReplayCaptureFailed as exc:
@@ -1599,6 +1610,36 @@ class AndroidReplayHandler:
         if callable(flag):
             return bool(flag())
         return bool(flag)
+
+    def _accept_locator_recovery(self, action_id, reason, observation) -> bool:
+        client = self.context.healing_client
+        if client is None or self._healing_pin is None or not self._healing_pin.enabled:
+            return False
+        if action_id in self._recovered_actions or self._is_cancelled():
+            return False
+        try:
+            self._read_checkpoint()
+        except _ReplayCaptureFailed:
+            return False
+        try:
+            receipt = client.reserve(reason=reason, action_id=action_id)
+            proposal = client.proposal(reason=reason, action_id=action_id, observation=observation)
+        except Exception:
+            return False
+        from aiqa.healing.recovery import plan_bounded_recovery
+        decision = plan_bounded_recovery(
+            reason=reason, product_violation=reason in {"text_mismatch", "check_failed", "product_violation"},
+            dispatch_sent=False, proposal=proposal, observation=observation,
+            checkpoint=lambda: not self._is_cancelled(),
+            reserved_calls=receipt.reserved_calls if getattr(receipt, "eligible", False) else 0,
+            already_used=False,
+        )
+        if not decision.dispatch_once or decision.changes_original_result:
+            return False
+        self._recovered_actions.add(action_id)
+        self.healer_calls += decision.healer_calls
+        self.original_failure = reason
+        return True
 
     def _read_checkpoint(self):
         if self._is_cancelled():raise _ReplayCaptureFailed('cancelled')

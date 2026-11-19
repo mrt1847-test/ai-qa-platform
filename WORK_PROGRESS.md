@@ -75,6 +75,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-C-HEALING-EPISODE](docs/validation/tasks/RX-87-C-HEALING-EPISODE.md): 미전송 action에만 서버가 healing episode를 예약한다. 앞선 동작의 전송 기록은 이 동작의 불명 전송이 아니고, worker가 만든 episode id나 allowed는 권한이 아니다. 관련8pass2.98s. 다음 D 제한 복구이며 전체 RX87은 미완료다.
 
+[RX-87-D-HEALING-RECOVERY](docs/validation/tasks/RX-87-D-HEALING-RECOVERY.md): locator/레이아웃 실패만 같은 대상으로 한 번 재동작한다. assertion 실패와 불명 전송은 재시도하지 않고 원본 QA는 유지한다. 관련8pass1.30s. 다음은 MA05b2이며 전체 RX87은 미완료다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

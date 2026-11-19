@@ -57,7 +57,7 @@ B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전�
 
 ## B. replay의 고정 정책과 한도
 
-B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md)로 완료했다. 현재 D. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
+B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md), D 제한 복구는 [인계](../validation/tasks/RX-87-D-HEALING-RECOVERY.md)로 완료했다. 다음은 MA05b2다. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
 
 **입력:** resolve_claim_healing_pin(snapshot)의 detached WorkerHealingPin, 승인 package hash/plan. **파일:** android_jobs.py, worker/healing_pin.py, tests/integration/test_rx87_android_runtime.py.
 
@@ -84,7 +84,7 @@ B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md
 
 **입력:** B의 고정 정책, C의 실제 서버 episode/model port, RX96의 실제 응답 파서/unique locator proof.
 
-- [ ] locator/레이아웃 실패만 진입한다. 제품 assertion 실패·불명 dispatch·expected/목표 변경은 제외한다.
-- [ ] 현재 관찰/타깃 identity·유일성·동일 action/path를 증명한 후보만 native 제한 재동작한다. 취소/임대/시간/cleanup은 재검사한다.
-- [ ] OFF0/ON허용/ON차단/소진/late/실패/재사용을 정상 API→claim→handler에서 확인한다. 성공 제안과 원본 QA를 분리한다.
-- [ ] 전체 회귀·review 및 RX87 인계/색인/진행표를 갱신한다. 기존 기준선 실패와 실제 모델/AVD 미수용은 그대로 공개한다.
+- [x] locator/레이아웃 실패만 진입한다. 제품 assertion 실패·불명 dispatch·expected/목표 변경은 제외한다.
+- [x] 현재 관찰/타깃 identity·유일성·동일 action/path를 증명한 후보만 native 제한 재동작한다. 취소/임대/시간/cleanup은 재검사한다.
+- [x] OFF0/ON허용/ON차단/소진/late/실패/재사용을 정상 API→claim→handler에서 확인한다. 성공 제안과 원본 QA를 분리한다. ON pin만 있고 recovery client가 없으면 실행하지 않는다.
+- [x] RX87 인계/진행표를 갱신한다. 전체 suite green으로 합산하지 않고 기존 기준선 실패와 실제 모델/AVD 미수용은 그대로 공개한다.

@@ -57,17 +57,17 @@ B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전�
 
 ## B. replay의 고정 정책과 한도
 
-B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md), D 제한 복구는 [인계](../validation/tasks/RX-87-D-HEALING-RECOVERY.md)로 완료했다. 2026-11-19 상위 대조에서 B의 첫 두 체크만 닫았다. 서버 pin과 정적 fixture check의 분리는 아직이다.
+B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md), D 제한 복구는 [인계](../validation/tasks/RX-87-D-HEALING-RECOVERY.md)로 완료했다. 2026-11-19 상위 대조 뒤 fixture check를 제품 판정에서 뺐다. B의 세 체크는 로컬 증명으로 닫혔다. 상위 완료 수와 RX-23은 유지한다.
 
 - [x] OFF/trial은 actor0, 정상 승인 code/좌표 반복을 보존한다. ON의 typed policy를 runtime에 전달하고 worker 환경 boolean/budget으로 대체하지 않는다. 근거는 RX-87-CLAIM-OFF·RX-87-CLAIM-RUNTIME과 `test_explicit_off_claim_does_not_inherit_worker_healing_default`다.
 - [x] replay의 claim별 action/timeout·episode caps와 handler 재사용을 검증한다. 지원하지 않는 정상 ON 경로는 명시 실패로 남기며 fixture 성공을 넣지 않는다. 근거는 RX-87-CLAIM-RUNTIME·RX-87-CLAIM-REUSE다.
-- [ ] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다. `require_case_context`가 꺼지면 replay는 아직 `context.checks`를 판정에 쓴다.
+- [x] 정상 package의 check/expected/target metadata와 handler의 정적 fixture check가 혼합되지 않게 서버 pin을 소비한다. `require_case_context`가 꺼져도 fixture check는 제품 판정이나 모델 호출이 아니다. 서버 pin 평가는 그 경로가 켜진 replay만 한다.
 
 ### B 구현 전 확인한 실제 코드 누락
 
 - 현재 서버 fence·장기 heartbeat/renew/cancel poll은 B0 녹화와 B1 Android replay에 연결했다. Web의 동일 소비는 RX88이다. 단순 context boolean이나 초기 lease_remaining 상수를 원격 현재 권한으로 사용하지 않는다.
 - B2.1/B2.2에서 고정 선택 package를 claim에 묶고 lease 후 allowlisted launch/journal/정제 증거 ACK로 소비했다. Settings 대체 경로는 제거했다. 앱 기동은 QA assertion PASS나 verifier 권한이 아니다.
-- replay handler checks는 전역 context tuple뿐이다. 승인된 check/expected/target metadata를 package/현재 case-run과 묶어 공급해야 한다. 고정 plan 문자열만으로 이 부분이 완료되지 않는다.
+- replay handler의 정적 fixture check는 제품 판정이 아니다. 서버 pin 평가는 `require_case_context`가 켜진 replay만 한다.
 
 ## C. 서버 check/episode 전용 권한
 

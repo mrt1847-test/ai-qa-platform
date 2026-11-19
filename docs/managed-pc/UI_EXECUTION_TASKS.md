@@ -115,11 +115,11 @@
 **파일** worker/android_jobs.py, replay/android_runner.py, worker/runtime.py 및 관련 healing 포트.
 
 - [x] 정상 claim의 고정 policy를 Android replay context로 전달하고 OFF 정상 행동은 actor0으로 반복한다. 근거는 RX-87-CLAIM-OFF·RX-87-CLAIM-RUNTIME·RX-87-CLAIM-REUSE다.
-- [ ] RX-97의 녹화 action/timeout pin을 claim별 runtime cap으로 좁혀 소비하고 handler 재사용 시 이전 작업 한도/clock을 누적하지 않는다. 모델 호출량은 RX-98 서버 gate와 일치시킨다. 재사용·시계 분리는 RX-87-CLAIM-REUSE로 증명됐다. RX-98 서버 호출량 일치는 아직이다.
+- [x] RX-97의 녹화 action/timeout pin을 claim별 runtime cap으로 좁혀 소비하고 handler 재사용 시 이전 작업 한도/clock을 누적하지 않는다. 모델 호출량은 RX-98 서버 gate와 일치시킨다. replay의 worker 호출과 `model_call_facts`는 모두 0이다. 근거는 RX-87-CLAIM-REUSE와 RX-87-FIXTURE-CHECKS다.
 - [x] 허용된 locator/레이아웃 실패만 기존 healing episode 포트로 연결한다. 실제 검증 실패·불명 dispatch·목표/expected 변경은 치유하지 않는다. 근거는 RX-87-D와 RX-87-CLAIM-OFF다.
 - [x] episode1/모델2호출/30초·전체 상한과 중단·취소·임대·정리를 유지한다. 원본 package/FAIL 불변·성공 제안 분리. 근거는 RX-87-C·RX-87-D·RX-87-CLAIM-CANCEL이다.
 - [x] 모의 ADB/모델의 정상 API→claim→runtime으로 OFF0/ON허용/ON차단/소진/실패/정리 재사용을 검증한다. 근거는 RX-87-CLAIM-OFF·RX-87-CLAIM-RUNTIME·RX-87-CLAIM-CANCEL·RX-87-CLAIM-REUSE다. 실기기 수용은 RX-23이다.
-**인계** docs/validation/tasks/RX-87.md. 실제 AVD·운영 키 수용은 RX-23.
+**인계** docs/validation/tasks/RX-87.md. 로컬 체크는 닫혔다. 상위 완료 수와 실제 AVD·운영 키 수용 RX-23은 유지한다.
 
 <a id="rx-88"></a>
 ## RX-88 · Web worker의 승인 healing snapshot 소비

@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — replay 모델 호출과 fixture check 분리.** 증명된 상위 체크만 닫았다.
+**실환경 수용은 외부 대기입니다.** RX-87 로컬 체크는 닫혔고 상위 완료 수와 RX-23은 유지한다.
 
-[RX-87](docs/managed-pc/UI_EXECUTION_TASKS.md#rx-87)의 남은 두 계약을 수행한다. replay 모델 호출량이 RX-98 서버 gate와 같은지 확인하고, `require_case_context`가 꺼져도 정적 fixture check가 제품 판정이 되지 않게 한다. 이 작업으로 상위 RX-87이나 RX-23 실기기 수용을 완료 처리하지 않는다.
+독립 서버·OIDC·AVD/브라우저·운영 키가 확인되기 전에는 RX-21·RX-23·RX-24를 진행하지 않는다. 로컬 fixture 성공으로 그 수용을 완료 처리하지 않는다.
 
-[상위 대조](docs/validation/tasks/RX-87-PARENT-CHECK.md)는 닫은 항목과 열어 둔 항목의 근거다.
+[fixture check](docs/validation/tasks/RX-87-FIXTURE-CHECKS.md)는 정적 check가 제품 판정이 아니고 replay 모델 호출과 서버 기록이 모두 0이라는 기록이다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

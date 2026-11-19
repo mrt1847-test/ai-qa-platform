@@ -97,6 +97,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87 상위 대조](docs/validation/tasks/RX-87-PARENT-CHECK.md): 증명된 UI 4개와 B 2개만 체크했다. RX-98 호출량 일치와 fixture check 분리는 열려 있다. 완료 수는 유지한다.
 
+[RX-87 fixture check](docs/validation/tasks/RX-87-FIXTURE-CHECKS.md): 정적 check는 제품 판정이 아니고 replay 모델 호출과 서버 기록은 모두 0이다. 관련8pass1.89s. 상위 완료 수와 RX-23은 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

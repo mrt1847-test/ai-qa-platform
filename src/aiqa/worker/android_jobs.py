@@ -1734,8 +1734,6 @@ class AndroidReplayHandler:
         action_index: int | None = None,
         total_actions: int | None = None,
     ) -> object:
-        from aiqa.worker.runner import verify_and_heal_after_replay
-
         if self.context.require_case_context:
             from aiqa.healing.service import ReplayVerifyHealResult, SeparateVerifyHealRecord
             from aiqa.worker.bound_check_evaluation import evaluate_bound_checks
@@ -1752,21 +1750,11 @@ class AndroidReplayHandler:
                 SeparateVerifyHealRecord('', '', False, False, 'not_run', 0, 0, digest, digest),
                 not any(row.result.status=='violated' for row in coverage))
 
-        broker = self.context.verify_broker if self.context.verify_broker is not None else self.broker
-        return verify_and_heal_after_replay(
-            checks=self.context.checks,
-            observation=observation,
-            control=self.context.verify_control or _AllowVerify(),
-            broker=broker,
-            transport=self.context.verify_transport or _NoTransport(),
-            healing_enabled=self.context.healing_enabled if healing_enabled is None else healing_enabled,
-            heal_budget_remaining=self.context.heal_budget_remaining,
-            approved_failure_reason=self.context.approved_failure_reason,
-            healable_check_id=self.context.healable_check_id,
-            approved_package_digest=self.context.approved_digest if approved_digest is None else approved_digest,
-            healing_context=self.context.healing_context,
-            heal_observation=observation,
-        )
+        from aiqa.healing.service import ReplayVerifyHealResult, SeparateVerifyHealRecord
+        digest = self.context.approved_digest if approved_digest is None else approved_digest
+        # Worker-local fixture checks are not the product verdict and do not call a model.
+        return ReplayVerifyHealResult((),
+            SeparateVerifyHealRecord('', '', False, False, 'not_run', 0, 0, digest, digest), True)
 
     def _visual_check(self,check,observation):
         from aiqa.worker.http_client import WorkerHttpError

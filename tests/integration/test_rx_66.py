@@ -202,7 +202,7 @@ def test_rx_66_two_steps_run_in_order_with_distinct_observations(tmp_path: Path)
     assert len(set(png_hashes)) == 4
 
 
-def test_rx_66_broken_expectation_stops_further_input(tmp_path: Path) -> None:
+def test_rx_66_fixture_check_does_not_stop_the_sealed_plan(tmp_path: Path) -> None:
     calls: list = []
     bad_after = _observation(text="실패")
     handler = _handler(
@@ -216,12 +216,13 @@ def test_rx_66_broken_expectation_stops_further_input(tmp_path: Path) -> None:
         checks=(CheckSpec("check-1", "text", "로그인됨", subject="com.app:id/ok"),),
     )
     result = handler.handle(_claim(purpose="regression"))
-    assert result.outcome == "error"
-    assert result.actions == 1
-    assert handler.stopped_reason == "check_failed"
-    assert handler.original_failure
-    assert handler.healer_calls == 0
-    assert len(calls) == 1
+    assert result.outcome == "completed"
+    assert result.actions == 2
+    assert handler.stopped_reason != "check_failed"
+    assert handler.original_failure == ""
+    assert handler.healer_calls == handler.verifier_calls == handler.authoring_calls_seen == 0
+    assert len(calls) == 2
+    assert result.check_results == ()
 
 
 def test_rx_66_bad_digest_cancel_and_lease_dispatch_zero(tmp_path: Path) -> None:
@@ -269,8 +270,9 @@ def test_rx_66_trial_forces_healing_off_and_actor_zero(tmp_path: Path) -> None:
         healing_enabled=True,
     )
     result = handler.handle(_claim(purpose="trial"))
-    assert result.outcome == "error"
+    assert result.outcome == "completed"
     assert result.actions == 1
     assert handler.authoring_calls_seen == 0
     assert handler.healer_calls == 0
+    assert handler.stopped_reason != "check_failed"
     assert handler.package_digest_after == "sha256:approved"

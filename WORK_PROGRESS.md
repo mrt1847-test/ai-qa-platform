@@ -69,6 +69,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-B2-ANDROID-HIERARCHY-READER](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md): 기존 CLI XML 수집을 공통화하고 worker check-only/noPNG 포트를 공급했다. 공유 XML 해석·시한/제어/전송 한도·재시도/기존 재생 호환을 보완해192pass, 실제 Android launcher 읽기8.594s를 확인했다. 현재 인스턴스 G마켓 미설치는 별도 준비 실패이며 앱 QA로 세지 않는다. 다음 b3b1b 경계 평가/c 영속, 전체 RX87 미완료 유지다.
 
+[RX-87-B2-BOUND-CHECK-EVALUATION](docs/validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md): 저장한 native action ID 뒤에서만 deterministic text/명시 state를 평가한다. 미연결·판독 불가·정책 없음은 unknown이고 재생 완료가 아니며, 값 불일치는 FAIL로 멈추고 healing하지 않는다. 관련128pass56.11s. normalized check_results/ITEM 영속은 c이며 전체 RX87 미완료를 유지한다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

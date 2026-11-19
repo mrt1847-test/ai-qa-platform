@@ -72,6 +72,54 @@ def test_visual_only_at_due_assertion_and_keeps_source_expected():
     assert rows[-1].result.expected_snapshot=='enabled=true'
 
 
+def test_unapproved_policy_does_not_read_a_mapped_target():
+    calls=[]
+    base=source()
+    pin=WorkerCaseContext(base.case_version_id,base.content_hash,base.objective,base.target,base.steps,
+        base.final_expected,base.context_hash,json.dumps({'verification':[]}))
+    binding=WorkerCheckBindingPin('m','h',(('s1','a2'),),(('step','com.example.app:id/title'),('final','com.example.app:id/button')))
+    rows=evaluate(pin=pin,binding=binding,hierarchy_observer=lambda **kw:calls.append(kw))
+    assert calls==[] and [r.result.status for r in rows]==['unknown','unknown']
+    assert {r.result.reason for r in rows}=={'verifier_policy_missing'}
+
+
+def test_shared_boundary_reads_every_due_resource_once_and_ignores_ordinal():
+    calls=[]
+    pin=WorkerCaseContext('version','source','goal',CaseTarget('android','com.example.app'),
+        (CaseStep('s1','open',(CheckSpec('one','text','Done'),)),CaseStep('s2','next',(CheckSpec('two','state','visible=true'),))),
+        (),'context',source()._serialized)
+    binding=WorkerCheckBindingPin('m','h',(('s1','a2'),('s2','a2')),
+        (('one','com.example.app:id/title'),('two','com.example.app:id/button')))
+    def read(**kwargs):
+        calls.append(kwargs['resource_ids'])
+        return SimpleNamespace(snapshot=AndroidHierarchy(0,(
+            AndroidHierarchyTarget('com.example.app:id/title','available','Done'),
+            AndroidHierarchyTarget('com.example.app:id/button','available',text='present'))),
+            captured_at='2026-11-19T00:00:00+09:00')
+    assert evaluate(pin=pin,binding=binding,action_index=1,hierarchy_observer=read)==()
+    rows=evaluate(pin=pin,binding=binding,hierarchy_observer=read)
+    assert calls==[('com.example.app:id/button','com.example.app:id/title')]
+    assert [(r.result.check_id,r.result.status,r.result.reason) for r in rows]==[
+        ('one','satisfied','exact_text_match'),('two','unknown','state_field_unavailable')]
+    assert 'present' not in rows[1].result.reason and rows[1].result.sanitized_observed==''
+
+
+def test_redacted_unavailable_and_unsupported_kind_stay_unknown():
+    binding=WorkerCheckBindingPin('m','h',(('s1','a2'),),(('step','com.example.app:id/title'),))
+    redacted=evaluate(binding=binding,hierarchy_observer=lambda **kw:SimpleNamespace(
+        snapshot=AndroidHierarchy(0,(AndroidHierarchyTarget('com.example.app:id/title','redacted',text='secret'),)),
+        captured_at='2026-11-19T00:00:00+09:00'))
+    assert redacted[0].result.status=='unknown' and redacted[0].result.reason=='target_redacted'
+    assert 'secret' not in redacted[0].result.reason
+    pin=source()
+    pin=WorkerCaseContext(pin.case_version_id,pin.content_hash,pin.objective,pin.target,
+        (CaseStep('s1','open',(CheckSpec('step','value','Done'),)),),pin.final_expected,pin.context_hash,pin._serialized)
+    unsupported=evaluate(pin=pin,binding=binding,hierarchy_observer=lambda **kw:SimpleNamespace(
+        snapshot=AndroidHierarchy(0,(AndroidHierarchyTarget('com.example.app:id/title','available','Done',visible=True),)),
+        captured_at='2026-11-19T00:00:00+09:00'))
+    assert unsupported[0].result.status=='unknown' and unsupported[0].result.reason=='unsupported_check_kind'
+
+
 def test_unavailable_target_can_load_without_repeating_an_input():
     ticks=[0.0];calls=[]
     binding=WorkerCheckBindingPin('m','h',(('s1','a1'),),(('step','com.example.app:id/title'),))

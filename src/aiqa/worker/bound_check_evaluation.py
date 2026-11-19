@@ -47,9 +47,11 @@ def evaluate_bound_checks(pin,binding,native_source,*,action_index,total_actions
     policy=policies[0] if len(policies)==1 else {}
     method=policy.get('method','deterministic')
     if method not in {'deterministic','ai_visual','deterministic_then_ai_unknown'}:method='deterministic'
+    # A saved target is not permission to read. Only one approved deterministic policy may.
+    approved=len(policies)==1 and method in {'deterministic','deterministic_then_ai_unknown'}
     targets=dict(binding.targets) if binding else {}
     resources=tuple(sorted({targets[c.id] for c,_,_,reason in scheduled
-        if not reason and c.id in targets and method!='ai_visual'}))
+        if approved and not reason and c.id in targets}))
     snapshot={};read_reason='';stamp=observed_at
     def gate():
         if checkpoint() is False:raise RuntimeError('verification_cancelled')

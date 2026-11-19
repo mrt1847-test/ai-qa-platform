@@ -115,6 +115,20 @@ def test_cli_capture_closure_uses_the_shared_reader_and_existing_sanitize(source
     assert source[0].calls.count(('exec-out','uiautomator','dump','/proc/self/fd/1'))==1
 
 
+def test_prepared_worker_bounds_check_reads_by_the_claim_timeout(source,tmp_path,monkeypatch):
+    import aiqa.environments.android_observation as module
+    from aiqa.worker.android_jobs import build_approved_android_replay_handler
+    fake,_=source;seen=[]
+    def run(argv,**kwargs):
+        seen.append(kwargs['timeout']);return fake(argv,**kwargs)
+    monkeypatch.setattr(module,'_run_bounded',run)
+    handler=build_approved_android_replay_handler(adb_path=Path('C:/sdk/adb.exe'),serial='emulator-5580',expected_avd='AIQA_API36',
+        runtime_root=tmp_path,approved_digest='',approved_plan='')
+    fact=handler.context.hierarchy_observer(package=PACKAGE,resource_ids=(RESOURCE,),checkpoint=lambda:True,timeout=4)
+    assert fact.snapshot.targets[0].text=='Ready' and seen and max(seen)<=4
+    assert ('exec-out','screencap','-p') not in fake.calls
+
+
 def test_prepared_worker_exposes_same_shared_reader_without_running_it_at_build(source,tmp_path):
     from aiqa.worker.android_jobs import build_approved_android_replay_handler
     fake,_=source

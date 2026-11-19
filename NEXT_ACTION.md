@@ -1,6 +1,6 @@
 # Next Actions
 
-Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
+Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)가 현재 배치다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 관리 UI/API·DB·증거는 실행 PC와 독립 가동한다. 접속 PC는 웹만 사용하고 등록 실행 PC에는 worker/driver를 준비한다.
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
@@ -8,9 +8,9 @@ Updated: **2026-11-17 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: B2.3b3b1b · 저장한 검증 경계의 deterministic 평가.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: B2.3b3c · 정규화 결과와 ITEM QA 영속.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#b3b1b--정확한-경계의-deterministic-평가-다음)을 수행한다. 직접 선행 [공통 reader 인계](docs/validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md)는 기존 CLI 수집의 공통화와 worker check-only/noPNG 포트를 완료했다. [b3a pin 인계](docs/validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md)의 exact package/명시 boundary/target에 묶어 지정 시점에서만 평가한다. logical ordinal=gesture ordinal 추정·정적 fixture expected 대체·PNG/engine 완료만으로 PASS0이다. XML은 보조 관찰이며 Mobile-Agent의 원본 화면 판단/일반 녹화 PNG는 그대로 유지한다. actual normalized check_results/ITEM 저장은 c다.
+[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#c--정규화-결과item-영속-다음)을 수행한다. 직접 선행 [경계 평가 인계](docs/validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md)는 저장 action ID 뒤의 deterministic text/명시 state 평가를 마쳤다. unknown은 sealed gesture를 지우지 않고 재생 완료도 되지 않는다. violated는 FAIL로 멈추며 healing하지 않는다. 같은 작업 트리의 `store/replay_check_results.py`는 이 리프의 완료가 아니다. check ID·source hash·expected/observed·판정·evidence를 durable commit과 normalized check_results/ITEM QA에 연결하고, 원본 FAIL와 승인을 보존한다. 모델/제한 healing grant는 C/D다.
 
 [MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
 

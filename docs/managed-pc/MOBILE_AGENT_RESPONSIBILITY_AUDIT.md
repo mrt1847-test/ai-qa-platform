@@ -22,7 +22,7 @@
 1. original main/build_messages/parse_action/rescale을 유지한다. 모델 스크린샷 판단 루프·별도 탭/스와이프 명령 실행기를 새로 추가하지 않는다.
 2. 다음 b3b1a는 기존 CLI capture_once의 native XML 수집을 공통 코드로 추출하는 작업이다. AndroidObservationProvider와 기존 bounded ADB runner를 재사용하고 focus/선택 serial·AVD/현재 제어/deadline/정제 계약을 보존한다. old CLI 구현을 남겨 둔 채 worker용 사본을 추가하지 않는다.
 3. _anchor와 assertion의 목적은 유지하되 낮은 수준의 XML decoding/한도 검사가 둘로 계속 갈라지지 않게 공유 가능한 경계를 대조한다. bounds/target 보호를 새 selected-resource 관찰 API에 억지로 섞거나 guard를 제거하지 않는다.
-4. b3b1b가 pin의 명시 경계에 observer/validator를 연결하고 c가 결과를 영속화한다. 검증 필요 시점만 계층을 읽고 매 행동의 AI 재호출/불필요한 중복 PNG 수집을 만들지 않는다. AI 보완과 제한 healing은 승인된 별도 경로다.
+4. b3b1b는 pin의 명시 경계에 observer/validator를 연결했다. c가 결과를 영속화한다. 검증 필요 시점만 계층을 읽고 매 행동의 AI 재호출/불필요한 중복 PNG 수집을 만들지 않는다. AI 보완과 제한 healing은 승인된 별도 경로다.
 
 ## 근거·확인 범위
 

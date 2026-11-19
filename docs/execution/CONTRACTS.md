@@ -200,6 +200,8 @@ B2.3b3a: exact ITEM package.source_manifest의 annotation만 optional case-conte
 
 B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·exact rotation/byte·UI node·depth 한도를 지키는 pure 포트에서 명시 package/resource 사실만 반환한다. private/missing/duplicate/unreadable는 redacted/missing/ambiguous/unavailable이며 QA 결과가 아니다. visible/value를 node 존재/text로 추정하지 않는다. local raw text는 repr/오류 context에서 제외하고 저장·정제/실제 관찰 시점 권한은 reader/evaluator 소유다.
 
+B2.3b3b1b: 재생 워커는 원본 NativeSource action ID와 저장 boundary가 같은 동작 뒤에서만 step check를 평가하고 final check는 마지막 승인 동작 뒤에만 평가한다. logical ordinal로 gesture를 추정하지 않는다. 승인된 deterministic 정책과 명시 resource만 한 번에 읽고, 그 호출에는 현재 read-only checkpoint와 남은 시간/명령 cap을 넘긴다. 추가 PNG/모델/입력 차감은 0이며 마지막 입력 예산을 다 써도 이 조회를 막지 않는다. text는 실제 text와 exact 비교하고 state는 enabled/checked/selected/focused/visible의 true/false만 비교한다. 없는 value/visible을 text나 node 존재로 추정하지 않는다. 정책 없음, 대상 없음, missing/ambiguous/redacted/unavailable, 지원하지 않는 kind, 읽기 실패는 unknown이다. unknown은 남은 sealed gesture를 지우지 않고 ITEM 완료도 되지 않는다. violated는 FAIL로 즉시 멈추며 healing하지 않는다. 호출자가 넣은 fixture check/expected는 source CheckSpec을 대체하지 않는다. deterministic 평가의 모델 호출은 0이다. 결과 영속은 c다.
+
 B2.3b3b1a: 기존 CLI XML 수집은 공통 AndroidHierarchyReader로 추출한다. observe_targets는 check-time/noPNG/noModel 사실이며 capture_once의 raw DOM/PNG는 local이며 caller 정제를 거친다. managed 녹화의 원본 vision/default PNG 경로는 XML을 요구하지 않는다. observer의 optional deadline/checkpoint/command_timeout은 개별 cap·잔여 시간의 최솟값을 전달하고 각 native read와 최종 projection 뒤 현재 제어를 확인한다. 원래 wire 크기/공식 suffix/선택 serial·AVD·foreground·전후 geometry를 검증한다. source/replay XML 한도는 공통1MiB다. known read transition만 제한 재시도하며 취소/wrong target/invalid evidence는 즉시 중단한다.
 
 ```text

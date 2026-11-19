@@ -1505,6 +1505,8 @@ class AndroidReplayHandler:
             return _fail_closed("replay_rejected", evidence_complete=False)
 
         hashes = tuple(str(event["payload_hash"]) for event in all_events)
+        if (self.context.require_case_context and any(row.result.status!='satisfied' for row in self.check_coverage)):
+            self.stopped_reason = self.stopped_reason or 'check_failed'
         if self.stopped_reason == "cancelled":
             return HandlerResult(
                 actions=self.dispatch_count,
@@ -1704,9 +1706,10 @@ class AndroidReplayHandler:
             digest = self.context.approved_digest if approved_digest is None else approved_digest
             # Coverage is not a runtime target binding or a verifier/healer grant.
             # Unknown required checks stay inconclusive; no product FAIL is invented.
+            # Unknown keeps the sealed plan moving and stays inconclusive. A violation stops it.
             return ReplayVerifyHealResult(tuple(row.result for row in coverage),
                 SeparateVerifyHealRecord('', '', False, False, 'not_run', 0, 0, digest, digest),
-                all(row.result.status=='satisfied' for row in coverage))
+                not any(row.result.status=='violated' for row in coverage))
 
         broker = self.context.verify_broker if self.context.verify_broker is not None else self.broker
         return verify_and_heal_after_replay(
@@ -2178,7 +2181,8 @@ def build_approved_android_replay_handler(
     from aiqa.environments.android_hierarchy_reader import AndroidHierarchyReader
     source=AndroidObservationProvider(adb_path,serial,expected_avd=expected_avd)
     def observe_hierarchy(*,package,resource_ids,checkpoint,timeout):
-        reader=AndroidHierarchyReader(source,package=package,checkpoint=checkpoint,total_timeout=timeout)
+        cap=min(15,timeout)
+        reader=AndroidHierarchyReader(source,package=package,checkpoint=checkpoint,command_timeout=cap,total_timeout=timeout)
         return reader.observe_targets(resource_ids)
     return AndroidReplayHandler(
         adapter=MobileAgentAndroidAdapter(),

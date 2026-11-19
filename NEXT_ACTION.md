@@ -8,9 +8,9 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: B2.3b3c · 정규화 결과와 ITEM QA 영속.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: C · 서버 check/episode 전용 권한.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[검증 연결 소비 계획](docs/managed-pc/CHECK_BINDING_RUNTIME_TASKS.md#c--정규화-결과item-영속-다음)을 수행한다. 직접 선행 [경계 평가 인계](docs/validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md)는 저장 action ID 뒤의 deterministic text/명시 state 평가를 마쳤다. unknown은 sealed gesture를 지우지 않고 재생 완료도 되지 않는다. violated는 FAIL로 멈추며 healing하지 않는다. 같은 작업 트리의 `store/replay_check_results.py`는 이 리프의 완료가 아니다. check ID·source hash·expected/observed·판정·evidence를 durable commit과 normalized check_results/ITEM QA에 연결하고, 원본 FAIL와 승인을 보존한다. 모델/제한 healing grant는 C/D다.
+[Android runtime C](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)를 수행한다. 직접 선행 [정규화 결과 인계](docs/validation/tasks/RX-87-B2-CHECK-RESULTS.md)는 worker check를 source expected/증거와 함께 ITEM FAIL·INCONCLUSIVE·PASS로 저장하고 승인은 만들지 않는다. C는 replay verifier/healer를 녹화 authoring 권한으로 재사용하지 않는다. 실제 실패 action의 미전송 증거와 episode 소유를 고정하고, 서버가 현재 regression claim/package/check/policy/lease를 확인한 뒤에만 episode를 예약한다. worker가 episode ID나 allowed=true만으로 호출하지 못한다. 원본 FAIL과 승인 package는 그대로 둔다.
 
 [MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
 

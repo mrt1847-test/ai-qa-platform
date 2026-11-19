@@ -71,6 +71,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-B2-BOUND-CHECK-EVALUATION](docs/validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md): 저장한 native action ID 뒤에서만 deterministic text/명시 state를 평가한다. 미연결·판독 불가·정책 없음은 unknown이고 재생 완료가 아니며, 값 불일치는 FAIL로 멈추고 healing하지 않는다. 관련128pass56.11s. normalized check_results/ITEM 영속은 c이며 전체 RX87 미완료를 유지한다.
 
+[RX-87-B2-CHECK-RESULTS](docs/validation/tasks/RX-87-B2-CHECK-RESULTS.md): worker check 행을 source expected와 ready 증거에 묶어 저장하고 ITEM을 FAIL/INCONCLUSIVE/PASS로 나눈다. 승인 행은 만들지 않고 기존 violated는 유지한다. 관련26pass17.72s. 다음 RX87 C 서버 episode 권한이며 전체 RX87은 미완료다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

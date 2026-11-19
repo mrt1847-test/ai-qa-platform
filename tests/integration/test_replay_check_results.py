@@ -176,6 +176,79 @@ def test_all_required_checks_must_be_satisfied_for_pass(replay, monkeypatch):
         assert results.persist_replay_check_results(c, replace(f['finish'], check_results=(coverage(f),)))=='PASS'
 
 
+def _worker_row(f, *, status, reason, action='runtime-2'):
+    from aiqa.contracts.checks import CheckResult
+    from aiqa.worker.replay_check_coverage import RequiredCheckCoverage
+    context = f['context']
+    check = context['steps'][0]['expected'][0]
+    coverage = RequiredCheckCoverage(
+        CheckResult(check['id'], status, 'deterministic', 'WORKER MUST NOT WRITE THIS', 'password=private', reason, STAMP, 'FAIL' if status=='violated' else ''),
+        'step', 's1', context['context_hash'], context['case_version_id'], context['content_hash'], check['kind'])
+    return {**asdict(coverage), 'action_id': action}
+
+
+def _seal(f, row, *, outcome):
+    from aiqa.store.evidence import _cursor
+    from aiqa.store.models import WorkerScope
+    from aiqa.store.queue import finish_worker_attempt
+    finish = f['finish']
+    moment = datetime.fromisoformat(STAMP)
+    worker = WorkerScope('check-worker', (finish.project_id,), ('trial',))
+    with f['r']['store'].transaction() as c:
+        raw = json.loads(c.execute('SELECT limits FROM jobs WHERE job_id=?', (str(finish.job_id),)).fetchone()[0])
+        raw['failure_policy'] = 'continue'
+        c.execute('UPDATE jobs SET limits=? WHERE job_id=?', (json.dumps(raw), str(finish.job_id)))
+        c.execute("INSERT INTO leases(project_id,job_id,generation,worker_id,expires_at) VALUES(?,?,1,'check-worker',?)", (str(finish.project_id), str(finish.job_id), (moment+timedelta(minutes=5)).isoformat()))
+        c.execute("INSERT INTO attempt_runners(project_id,attempt_id,runner_nonce,acked_at) VALUES(?,?,'runner',?)", (str(finish.project_id), str(finish.attempt_id), STAMP))
+        seq, ack = _cursor(c, finish.project_id, str(finish.attempt_id))
+        approval = c.execute('SELECT current_approval_id FROM automation_cases WHERE case_id=?', (f['r']['case'],)).fetchone()[0]
+        sealed = replace(finish, outcome=outcome, last_ack_seq=seq, last_ack_hash=ack, check_results=(row,), required_violation=False)
+        receipt = finish_worker_attempt(c, worker, sealed, request_key='seal', body_hash='body', now=moment)
+        item = c.execute('SELECT core_result, content_hash FROM item_finalizations WHERE case_run_id=?', (c.execute('SELECT case_run_id FROM jobs WHERE job_id=?', (str(finish.job_id),)).fetchone()[0],)).fetchone()
+        stored = c.execute("""SELECT cr.status, cr.expected_snapshot, cr.sanitized_observed, cr.artifact_refs, v.content_hash
+            FROM check_results cr
+            JOIN actions a ON a.project_id=cr.project_id AND a.attempt_id=cr.attempt_id AND a.action_id=cr.action_id
+            JOIN case_versions v ON v.project_id=a.project_id AND v.version_id=a.case_version_id
+            WHERE cr.check_id='c1'""").fetchone()
+        later = c.execute('SELECT current_approval_id FROM automation_cases WHERE case_id=?', (f['r']['case'],)).fetchone()[0]
+    return receipt, item, stored, approval, later
+
+
+def test_worker_violation_commits_item_fail_without_changing_approval(replay):
+    from aiqa.store.replay_check_results import persist_replay_check_results
+    receipt, item, stored, before, after = _seal(replay, _worker_row(replay, status='violated', reason='text_mismatch'), outcome='error')
+    assert receipt.approved is False and receipt.verdict == 'FAIL'
+    assert item[0] == 'FAIL'
+    assert stored[:3] == ('violated', 'mouse', '')
+    assert len(json.loads(stored[3])) == 2 and stored[4] == replay['context']['content_hash']
+    assert 'password=private' not in ''.join(stored[:3]) and before == after
+    with replay['r']['store'].transaction() as c:
+        with pytest.raises(ValueError): persist_replay_check_results(c, replace(replay['finish'], check_results=(_worker_row(replay, status='satisfied', reason='exact_text_match'),)))
+        assert c.execute("SELECT status FROM check_results WHERE check_id='c1'").fetchone()[0] == 'violated'
+
+
+def test_worker_unknown_commits_inconclusive_item_and_not_a_pass(replay):
+    receipt, item, stored, before, after = _seal(replay, _worker_row(replay, status='unknown', reason='target_ambiguous'), outcome='error')
+    assert receipt.approved is False and receipt.verdict == 'INCONCLUSIVE'
+    assert item[0] == 'INCONCLUSIVE'
+    assert stored[0] == 'unknown' and stored[1] == 'mouse' and stored[4] == replay['context']['content_hash']
+    assert before == after
+
+
+def test_completed_item_passes_only_when_every_required_check_is_satisfied(replay, monkeypatch):
+    import aiqa.store.replay_check_results as results
+    source = None
+    with replay['r']['store'].transaction() as c:
+        source = results.load_replay_check_source(c, replay['finish'])
+    context = copy.deepcopy(source.context)
+    context['final_expected'] = []
+    monkeypatch.setattr(results, 'load_replay_check_source', lambda *args: replace(source, context=context))
+    receipt, item, stored, before, after = _seal(replay, _worker_row(replay, status='satisfied', reason='exact_text_match'), outcome='completed')
+    assert receipt.approved is False and receipt.verdict == 'PASS'
+    assert item[0] == 'PASS' and stored[0] == 'satisfied' and stored[1] == 'mouse'
+    assert before == after
+
+
 def test_runtime_serializes_normalized_results_in_finish_payload():
     from aiqa.worker.runtime import HandlerResult, WorkerRuntime
     runtime = WorkerRuntime.__new__(WorkerRuntime)

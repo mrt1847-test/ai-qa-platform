@@ -58,9 +58,13 @@ Ruling: password flag 없는 node를 안전하다고 추정하지 않는다 — 
 - [x] source CheckSpec id/expected/phase/context/content hash를 보존한 RequiredCheckCoverage를 만든다. text는 실제 text field와 exact 비교, state는 명시 boolean 의미가 지원될 때만 비교한다. 없는 value/visible을 text/존재로 추정하지 않고 missing/ambiguous/redacted/unavailable/지원 안 되는 kind는 unknown이다. AI 정책은 C 연결 전 unknown이며 여기서 호출0이다. assertion 실패는 healing하지 않는다.
 - [x] worker 정상 claim→여러 gesture/같은·여러 boundary→마지막 final·미연결/누락/모순/취소/한도·actor AI0를 검증한다. coverage의 기존 원문 생략 log 정책/FAIL/승인/source를 보존한다. actual check_results 영속은 c이며 검증되지 않은 결과를 완료로 세지 않는다. fresh review1/한 fix pass/인계/큐/master commit한다.
 
-## c · 정규화 결과/ITEM 영속 (다음)
+## c · 정규화 결과/ITEM 영속
 
 check ID·source hash·expected/observed·판정·evidence를 durable commit/normalized check_results/ITEM QA에 연결한다. 원본 FAIL와 승인 보존, 모델/제한 healing grant는 C/D의 별도 구현이다. 이후 MA05b2의 정상 원본→사후 승인→동일 package AI0 여정으로 돌아간다.
+
+- [x] worker가 만든 check ID/status/reason/경계 action을 finish에 실어 서버 source expected와 ready after/log artifact만 저장한다. worker expected/관찰 원문/required_violation 플래그로 판정을 바꾸지 않는다.
+- [x] violated는 ITEM FAIL이고 이후 satisfied로 바꾸지 않는다. unknown 또는 빠진 required는 INCONCLUSIVE다. required가 모두 satisfied이고 outcome이 completed일 때만 ITEM PASS다. 승인 행은 만들지 않는다.
+- [x] source hash는 저장 action의 case version content hash와 같고, 그 값이 다를 수 있는 worker 주장은 거절한다. fresh review/인계/큐/master commit. 모델 healing grant와 실기기 PASS는 C/D와 별도다.
 
 b3a 완료: [인계](../validation/tasks/RX-87-B2-CHECK-BINDING-PIN.md), 관련144pass52.20s. NativeSource는 verified manifest_id/hash도 frozen으로 보존한다. 크기는 compact UTF8 문서131072bytes이며 envelope/escaped DB 표현 한도와 구별한다. actual evaluator/normalized 결과/전체 RX87은 미완료다.
 
@@ -68,4 +72,6 @@ b3b0 완료: [인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY.md), 관련
 
 b3b1a 완료: [인계](../validation/tasks/RX-87-B2-ANDROID-HIERARCHY-READER.md), 관련192pass55.45s + 실제 Android launcher read8.594s(앱 QA 아님). XML은 check-time 보조 경로이며 일반 녹화 PNG/원본 main을 유지한다.
 
-b3b1b 완료: [인계](../validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md). 저장 action ID 뒤에서만 deterministic text/명시 state를 평가하고, 미연결·판독 불가는 unknown으로 남겨 재생 완료로 세지 않는다. normalized check_results/ITEM 영속은 c이며 전체 RX87은 미완료다.
+b3b1b 완료: [인계](../validation/tasks/RX-87-B2-BOUND-CHECK-EVALUATION.md). 저장 action ID 뒤에서만 deterministic text/명시 state를 평가하고, 미연결·판독 불가는 unknown으로 남겨 재생 완료로 세지 않는다.
+
+c 완료: [인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md). worker 행은 source expected와 증거 artifact로 정규화되고 ITEM은 FAIL/INCONCLUSIVE/PASS로 갈린다. 승인과 기존 FAIL은 유지한다. 모델 healing과 전체 RX87은 미완료다.

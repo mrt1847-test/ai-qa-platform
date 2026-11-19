@@ -73,6 +73,17 @@ def test_unlisted_text_is_not_sent_or_sealed(engine_job,tmp_path):
         assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
 
 
+def test_source_seals_allowed_text_without_approval(engine_job,tmp_path):
+    c,session,sent=prepare(engine_job,tmp_path,actions=[{'action':'type','text':'mouse'},{'action':'terminate','status':'success'}])
+    with c:result=session.run()
+    native=json.loads(result.action_mapping)['events'][0]['native']
+    assert result.outcome=='completed' and result.review_pending and result.native_actions==1
+    assert native['kind']=='text' and native['text']=='mouse' and sent[0][-2:]==('text','mouse')
+    with sqlite3.connect(engine_job['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+test_source_seals_allowed_text_without_approval.literal_text='mouse'
+
+
 def test_source_seals_back_key_without_approval(engine_job,tmp_path):
     c,session,sent=prepare(engine_job,tmp_path,actions=[{'action':'system_button','button':'Back'},{'action':'terminate','status':'success'}])
     with c:result=session.run()

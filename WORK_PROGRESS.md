@@ -107,6 +107,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [source v2 동작](docs/validation/tasks/AI-LIVE-04-SOURCE-V2-ACTIONS.md): swipe는 물리 픽셀 `9,40→29,79`와 800ms, Back은 keycode 4로 봉인된다. 목록 밖 문자는 전송하지 않는다. 3pass11.70s. 허용 문자와 check binding은 아직이다.
 
+[허용 문자](docs/validation/tasks/AI-LIVE-04-SOURCE-V2-TEXT.md): 변수 `query=mouse`는 source와 ADB에 `mouse`로 봉인되고 승인은 없다. 변수가 없으면 같은 문자는 거절된다. 2pass7.47s. logical check binding은 아직이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

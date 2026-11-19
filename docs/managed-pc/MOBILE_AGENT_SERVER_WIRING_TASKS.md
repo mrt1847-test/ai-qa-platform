@@ -35,7 +35,7 @@ MA04a worker model callback/ma-call before frame/receipt/evidence ACK 대기 완
 MA04c의 직접 입력은 MA04b2 인계/session result와 기존 android_jobs 운영 factory·runtime checkpoint/keepalive binder·AndroidTargetPreparer다. canonical runtime-root/attempt UUID 경로를 사용하고 session phase를 기존 current gate에 매핑한다. 준비 동작을 포함한 action/time cap과 case context/serial, ACK된 증거 IDs/cursor→HandlerResult→finish를 보존한다. runtime 지원과 server engine admission을 함께 검증한 뒤 일반 접수를 전환한다. 생성 키는 서버에만 남기고 Web/legacy는 별도 경로로 유지한다.
 
 - [x] worker/android_jobs.py·runtime.py의 정상 recording handler가 MA03을 호출한다. fixture_response/자체 plan_provider가 정상 요청의 암묵적 성공 경로가 되지 않게 한다. 자연어 목표/선택앱/고정 한도/원본 이력을 소비한다.
-- [ ] 기존 before/after spool→서버 commit/ACK·native source seal→finish→검토 대기를 유지한다. source v2의 swipe 물리 좌표와 Back 키는 봉인되고, 케이스 변수에 없는 문자는 전송·source·승인이 되지 않는다. 근거는 [source v2 동작](../validation/tasks/AI-LIVE-04-SOURCE-V2-ACTIONS.md). 허용된 입력 문자의 봉인과 logical check binding은 아직이다.
+- [ ] 기존 before/after spool→서버 commit/ACK·native source seal→finish→검토 대기를 유지한다. source v2는 swipe 물리 좌표, Back 키, 케이스 변수에 있는 문자를 봉인한다. 변수에 없는 문자는 전송·source·승인이 되지 않는다. 근거는 [source v2 동작](../validation/tasks/AI-LIVE-04-SOURCE-V2-ACTIONS.md)과 [허용 문자](../validation/tasks/AI-LIVE-04-SOURCE-V2-TEXT.md). logical check binding은 아직이다.
 
 ## MA-05 · 승인본 실행과 정상 웹 여정
 

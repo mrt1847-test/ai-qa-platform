@@ -27,6 +27,8 @@ def engine_job(recording,monkeypatch,request):
     with sqlite3.connect(f['database']) as db:
         row=db.execute('SELECT definition_json,settings_json FROM case_versions WHERE version_id=?',(f['body']['input_case_version_id'],)).fetchone()
         definition=json.loads(row[0]);settings=json.loads(row[1])
+    literal=getattr(request.function,'literal_text',None)
+    if type(literal) is str:definition['variables']={'query':literal}
     if settings['target_kind']!='android':
         settings.update(target_kind='android',android_package='com.example.saved')
         async def save():

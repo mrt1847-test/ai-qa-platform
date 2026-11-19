@@ -228,6 +228,30 @@ def install_healing(application: FastAPI) -> None:
             return HTMLResponse(status_code=404, content="항목을 찾지 못했습니다.")
         return render_template(request, "case_run.html", {"shell": False, **view})
 
+    async def post_worker_episode(request: Request) -> JSONResponse:
+        header = request.headers.get("authorization", "")
+        if not header.startswith("Bearer ") or header.removeprefix("Bearer ").strip() == "":
+            return JSONResponse(status_code=401, content={"eligible": False, "reason": "worker token is missing"})
+        payload = await _body(request)
+        if isinstance(payload, JSONResponse):
+            return payload
+        from aiqa.api.auth import WorkerDenied, worker_scope_from_token
+        from aiqa.healing.claim_reservation import reserve_claimed_healing_http
+        try:
+            worker = worker_scope_from_token(header.removeprefix("Bearer ").strip())
+        except AuthRequired:
+            return JSONResponse(status_code=401, content={"eligible": False, "reason": "worker token is missing"})
+        except WorkerDenied:
+            return JSONResponse(status_code=403, content={"eligible": False, "reason": "worker cannot use this lease"})
+        store = request.app.state.open_store()
+        try:
+            migrate_store(store)
+            status, body = reserve_claimed_healing_http(store, worker, payload)
+        finally:
+            store.close()
+        return JSONResponse(status_code=status, content=body)
+
+    application.add_api_route("/api/v1/worker/healing-episodes", post_worker_episode, methods=["POST"])
     application.add_api_route(
         "/api/v1/case-runs/{case_run_id}/healing-episodes",
         get_timeline,

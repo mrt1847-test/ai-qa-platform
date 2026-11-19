@@ -13,6 +13,32 @@ class HealingRejected(Exception):
     """The lookup cannot reserve an episode."""
 
 
+_UNSENT = frozenset({"planned", "lookup_failed"})
+
+
+def unsent_action(connection: sqlite3.Connection, project_id: UUID, attempt_id: UUID, action_id: UUID) -> str | None:
+    """None when this action is pinned and unsent. Other actions do not count."""
+
+    row = connection.execute(
+        """
+        SELECT action_seq, dispatch_state FROM actions
+        WHERE project_id = ? AND attempt_id = ? AND action_id = ?
+        """,
+        (str(project_id), str(attempt_id), str(action_id)),
+    ).fetchone()
+    if row is None or str(row[1]) not in _UNSENT:
+        return "missing" if row is None else "sent"
+    sent = connection.execute(
+        """
+        SELECT 1 FROM dispatch_journal
+        WHERE project_id = ? AND attempt_id = ? AND action_seq = ?
+          AND dispatch_state IN ('dispatch_started', 'acknowledged', 'observed', 'unknown')
+        """,
+        (str(project_id), str(attempt_id), int(row[0])),
+    ).fetchone()
+    return "sent" if sent is not None else None
+
+
 def dispatch_started(connection: sqlite3.Connection, project_id: UUID, attempt_id: UUID) -> bool:
     row = connection.execute(
         """
@@ -66,6 +92,7 @@ def insert_reservation(
     reserved_calls: int,
     reserved_seconds: int,
     now: datetime,
+    action_id: UUID | None = None,
 ) -> UUID:
     if reason not in _REASONS:
         raise HealingRejected("lookup reason is invalid")
@@ -84,8 +111,8 @@ def insert_reservation(
         """
         INSERT INTO healing_reservations (
             project_id, reservation_id, episode_id, case_run_id, request_key, reason,
-            reserved_calls, reserved_seconds, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            reserved_calls, reserved_seconds, created_at, action_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             str(project_id),
@@ -97,6 +124,7 @@ def insert_reservation(
             reserved_calls,
             reserved_seconds,
             now.isoformat(),
+            None if action_id is None else str(action_id),
         ),
     )
     return episode_id

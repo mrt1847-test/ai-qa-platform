@@ -58,6 +58,7 @@ class HealingTrigger:
     lease_seconds: int
     binding_revision: str
     product_violation: bool = False
+    action_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)

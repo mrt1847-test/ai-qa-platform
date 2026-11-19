@@ -73,6 +73,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [RX-87-B2-CHECK-RESULTS](docs/validation/tasks/RX-87-B2-CHECK-RESULTS.md): worker check 행을 source expected와 ready 증거에 묶어 저장하고 ITEM을 FAIL/INCONCLUSIVE/PASS로 나눈다. 승인 행은 만들지 않고 기존 violated는 유지한다. 관련26pass17.72s. 다음 RX87 C 서버 episode 권한이며 전체 RX87은 미완료다.
 
+[RX-87-C-HEALING-EPISODE](docs/validation/tasks/RX-87-C-HEALING-EPISODE.md): 미전송 action에만 서버가 healing episode를 예약한다. 앞선 동작의 전송 기록은 이 동작의 불명 전송이 아니고, worker가 만든 episode id나 allowed는 권한이 아니다. 관련8pass2.98s. 다음 D 제한 복구이며 전체 RX87은 미완료다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

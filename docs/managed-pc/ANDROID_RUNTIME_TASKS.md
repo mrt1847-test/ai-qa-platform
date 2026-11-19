@@ -57,7 +57,7 @@ B0.6 완료2026-11-14, [인계](../validation/tasks/RX-87-B0-IO.md). 최종 전�
 
 ## B. replay의 고정 정책과 한도
 
-B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. 현재 C, 이후 D. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
+B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md). B2.1 공급도 [인계](../validation/tasks/RX-87-B2-CONTEXT.md)로 완료했다. B2.2a도 [인계](../validation/tasks/RX-87-B2-CONSUMER.md)로 완료했다. [B2.2b 선택 앱 준비·저장 근거](../validation/tasks/RX-87-B2-TARGET.md)도 core 완료했다. B2.3 검사 mapping/결과는 [결과 인계](../validation/tasks/RX-87-B2-CHECK-RESULTS.md)까지 완료했다. C 서버 episode 예약은 [인계](../validation/tasks/RX-87-C-HEALING-EPISODE.md)로 완료했다. 현재 D. 아래 B 전체 체크는 모든 해당 계약을 확인한 뒤 완료한다.
 
 **입력:** resolve_claim_healing_pin(snapshot)의 detached WorkerHealingPin, 승인 package hash/plan. **파일:** android_jobs.py, worker/healing_pin.py, tests/integration/test_rx87_android_runtime.py.
 
@@ -75,10 +75,10 @@ B1 한도/현재 제어 완료: [인계](../validation/tasks/RX-87-B1-CONTROL.md
 
 **문제:** RX98 recording authoring grant는 replay의 verifier/healer 권한이 아니다. **파일:** worker model API, server model authorization/receipts, 기존 healing service, HTTP client.
 
-- [ ] reserve_healing_episode의 현재 attempt 전체 dispatch_started 검사는 앞 step을 실행한 뒤의 정상 locator 실패까지 막는다. 실제 실패 action의 미전송 증거와 episode 소유를 먼저 고정해, 다른 action 실행 기록을 해당 action 불명 전송으로 혼동하지 않는다.
-- [ ] 실제 regression claim/ACK·고정 package/check·healing policy·binding/key·현재 lease/취소를 확인하는 서버 포트를 연결한다. worker가 episode ID/allowed=true만 만들어 호출할 수 없게 한다.
-- [ ] episode 예약1/호출2/30초와 전체 job 상한, 동일 key/응답 유실·pending 불명·재시도 차감을 영속화한다. authoring 권한 재사용0이다.
-- [ ] 원본 FAIL/승인 package는 불변이고 episode/제안/검증은 별도 소유 기록이다. 저장된 근거 조회·사후 승인은 worker offline과 독립이다.
+- [x] reserve_healing_episode의 현재 attempt 전체 dispatch_started 검사는 앞 step을 실행한 뒤의 정상 locator 실패까지 막는다. 실제 실패 action의 미전송 증거와 episode 소유를 먼저 고정해, 다른 action 실행 기록을 해당 action 불명 전송으로 혼동하지 않는다. action_id가 없으면 기존 attempt 전체 차단을 유지한다.
+- [x] 실제 regression claim/ACK·고정 package/check·healing policy·binding/key·현재 lease/취소를 확인하는 서버 포트를 연결한다. worker가 episode ID/allowed=true만 만들어 호출할 수 없게 한다.
+- [x] episode 예약1/호출2/30초와 전체 job 상한, 동일 key/응답 유실·pending 불명·재시도 차감을 영속화한다. authoring 권한 재사용0이다. 예약 행은 한 번만 쓰고 같은 key는 그 행을 다시 반환한다.
+- [x] 원본 FAIL/승인 package는 불변이고 episode/제안/검증은 별도 소유 기록이다. 저장된 예약은 worker 연결이 끝난 뒤 DB에서 읽는다. native 재동작은 D다.
 
 ## D. 허용 실패에서 native 복구·제안까지
 

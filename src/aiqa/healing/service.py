@@ -16,6 +16,7 @@ from aiqa.store.healing import (
     insert_reservation,
     lease_remaining_seconds,
     read_reservation,
+    unsent_action,
 )
 from aiqa.worker.control import RunControl
 
@@ -34,8 +35,15 @@ def reserve_healing_episode(trigger: HealingTrigger, control: RunControl) -> Hea
         raise HealingRejected("product violation blocks healing")
     connection = control._connection
     project_id = control._project_id
-    if dispatch_started(connection, project_id, trigger.attempt_id):
-        return HealingEpisodeReceipt(None, trigger.case_run_id, 0, 0, False, False)
+    if trigger.action_id is None:
+        if dispatch_started(connection, project_id, trigger.attempt_id):
+            return HealingEpisodeReceipt(None, trigger.case_run_id, 0, 0, False, False)
+    else:
+        state = unsent_action(connection, project_id, trigger.attempt_id, trigger.action_id)
+        if state == "missing":
+            raise HealingRejected("unsent evidence missing")
+        if state == "sent":
+            return HealingEpisodeReceipt(None, trigger.case_run_id, 0, 0, False, False)
     if trigger.policy.effective_enabled is not True:
         return HealingEpisodeReceipt(None, trigger.case_run_id, 0, 0, False, False)
     if trigger.binding_revision != trigger.policy.binding_revision:
@@ -66,6 +74,7 @@ def reserve_healing_episode(trigger: HealingTrigger, control: RunControl) -> Hea
             calls,
             seconds,
             now,
+            trigger.action_id,
         )
     except sqlite3.IntegrityError:
         if owns_transaction:

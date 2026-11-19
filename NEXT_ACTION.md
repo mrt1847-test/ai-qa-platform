@@ -8,9 +8,9 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**RX-87 — 다음 세부 작업: C · 서버 check/episode 전용 권한.** RX87 전체는 미완료이며 그다음 RX-88이다.
+**RX-87 — 다음 세부 작업: D · 허용 실패의 native 복구와 제안.** RX87 전체는 미완료이며 그다음 RX-88이다.
 
-[Android runtime C](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)를 수행한다. 직접 선행 [정규화 결과 인계](docs/validation/tasks/RX-87-B2-CHECK-RESULTS.md)는 worker check를 source expected/증거와 함께 ITEM FAIL·INCONCLUSIVE·PASS로 저장하고 승인은 만들지 않는다. C는 replay verifier/healer를 녹화 authoring 권한으로 재사용하지 않는다. 실제 실패 action의 미전송 증거와 episode 소유를 고정하고, 서버가 현재 regression claim/package/check/policy/lease를 확인한 뒤에만 episode를 예약한다. worker가 episode ID나 allowed=true만으로 호출하지 못한다. 원본 FAIL과 승인 package는 그대로 둔다.
+[Android runtime D](docs/managed-pc/ANDROID_RUNTIME_TASKS.md)를 수행한다. 직접 선행 [episode 예약 인계](docs/validation/tasks/RX-87-C-HEALING-EPISODE.md)는 미전송 action에만 서버가 episode 1회, 호출 2회, 30초 한도로 예약한다. D는 locator/레이아웃 실패만 그 예약을 소비한다. 제품 assertion 실패, 불명 dispatch, expected/목표 변경은 복구하지 않는다. 현재 관찰에서 같은 대상임이 증명된 후보만 한 번 재동작하고, 성공 제안과 원본 QA를 분리한다.
 
 [MA05b1.3 인계](docs/validation/tasks/AI-LIVE-04-MA05B13.md)의 저장 명령·좌표·근거 UI와 a1~4 실패 저장/ACK/손실 계약을 유지한다. b3b/c의 normalized check_results/ITEM 저장과 C/D의 필요한 구현 후 [MA05b2](docs/managed-pc/MOBILE_AGENT_REVIEW_JOURNEY_TASKS.md#ma05b2--정상-source검토사후-승인동일-package-ai0) 정상 원본 저장본→사후 승인→동일 package AI0 여정으로 돌아간다. fixture 승인/required 제거로 성공시키지 않는다.
 

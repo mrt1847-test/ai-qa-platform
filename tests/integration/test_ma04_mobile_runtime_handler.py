@@ -1,8 +1,8 @@
 from copy import deepcopy
 from pathlib import Path
-import json,sqlite3,subprocess
+import asyncio,json,sqlite3,subprocess
 from uuid import UUID
-import pytest
+import httpx,pytest
 from test_rx97_recording_pin import recording,ux_app
 from test_ma03b_mobile_history import engine_job,client
 from test_ma04_mobile_recording_session import prepare
@@ -18,6 +18,7 @@ from aiqa.worker.case_context import resolve_claim_case_context
 from aiqa.worker.android_prepare import AndroidTargetPreparer
 from aiqa.worker.runtime import WorkerRuntime,WorkerRuntimeConfig
 from aiqa.contracts.jobs import ControlDecision
+from ux_support import session
 
 
 @pytest.fixture
@@ -263,5 +264,31 @@ def test_handler_second_model_uses_server_history_and_journal_ack(android_engine
     action_id=json.loads(result.action_mapping)['events'][0]['action_id']
     journal=DispatchJournal(tmp_path/'runtime'/'mobile-agent'/f['project']/job['attempt_id']/'session'/'dispatch.jsonl')
     assert journal.states(action_id,job['attempt_id'])==('planned','dispatch_started','acknowledged','observed')
+    with sqlite3.connect(f['database']) as db:
+        assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0
+
+
+def test_finished_recording_stays_reviewable_after_the_worker_is_offline(android_engine_job,tmp_path):
+    f=android_engine_job;c,h,job,sent,launches,_=setup(f,tmp_path)
+    with c:
+        result=h.handle(job)
+        finish=WorkerRuntime(c,WorkerRuntimeConfig('fixture-boot',frozenset({'recording'})),h)._submit_finish(job,result)
+    assert result.outcome=='completed' and result.review_pending and finish is not None and launches==['com.example.saved']
+    async def read():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=f['app']),base_url='http://127.0.0.1') as browser:
+            headers=await session(browser,f['project'])
+            with sqlite3.connect(f['database']) as db:
+                recording_id=db.execute('SELECT recording_id FROM jobs WHERE job_id=?',(job['job_id'],)).fetchone()[0]
+            page=await browser.get(f"/ui/projects/{f['project']}/recordings/{recording_id}",headers=headers)
+            assert page.status_code==200,page.text
+            start=page.text.find('id="recording-review-link"')
+            href=page.text[start:page.text.find('>',start)]
+            version=href.split('?version=')[1].split('"')[0]
+            review=await browser.get(f"/ui/projects/{f['project']}/cases/{f['body']['case_id']}/review",params={'version':version},headers=headers)
+            return page.text,review.status_code,review.text
+    page,review_status,review=asyncio.run(read())
+    assert '저장된 후보입니다. 테스트용 승인은 검토 화면에서 진행합니다.' in page
+    assert 'data-approved="false"' in page and '테스트용으로 승인된 후보입니다.' not in page
+    assert review_status==200 and '화면 방문만으로 승인하지 않습니다.' in review
     with sqlite3.connect(f['database']) as db:
         assert db.execute('SELECT COUNT(*) FROM approval_events').fetchone()[0]==0

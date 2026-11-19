@@ -113,6 +113,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [handler 이력](docs/validation/tasks/AI-LIVE-04-HANDLER-HISTORY.md): 두 번째 모델 요청은 서버 assistant 이력과 첫 click을 담고, journal은 observed까지다. 승인은 없다. 1pass6.61s. live 수용은 아직이다.
 
+[오프라인 검토](docs/validation/tasks/AI-LIVE-04-OFFLINE-REVIEW.md): worker 연결을 닫아도 봉인된 version 검토 화면이 열리고 방문은 승인이 아니다. 1pass6.85s. live 수용은 아직이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

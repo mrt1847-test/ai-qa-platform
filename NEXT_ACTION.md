@@ -8,11 +8,11 @@ Updated: **2026-11-19 (Asia/Seoul)** — [중앙 관리·실행 PC 설계](docs/
 
 ## Current
 
-**실환경 수용은 외부 대기입니다.** 봉인된 물리 좌표의 AI0 재생을 기록했다.
+**재생 Assertion 판정.** 동작 안의 대기는 기록했다.
 
-독립 서버·OIDC·AVD/브라우저·운영 키가 확인되기 전에는 RX-21·RX-23·RX-24를 진행하지 않는다. 로컬 fixture 성공으로 그 수용을 완료 처리하지 않는다. 상위 RX-87 완료 수와 RX-23은 유지한다.
+[동작 안 대기](docs/validation/tasks/RX-87-IN-ACTION-WAIT.md)는 탭·스와이프·입력·키가 별도 wait 없이 입력 전에 화면을 보고 한 번만 보낸다는 기록이다.
 
-[편집 확인](docs/validation/tasks/RX-87-B2-CHECK-BINDING-EDITOR.md)은 1024·1440에서 저장과 version 검토가 되고 승인은 열리지 않는다는 기록이다.
+다음은 `required_check_coverage`가 최종 Assertion을 비교 없이 unknown으로 남기는 경로다. 리소스에 묶인 텍스트·상태만 일반 비교하고, 화면 의미 문장은 지정 시점의 시각 검증으로 넘긴다. 녹화 중 그 문장을 읽고 `terminate`를 고르는 일은 Mobile-Agent에 둔다. 결과를 Assertion별로 저장한다. 독립 서버가 필요한 RX-21·RX-23·RX-24는 이 작업으로 완료 처리하지 않는다.
 
 실제 원본 Mobile-Agent/Luna 녹화와 같은 source의 AI0 로컬 재생은 [AI-LIVE-03](docs/validation/tasks/AI-LIVE-03.md)의 별도 증거다. 실제 키·기기·독립 서버·월3000건 비용을 기능 구현의 선행으로 삼지 않는다.
 

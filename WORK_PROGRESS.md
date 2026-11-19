@@ -117,6 +117,8 @@ RX87 B2.3b1 [검증 연결 저장/API](docs/validation/tasks/RX-87-B2-CHECK-BIND
 
 [봉인 좌표](docs/validation/tasks/AI-LIVE-04-SEALED-PIXELS.md): package pin은 `physical:click(50, 100)`만 재생하고 모델 좌표 500은 쓰지 않는다. AI 호출은 0이다. 1pass6.88s. live 수용은 아직이다.
 
+[동작 안 대기](docs/validation/tasks/RX-87-IN-ACTION-WAIT.md): 탭·스와이프·입력·키는 별도 wait 없이 입력 전에 화면을 보고 한 번만 보낸다. 관련7pass2.02s. 다음은 재생 Assertion의 unknown 판정이다.
+
 ## 1. 현재 상태
 
 | 구분 | 상태 |

@@ -8,7 +8,7 @@ from test_rx87_check_coverage import model_job,pin_with_checks,recording,ux_app
 from test_rx_34 import _replay,_observation
 
 
-def loading_handler(tmp_path,monkeypatch,*,never=False,after_changing=False):
+def loading_handler(tmp_path,monkeypatch,*,never=False,after_changing=False,signature=True):
     from test_rx_34 import _claim
     from aiqa.replay.android_plan import TypedAndroidAction
     from aiqa.replay.android_native_trace import NativeStep
@@ -18,8 +18,8 @@ def loading_handler(tmp_path,monkeypatch,*,never=False,after_changing=False):
     frame=_observation();buffer=BytesIO();Image.new('RGB',(100,200),'white').save(buffer,format='PNG')
     placeholder=replace(frame,png=buffer.getvalue())
     action=TypedAndroidAction('tap',x=25,y=50)
-    source=SimpleNamespace(steps=(NativeStep('source',1,100,200,0,action,
-        readiness_condition(frame.png,action),.25),))
+    ready=readiness_condition(frame.png,action) if signature else None
+    source=SimpleNamespace(steps=(NativeStep('source',1,100,200,0,action,ready,.25),))
     monkeypatch.setattr('aiqa.worker.android_jobs.resolve_claim_native_source',lambda *a,**kw:source)
     handler,calls=_replay(tmp_path);clock=[0.0];reads=[]
     def capture():
@@ -60,6 +60,13 @@ def test_cancel_while_loading_never_dispatches(tmp_path,monkeypatch):
     handler.context.cancelled=lambda:clock[0]>=.25
     result=handler.handle(job)
     assert result.outcome=='cancelled' and result.actions==0 and calls==[]
+
+
+def test_tap_without_a_stored_signature_still_waits_inside_the_action(tmp_path,monkeypatch):
+    handler,calls,reads,clock,job=loading_handler(tmp_path,monkeypatch,signature=False)
+    result=handler.handle(job)
+    assert result.outcome=='completed' and result.actions==len(calls)==1
+    assert reads[0]==0 and len(reads)>=3 and clock[0]>=.5
 
 
 def test_managed_replay_evaluates_source_check_even_at_last_native_budget(model_job,tmp_path):

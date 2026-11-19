@@ -1693,11 +1693,16 @@ class AndroidReplayHandler:
         live = self.context.live_capture
         if live is not None:
             condition=self._native_source.steps[step_index].readiness if self._native_source else None
-            if condition is not None:
-                from aiqa.replay.readiness import wait_for_ready,ReadinessTimeout,ReadinessCancelled
+            # The wait belongs to this tap, swipe, text, or key. It is not another action.
+            if self._native_source is not None and self.context.readiness_enabled and previous_after is None:
+                from aiqa.replay.readiness import wait_for_ready,wait_for_settled,ReadinessTimeout,ReadinessCancelled
                 try:
-                    before=wait_for_ready(live,condition,self._read_checkpoint,timeout=self._remaining_read_time(),
-                        clock=self.context.readiness_clock,pause=self.context.readiness_pause)
+                    if condition is not None:
+                        before=wait_for_ready(live,condition,self._read_checkpoint,timeout=self._remaining_read_time(),
+                            clock=self.context.readiness_clock,pause=self.context.readiness_pause)
+                    else:
+                        before=wait_for_settled(live,self._read_checkpoint,timeout=self._remaining_read_time(),
+                            clock=self.context.readiness_clock,pause=self.context.readiness_pause)
                 except (ReadinessTimeout,ReadinessCancelled) as exc:
                     raise _ReplayCaptureFailed(exc.reason) from exc
                 return checked(before,None)

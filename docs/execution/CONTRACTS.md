@@ -202,7 +202,7 @@ B2.3b3b0: UIAutomator XML은 strict UTF8/NUL·DTD·ENTITY 거절/단일 root·ex
 
 RX-87 검증 연결 편집: 녹화 페이지는 검증 시점 후보만 저장한다. 실행 적용은 아직 지원하지 않으며, 승인된 연결이 없으면 단계 검증을 성공으로 처리하지 않는다. 저장 manifest hash가 다음 CAS이고 검토 링크는 그 version만 연다. 새 후보는 승인이 아니다.
 
-원본 자식이 모델 응답 뒤에 파이프를 닫으면 부모는 `child_closed`로 멈춘다. 그 경로의 native 전송은 0이고, 같은 자식을 다시 실행해 재클릭하지 않는다. 녹화 세션도 그 종료를 source나 승인으로 만들지 않는다. source v2의 swipe는 모델 좌표가 아니라 물리 픽셀과 지속 시간으로 봉인되고, Back은 keycode 4다. 케이스 변수에 있는 문자는 그 값 그대로 봉인되고, 변수에 없는 문자는 전송하지 않는다. 논리 단계와 그 검증은 source 봉인 뒤에도 남고, native 동작 id로 바뀌지 않는다. 정상 handler의 두 번째 모델 요청은 서버가 만든 직전 이력을 쓰고, 동작 journal은 observed까지 기록한다. worker 연결을 닫아도 봉인된 version의 검토 화면은 열리고, 그 방문은 승인이 아니다. 그 package의 trial pin은 봉인된 물리 좌표만 재생하고 모델 좌표로 다시 쓰지 않는다.
+원본 자식이 모델 응답 뒤에 파이프를 닫으면 부모는 `child_closed`로 멈춘다. 그 경로의 native 전송은 0이고, 같은 자식을 다시 실행해 재클릭하지 않는다. 녹화 세션도 그 종료를 source나 승인으로 만들지 않는다. source v2의 swipe는 모델 좌표가 아니라 물리 픽셀과 지속 시간으로 봉인되고, Back은 keycode 4다. 케이스 변수에 있는 문자는 그 값 그대로 봉인되고, 변수에 없는 문자는 전송하지 않는다. 논리 단계와 그 검증은 source 봉인 뒤에도 남고, native 동작 id로 바뀌지 않는다. 정상 handler의 두 번째 모델 요청은 서버가 만든 직전 이력을 쓰고, 동작 journal은 observed까지 기록한다. worker 연결을 닫아도 봉인된 version의 검토 화면은 열리고, 그 방문은 승인이 아니다. 그 package의 trial pin은 봉인된 물리 좌표만 재생하고 모델 좌표로 다시 쓰지 않는다. 재생의 탭·스와이프·입력·키는 별도 wait 동작 없이, 입력 전에 저장된 대상 또는 안정된 화면을 보고 한 번만 보낸다.
 
 RX-87 fixture check: `require_case_context`가 꺼진 Android replay는 `context.checks`를 제품 판정이나 모델 호출로 쓰지 않는다. 서버 pin 평가는 그 경로가 켜진 replay만 한다. replay worker 호출과 `model_call_facts`는 모두 0이다. 실기기 수용은 RX-23이다.
 

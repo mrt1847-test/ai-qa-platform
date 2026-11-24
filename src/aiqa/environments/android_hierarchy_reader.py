@@ -8,6 +8,15 @@ from aiqa.environments.android_hierarchy import parse_android_hierarchy,validate
 from aiqa.environments.android_hierarchy_xml import read_hierarchy_xml,AndroidHierarchyRejected,MAX_XML_BYTES
 
 _SUFFIX=b'UI hierchary dumped to: /proc/self/fd/1'
+_NOT_READY=frozenset((
+    b'ERROR: null root node returned by UiTestAutomationBridge.',
+    b'ERROR: could not get idle state.',
+))
+_TRANSIENT_OBSERVATION=frozenset({'geometry_unavailable','boot_incomplete','adb_read_failed','observation_timeout','capture_failed','capture_invalid','capture_unavailable'})
+
+
+def _observation_reason(reason):
+    return reason if reason in _TRANSIENT_OBSERVATION else 'target_unavailable'
 
 
 class AndroidHierarchyReadError(ValueError):pass
@@ -57,14 +66,14 @@ class AndroidHierarchyReader:
             if len(names)!=1:raise _Failure('foreground_unavailable')
             return names[0]
         before=observer.observe(capture=False,deadline=deadline,checkpoint=gate,command_timeout=self.command_timeout)
-        if before.state!='ready' or before.geometry is None:raise _Failure('target_unavailable')
+        if before.state!='ready' or before.geometry is None:raise _Failure(_observation_reason(before.reason))
         first=focus()
         if first not in self.packages:raise _Failure('foreground_outside_target')
         raw=run('exec-out','uiautomator','dump','/proc/self/fd/1',failure_reason='hierarchy_transition')
         if len(raw)>MAX_XML_BYTES+len(_SUFFIX)+4:raise _Failure('hierarchy_invalid')
         if raw.endswith(b'\r\n'):raw=raw[:-2]
         elif raw.endswith(b'\n'):raw=raw[:-1]
-        if raw in {b'',_SUFFIX}:raise _Failure('hierarchy_transition')
+        if raw in {b'',_SUFFIX} or raw in _NOT_READY:raise _Failure('hierarchy_transition')
         if not raw.endswith(_SUFFIX):raise _Failure('hierarchy_invalid')
         xml=raw[:-len(_SUFFIX)]
         if xml.endswith(b'\r\n'):xml=xml[:-2]
@@ -72,7 +81,7 @@ class AndroidHierarchyReader:
         read_hierarchy_xml(xml,rotation=before.geometry.rotation)
         captured=datetime.now(timezone.utc).isoformat()
         after=observer.observe(capture=capture,deadline=deadline,checkpoint=gate,command_timeout=self.command_timeout)
-        if after.state!='ready' or after.geometry is None:raise _Failure('target_unavailable')
+        if after.state!='ready' or after.geometry is None:raise _Failure(_observation_reason(after.reason))
         if (before.geometry,before.density)!=(after.geometry,after.density):raise _Failure('geometry_changed')
         if focus()!=first:raise _Failure('foreground_changed')
         self._check(deadline)
@@ -83,7 +92,10 @@ class AndroidHierarchyReader:
         reason='hierarchy_unavailable'
         try:return self._project(capture,resources)
         except _Failure as exc:reason=str(exc)
-        except (AndroidHierarchyRejected,adb._ReadFailure,subprocess.TimeoutExpired,OSError,UnicodeError,ValueError):pass
+        except AndroidHierarchyRejected:reason='hierarchy_invalid'
+        except adb._ReadFailure as exc:reason=exc.reason or reason
+        except (subprocess.TimeoutExpired,OSError):reason='hierarchy_transition'
+        except (UnicodeError,ValueError):reason='hierarchy_invalid'
         raise AndroidHierarchyReadError(reason)
 
     def _project(self,capture,resources):

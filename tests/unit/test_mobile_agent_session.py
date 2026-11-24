@@ -165,21 +165,17 @@ def test_wrong_device_capture_is_never_retried():
     assert len(calls)==1
 
 
-def test_text_replay_allows_a_partial_screen_change_and_rejects_a_different_page():
-    from aiqa.recording.mobile_agent_frames import require_frame_pixels
+def test_text_replay_does_not_compare_the_screen():
+    from aiqa.recording.mobile_agent_frames import require_frame_pixels,require_guarded_frame
     from aiqa.replay.android_plan import TypedAndroidAction
-    from PIL import Image,ImageDraw
+    from PIL import Image
     from io import BytesIO
-    def png(paint):
-        image=Image.new('RGB',(720,1600),'white')
-        paint(ImageDraw.Draw(image))
-        out=BytesIO();image.save(out,format='PNG');return out.getvalue()
-    recorded=png(lambda draw:draw.rectangle((0,1100,720,1600),fill=(230,230,235)))
-    shifted=png(lambda draw:(draw.rounded_rectangle((24,280,160,340),radius=20,outline='black'),draw.rectangle((0,1100,720,1600),fill=(230,230,235))))
-    other=png(lambda draw:draw.rectangle((0,0,720,1600),fill='black'))
+    def png(color):
+        out=BytesIO();Image.new('RGB',(720,1600),color).save(out,format='PNG');return out.getvalue()
     action=TypedAndroidAction('text',text='mouse')
-    assert require_frame_pixels(recorded,shifted,action) is None
-    with pytest.raises(ValueError):require_frame_pixels(recorded,other,action)
+    assert require_frame_pixels(png('white'),png('black'),action) is None
+    assert require_guarded_frame(png('white'),png('black'),action)['kind']=='unchecked'
+    with pytest.raises(ValueError):require_frame_pixels(png('white'),png('black'),TypedAndroidAction('key',keycode=66))
 
 
 def test_stable_resource_target_survives_only_pixel_animation():

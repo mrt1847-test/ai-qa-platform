@@ -32,6 +32,13 @@
 <label>자연어 <textarea name="raw_text" rows="4" placeholder="G마켓에서 ‘노트북’을 검색해 줘.">{{ draft.get('definition',{}).get('raw_text') or draft.get('definition_buffer') or draft.get('definition',{}).get('objective','') }}</textarea></label>
 <label>사전조건 (선택) <textarea name="preconditions" rows="2" placeholder="G마켓 앱이 설치되어 있다.">{{ draft.get('definition',{}).get('preconditions',[])|join('\n') }}</textarea></label>
 <label>Assertion <textarea name="expected_text" rows="3" placeholder="검색 결과 목록에 ‘노트북’ 관련 상품이 표시된다.">{% for check in draft.get('definition',{}).get('final_expected',[]) %}{{ check.expected if check.expected is string else '' }}{% if not loop.last %}{{ '\n' }}{% endif %}{% endfor %}</textarea></label>
+{% set verifier = (draft.get('verifier_bindings') or [{}])[0] %}
+{% set verifier_method = verifier.get('method', 'deterministic' if case_id else 'ai_visual') %}
+<div data-target-fields="android" class="form-grid">
+<label>검증 방식 <select name="verifier_method"><option value="ai_visual"{% if verifier_method == 'ai_visual' %} selected{% endif %}>화면으로 확인</option><option value="deterministic"{% if verifier_method == 'deterministic' %} selected{% endif %}>텍스트·상태 비교</option><option value="deterministic_then_ai_unknown"{% if verifier_method == 'deterministic_then_ai_unknown' %} selected{% endif %}>비교 불가 시 화면으로 확인</option></select></label>
+<label>검증 AI 연결 <select name="verifier_binding_id"><option value="">연결 선택</option>{% if verifier.get('binding_id') and not verification_bindings|selectattr('binding_id','equalto',verifier.get('binding_id'))|list %}<option value="{{ verifier.binding_id }}" selected>저장된 검증 연결</option>{% endif %}{% for binding in verification_bindings %}<option value="{{ binding.binding_id }}"{% if binding.binding_id == verifier.get('binding_id') %} selected{% endif %}>{{ binding.model }}</option>{% endfor %}</select></label>
+</div>
+<p data-target-fields="android" class="muted"><a href="/ui/projects/{{ project_id }}/settings">검증 AI 연결 설정</a> · 화면 검증에는 비용이 발생합니다.</p>
 </section>
 {% include "components/form_feedback.html" %}
 <div class="action-bar"><input type="button" class="secondary" data-step-previous value="이전"><input type="submit" data-save-button value="초안 저장"><input type="button" data-step-next value="다음"><span id="recording-save-summary" class="muted"></span></div>

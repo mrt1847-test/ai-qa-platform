@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function host(definition,metadata={}){
  class N extends EventTarget{constructor(value=''){super();this.value=value;this.dataset={};this.hidden=false;this.disabled=false;this.children=[];}setAttribute(){}removeAttribute(){}replaceChildren(){this.children=[];}appendChild(node){this.children.push(node);}}
- const nodes={},names=['resource_id','target_kind','environment_revision_id','expected_text','case_name','raw_text','objective','preconditions','web_url','android_package','build','account_ref','data_revision_id','reset_policy','timeout_seconds','max_actions','budget'];
+ const nodes={},names=['resource_id','target_kind','environment_revision_id','expected_text','case_name','raw_text','objective','preconditions','web_url','android_package','build','account_ref','data_revision_id','reset_policy','timeout_seconds','max_actions','budget','verifier_method','verifier_binding_id'];
  names.forEach(name=>nodes[name]=new N());Object.assign(nodes.target_kind,{value:'web'});nodes.environment_revision_id.options=[];nodes.case_name.value='Case';nodes.timeout_seconds.value='600';nodes.max_actions.value='50';nodes.budget.value='1';
  const resource=new N('res');resource.dataset.kind='web';resource.checked=true;resource.getAttribute=()=> 'Resource';const form=new N();form.dataset={project:'p',case:'c',step:'1'};form.elements={namedItem:name=>nodes[name]};form.querySelectorAll=()=>[];form.querySelector=selector=>selector.includes(':checked')?resource:new N();
  nodes.rerecord_reason=new N('reason');nodes.rerecord_confirmed=new N();nodes.rerecord_confirmed.checked=true;
@@ -29,4 +29,29 @@ test('optional preconditions and independently edited assertions both survive sa
  const saved=h.opts.read();
  assert.deepEqual(Array.from(saved.definition.preconditions),['앱 설치됨','로그아웃 상태']);
  assert.equal(saved.definition.final_expected[0].expected,'노트북 관련 상품이 표시된다.');
+});
+
+test('Android screen assertion saves visual intent with an explicitly selected verification connection',()=>{
+ const h=host({final_expected:[]});h.nodes.target_kind.value='android';
+ h.nodes.verifier_method.value='ai_visual';h.nodes.verifier_binding_id.value='verification-connection';
+ h.edit('상품 이미지와 가격이 표시된다.');const saved=h.opts.read();
+ assert.equal(saved.definition.final_expected[0].kind,'visual');
+ assert.equal(saved.settings.verifier_bindings[0].method,'ai_visual');
+ assert.equal(saved.settings.verifier_bindings[0].binding_id,'verification-connection');
+});
+
+test('Android comparison mode keeps literal assertions deterministic',()=>{
+ const h=host({final_expected:[]});h.nodes.target_kind.value='android';
+ h.nodes.verifier_method.value='deterministic';h.nodes.verifier_binding_id.value='';h.edit('검색 결과');
+ const saved=h.opts.read();assert.equal(saved.definition.final_expected[0].kind,'text');
+ assert.equal(saved.settings.verifier_bindings[0].method,'deterministic');
+ assert.equal(saved.settings.verifier_bindings[0].binding_id,'');
+});
+
+test('Android screen verification cannot silently use an authoring connection',async()=>{
+ const h=host({final_expected:[]});h.nodes.target_kind.value='android';
+ h.nodes.verifier_method.value='ai_visual';h.nodes.verifier_binding_id.value='';h.edit('상품이 표시된다.');
+ const response=await h.opts.persist(h.opts.read(),'request');
+ assert.equal(response.status,422);assert.ok((await response.json()).error.fields.verifier_binding_id);
+ assert.equal(h.sent,undefined);
 });

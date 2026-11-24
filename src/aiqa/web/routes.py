@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, Response
 from starlette.templating import Jinja2Templates
 
 _PACKAGE = "aiqa.web"
-_UI_ASSET_VERSION = "20261118-ui-assertion"
+_UI_ASSET_VERSION = "20261124-assertion-readiness"
 _templates: Jinja2Templates | None = None
 
 

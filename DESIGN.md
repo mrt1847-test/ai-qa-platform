@@ -1,6 +1,6 @@
 # Web·Android AI QA 플랫폼 설계
 
-> **2026-11-02 배치 확정:** [중앙 관리·실행 PC 규범](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)이 실행 위치/수명의 우선 규범이다. 관리 서버·DB·증거는 실행 PC와 분리한다. 초기 실행 자원은 현재 PC이며 추가 PC/선택 cloud adapter로 확장한다. 접속 PC는 웹만 사용한다. 실행 PC offline에도 서버 저장본 조회/승인은 가능하고 재녹화/테스트는 불가하다. 실제 분리 배포·단절 감지/원격 실행의 완료는 별도 근거가 필요하다.
+> **2026-11-20 배치:** [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)가 관리 서버의 위치다. 웹은 잠들지 않는 Fly.io 머신이다. 접속은 브라우저만 하고, Android는 워커 PC에서 돈다. 워커가 꺼져도 저장된 검토·승인은 가능하다. 집 IP는 열지 않는다.
 
 문서 버전: **0.6** · 규범 개정일: **2026-10-31 (Asia/Seoul)** · 상태: **설계 규범, 일부 core 구현**. 실제 진행은 [WORK_PROGRESS](WORK_PROGRESS.md), 2026-11-01 구현 대조·보완은 [수정 결과](docs/validation/reviews/2026-11-01-remediation-result.md)를 따른다. 모든 설계 기능이 구현·실환경 수용됐다는 뜻은 아니다.
 

@@ -69,6 +69,71 @@ def test_tap_without_a_stored_signature_still_waits_inside_the_action(tmp_path,m
     assert reads[0]==0 and len(reads)>=3 and clock[0]>=.5
 
 
+def test_each_later_tap_waits_for_its_own_target_after_a_static_loading_screen(tmp_path,monkeypatch):
+    from test_rx_34 import _claim
+    from aiqa.replay.android_plan import TypedAndroidAction
+    from aiqa.replay.android_native_trace import NativeStep
+    from aiqa.replay.readiness import readiness_condition
+    from PIL import Image
+    from io import BytesIO
+    import subprocess
+    first=_observation();buffer=BytesIO();Image.new('RGB',(100,200),'blue').save(buffer,format='PNG')
+    ready=replace(first,png=buffer.getvalue());buffer=BytesIO()
+    Image.new('RGB',(100,200),'white').save(buffer,format='PNG');loading=replace(first,png=buffer.getvalue())
+    a1=TypedAndroidAction('tap',x=25,y=50);a2=TypedAndroidAction('tap',x=75,y=150)
+    source=SimpleNamespace(steps=(
+        NativeStep('a1',1,100,200,0,a1,readiness_condition(first.png,a1),0),
+        NativeStep('a2',2,100,200,0,a2,readiness_condition(ready.png,a2),0)))
+    monkeypatch.setattr('aiqa.worker.android_jobs.resolve_claim_native_source',lambda *a,**kw:source)
+    handler,_=_replay(tmp_path);ticks=[0.0];sent=[]
+    def send(argv,timeout):
+        sent.append(ticks[0]);return subprocess.CompletedProcess(argv,0,b'',b'')
+    handler.driver._runner=send;handler.context.approved_plan='click(25, 50)\nclick(75, 150)'
+    handler.context.before=handler.context.after=None;handler.context.readiness_enabled=True
+    handler.context.readiness_clock=lambda:ticks[0]
+    handler.context.readiness_pause=lambda n:ticks.__setitem__(0,ticks[0]+n)
+    handler.context.live_capture=lambda:first if not sent else loading if len(sent)==1 and ticks[0]<2 else ready
+    result=handler.handle(_claim())
+    assert result.outcome=='completed' and result.actions==len(sent)==2
+    assert sent[1]>=2, 'the second target is absent before t=2; a quiet loading page must not permit the tap'
+
+
+def test_cancel_after_native_ack_preserves_input_count_without_resending(tmp_path,monkeypatch):
+    handler,calls,reads,clock,job=loading_handler(tmp_path,monkeypatch)
+    send=handler.driver._runner
+    def cancel_after_input(argv,timeout):
+        result=send(argv,timeout);handler.context.cancelled=True;return result
+    handler.driver._runner=cancel_after_input
+    result=handler.handle(job)
+    assert len(calls)==result.actions==1
+    assert result.outcome=='cancelled' and not result.ambiguous_dispatch
+    assert not result.evidence_complete and handler.stopped_reason=='cancelled'
+    assert handler.journal.states(handler._current_action_id,job['attempt_id'])[-1]=='acknowledged'
+
+
+def test_lost_evidence_ack_retries_only_the_same_packet_not_the_tap(tmp_path,monkeypatch):
+    from uuid import uuid4
+    from aiqa.worker.step_evidence import StepEvidenceCommitter
+    from aiqa.worker.http_client import WorkerHttpError,RetryClass
+    handler,calls,reads,clock,job=loading_handler(tmp_path,monkeypatch)
+    class DropReplies:
+        def __init__(self):self.payloads=[];self.receipt=None
+        def commit_evidence(self,**body):
+            self.payloads.append(body)
+            if self.receipt is None:
+                self.receipt={'attempt_id':job['attempt_id'],'late':False,'contiguous_seq':2,
+                    'prefix_hash':'sha256:'+'a'*64,'artifact_ids':[str(uuid4()) for _ in body['artifacts']]}
+            if len(self.payloads)<=2:raise WorkerHttpError('lost response',retry_class=RetryClass.timeout)
+            return self.receipt
+    client=DropReplies();handler.context.step_evidence_commit=StepEvidenceCommitter(client,job)
+    result=handler.handle(job)
+    assert result.outcome=='error' and len(calls)==result.actions==1
+    assert result.evidence_recovery is not None
+    captures=len(reads);ack=result.evidence_recovery()
+    assert ack['contiguous_seq']==2 and len(calls)==1 and len(reads)==captures
+    assert len(client.payloads)==3 and all(p==client.payloads[0] for p in client.payloads)
+
+
 def test_managed_replay_evaluates_source_check_even_at_last_native_budget(model_job,tmp_path):
     job,pin=pin_with_checks(model_job['job'])
     handler,calls=_replay(tmp_path)

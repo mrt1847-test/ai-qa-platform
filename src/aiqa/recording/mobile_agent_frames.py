@@ -8,7 +8,7 @@ class FrameDrift(ValueError):
 
 
 def _rough_screen_changed(first,second):
-    """Text and key have no point target. A coarse grid ignores a changed list or chip."""
+    """A key has no point target. A coarse grid ignores a changed list or chip."""
     left=first.convert('RGB').resize((8,8),Image.BOX).tobytes()
     right=second.convert('RGB').resize((8,8),Image.BOX).tobytes()
     changed=sum((abs(left[i]-right[i])+abs(left[i+1]-right[i+1])+abs(left[i+2]-right[i+2]))/3>36 for i in range(0,len(left),3))
@@ -16,6 +16,7 @@ def _rough_screen_changed(first,second):
 
 
 def require_frame_pixels(reference,current,action):
+    if action.kind=='text':return
     with Image.open(BytesIO(reference)) as first,Image.open(BytesIO(current)) as second:
         if first.size!=second.size:raise FrameDrift('screen dimensions changed')
         width,height=first.size
@@ -61,6 +62,7 @@ def _anchor_nodes(root,x,y):
 
 
 def require_guarded_frame(reference,current,action,reference_hierarchy='',current_hierarchy=''):
+    if action.kind=='text':return {'kind':'unchecked'}
     if action.kind=='tap':
         expected=_anchor(reference_hierarchy,action.x,action.y)
         if expected is not None:

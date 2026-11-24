@@ -117,10 +117,17 @@
     ['definition','version_id','input_version_hash','version_revision','expected_head','case_name','raw_text','recorded_steps'].forEach(function(key){delete settings[key];});
     if(rerecordBase){settings.rerecord_base_version_id=rerecordBase;settings.rerecord_reason=value('rerecord_reason');settings.rerecord_confirmed=form.elements.namedItem('rerecord_confirmed').checked;}
     Object.assign(settings,{wizard:true,target_kind:value('target_kind'),execution_mode:'recorded_replay',resource_id:chosen()?chosen().value:'',environment_revision_id:value('environment_revision_id'),definition_buffer:definition.raw_text,web_url:value('target_kind')==='web'?value('web_url'):'',android_package:value('target_kind')==='android'?value('android_package'):'',build:value('target_kind')==='android'?value('build'):'',account_ref:value('target_kind')==='android'?value('account_ref'):'',data_revision_id:value('data_revision_id'),reset_policy:value('reset_policy'),limits:{timeout_seconds:Number(value('timeout_seconds')),max_actions:Number(value('max_actions')),budget:value('budget'),currency:'USD'}});
+    var method=form.elements.namedItem('verifier_method'),binding=form.elements.namedItem('verifier_binding_id');
+    if(settings.target_kind==='android'&&method&&method.value){
+      settings.verifier_bindings=[{method:method.value,binding_id:method.value==='deterministic'?'':binding.value,allow_unknown_supplement:method.value==='deterministic_then_ai_unknown'}];
+      definition.final_expected.forEach(function(check){if(check.kind==='text'||check.kind==='visual')check.kind=method.value==='ai_visual'?'visual':'text';});
+    }
     return {name:value('case_name').trim(),definition:definition,settings:settings,recorded_steps:snapshot.recorded_steps||[]};
   }
   var handle=window.aiqaForms.register(form,{read:read,persist:async function(payload,key){
     var fields={};if(!payload.name)fields.case_name=['케이스 이름을 입력해 주세요.'];if(!payload.settings.resource_id)fields.resource_id=['기기를 먼저 선택해 주세요.'];if(rerecordBase&&!payload.settings.rerecord_reason.trim())fields.rerecord_reason=['재녹화 사유를 입력해 주세요.'];
+    var verifier=(payload.settings.verifier_bindings||[])[0];
+    if(payload.settings.target_kind==='android'&&verifier&&verifier.method!=='deterministic'&&!verifier.binding_id)fields.verifier_binding_id=['검증 AI 연결을 선택해 주세요.'];
     if(Object.keys(fields).length)return {ok:false,status:422,json:async function(){return {error:{fields:fields}};}};
     if(!caseId){
       form.elements.namedItem('case_name').readOnly=true;

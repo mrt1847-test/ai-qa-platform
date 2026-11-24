@@ -40,7 +40,7 @@ Web과 Android의 테스트를 자연어로 녹화하고, 저장된 동작을 �
 
 실행 PC가 꺼져 있어도 **관리 서버가 가동 중이고 필요한 증거가 서버에 저장·ACK된 경우** 저장본 조회·검토·승인이 가능합니다. 재녹화와 테스트 실행은 실행 자원이 연결돼 있어야 가능합니다. 관리 서버까지 같은 PC에서 껐다면 관리 화면도 사용할 수 없습니다.
 
-상세 기준은 [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md)를 따릅니다.
+상세 기준은 [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)를 따릅니다.
 
 ## 에이전트와 AI 사용 원칙
 
@@ -152,7 +152,7 @@ docs/          작업서·계약·검증 근거
 
 | 내용 | 문서 |
 | --- | --- |
-| 관리 서버·실행 자원 구조 | [중앙 관리·실행 PC 설계](docs/superpowers/specs/2026-11-02-managed-pc-execution-design.md) |
+| 관리 서버·실행 자원 구조 | [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md) |
 | 제품·실행 설계 | [DESIGN.md](DESIGN.md) |
 | UI와 사용자 흐름 | [UI_SPEC.md](UI_SPEC.md) |
 | 녹화·승인·버전·누적 결과 데이터 | [DATA_DESIGN.md](DATA_DESIGN.md) |

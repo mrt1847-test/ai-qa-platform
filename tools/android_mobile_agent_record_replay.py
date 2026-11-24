@@ -44,7 +44,7 @@ def main():
     def capture_once():
         try:observation,foreground=hierarchy.capture_once()
         except AndroidHierarchyReadError as exc:
-            if str(exc) in {'foreground_unavailable','foreground_changed','hierarchy_transition'}:
+            if str(exc) in {'foreground_unavailable','foreground_changed','hierarchy_transition','geometry_unavailable','boot_incomplete','adb_read_failed','observation_timeout','capture_failed','capture_invalid','capture_unavailable'}:
                 transition_count[0]+=1
                 transitions.append({'reason':str(exc),'count':transition_count[0],'elapsed':time.monotonic()})
                 transitions[:]=transitions[-50:]

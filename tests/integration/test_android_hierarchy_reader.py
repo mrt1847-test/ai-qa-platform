@@ -230,7 +230,7 @@ def test_command_cap_reaches_metadata_and_dump_without_mutating_shared_observer(
     assert seen and max(seen)<=0.25 and source[1].command_timeout==10
 
 
-@pytest.mark.parametrize('failure',['nonzero','empty'])
+@pytest.mark.parametrize('failure',['nonzero','empty','null_root'])
 def test_cli_retries_only_transient_dump_reads_and_keeps_bounded_transition_metadata(source,tmp_path,failure):
     import ast,time,json
     from aiqa.adapters.mobile_agent_android import MobileAgentAndroidAdapter
@@ -238,6 +238,7 @@ def test_cli_retries_only_transient_dump_reads_and_keeps_bounded_transition_meta
     from aiqa.recording.mobile_agent_session import TransientCapture,capture_stable,persist
     fake=source[0];valid=fake.xml
     if failure=='nonzero':fake.dump_code=1
+    elif failure=='null_root':fake.xml=b'ERROR: null root node returned by UiTestAutomationBridge.\n'
     else:fake.xml=b''
     def recover():fake.dump_code=0;fake.xml=valid
     fake.after_dump=recover

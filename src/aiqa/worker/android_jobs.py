@@ -1172,9 +1172,14 @@ class AndroidReplayHandler:
 
     def handle(self, claim: dict[str, Any]) -> HandlerResult:
         self._active_claim=claim;self._normalized_checks=[];self._step_ack=None;self._step_artifact_ids=[]
+        self._pending_step_recovery=None;self._capture_incomplete=False
         self._current_action_id='';self._current_after_artifact=None
         result=self._handle(claim)
         changes={'check_results':tuple(self._normalized_checks)}
+        if self._capture_incomplete:changes['evidence_complete']=False
+        if self._pending_step_recovery is not None:
+            changes.update(evidence_recovery=self._pending_step_recovery,evidence_complete=False,
+                evidence_events=(),evidence_artifacts=())
         if self._step_ack is not None:
             changes.update(evidence_events=(),evidence_artifacts=(),last_ack_seq=self._step_ack['contiguous_seq'],
                 last_ack_hash=self._step_ack['prefix_hash'],final_seq=self._step_ack['contiguous_seq'],
@@ -1415,7 +1420,14 @@ class AndroidReplayHandler:
                         self.dispatch_count+=1
                         self.journal.append(attempt_id,action_id,'acknowledged')
                         break
-                except Exception:
+                except Exception as exc:
+                    if isinstance(exc,_ReplayCaptureFailed) and exc.reason!='after_evidence_missing':
+                        # The command already returned its ACK. Cancelling a read must
+                        # retain that fact and must never authorize another dispatch.
+                        self.dispatch_count+=1
+                        self.journal.append(attempt_id,action_id,'acknowledged')
+                        self.stopped_reason=exc.reason;self._capture_incomplete=True
+                        break
                     self.journal.mark_started_only_unknown(attempt_id, action_id)
                     self.original_failure = "after_evidence_missing"
                     self.stopped_reason = "ambiguous_dispatch"
@@ -1453,6 +1465,14 @@ class AndroidReplayHandler:
                     self._current_after_artifact=ack['artifact_ids'][1]
                 except Exception:
                     self.stopped_reason='evidence_commit_failed'
+                    committer=self.context.step_evidence_commit
+                    confirm=getattr(committer,'confirm_turn',None)
+                    if callable(confirm):
+                        self._pending_step_recovery=lambda seq=step_index+1,confirm=confirm:confirm(seq)
+                    else:
+                        # The same sequence and immutable body confirm metadata only.
+                        self._pending_step_recovery=lambda seq=step_index+1,identity=action_id,events=list(packet_events),artifacts=list(packet_artifacts),commit=committer:commit(
+                            action_seq=seq,action_id=identity,events=events,artifacts=artifacts)
                     break
             if self.stopped_reason=='loading_timeout':break
             try:
@@ -1694,7 +1714,8 @@ class AndroidReplayHandler:
         if live is not None:
             condition=self._native_source.steps[step_index].readiness if self._native_source else None
             # The wait belongs to this tap, swipe, text, or key. It is not another action.
-            if self._native_source is not None and self.context.readiness_enabled and previous_after is None:
+            if (self._native_source is not None and self.context.readiness_enabled
+                and (condition is not None or previous_after is None)):
                 from aiqa.replay.readiness import wait_for_ready,wait_for_settled,ReadinessTimeout,ReadinessCancelled
                 try:
                     if condition is not None:

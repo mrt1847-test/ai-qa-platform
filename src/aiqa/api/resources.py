@@ -264,6 +264,11 @@ async def recording_wizard_page(project_id: str, request: Request) -> HTMLRespon
             from aiqa.web.asset_options import fixed_revision_choices
             from aiqa.worker.resources import _bound_store
             profiles,datasets = fixed_revision_choices(_bound_store()._connection,project,profiles,datasets,draft)
+            with _bound_store().transaction() as connection:
+                verification_bindings=[{'binding_id':row[0],'model':row[1]} for row in connection.execute(
+                    """SELECT r.binding_id,r.model FROM binding_revisions r JOIN model_bindings b
+                    ON b.project_id=r.project_id AND b.binding_id=r.binding_id AND b.latest_revision_id=r.revision_id
+                    WHERE r.project_id=? AND r.role='verification' ORDER BY r.model,r.binding_id""",(str(project),))]
             requested_resource = request.query_params.get("resource_id", "")
             if requested_resource:
                 chosen = next((item for item in items if item["resource_id"] == requested_resource), None)
@@ -304,6 +309,7 @@ async def recording_wizard_page(project_id: str, request: Request) -> HTMLRespon
             "disconnected": disconnected and selected != "",
             "profiles": profiles,
             "datasets": datasets,
+            "verification_bindings": verification_bindings,
         },
     )
 

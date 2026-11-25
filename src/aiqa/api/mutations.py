@@ -133,7 +133,7 @@ class BrowserMutationRoute(APIRoute):
                                         raise OriginRejected('local owner is required')
 
                         operation=request.method+':'+request.url.path
-                        digest=protected_body_digest(connection,canonical)
+                        digest=protected_body_digest(connection,canonical,key_provider=store.config.receipt_key_provider)
                         identity=(actor_id,str(project or ''),operation,key)
                         connection.execute('DELETE FROM browser_mutation_receipts WHERE actor_id=? AND project_id=? AND operation=? AND request_key=? AND created_at<?', (*identity,cutoff))
                         row=connection.execute('SELECT body_hash,status_code,response_body,media_type FROM browser_mutation_receipts WHERE actor_id=? AND project_id=? AND operation=? AND request_key=?',identity).fetchone()
@@ -155,7 +155,7 @@ class BrowserMutationRoute(APIRoute):
                 except AuthRequired:
                     return _error(401,'unauthorized','session is missing')
                 except ReceiptKeyUnavailable:
-                    return _error(503,'receipt_key_unavailable','local request integrity is unavailable')
+                    return _error(503,'receipt_key_unavailable','request integrity is unavailable')
                 except (ProjectHidden,ValueError):
                     return _error(404,'not_found','project was not found')
                 finally:

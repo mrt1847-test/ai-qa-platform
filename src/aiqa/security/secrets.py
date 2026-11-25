@@ -99,8 +99,7 @@ class WindowsCredentialBackend:
     """Windows Credential Manager (CredWriteW/CredReadW/CredDeleteW)."""
 
     def write(self, target: str, value: str, *, account: str) -> None:
-        if not _write.argtypes:
-            _configure()
+        _configure()
         blob = ctypes.create_string_buffer(value.encode("utf-8"))
         cred = _Credential()
         cred.Type = _CRED_TYPE_GENERIC
@@ -114,8 +113,7 @@ class WindowsCredentialBackend:
             raise SecretUnavailable("os secret store rejected the write")
 
     def read(self, target: str) -> str:
-        if not _read.argtypes:
-            _configure()
+        _configure()
         found = ctypes.POINTER(_Credential)()
         if not _read(target, _CRED_TYPE_GENERIC, 0, ctypes.byref(found)):
             raise OSError(ctypes.get_last_error())
@@ -127,8 +125,7 @@ class WindowsCredentialBackend:
         return raw.decode("utf-8")
 
     def delete(self, target: str) -> None:
-        if not _delete.argtypes:
-            _configure()
+        _configure()
         if not _delete(target, _CRED_TYPE_GENERIC, 0):
             if ctypes.get_last_error() != _ERROR_NOT_FOUND:
                 raise SecretUnavailable("os secret store rejected the delete")
@@ -141,6 +138,12 @@ class ServerSecretResolver:
     account: str
     backend: SecretBackend
     profile: str
+
+    @property
+    def deployment_managed(self) -> bool:
+        from aiqa.security.environment_secrets import EnvironmentSecretBackend
+
+        return self.profile == PROFILE_HOSTED and isinstance(self.backend, EnvironmentSecretBackend)
 
     def put(self, actor: Actor, secret: SecretInput) -> SecretRefView:
         with bind_secret_runtime(self.backend, self.account):
@@ -162,6 +165,15 @@ class ServerSecretResolver:
             )
             raise SecretScopeDenied("secret ref is outside this project")
         return self.resolve(ref, scope)
+
+    def register_deployment_ref(self, actor: Actor, ref: SecretRef, name: str) -> SecretRefView:
+        """Operator-only metadata registration for an already deployed value."""
+        from aiqa.security.deployment_refs import register_deployment_ref
+
+        if not self.deployment_managed:
+            raise SecretUnavailable('deployment reference registration requires hosted storage')
+        with bind_secret_runtime(self.backend, self.account):
+            return register_deployment_ref(_bound_store(), actor, ref, name, self.backend, self.account)
 
     def oidc_client_secret_target(self) -> str:
         return f"AIQA/{self.account}/oidc/client_secret"
@@ -195,7 +207,14 @@ def build_server_secret_resolver(
     """Inject the profile's service-account resolver into the API process."""
 
     account = settings.secret_account
-    chosen = backend if backend is not None else WindowsCredentialBackend()
+    if backend is not None:
+        chosen = backend
+    elif settings.profile == PROFILE_HOSTED:
+        from aiqa.security.environment_secrets import EnvironmentSecretBackend
+
+        chosen = EnvironmentSecretBackend(account)
+    else:
+        chosen = WindowsCredentialBackend()
     return ServerSecretResolver(account=account, backend=chosen, profile=settings.profile)
 
 
@@ -235,60 +254,72 @@ def put_secret(actor: Actor, secret: SecretInput) -> SecretRefView:
         planned = _plan(connection, project_id, secret)
     ref = SecretRef(project_id=project_id, ref_id=planned[0], revision=planned[1])
     _write_os(ref, value)
-    created_at = _now()
     try:
         with store.transaction() as connection:
-            commit_seq = next_commit_seq(Transaction(connection), project_id)
-            connection.execute(
-                """
-                INSERT INTO secret_refs (
-                    project_id, ref_id, revision, name, availability, created_at, actor_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    str(project_id),
-                    str(ref.ref_id),
-                    ref.revision,
-                    planned[2],
-                    "available",
-                    created_at,
-                    str(actor.actor_id),
-                ),
-            )
-            connection.execute(
-                """
-                INSERT INTO secret_ref_audits (
-                    project_id, ref_id, revision, commit_seq, actor_id, action, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    str(project_id),
-                    str(ref.ref_id),
-                    ref.revision,
-                    commit_seq,
-                    str(actor.actor_id),
-                    planned[3],
-                    created_at,
-                ),
-            )
-            connection.execute(
-                """
-                INSERT INTO secret_ref_snapshots (
-                    project_id, ref_id, revision, commit_seq, created_at
-                ) VALUES (?, ?, ?, ?, ?)
-                """,
-                (str(project_id), str(ref.ref_id), ref.revision, commit_seq, created_at),
-            )
+            _record_secret_ref(connection, actor, ref, planned[2], planned[3])
     except Exception:
         discard_os_secret(ref)
         raise
-    store.on_rollback(lambda: discard_os_secret(ref))
+    # A request can roll back after the resolver's ContextVars have reset.
+    # Compensate in the exact backend/account that accepted the write.
+    written_backend, written_account = _active_backend(), _account.get()
+
+    def rollback_secret() -> None:
+        with bind_secret_runtime(written_backend, written_account):
+            discard_os_secret(ref)
+
+    store.on_rollback(rollback_secret)
     return SecretRefView(
         project_id=project_id,
         ref_id=ref.ref_id,
         revision=ref.revision,
         name=planned[2],
         availability="available",
+    )
+
+
+def _record_secret_ref(connection, actor: Actor, ref: SecretRef, name: str, action: str) -> None:
+    created_at = _now()
+    commit_seq = next_commit_seq(Transaction(connection), ref.project_id)
+    connection.execute(
+        """
+        INSERT INTO secret_refs (
+            project_id, ref_id, revision, name, availability, created_at, actor_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(ref.project_id),
+            str(ref.ref_id),
+            ref.revision,
+            name,
+            "available",
+            created_at,
+            str(actor.actor_id),
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO secret_ref_audits (
+            project_id, ref_id, revision, commit_seq, actor_id, action, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(ref.project_id),
+            str(ref.ref_id),
+            ref.revision,
+            commit_seq,
+            str(actor.actor_id),
+            action,
+            created_at,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO secret_ref_snapshots (
+            project_id, ref_id, revision, commit_seq, created_at
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (str(ref.project_id), str(ref.ref_id), ref.revision, commit_seq, created_at),
     )
 
 
@@ -473,26 +504,32 @@ class _Credential(ctypes.Structure):
 _CRED_TYPE_GENERIC = 1
 _CRED_PERSIST_LOCAL_MACHINE = 2
 _ERROR_NOT_FOUND = 1168
-_write = ctypes.WinDLL("advapi32").CredWriteW
-_read = ctypes.WinDLL("advapi32").CredReadW
-_free = ctypes.WinDLL("advapi32").CredFree
-_delete = ctypes.WinDLL("advapi32").CredDeleteW
+_write = _read = _free = _delete = None
 
 
 def _configure() -> None:
-    _write.argtypes = [ctypes.POINTER(_Credential), wintypes.DWORD]
-    _write.restype = wintypes.BOOL
-    _read.argtypes = [
+    global _write, _read, _free, _delete
+    if _write is not None:
+        return
+    if not hasattr(ctypes, "WinDLL"):
+        raise SecretUnavailable("Windows credential storage is unavailable")
+    library = ctypes.WinDLL("advapi32", use_last_error=True)
+    write, read, free, delete = (library.CredWriteW, library.CredReadW,
+                               library.CredFree, library.CredDeleteW)
+    write.argtypes = [ctypes.POINTER(_Credential), wintypes.DWORD]
+    write.restype = wintypes.BOOL
+    read.argtypes = [
         wintypes.LPCWSTR,
         wintypes.DWORD,
         wintypes.DWORD,
         ctypes.POINTER(ctypes.POINTER(_Credential)),
     ]
-    _read.restype = wintypes.BOOL
-    _free.argtypes = [ctypes.c_void_p]
-    _free.restype = None
-    _delete.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD]
-    _delete.restype = wintypes.BOOL
+    read.restype = wintypes.BOOL
+    free.argtypes = [ctypes.c_void_p]
+    free.restype = None
+    delete.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD]
+    delete.restype = wintypes.BOOL
+    _write, _read, _free, _delete = write, read, free, delete
 
 
 def _write_os(ref: SecretRef, value: str) -> None:

@@ -100,7 +100,7 @@ def install_artifacts(application: FastAPI) -> None:
                 except ArtifactRequestConflict:
                     return _error(409, 'conflict', 'upload key already has another body', {})
                 except ReceiptKeyUnavailable:
-                    return _error(503, 'receipt_key_unavailable', 'local request integrity is unavailable', {})
+                    return _error(503, 'receipt_key_unavailable', 'request integrity is unavailable', {})
                 except ValueError:
                     return _error(422, 'validation', 'invalid artifact ownership', {})
         finally:

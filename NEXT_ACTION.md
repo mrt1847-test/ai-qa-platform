@@ -1,6 +1,6 @@
 # Next Actions
 
-Updated: **2026-11-20 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)가 현재 배치다. 웹·API는 잠들지 않는 Fly.io 머신 한 대, 데이터와 녹화 파일은 Supabase, Android 에뮬레이터는 워커 PC 한 대다. 접속은 브라우저만 하고 집 IP는 열지 않는다. 상용 기기 팜은 나중 선택이다.
+Updated: **2026-11-25 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)가 현재 배치다. 웹·API는 잠들지 않는 Fly.io 머신 한 대, 데이터와 녹화 파일은 Supabase, Android 에뮬레이터는 워커 PC 한 대다. 접속은 브라우저만 하고 집 IP는 열지 않는다. 상용 기기 팜은 나중 선택이다.
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
@@ -8,19 +8,18 @@ Updated: **2026-11-20 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/
 
 ## Current
 
-**HS-1.** hosted 비밀 저장. Linux에서 Windows 자격 증명 관리자 없이 OIDC 비밀과 모델 키를 읽는다. 로컬 Windows 저장은 개발용으로 남긴다.
+**HS-2.** hosted 관리 데이터를 Supabase Postgres에 둔다. 로컬 개발 SQLite는 유지한다. 연결 문자열만 바꾸어 완료 처리하지 말고 기존 트랜잭션·migration·멱등 영수증·권한·승인 불변식을 함께 보존한다.
 
-기준은 [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)다. Fly.io 계정과 실사용 로그인은 이 카드에서 만들지 않는다.
+기준은 [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)다. 직접 선행 [HS-1 인계](docs/validation/tasks/HS-1.md)의 backend·StorageConfig·receipt provider를 재사용한다. HS-1 코드와 집중 회귀111개/JS1개 완료; 실제 Linux/Fly/OIDC 수용은 HS-4에 남는다. [비밀 설정 안내](docs/managed-pc/HOSTED_SECRETS.md). 계정 생성·운영 DB 이관·배포는 이 카드에서 하지 않는다.
 
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | HS-2 | hosted 관리 데이터를 Supabase Postgres에 둔다. 로컬 SQLite는 유지 | HS-1 |
-| 2 | HS-3 | 동작별 PNG·로그·패키지를 Supabase Storage에 둔다 | HS-2 |
-| 3 | HS-4 | 잠들지 않는 Fly.io 공개 HTTPS와 그 주소의 OIDC 콜백 | HS-1, 사용자 Fly.io·OIDC 계정 |
-| 4 | HS-5 | 워커 PC가 Fly.io로 밖으로 접속해 Android 에뮬레이터를 등록 | HS-4 |
-| 5 | HS-6 | 밖 브라우저의 로그인, 워커 녹화·승인·모델 없는 재생, 워커 종료 후 검토 | HS-5 |
+| 1 | HS-3 | 동작별 PNG·로그·패키지를 Supabase Storage에 둔다 | HS-2 |
+| 2 | HS-4 | 잠들지 않는 Fly.io 공개 HTTPS와 그 주소의 OIDC 콜백 | HS-1, 사용자 Fly.io·OIDC 계정 |
+| 3 | HS-5 | 워커 PC가 Fly.io로 밖으로 접속해 Android 에뮬레이터를 등록 | HS-4 |
+| 4 | HS-6 | 밖 브라우저의 로그인, 워커 녹화·승인·모델 없는 재생, 워커 종료 후 검토 | HS-5 |
 
 운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. trial/기본 healing은 OFF다. 실제 모델 수용을 구현 완료로 대신하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
 
@@ -32,7 +31,7 @@ Updated: **2026-11-20 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/
 
 | 대상 | 상태·재개 조건 | 막히는 범위 |
 |---|---|---|
-| 독립 관리 서버 | 집 Windows 공개는 사용하지 않는다. 현재 순서는 HS-1부터다. 이전 [RX-21](docs/validation/tasks/RX-21.md) 기록은 보존 | Fly.io·Supabase 배포 |
+| 독립 관리 서버 | 집 Windows 공개는 사용하지 않는다. HS-1 코드 완료 후 현재 구현은 HS-2다. 이전 [RX-21](docs/validation/tasks/RX-21.md) 기록은 보존 | Fly.io·Supabase 배포 |
 | Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md)·[RX-44](docs/validation/tasks/RX-44.md)·[RX-45](docs/validation/tasks/RX-45.md)·[RX-46](docs/validation/tasks/RX-46.md) 완료. **운영 모델 키**·독립 호스트 확인 시 RX-23 | 운영 키를 쓰는 Android 녹화·재생 최종 수용 |
 | Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42·RX-60·RX-61 fixture 완료 | Web 실환경 및 양쪽 전원 종료 수용 |
 | 장애·경합 검증 | 다른 접속 PC, 승인된 전원/통신 단절, 추가 워커와 공유 테스트 자원 준비 시 RX-25~27. RX-62 fixture 완료 | 실제 전원 종료·불명 행동·두 워커 수용 |

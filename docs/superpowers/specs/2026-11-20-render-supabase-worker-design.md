@@ -40,4 +40,4 @@ flowchart LR
 | HS-5 | 워커 PC가 Fly.io로 밖으로 접속해 Android 에뮬레이터를 등록한다. 들어오는 포트는 없다. | 상용 기기 팜, 집 IP 공개 |
 | HS-6 | 다른 네트워크의 브라우저로 로그인하고, 워커 PC에서 녹화·승인·모델 없는 재생을 한 번 확인한다. 워커 PC를 끈 뒤 저장된 검토가 되는지도 확인한다. | fixture 통과를 이 수용으로 기록 |
 
-HS-1부터 한다. HS-4 전에 Fly.io·Supabase·OIDC 계정이 없으면 그 카드는 계정 준비로 남기고, 코드 카드는 로컬 fixture로 검증한다.
+2026-11-25: [HS-1 코드/모의 통합 인계](../../validation/tasks/HS-1.md)를 완료했다. 설정은 [HOSTED_SECRETS](../../managed-pc/HOSTED_SECRETS.md)를 따른다. 실제 Linux/Fly 기동과 운영 IdP 수용은 HS-4이며 이식성 fixture로 대신하지 않는다. 현재 구현은 HS-2부터 한다. HS-4 전에 Fly.io·Supabase·OIDC 계정이 없으면 그 카드는 계정 준비로 남기고, 코드 카드는 로컬 fixture로 검증한다.

@@ -22,7 +22,7 @@ from aiqa.api.auth import (
     bound_auth_store,
 )
 from aiqa.domain.model_bindings import bind_model_store, save_model_binding_revision
-from aiqa.security.secrets import bind_secret_store, put_secret
+from aiqa.security.secrets import SecretUnavailable, bind_secret_store
 from aiqa.store.database import migrate_store
 from aiqa.store.models import ModelBindingInput, SecretInput, SecretRef
 from aiqa.web.routes import UiQueryState, render_template
@@ -144,6 +144,7 @@ async def settings_page(project_id: str, request: Request) -> HTMLResponse:
         "request": request,
         "project_id": str(project),
         "settings": view,
+        "deployment_managed_secrets": request.app.state.secret_resolver.deployment_managed,
         "roles": _ROLES,
         "audits": audits["items"],
         "workers": workers,
@@ -210,7 +211,7 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                 model = item.get("model", "")
                 if type(key) is not str or key == "" or type(model) is not str or model == "":
                     continue
-                secret = put_secret(actor, SecretInput(value=key, name=str(item.get("role", ""))))
+                secret = request.app.state.secret_resolver.put(actor, SecretInput(value=key, name=str(item.get("role", ""))))
                 save_model_binding_revision(
                     ModelBindingInput(
                         project_id=project,
@@ -242,6 +243,10 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
             return _error(401, "unauthorized", "session is missing", {})
         except _StaleLock:
             return _error(409, "conflict", "settings changed", {})
+        except SecretUnavailable:
+            if request.app.state.secret_resolver.deployment_managed:
+                return _error(503, 'deployment_managed_secret', '키는 서버 배포 설정에서 관리합니다. 배포 후 참조를 등록해 주세요.', {})
+            return _error(500, 'unavailable', 'secret storage is unavailable', {})
     return JSONResponse(status_code=201, content=stored)
 
 

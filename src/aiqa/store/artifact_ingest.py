@@ -31,7 +31,7 @@ def ingest_upload_request(binding, lease, upload, request_key, payload):
             job = connection.execute('SELECT purpose FROM jobs WHERE project_id=? AND job_id=?', identity[:2]).fetchone()
             if lease.project_id not in binding.worker.permitted_projects or job is None or job[0] not in binding.worker.permitted_purposes:
                 raise LeaseDenied('worker cannot use this upload request')
-            digest = protected_body_digest(connection, canonical)
+            digest = protected_body_digest(connection, canonical, key_provider=binding.store.config.receipt_key_provider)
             cutoff = (binding.now - timedelta(days=7)).isoformat()
             connection.execute('DELETE FROM artifact_upload_requests WHERE project_id=? AND job_id=? AND generation=? AND worker_id=? AND request_key=? AND created_at<?', (*identity, cutoff))
             row = connection.execute('SELECT body_hash,response_body FROM artifact_upload_requests WHERE project_id=? AND job_id=? AND generation=? AND worker_id=? AND request_key=?', identity).fetchone()

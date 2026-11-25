@@ -6,11 +6,12 @@ import importlib.util
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from aiqa.config import AppSettings
+from aiqa.config import PROFILE_HOSTED, AppSettings
+from aiqa.security.receipt_digest import EnvironmentReceiptKey
 
 
 class StorageError(ValueError):
@@ -24,6 +25,7 @@ class StorageConfig:
     artifacts_dir: Path
     spool_dir: Path
     backups_dir: Path | None = None
+    receipt_key_provider: EnvironmentReceiptKey | None = field(default=None, repr=False, compare=False)
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> StorageConfig:
@@ -36,6 +38,7 @@ class StorageConfig:
             artifacts_dir=settings.artifacts_dir,
             spool_dir=root / "spool",
             backups_dir=settings.backups_dir,
+            receipt_key_provider=EnvironmentReceiptKey() if settings.profile == PROFILE_HOSTED else None,
         )
 
 

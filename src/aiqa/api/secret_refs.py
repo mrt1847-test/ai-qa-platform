@@ -25,7 +25,6 @@ from aiqa.security.secrets import (
     SecretValidationError,
     bind_secret_store,
     latest_secret,
-    put_secret,
 )
 from aiqa.store.database import migrate_store
 from aiqa.store.models import SecretInput, SecretRefView
@@ -53,7 +52,7 @@ async def post_secret(project_id: str, request: Request) -> JSONResponse:
     with _bound(request):
         try:
             actor = authorize_browser(request, parsed, "secret")
-            view = put_secret(
+            view = request.app.state.secret_resolver.put(
                 actor,
                 SecretInput(value=_text(payload.get("value")), name=_text(payload.get("name"))),
             )
@@ -68,6 +67,8 @@ async def post_secret(project_id: str, request: Request) -> JSONResponse:
         except SecretValidationError as exc:
             return _error(422, "validation", "invalid secret", exc.fields)
         except SecretUnavailable:
+            if request.app.state.secret_resolver.deployment_managed:
+                return _error(503, 'deployment_managed_secret', '키는 서버 배포 설정에서 관리합니다. 배포 후 참조를 등록해 주세요.', {})
             return _error(500, "unavailable", "os secret store rejected the write", {})
     return JSONResponse(status_code=201, content=_view_json(view))
 
@@ -87,7 +88,7 @@ async def post_rotation(project_id: str, ref_id: str, request: Request) -> JSONR
     with _bound(request):
         try:
             actor = authorize_browser(request, project, "secret")
-            view = put_secret(actor, SecretInput(value=_text(payload.get("value")), ref_id=ref))
+            view = request.app.state.secret_resolver.put(actor, SecretInput(value=_text(payload.get("value")), ref_id=ref))
         except CsrfRejected:
             return _error(403, "permission", "csrf token was rejected", {})
         except OriginRejected:
@@ -99,6 +100,8 @@ async def post_rotation(project_id: str, ref_id: str, request: Request) -> JSONR
         except SecretValidationError as exc:
             return _error(422, "validation", "invalid secret", exc.fields)
         except SecretUnavailable:
+            if request.app.state.secret_resolver.deployment_managed:
+                return _error(503, 'deployment_managed_secret', '키는 서버 배포 설정에서 관리합니다. 배포 후 참조를 등록해 주세요.', {})
             return _error(500, "unavailable", "os secret store rejected the write", {})
     return JSONResponse(status_code=201, content=_view_json(view))
 

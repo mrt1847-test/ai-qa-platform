@@ -89,9 +89,11 @@ def create_app(
         application.state.oidc_idp = None
         application.state.oidc_config = None
 
+    storage_config = StorageConfig.from_settings(resolved)
+
     def open_configured_store():
         borrowed = current_mutation_store()
-        return borrowed if borrowed is not None else open_store(StorageConfig.from_settings(resolved))
+        return borrowed if borrowed is not None else open_store(storage_config)
 
     application.state.open_store = open_configured_store
     install_https_boundary(application)

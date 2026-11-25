@@ -54,7 +54,8 @@ def test_profile_injects_service_account_resolver(tmp_path: Path) -> None:
     resolver = app.state.secret_resolver
     assert resolver.account == HOSTED_SECRET_ACCOUNT
     assert resolver.profile == "hosted"
-    assert isinstance(resolver.backend, WindowsCredentialBackend)
+    from aiqa.security.environment_secrets import EnvironmentSecretBackend
+    assert isinstance(resolver.backend, EnvironmentSecretBackend)
 
 
 def test_resolver_scope_rotation_and_no_plaintext_leak(tmp_path: Path) -> None:

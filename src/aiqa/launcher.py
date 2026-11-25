@@ -370,6 +370,10 @@ def _spawn_api(
 
 def _spawn_worker(config: LauncherConfig, management: _Management) -> int:
     env = os.environ.copy()
+    # Deployment secrets belong to the API even when a local launcher is
+    # invoked from a shell carrying the hosted configuration.
+    env.pop("AIQA_HOSTED_SECRETS_JSON", None)
+    env.pop("AIQA_RECEIPT_HMAC_KEY", None)
     env["AIQA_MANAGEMENT_BASE_URL"] = management.origin
     env["AIQA_WORKER_TOKEN"] = management.token
     env["AIQA_WORKER_CA_BUNDLE"] = str(management.cert)

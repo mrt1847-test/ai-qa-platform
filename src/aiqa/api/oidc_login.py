@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 import sqlite3
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from aiqa.security.oidc import (
     OperationalOidcClient,
     begin_authorization,
     validate_id_token_claims,
+    verify_pkce,
 )
 from aiqa.security.secrets import SecretUnavailable, ServerSecretResolver
 from aiqa.store.models import Actor, BrowserSession, Transaction
@@ -115,26 +117,36 @@ def start_oidc_login(
     }
 
 
-def complete_oidc_login(
+@dataclass(frozen=True, slots=True)
+class OidcLoginReservation:
+    state: str
+    snapshot: tuple
+    project_id: UUID
+
+    @property
+    def verifier(self) -> str:
+        return str(self.snapshot[2])
+
+
+def _login_state(connection, state):
+    return connection.execute(
+        "SELECT nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at, project_id "
+        "FROM oidc_login_states WHERE state = ?", (state,),
+    ).fetchone()
+
+
+def reserve_oidc_login(
     connection: sqlite3.Connection,
     config: OidcClientConfig,
-    idp: OidcExchangePort,
     *,
-    code: str,
     state: str,
     code_verifier: str | None,
     project_id: UUID | None,
-    origin: str,
     now: datetime | None = None,
-) -> BrowserSession:
+) -> OidcLoginReservation:
+    """Consume state in a short transaction that MUST commit before any IdP I/O."""
     instant = _utc(now)
-    row = connection.execute(
-        """
-        SELECT nonce, code_challenge, code_verifier, redirect_uri, expires_at, used_at, project_id
-        FROM oidc_login_states WHERE state = ?
-        """,
-        (state,),
-    ).fetchone()
+    row = _login_state(connection, state)
     if row is None or row[5] is not None:
         raise OidcRejected("state was rejected")
     if datetime.fromisoformat(str(row[4])) <= instant:
@@ -146,8 +158,9 @@ def complete_oidc_login(
         presented_verifier = stored_verifier
     else:
         presented_verifier = str(code_verifier)
-        if presented_verifier != stored_verifier:
+        if not hmac.compare_digest(presented_verifier, stored_verifier):
             raise OidcRejected("pkce was rejected")
+    verify_pkce(presented_verifier, str(row[1]))
     if project_id is None:
         if row[6] is None or str(row[6]).strip() == "":
             raise OidcRejected("project was rejected")
@@ -165,27 +178,50 @@ def complete_oidc_login(
     )
     if updated.rowcount != 1:
         raise OidcRejected("state was rejected")
+    return OidcLoginReservation(state, (*row[:5], instant.isoformat(), row[6]), bound_project)
 
+
+def exchange_reserved_oidc_login(config, idp, reservation, *, code, now=None):
+    """Blocking HTTP/JWKS/crypto only. No management store or transaction is open."""
+    instant = _utc(now)
     claims = idp.exchange(
         code=code,
-        code_verifier=presented_verifier,
+        code_verifier=reservation.verifier,
         redirect_uri=config.redirect_uri,
-        state=state,
+        state=reservation.state,
         now=instant,
     )
     validate_id_token_claims(
         claims,
         config=config,
-        expected_nonce=str(row[0]),
+        expected_nonce=str(reservation.snapshot[0]),
         now=instant,
     )
+    return claims
 
+
+def finalize_oidc_login(connection, config, reservation, claims, *, origin, now=None) -> BrowserSession:
+    """Recheck consumed state and current membership after verified exchange."""
+    instant = _utc(now)
+    row = _login_state(connection, reservation.state)
+    if row is None or tuple(row) != reservation.snapshot:
+        raise OidcRejected('state was rejected')
+    if datetime.fromisoformat(str(row[4])) <= instant:
+        raise OidcRejected('state expired')
+    validate_id_token_claims(claims, config=config, expected_nonce=str(row[0]), now=instant)
+    bound_project = reservation.project_id
     identity = connection.execute(
         "SELECT actor_id FROM oidc_identities WHERE issuer = ? AND subject = ?",
         (claims.issuer, claims.subject),
     ).fetchone()
     if identity is None:
         actor_id = uuid4()
+    else:
+        actor_id = UUID(str(identity[0]))
+
+    actor = Actor(actor_id=actor_id, project_scope=bound_project, is_local_owner=False)
+    require_project_capability(Transaction(connection), actor, bound_project, "project_view")
+    if identity is None:
         connection.execute(
             """
             INSERT INTO oidc_identities (identity_id, issuer, subject, actor_id, created_at)
@@ -193,11 +229,14 @@ def complete_oidc_login(
             """,
             (str(uuid4()), claims.issuer, claims.subject, str(actor_id), instant.isoformat()),
         )
-    else:
-        actor_id = UUID(str(identity[0]))
-
-    actor = Actor(actor_id=actor_id, project_scope=bound_project, is_local_owner=False)
-    require_project_capability(Transaction(connection), actor, bound_project, "project_view")
+    # Retain the consumed timestamp, erase the PKCE material, and prevent a
+    # second finalization of the same in-memory reservation.
+    updated = connection.execute(
+        "UPDATE oidc_login_states SET code_verifier = '' WHERE state = ? AND used_at = ? AND code_verifier = ?",
+        (reservation.state, row[5], reservation.verifier),
+    )
+    if updated.rowcount != 1:
+        raise OidcRejected('state was rejected')
 
     session_id = uuid4()
     csrf = secrets.token_urlsafe(32)

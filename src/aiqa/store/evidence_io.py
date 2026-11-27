@@ -115,7 +115,7 @@ def _discard_redundant_stage(binding, durable):
     staging identity, and ready/refs checks protect against deleting published bytes.
     Cleanup failure retains an observable stage; it cannot revoke a committed ACK.
     """
-    from aiqa.store.artifacts import resolve_stored
+    from aiqa.store.artifacts import delete_durable
     # Project is encoded in the server-created key, not inferred from scope order.
     identity = (durable.object_key.split('/')[0], str(durable.artifact_id))
     try:
@@ -124,12 +124,9 @@ def _discard_redundant_stage(binding, durable):
             referenced = connection.execute('SELECT 1 FROM artifact_objects WHERE project_id=? AND artifact_id=? UNION ALL SELECT 1 FROM artifact_refs WHERE project_id=? AND artifact_id=?', (*identity,*identity)).fetchone()
         if stage is None or stage[0] != durable.object_key or referenced is not None:
             return
-        path = resolve_stored(binding.store.config.artifacts_dir, durable.object_key)
-        if path is None:
-            return
-        path.unlink(missing_ok=True)
+        delete_durable(binding.store.config.artifacts_dir, durable.object_key)
         with binding.store.transaction() as connection:
             connection.execute('DELETE FROM artifact_staging WHERE project_id=? AND artifact_id=?', identity)
-    except (OSError, sqlite3.Error):
+    except (OSError, sqlite3.Error, ArtifactRejected):
         logging.getLogger(__name__).warning('Redundant evidence stage cleanup deferred')
 

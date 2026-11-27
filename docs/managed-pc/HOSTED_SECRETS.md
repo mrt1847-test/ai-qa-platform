@@ -44,7 +44,7 @@ python -m aiqa.security.provision_hosted_secret --project-id <project-UUID> --ac
 
 키 원문 인수는 없다. 이미 배포된 exact target을 읽을 수 있는지 확인한 뒤 기존 `secret_refs`, audit, snapshot을 한 트랜잭션으로 남긴다. 출력은 project/ref/revision/availability뿐이다. 같은 revision/name의 재실행은 중복 기록을 만들지 않는다. admin 해제·다른 project·키 누락·건너뛴 revision·기존 이름 변경은 실패한다. 이름에는 키 원문을 쓰지 않는다.
 
-등록된 ref는 인증된 기존 `GET /api/v1/projects/<project>/secret-refs`에서 선택 가능한 metadata로 보인다. 기존 `POST /api/v1/model-bindings`의 `key_ref`에 project/ref/revision을 연결한다. 모델의 endpoint/provider/role 등 기존 필수 필드는 유지한다. 이 단계는 모델 호출이 아니다. 기존 키 입력 폼을 통해 hosted 비밀 원문을 등록하지 않는다.
+등록된 ref는 인증된 기존 `GET /api/v1/projects/<project>/secret-refs`에서 선택 가능한 metadata로 보인다. 설정 화면의 **등록된 키 참조 연결**(`bind_ref`)에서 역할·endpoint·모델과 함께 선택할 수 있다. API는 기존 `POST /api/v1/model-bindings`의 `key_ref`에 project/ref/revision을 연결한다. 모델의 endpoint/provider/role 등 기존 필수 필드는 유지한다. 이 단계는 모델 호출이 아니다. 기존 키 입력 폼을 통해 hosted 비밀 원문을 등록하지 않는다. 다른 프로젝트·없는 revision·문자열이 아닌 UUID는 거절한다.
 
 교체 시에는 기존 target을 보존한 채 같은 ref의 다음 revision을 배포하고, 같은 이름으로 CLI를 실행한 뒤 새 모델 binding revision에 연결한다. 과거 binding/승인본이 참조하는 revision의 키를 임의로 없애지 않는다. 삭제/폐기는 별도 운영 정책 작업이며 이 CLI는 수행하지 않는다.
 

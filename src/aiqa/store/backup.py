@@ -121,6 +121,9 @@ def create_backup(store: object, spec: BackupSpec, now: datetime) -> BackupRecei
 
     if not spec.actor.is_local_owner or spec.actor.project_scope not in {None, spec.project_id}:
         raise BackupRejected("local owner required")
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(store.config.artifacts_dir, DurableArtifactRoot) or getattr(store.config, 'database_backend', 'sqlite') != 'sqlite':
+        raise BackupRejected('hosted backup requires a Postgres and private Storage archive provider')
     database_path = store.config.database_path  # type: ignore[attr-defined]
     artifacts_dir = store.config.artifacts_dir  # type: ignore[attr-defined]
     runtime_root = store.config.runtime_root  # type: ignore[attr-defined]
@@ -214,6 +217,9 @@ def validate_restore(store: object, spec: RestoreSpec, now: datetime) -> Restore
 
     if not spec.actor.is_local_owner or spec.actor.project_scope not in {None, spec.project_id}:
         raise RestoreRejected("local owner required")
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(store.config.artifacts_dir, DurableArtifactRoot) or getattr(store.config, 'database_backend', 'sqlite') != 'sqlite':
+        raise RestoreRejected('hosted restore requires a Postgres and private Storage archive provider')
     database_path = store.config.database_path  # type: ignore[attr-defined]
     runtime_root = store.config.runtime_root  # type: ignore[attr-defined]
     backup_root = Path(getattr(store.config, "backups_dir", None) or (runtime_root / "backups")) / str(
@@ -315,6 +321,9 @@ def activate_restore(store: object, spec: RestoreActivation, now: datetime) -> R
         raise RestoreRejected("confirmation is required")
     if not spec.actor.is_local_owner or spec.actor.project_scope not in {None, spec.project_id}:
         raise RestoreRejected("local owner required")
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(store.config.artifacts_dir, DurableArtifactRoot) or getattr(store.config, 'database_backend', 'sqlite') != 'sqlite':
+        raise RestoreRejected('hosted restore requires a Postgres and private Storage archive provider')
     from aiqa.launcher import enter_maintenance
 
     clock = now.astimezone(timezone.utc)

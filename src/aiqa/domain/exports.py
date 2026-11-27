@@ -15,6 +15,7 @@ from aiqa.contracts.jobs import IdempotencyKey
 from aiqa.domain.analytics import ReportSnapshot
 from aiqa.domain.hashing import canonical_hash, canonical_json
 from aiqa.store.models import Actor, Transaction
+from aiqa.store.artifacts import ArtifactRejected
 from aiqa.store.queue import JobConflict, enqueue_export
 from aiqa.store.usage import ledger_total_as_of
 
@@ -59,6 +60,34 @@ class ExportView:
     export_format: str
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedExport:
+    project_id: UUID
+    execution_id: UUID
+    job_id: UUID
+    replayed: bool
+    request_hash: str
+    manifest_json: str
+
+
+def request_export_staged(store, actor: Actor, project_id: UUID, incoming: ExportInput,
+                          key: IdempotencyKey, now: datetime) -> ExportView:
+    """Freeze SQL, verify bytes without a writer, then commit the ready marker.
+
+    A queued receipt is admission/staging only. It preserves the exact manifest
+    and object identity across failed or ambiguous uploads, including retries.
+    """
+    with store.transaction() as connection:
+        prepared = prepare_export(Transaction(connection), actor, project_id, incoming, key, now)
+    _publish_manifest(store.config.artifacts_dir, project_id, prepared.job_id,
+                      json.loads(prepared.manifest_json))
+    with store.transaction() as connection:
+        tx = Transaction(connection)
+        complete_export(tx, prepared)
+        return _view(tx, project_id, incoming.execution_id, prepared.job_id, prepared.replayed,
+                     store.config.artifacts_dir, now, verified=True)
+
+
 def request_export(
     tx: Transaction,
     actor: Actor,
@@ -68,7 +97,18 @@ def request_export(
     artifacts_dir: Path,
     now: datetime,
 ) -> ExportView:
-    """Accept one export and freeze its manifest. A repeated key returns that job."""
+    """Local transaction compatibility; HTTP uses request_export_staged."""
+
+    prepared = prepare_export(tx, actor, project_id, incoming, key, now)
+    _publish_manifest(artifacts_dir, project_id, prepared.job_id, json.loads(prepared.manifest_json))
+    complete_export(tx, prepared)
+    return _view(tx, project_id, incoming.execution_id, prepared.job_id, prepared.replayed,
+                 artifacts_dir, now, verified=True)
+
+
+def prepare_export(tx: Transaction, actor: Actor, project_id: UUID, incoming: ExportInput,
+                   key: IdempotencyKey, now: datetime) -> PreparedExport:
+    """Persist the first immutable snapshot, without any artifact I/O."""
 
     if actor.project_scope != project_id or key.project_id != project_id or key.actor_id != actor.actor_id:
         raise ExportRejected("export is invalid")
@@ -84,9 +124,26 @@ def request_export(
         raise ExportConflict("export body does not match") from exc
     except ValueError as exc:
         raise ExportRejected("export is invalid") from exc
-    if not replayed:
-        _write_artifact(artifacts_dir, project_id, job_id, tx)
-    return _view(tx, project_id, incoming.execution_id, job_id, replayed, artifacts_dir, now)
+    row = tx.connection.execute('SELECT limits FROM jobs WHERE project_id=? AND job_id=? AND purpose=\'export\'',
+                                (str(project_id), str(job_id))).fetchone()
+    if row is None:
+        raise ExportMissing('export was not found')
+    return PreparedExport(project_id, incoming.execution_id, job_id, replayed, request_hash, str(row[0]))
+
+
+def complete_export(tx: Transaction, prepared: PreparedExport) -> None:
+    """CAS the ready marker only after successful immutable remote readback."""
+    row = tx.connection.execute('SELECT payload_hash,limits,status FROM jobs WHERE project_id=? AND job_id=? AND purpose=\'export\'',
+        (str(prepared.project_id), str(prepared.job_id))).fetchone()
+    if row is None or str(row[0]) != prepared.request_hash or str(row[1]) != prepared.manifest_json:
+        raise ExportConflict('export snapshot changed')
+    if str(row[2]) == 'completed':
+        return
+    changed = tx.connection.execute('''UPDATE jobs SET status='completed'
+        WHERE project_id=? AND job_id=? AND purpose='export' AND status='queued' AND payload_hash=? AND limits=?''',
+        (str(prepared.project_id), str(prepared.job_id), prepared.request_hash, prepared.manifest_json))
+    if changed.rowcount != 1:
+        raise ExportRejected('export cannot become ready')
 
 
 def read_export(
@@ -171,6 +228,8 @@ def _view(
     replayed: bool,
     artifacts_dir: Path,
     now: datetime,
+    *,
+    verified: bool = False,
 ) -> ExportView:
     manifest = _stored_manifest(tx, project_id, job_id)
     if manifest is None or str(execution_id) not in _text_list(manifest.get("source_ids")):
@@ -179,8 +238,19 @@ def _view(
     if expires is None:
         raise ExportRejected("export is invalid")
     reason = "파일이 만료되었습니다" if now.astimezone(timezone.utc) >= expires else None
-    path = _artifact_path(artifacts_dir, project_id, job_id)
-    ready = path.is_file() and path.read_bytes() == canonical_json(manifest).encode("utf-8")
+    ready = verified
+    if not verified:
+        from aiqa.store.object_storage import DurableArtifactRoot
+        # Older local exports used queued admission receipts with durable files.
+        # Keep those readable; hosted readiness requires the verified CAS marker.
+        committed = not isinstance(artifacts_dir, DurableArtifactRoot) or tx.connection.execute(
+            "SELECT 1 FROM jobs WHERE project_id=? AND job_id=? AND purpose='export' AND status='completed'",
+            (str(project_id), str(job_id))).fetchone()
+        try:
+            path = _artifact_path(artifacts_dir, project_id, job_id) if committed else None
+            ready = path is not None and path.is_file() and path.read_bytes() == canonical_json(manifest).encode("utf-8")
+        except (OSError, ArtifactRejected):
+            ready = False
     cost = manifest.get("cost")
     return ExportView(
         job_id,
@@ -203,6 +273,17 @@ def _write_artifact(root: Path, project_id: UUID, job_id: UUID, tx: Transaction)
     manifest = _stored_manifest(tx, project_id, job_id)
     if manifest is None:
         raise ExportRejected("export is invalid")
+    _publish_manifest(root, project_id, job_id, manifest)
+
+
+def _publish_manifest(root: Path, project_id: UUID, job_id: UUID, manifest: dict[str, object]) -> None:
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        try:
+            root.put(f'{project_id}/exports/{job_id}.json', canonical_json(manifest).encode('utf-8'))
+        except (OSError, ArtifactRejected):
+            raise ExportRejected('export artifact could not be stored') from None
+        return
     path = _artifact_path(root, project_id, job_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(canonical_json(manifest).encode("utf-8"))
@@ -223,6 +304,9 @@ def _stored_manifest(tx: Transaction, project_id: UUID, job_id: UUID) -> dict[st
 
 
 def _artifact_path(root: Path, project_id: UUID, job_id: UUID) -> Path:
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        return root.materialize(f'{project_id}/exports/{job_id}.json')
     return root / str(project_id) / "exports" / f"{job_id}.json"
 
 

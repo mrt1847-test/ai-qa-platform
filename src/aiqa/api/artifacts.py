@@ -22,6 +22,7 @@ from aiqa.api.oidc_login import assert_route_capability
 from aiqa.contracts.jobs import LeaseToken
 from aiqa.domain.projects import MembershipDenied
 from aiqa.store.artifacts import (
+    ArtifactRejected,
     ArtifactStream,
     ArtifactUpload,
     EvidenceUnavailable,
@@ -110,7 +111,7 @@ def install_artifacts(application: FastAPI) -> None:
             content=body,
         )
 
-    async def get_artifact(artifact_id: str, request: Request) -> Response:
+    def get_artifact(artifact_id: str, request: Request) -> Response:
         try:
             target = UUID(artifact_id)
         except ValueError:
@@ -138,7 +139,7 @@ def install_artifacts(application: FastAPI) -> None:
             return _error(409, "evidence_unavailable", opened.state, {})
         return Response(content=opened.body, media_type=opened.media_type)
 
-    async def artifact_page(project_id: str, artifact_id: str, request: Request) -> HTMLResponse:
+    def artifact_page(project_id: str, artifact_id: str, request: Request) -> HTMLResponse:
         try:
             project = UUID(project_id)
             target = UUID(artifact_id)
@@ -167,7 +168,7 @@ def install_artifacts(application: FastAPI) -> None:
             custody = "stored"
         return render_template(request, "components/evidence_state.html", {"custody": custody})
 
-    async def get_retention(artifact_id: str, request: Request) -> JSONResponse:
+    def get_retention(artifact_id: str, request: Request) -> JSONResponse:
         try:
             target = UUID(artifact_id)
         except ValueError:
@@ -176,7 +177,13 @@ def install_artifacts(application: FastAPI) -> None:
         try:
             migrate_store(store)
             with bound_auth_store(store):
-                with store.transaction() as connection:
+                owner = store._connection.execute('SELECT project_id FROM artifact_objects WHERE artifact_id=?', (str(target),)).fetchone()
+                if owner is None:
+                    return _error(404, 'not_found', 'artifact was not found', {})
+                denied = _authorize_read(request, UUID(str(owner[0])), store)
+                if denied is not None:
+                    return denied
+                with store.read_transaction() as connection:
                     view = _retention(connection, store.config.artifacts_dir, target, datetime.now(timezone.utc))
                     tombstone = None
                     if view is not None:
@@ -189,9 +196,6 @@ def install_artifacts(application: FastAPI) -> None:
                         ).fetchone()
                 if view is None:
                     return _error(404, "not_found", "artifact was not found", {})
-                denied = _authorize_read(request, view.project_id, store)
-                if denied is not None:
-                    return denied
         finally:
             store.close()
         return JSONResponse(
@@ -211,7 +215,7 @@ def install_artifacts(application: FastAPI) -> None:
             },
         )
 
-    async def evidence_page(project_id: str, request: Request) -> HTMLResponse:
+    def evidence_page(project_id: str, request: Request) -> HTMLResponse:
         try:
             project = UUID(project_id)
         except ValueError:
@@ -227,7 +231,7 @@ def install_artifacts(application: FastAPI) -> None:
                     authorize_page(request, project)
                 except (OriginRejected, ProjectHidden, AuthRequired):
                     return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     page = _viewer(connection, store.config.artifacts_dir, project, selection, datetime.now(timezone.utc))
         finally:
             store.close()
@@ -334,7 +338,7 @@ def _state(root: object, row: object, now: datetime) -> str:
         path = resolve_stored(root, str(row[1]))  # type: ignore[arg-type, index]
         if path is None or not path.is_file():return "missing"
         if content_hash(path.read_bytes()) != str(row[2]):return "corrupt"
-    except OSError:return "missing"
+    except (OSError, ArtifactRejected):return "missing"
     return "stored"
 
 
@@ -419,7 +423,7 @@ def _log(root: object, row: object, now: datetime) -> str:
         raw=path.read_bytes()
         if content_hash(raw)!=str(row[4]):return "파일 내용이 보관 hash와 다릅니다."
         return raw.decode("utf-8")
-    except (UnicodeError,OSError):return "로그를 읽을 수 없습니다."
+    except (UnicodeError,OSError,ArtifactRejected):return "로그를 읽을 수 없습니다."
 
 
 def _reason(state: str) -> str:

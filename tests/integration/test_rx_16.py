@@ -30,6 +30,7 @@ def _hosted_env(root: Path) -> dict[str, str]:
     return {
         **_local_env(root),
         "AIQA_PROFILE": "hosted",
+        "AIQA_DATABASE_BACKEND": "sqlite",
         "AIQA_PUBLIC_ORIGIN": "https://manage.example.test",
         "AIQA_TRUSTED_PROXIES": "127.0.0.1,10.0.0.5",
     }

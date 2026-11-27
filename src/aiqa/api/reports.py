@@ -31,7 +31,7 @@ from aiqa.domain.exports import (
     ExportView,
     read_export,
     read_export_by_id,
-    request_export,
+    request_export_staged,
 )
 from aiqa.domain.reporting import ExecutionReport, ReportMissing, ReportRejected, list_reports, read_report
 from aiqa.store.database import migrate_store
@@ -448,6 +448,11 @@ async def post_export(execution_id: str, request: Request) -> JSONResponse:
     incoming = _export_input(execution, payload)
     if incoming is None:
         return _error(422, "validation", "export is invalid")
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(_post_export, request, project, execution, incoming)
+
+
+def _post_export(request: Request, project: UUID, execution: UUID, incoming: ExportInput) -> JSONResponse:
     store = request.app.state.open_store()
     try:
         migrate_store(store)
@@ -457,16 +462,9 @@ async def post_export(execution_id: str, request: Request) -> JSONResponse:
                 key = IdempotencyKey(
                     actor.actor_id, project, "export_execution", request.headers.get("idempotency-key", "").strip()
                 )
-                with store.transaction() as connection:
-                    view = request_export(
-                        Transaction(connection),
-                        actor,
-                        project,
-                        incoming,
-                        key,
-                        store.config.artifacts_dir,
-                        datetime.now(timezone.utc),
-                    )
+                view = request_export_staged(
+                    store, actor, project, incoming, key, datetime.now(timezone.utc),
+                )
             except CsrfRejected:
                 return _error(403, "permission", "csrf token was rejected")
             except OriginRejected:
@@ -486,7 +484,7 @@ async def post_export(execution_id: str, request: Request) -> JSONResponse:
     return JSONResponse(status_code=200 if view.replayed else 201, content=_export_json(view))
 
 
-async def get_export(execution_id: str, job_id: str, request: Request) -> JSONResponse:
+def get_export(execution_id: str, job_id: str, request: Request) -> JSONResponse:
     project = _uuid(request.query_params.get("project_id", ""))
     execution = _uuid(execution_id)
     parsed_job = _uuid(job_id)
@@ -498,7 +496,7 @@ async def get_export(execution_id: str, job_id: str, request: Request) -> JSONRe
         with bound_auth_store(store):
             try:
                 actor = authorize_browser(request, project, "read_export")
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     view = read_export(
                         Transaction(connection),
                         actor,
@@ -525,7 +523,7 @@ async def get_export(execution_id: str, job_id: str, request: Request) -> JSONRe
     return JSONResponse(status_code=200, content=_export_json(view))
 
 
-async def get_export_by_id(export_id: str, request: Request) -> JSONResponse:
+def get_export_by_id(export_id: str, request: Request) -> JSONResponse:
     project = _uuid(request.query_params.get("project_id", ""))
     parsed = _uuid(export_id)
     if project is None or parsed is None:
@@ -536,7 +534,7 @@ async def get_export_by_id(export_id: str, request: Request) -> JSONResponse:
         with bound_auth_store(store):
             try:
                 actor = authorize_browser(request, project, "read_export")
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     view = read_export_by_id(
                         Transaction(connection),
                         actor,

@@ -1,0 +1,23 @@
+# Allowlist the build context. Runtime data, keys, local .venv and VCS never enter it.
+**
+!Dockerfile
+!pyproject.toml
+!src/
+!src/**
+!migrations/
+!migrations/**
+!third_party/
+!third_party/mobile_agent/
+!third_party/mobile_agent/manifest.json
+!third_party/mobile_agent/upstream/
+!third_party/mobile_agent/upstream/run_gui_owl_1_5_for_mobile.py
+!third_party/mobile_agent/upstream/utils.py
+!third_party/mobile_agent/upstream/packages.py
+!third_party/mobile_agent/upstream/LICENSE
+**/__pycache__/
+**/*.pyc
+**/.env*
+**/*.pem
+**/*.key
+**/*.pfx
+**/*secrets*.json

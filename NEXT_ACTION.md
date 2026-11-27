@@ -1,6 +1,6 @@
 # Next Actions
 
-Updated: **2026-11-25 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)가 현재 배치다. 웹·API는 잠들지 않는 Fly.io 머신 한 대, 데이터와 녹화 파일은 Supabase, Android 에뮬레이터는 워커 PC 한 대다. 접속은 브라우저만 하고 집 IP는 열지 않는다. 상용 기기 팜은 나중 선택이다.
+Updated: **2026-11-27 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)가 현재 배치다. 웹·API는 잠들지 않는 Fly.io 머신 한 대, 데이터와 녹화 파일은 Supabase, Android 에뮬레이터는 워커 PC 한 대다. 접속은 브라우저만 하고 집 IP는 열지 않는다. 상용 기기 팜은 나중 선택이다.
 
 실행 PC offline에도 서버에 commit/ACK된 녹화 조회·검토·승인은 가능하다. 재녹화·trial·정식/묶음·재실행·기기 진단은 불가하며 재연결 후 사용자가 명시 실행한다. 필수 증거/기존 OFF trial/승인 불변성은 유지한다. [정상 진입점 보완](docs/managed-pc/ENTRY_COMPLETION_TASKS.md) RX-63~71의 기존 증거는 보존한다. QA 결과·워커 정리·실제 driver의 남은 연결은 [RX-72~78](docs/managed-pc/RESULTS_AND_NATIVE_TASKS.md)에서 먼저 구현한다.
 
@@ -8,22 +8,22 @@ Updated: **2026-11-25 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/
 
 ## Current
 
-**HS-2.** hosted 관리 데이터를 Supabase Postgres에 둔다. 로컬 개발 SQLite는 유지한다. 연결 문자열만 바꾸어 완료 처리하지 말고 기존 트랜잭션·migration·멱등 영수증·권한·승인 불변식을 함께 보존한다.
+**HS-4 실제 Linux/Fly/OIDC 설정·수용.** 계정 없이 준비할 HS-2~6의 코드는 구현했다. 다음은 [사용자 준비 체크리스트](docs/managed-pc/HOSTED_SETUP_CHECKLIST.md)와 [운영 절차](docs/managed-pc/FLY_HOSTED_RUNBOOK.md) 1→2a→2b→3절이다. Fly/Supabase/OIDC 계정·실제 설정을 준비한 뒤 진행한다. 이 상태는 기능 코드가 없다는 뜻이 아니다.
 
-기준은 [Fly.io · Supabase · 워커 PC](docs/superpowers/specs/2026-11-20-render-supabase-worker-design.md)다. 직접 선행 [HS-1 인계](docs/validation/tasks/HS-1.md)의 backend·StorageConfig·receipt provider를 재사용한다. HS-1 코드와 집중 회귀111개/JS1개 완료; 실제 Linux/Fly/OIDC 수용은 HS-4에 남는다. [비밀 설정 안내](docs/managed-pc/HOSTED_SECRETS.md). 계정 생성·운영 DB 이관·배포는 이 카드에서 하지 않는다.
+완료 코드와 제약은 [HS-2 Postgres](docs/validation/tasks/HS-2.md), [HS-3 private Storage](docs/validation/tasks/HS-3.md), [HS-4 Fly/OIDC](docs/validation/tasks/HS-4.md), [HS-5 outbound worker](docs/validation/tasks/HS-5.md), [HS-6 합성 여정](docs/validation/tasks/HS-6.md)에 있다. HS-2는 실제 임시 Postgres 29개, HS-3/키 참조 집중 77개, JS 60개를 확인했다. 실제 Linux 빌드/클라우드 배포/운영 IdP/다른 네트워크·PC 전원 종료 수용은 하지 않았다. 코드/fixture 완료를 이 수용으로 바꾸지 않는다. 기존 로컬 DB 이관·구매·배포를 자동 수행하지 않는다.
 
 ## Next
 
 | 순서 | 카드 | 구현 목표 | 직접 선행 |
 |---|---|---|---|
-| 1 | HS-3 | 동작별 PNG·로그·패키지를 Supabase Storage에 둔다 | HS-2 |
-| 2 | HS-4 | 잠들지 않는 Fly.io 공개 HTTPS와 그 주소의 OIDC 콜백 | HS-1, 사용자 Fly.io·OIDC 계정 |
-| 3 | HS-5 | 워커 PC가 Fly.io로 밖으로 접속해 Android 에뮬레이터를 등록 | HS-4 |
-| 4 | HS-6 | 밖 브라우저의 로그인, 워커 녹화·승인·모델 없는 재생, 워커 종료 후 검토 | HS-5 |
+| 1 | HS-5 실제 접속 | 현재 PC의 SDK/AVD와 목적별 enrollment로 배포된 Fly 서버에 등록 | HS-4 실제 서버·admin |
+| 2 | HS-6 실제 여정 | 밖 브라우저 로그인→AI 녹화 저장→사람 승인→AI0 재생→PC OFF 검토 | HS-5 실제 접속, 명시 모델·대상 설정 |
 
-운영 키·독립 서버·VM이 없어도 위 구현은 로컬 fixture로 진행한다. trial/기본 healing은 OFF다. 실제 모델 수용을 구현 완료로 대신하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
+HS-2/3은 코드 완료, HS-4/5는 배포 준비 코드 완료, HS-6은 합성 계약 검사 완료다. 실제 수용은 각 인계에 별도 상태로 유지한다. 계정 대기 중 같은 fixture를 반복하거나 이미 작성한 backend/entry를 재구현하지 않는다. 새로 확인한 구현 결함은 범위·완료 기준을 가진 독립 카드로 편성한다.
 
-전체 회귀의 기존9개 실패와 후속은 [검사 기준선](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)을 따른다. 2026-11-17 import reload 간섭3개는 순서 회귀로 해소했고 기존6개는 남아 있다. 전체 첫 실행과 후속 검사 결과를 합산해 전체 green으로 표시하지 않는다. 실패를 숨기거나 안전 gate를 완화하지 않는다. 독립 구현은 진행한다.
+새 독립 구현 결함은 운영 키·독립 서버·VM 없이 로컬 fixture로 해결한다. 위 HS 배포 준비 코드는 이미 작성되어 있으며 실제 배포 확인만 계정 준비를 기다린다. trial의 healing과 기본 healing은 OFF다. 실제 모델 수용을 구현 완료로 대신하지 않는다. RX-29 비용 계측은 양 플랫폼 최종 수용 뒤에 진행한다.
+
+전체 회귀의 기존 실패와 후속은 [검사 기준선](docs/validation/tasks/REGRESSION_BASELINE_2026-11-09.md)을 따른다. 2026-11-17 import reload 간섭3개는 순서 회귀로 해소했고 기존6개는 남아 있다. 2026-11-27 전체 결과는 1982 passed/23 failed/1 skipped이며, 실패23개 전부를 작업 시작 커밋에서 직접 재현했다. 기존6개 외 UI 문구·기존 시나리오 판정 등17개가 포함된다. 이들은 해결되거나 외부 환경 대기로 바뀐 것이 아니다. 최종 실행 범위는 [hosted 구현 계획 ledger](docs/superpowers/plans/2026-11-25-hosted-runtime.md)를 따른다. 전체 첫 실행과 후속 검사 결과를 합산해 전체 green으로 표시하지 않는다. 실패를 숨기거나 안전 gate를 완화하지 않는다. 독립 구현은 진행한다.
 
 ## 외부 대기와 재사용
 
@@ -31,7 +31,7 @@ Updated: **2026-11-25 (Asia/Seoul)** — [Fly.io · Supabase · 워커 PC](docs/
 
 | 대상 | 상태·재개 조건 | 막히는 범위 |
 |---|---|---|
-| 독립 관리 서버 | 집 Windows 공개는 사용하지 않는다. HS-1 코드 완료 후 현재 구현은 HS-2다. 이전 [RX-21](docs/validation/tasks/RX-21.md) 기록은 보존 | Fly.io·Supabase 배포 |
+| 독립 관리 서버 | 집 Windows 공개는 사용하지 않는다. HS-1~6 준비 코드/합성 경로 완료. 현재는 HS-4 실제 설정이며 [준비 체크리스트](docs/managed-pc/HOSTED_SETUP_CHECKLIST.md)를 따른다. 이전 [RX-21](docs/validation/tasks/RX-21.md) 기록은 보존 | Fly.io·Supabase·OIDC 실제 배포 수용 |
 | Android·모델 키 | [AD-01](docs/validation/tasks/AD-01.md)·[RX-44](docs/validation/tasks/RX-44.md)·[RX-45](docs/validation/tasks/RX-45.md)·[RX-46](docs/validation/tasks/RX-46.md) 완료. **운영 모델 키**·독립 호스트 확인 시 RX-23 | 운영 키를 쓰는 Android 녹화·재생 최종 수용 |
 | Web VM | 지원 VM·테스트 대상 준비 후 [RX-22](docs/validation/tasks/RX-22.md)/[RX-24](docs/managed-pc/ACCEPTANCE_TASKS.md#rx-24). RX-42·RX-60·RX-61 fixture 완료 | Web 실환경 및 양쪽 전원 종료 수용 |
 | 장애·경합 검증 | 다른 접속 PC, 승인된 전원/통신 단절, 추가 워커와 공유 테스트 자원 준비 시 RX-25~27. RX-62 fixture 완료 | 실제 전원 종료·불명 행동·두 워커 수용 |

@@ -4,3 +4,8 @@
 /third_party/mobile_agent/manifest.json -text -whitespace
 
 /docs/validation/evidence/AI-LIVE-03/** -text -whitespace
+
+# Hosted schema bytes are checksummed; Windows checkouts must preserve LF.
+/src/aiqa/store/sql/*.sql text eol=lf
+/src/aiqa/store/sql/*.json text eol=lf
+/deploy/*.sh text eol=lf

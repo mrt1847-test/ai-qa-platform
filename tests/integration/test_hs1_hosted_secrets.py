@@ -19,7 +19,7 @@ from aiqa.security.secrets import (
 
 def hosted_settings(root):
     return load_settings({
-        'AIQA_RUNTIME_ROOT': str(root), 'AIQA_PROFILE': 'hosted',
+        'AIQA_RUNTIME_ROOT': str(root), 'AIQA_PROFILE': 'hosted', 'AIQA_DATABASE_BACKEND': 'sqlite',
         'AIQA_PUBLIC_ORIGIN': 'https://manage.example.test',
         'AIQA_TRUSTED_PROXIES': '127.0.0.1',
     })

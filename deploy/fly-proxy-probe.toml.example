@@ -1,0 +1,35 @@
+# First deployment to a NEW app only, BEFORE importing or staging ANY secrets.
+# Copy to repository root as fly.proxy-probe.toml, set app/region, then remove
+# the probe by deploying the normal fly.toml after recording actual proxy peers.
+app = "replace-with-your-unique-app"
+primary_region = "nrt"
+kill_signal = "SIGTERM"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  app = "python -B -m aiqa.hosted.proxy_probe"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8000
+  processes = ["app"]
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"

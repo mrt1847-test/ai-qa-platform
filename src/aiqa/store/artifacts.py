@@ -311,6 +311,13 @@ def place_ready(root: Path, project_id: UUID, artifact_id: UUID, suffix: str, bo
 
     if type(suffix) is not str or suffix.strip() == "" or "partial" in suffix.lower():
         raise ArtifactRejected("partial suffix cannot be published")
+    if '/' in suffix or '\\' in suffix:
+        raise ArtifactRejected('object key leaves the artifact root')
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        key = f'{project_id}/{artifact_id}{suffix}'
+        root.put(key, body)
+        return key
     folder = (root / str(project_id)).resolve()
     destination = (folder / f"{artifact_id}{suffix}").resolve()
     if destination.parent != folder:
@@ -366,6 +373,9 @@ def open_durable(root: Path, object_key: str, expected_hash: str) -> bytes:
 
     if _is_partial_key(object_key):
         raise ArtifactRejected("partial object refused")
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        return root.read(object_key, expected_hash)
     path = resolve_stored(root, object_key)
     if path is None:
         raise ArtifactRejected("object key leaves the artifact root")
@@ -386,11 +396,26 @@ def resolve_stored(root: Path, object_key: str) -> Path | None:
         return None
     if _is_partial_key(object_key):
         return None
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        return root.materialize(object_key)
     base = root.resolve()
     path = (base / object_key).resolve()
     if path != base and base not in path.parents:
         return None
     return path
+
+
+def delete_durable(root: Path, object_key: str) -> None:
+    """Delete via the durable provider after the caller's protection checks."""
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        root.delete(object_key)
+        return
+    path = resolve_stored(root, object_key)
+    if path is None:
+        raise ArtifactRejected('object key leaves the artifact root')
+    path.unlink(missing_ok=True)
 
 
 def _is_partial_key(object_key: str) -> bool:

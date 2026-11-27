@@ -21,8 +21,8 @@ from aiqa.api.auth import (
     authorize_page,
     bound_auth_store,
 )
-from aiqa.domain.model_bindings import bind_model_store, save_model_binding_revision
-from aiqa.security.secrets import SecretUnavailable, bind_secret_store
+from aiqa.domain.model_bindings import ForeignSecret, bind_model_store, save_model_binding_revision
+from aiqa.security.secrets import SecretUnavailable, SecretValidationError, bind_secret_store
 from aiqa.store.database import migrate_store
 from aiqa.store.models import ModelBindingInput, SecretInput, SecretRef
 from aiqa.web.routes import UiQueryState, render_template
@@ -178,11 +178,12 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
             return _error(422, "validation", "역할을 다시 확인해 주세요.", {})
         role = item['role']
         seen.add(role)
-        if item.get('mode') not in {None, 'keep', 'replace'}:
+        if item.get('mode') not in {None, 'keep', 'replace', 'bind_ref'}:
             return _error(422, "validation", "연결 해제는 아직 지원하지 않습니다.", {})
-        if item.get('mode') == 'replace':
+        if item.get('mode') in {'replace', 'bind_ref'}:
             from urllib.parse import urlsplit
-            for key in ('endpoint', 'model', 'key'):
+            required = ('endpoint', 'model', 'key') if item['mode'] == 'replace' else ('endpoint', 'model')
+            for key in required:
                 if type(item.get(key)) is not str or not item[key].strip():
                     fields[f'{key}-{role}'] = ['교체할 연결의 값을 입력해 주세요.']
             if f'endpoint-{role}' not in fields:
@@ -192,6 +193,11 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                         fields[f'endpoint-{role}'] = ['사용자 정보가 없는 HTTPS 주소를 입력해 주세요.']
                 except ValueError:
                     fields[f'endpoint-{role}'] = ['HTTPS 주소를 확인해 주세요.']
+            if item['mode'] == 'bind_ref':
+                try:
+                    _selected_key_ref(project, item)
+                except (ValueError, TypeError, KeyError):
+                    fields[f'key-ref-{role}'] = ['이 프로젝트에 등록된 키 참조를 선택해 주세요.']
     if fields:
         return _error(422, 'validation', '모델 연결 입력을 확인해 주세요.', fields)
     try:
@@ -209,9 +215,13 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                     continue
                 key = item.get("key", "")
                 model = item.get("model", "")
-                if type(key) is not str or key == "" or type(model) is not str or model == "":
+                if item.get('mode') == 'bind_ref':
+                    key_ref = _selected_key_ref(project, item)
+                elif type(key) is str and key and type(model) is str and model:
+                    secret = request.app.state.secret_resolver.put(actor, SecretInput(value=key, name=str(item.get("role", ""))))
+                    key_ref = SecretRef(project, secret.ref_id, secret.revision)
+                else:
                     continue
-                secret = request.app.state.secret_resolver.put(actor, SecretInput(value=key, name=str(item.get("role", ""))))
                 save_model_binding_revision(
                     ModelBindingInput(
                         project_id=project,
@@ -222,7 +232,7 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
                         endpoint_kind="https",
                         endpoint=str(item.get("endpoint", "https://model.local")),
                         model=model,
-                        key_ref=SecretRef(project, secret.ref_id, secret.revision),
+                        key_ref=key_ref,
                         prompt_hash="sha256:" + ("ab" * 32),
                         tariff_id="t1",
                         compatibility_status="unchecked",
@@ -243,11 +253,27 @@ async def settings_save(project_id: str, request: Request) -> JSONResponse:
             return _error(401, "unauthorized", "session is missing", {})
         except _StaleLock:
             return _error(409, "conflict", "settings changed", {})
+        except ForeignSecret:
+            return _error(404, 'not_found', '선택한 키 참조를 사용할 수 없습니다.', {})
+        except SecretValidationError as exc:
+            return _error(422, 'validation', '키 입력을 확인해 주세요.', exc.fields)
         except SecretUnavailable:
             if request.app.state.secret_resolver.deployment_managed:
                 return _error(503, 'deployment_managed_secret', '키는 서버 배포 설정에서 관리합니다. 배포 후 참조를 등록해 주세요.', {})
             return _error(500, 'unavailable', 'secret storage is unavailable', {})
     return JSONResponse(status_code=201, content=stored)
+
+
+def _selected_key_ref(project: UUID, item: dict) -> SecretRef:
+    ref = item.get('key_ref')
+    if (type(ref) is not dict or set(ref) != {'project_id', 'ref_id', 'revision'}
+            or type(ref['project_id']) is not str or type(ref['ref_id']) is not str
+            or type(ref['revision']) is not int or ref['revision'] < 1 or item.get('key')):
+        raise ValueError('invalid key reference')
+    ref_project, ref_id = UUID(ref['project_id']), UUID(ref['ref_id'])
+    if ref_project != project:
+        raise ValueError('invalid key reference')
+    return SecretRef(project, ref_id, ref['revision'])
 
 
 def _validated_limits(payload):

@@ -124,11 +124,16 @@ def apply_retention(
                 raise RetentionRejected("detail payload was not expired")
         else:
             root = artifacts_dir if action.kind in {"png", "log"} else spool_dir
-            path = _inside(root, action.path)
-            if path is None:
-                raise RetentionRejected("retention path leaves its root")
-            if path.is_file():
-                path.unlink()
+            from aiqa.store.object_storage import DurableArtifactRoot
+            if isinstance(root, DurableArtifactRoot):
+                from aiqa.store.artifacts import delete_durable
+                delete_durable(root, action.path)
+            else:
+                path = _inside(root, action.path)
+                if path is None:
+                    raise RetentionRejected("retention path leaves its root")
+                if path.is_file():
+                    path.unlink()
             if action.kind in {"png", "log"}:
                 connection.execute(
                     """

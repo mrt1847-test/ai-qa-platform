@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import winreg
 from dataclasses import dataclass
 
 _HOST_COMMANDS = (
@@ -102,6 +101,7 @@ def _run(command: tuple[str, ...]) -> ProbeEvidence:
 
 def _windows_edition() -> ProbeEvidence:
     try:
+        import winreg
         with winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
             r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
@@ -110,7 +110,7 @@ def _windows_edition() -> ProbeEvidence:
             edition, _ = winreg.QueryValueEx(key, "EditionID")
             display, _ = winreg.QueryValueEx(key, "DisplayVersion")
             build, _ = winreg.QueryValueEx(key, "CurrentBuild")
-    except OSError as exc:
+    except (OSError, ImportError) as exc:
         return ProbeEvidence("host_command", "winreg", None, str(exc))
     detail = f"ProductName={product}; EditionID={edition}; DisplayVersion={display}; CurrentBuild={build}"
     return ProbeEvidence("host_command", "winreg", 0, detail)

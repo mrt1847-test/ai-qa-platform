@@ -781,7 +781,14 @@ def reconcile_artifacts() -> ArtifactReconcileReport:
             """,
             updates,
         )
-    spooling = _spooling_files(root, ready_paths)
+    from aiqa.store.object_storage import DurableArtifactRoot
+    if isinstance(root, DurableArtifactRoot):
+        # A cache directory is not a durable inventory. Hosted staging is tracked
+        # by SQL; remote orphan discovery belongs to the archive/GC operator.
+        with binding.store.transaction() as connection:
+            spooling = int(connection.execute('SELECT COUNT(*) FROM artifact_staging').fetchone()[0])
+    else:
+        spooling = _spooling_files(root, ready_paths)
     return ArtifactReconcileReport(missing, corruption, expired, spooling, stored)
 
 

@@ -16,10 +16,12 @@ dependencies = [
 [project.optional-dependencies]
 mobile-agent = ["Pillow>=11,<13", "httpx"]
 android-video = ["httpx", "imageio-ffmpeg>=0.6,<1"]
+hosted = ["psycopg[binary]>=3.2,<4", "httpx", "PyJWT[crypto]>=2.10,<3", "Pillow>=11,<13"]
 dev = [
     "Pillow>=11,<13",
     "pytest",
     "httpx",
+    "PyJWT[crypto]>=2.10,<3",
 ]
 
 [tool.setuptools.packages.find]
@@ -27,6 +29,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "aiqa.web" = ["templates/*.html", "templates/components/*.html", "static/*.css", "static/*.js"]
+"aiqa.store" = ["sql/*.sql", "sql/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -35,7 +35,7 @@ from aiqa.environments.app_builds import (
     list_app_builds,
     load_app_build_bytes,
     prepare_app,
-    register_app_build,
+    register_app_build_staged,
 )
 from aiqa.store.artifacts import ArtifactRejected
 from aiqa.store.database import Store, migrate_store
@@ -82,16 +82,19 @@ async def post_app_build(project_id: str, request: Request) -> JSONResponse:
     tool = payload.get("tool_path", ...)
     if tool is not ... and tool is not None and type(tool) is not str:
         return _error(422, "validation", "invalid apk")
+    try:
+        spec = ApkInspectionSpec(project, filename, body, declared, int(payload.get('project_total', 0)))
+    except (ValueError, TypeError):
+        return _error(422, 'validation', 'invalid apk')
+    from starlette.concurrency import run_in_threadpool
+    return await run_in_threadpool(_post_app_build, request, project, spec, tool)
+
+
+def _post_app_build(request: Request, project: UUID, spec: ApkInspectionSpec, tool) -> JSONResponse:
     with _bound(request) as store:
         try:
             authorize_browser(request, project, "app_build")
-            with store.transaction() as connection:
-                receipt, view = register_app_build(
-                    ApkInspectionSpec(project, filename, body, declared, int(payload.get("project_total", 0))),
-                    tool_path=tool,
-                    connection=connection,
-                    artifacts_dir=store.config.artifacts_dir,
-                )
+            receipt, view = register_app_build_staged(store, spec, tool_path=tool)
         except ApkRejected:
             return _error(422, "validation", "invalid apk")
         except ArtifactRejected:
@@ -156,7 +159,7 @@ async def get_app_build_json(project_id: str, build_id: str, request: Request) -
 
 
 @router.get("/projects/{project_id}/app-builds/{build_id}/content")
-async def get_app_build_content(project_id: str, build_id: str, request: Request) -> Response:
+def get_app_build_content(project_id: str, build_id: str, request: Request) -> Response:
     """APK bytes for one project build. Worker Bearer token or browser session; never cross-project."""
 
     project = _uuid(project_id)
@@ -168,7 +171,7 @@ async def get_app_build_content(project_id: str, build_id: str, request: Request
     with _bound(request) as store:
         try:
             _authorize_read(request, project)
-            with store.transaction() as connection:
+            with store.read_transaction() as connection:
                 loaded = load_app_build_bytes(connection, store.config.artifacts_dir, project, build)
         except _ReadDenied as denied:
             return denied.response

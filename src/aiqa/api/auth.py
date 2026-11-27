@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.routing import APIRouter
+from starlette.concurrency import run_in_threadpool
 
 from aiqa.config import PROFILE_HOSTED, PROFILE_LOCAL, AppSettings
 from aiqa.store.database import Store, migrate_store
@@ -38,6 +39,7 @@ def bound_auth_store(store: Store) -> Iterator[None]:
         _store.reset(token)
 _NONCE_TTL = timedelta(seconds=60)
 _SESSION_TTL = timedelta(hours=8)
+_OIDC_COOKIE = '__Host-aiqa_oidc_state'
 
 
 class AuthRequired(Exception):
@@ -488,14 +490,55 @@ async def post_oidc_start(request: Request) -> JSONResponse:
                 )
         except OidcRejected as exc:
             return _error(401, "unauthorized", str(exc), {})
-    return JSONResponse(status_code=201, content=started)
+    response = JSONResponse(status_code=201, content=started)
+    from aiqa.security.oidc import DEFAULT_STATE_TTL
+    response.set_cookie(_OIDC_COOKIE, started['state'], max_age=int(DEFAULT_STATE_TTL.total_seconds()),
+                        httponly=True, secure=True, samesite='lax', path='/')
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+async def _complete_oidc_request(request, runtime, *, code, state, code_verifier, project_id):
+    from aiqa.api.oidc_login import reserve_oidc_login, exchange_reserved_oidc_login, finalize_oidc_login
+    from aiqa.security.oidc import OidcRejected
+    cookie = request.cookies.get(_OIDC_COOKIE, '')
+    if not state or not cookie or not hmac.compare_digest(cookie, state):
+        raise OidcRejected('browser login correlation was rejected')
+    origin = _settings(request).public_origin
+    if request.headers.get('origin', origin) != origin:
+        raise OidcRejected('login origin was rejected')
+    with _bound(request):
+        with _bound_store().transaction() as connection:
+            reservation = reserve_oidc_login(connection, runtime.config, state=state,
+                code_verifier=code_verifier, project_id=project_id)
+    # Reservation has committed and the store is closed. Blocking discovery,
+    # token HTTP, JWKS and crypto must never own a management writer lock.
+    claims = await run_in_threadpool(exchange_reserved_oidc_login, runtime.config, runtime.idp,
+                                    reservation, code=code)
+    with _bound(request):
+        with _bound_store().transaction() as connection:
+            return finalize_oidc_login(connection, runtime.config, reservation, claims, origin=origin)
+
+
+async def _oidc_callback_response(request, handler):
+    try:
+        response = await handler(request)
+    except Exception:
+        # Do not expose endpoint response bodies, tokens or database details.
+        response = _error(503, 'unavailable', 'oidc login is unavailable', {})
+    response.delete_cookie(_OIDC_COOKIE, path='/', secure=True, httponly=True, samesite='lax')
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @router.get("/auth/oidc/callback")
 async def get_oidc_callback(request: Request) -> Response:
+    return await _oidc_callback_response(request, _get_oidc_callback)
+
+
+async def _get_oidc_callback(request: Request) -> Response:
     """Registered redirect URI callback: IdP returns code/state via query string."""
 
-    from aiqa.api.oidc_login import complete_oidc_login
     from aiqa.domain.projects import MembershipDenied
     from aiqa.security.oidc import OidcRejected
 
@@ -507,23 +550,11 @@ async def get_oidc_callback(request: Request) -> Response:
         return HTMLResponse(status_code=503, content="oidc idp is not configured")
     code = str(request.query_params.get("code") or "")
     state = str(request.query_params.get("state") or "")
-    origin = request.headers.get("origin") or settings.public_origin
-    with _bound(request):
-        store = _bound_store()
-        try:
-            with store.transaction() as connection:
-                session = complete_oidc_login(
-                    connection,
-                    runtime.config,
-                    runtime.idp,
-                    code=code,
-                    state=state,
-                    code_verifier=None,
-                    project_id=None,
-                    origin=origin,
-                )
-        except OidcRejected as exc:
-            return HTMLResponse(
+    try:
+        session = await _complete_oidc_request(request, runtime, code=code, state=state,
+                                               code_verifier=None, project_id=None)
+    except OidcRejected as exc:
+        return HTMLResponse(
                 status_code=401,
                 content=(
                     "<!DOCTYPE html><html lang='ko'><body>"
@@ -532,8 +563,8 @@ async def get_oidc_callback(request: Request) -> Response:
                     "</body></html>"
                 ),
             )
-        except MembershipDenied:
-            return HTMLResponse(
+    except MembershipDenied:
+        return HTMLResponse(
                 status_code=403,
                 content=(
                     "<!DOCTYPE html><html lang='ko'><body>"
@@ -549,7 +580,10 @@ async def get_oidc_callback(request: Request) -> Response:
 
 @router.post("/auth/oidc/callback")
 async def post_oidc_callback(request: Request) -> JSONResponse:
-    from aiqa.api.oidc_login import complete_oidc_login
+    return await _oidc_callback_response(request, _post_oidc_callback)
+
+
+async def _post_oidc_callback(request: Request) -> JSONResponse:
     from aiqa.domain.projects import MembershipDenied
     from aiqa.security.oidc import OidcRejected
 
@@ -573,27 +607,15 @@ async def post_oidc_callback(request: Request) -> JSONResponse:
             project_id = UUID(str(payload.get("project_id")))
         except (TypeError, ValueError):
             return _error(404, "not_found", "project was not found", {})
-    origin = request.headers.get("origin") or settings.public_origin
     verifier_raw = payload.get("code_verifier")
     code_verifier = None if verifier_raw in (None, "") else str(verifier_raw)
-    with _bound(request):
-        store = _bound_store()
-        try:
-            with store.transaction() as connection:
-                session = complete_oidc_login(
-                    connection,
-                    runtime.config,
-                    runtime.idp,
-                    code=str(payload.get("code", "")),
-                    state=str(payload.get("state", "")),
-                    code_verifier=code_verifier,
-                    project_id=project_id,
-                    origin=origin,
-                )
-        except OidcRejected as exc:
-            return _error(401, "unauthorized", str(exc), {})
-        except MembershipDenied:
-            return _error(403, "permission", "project access was denied", {})
+    try:
+        session = await _complete_oidc_request(request, runtime, code=str(payload.get('code', '')),
+            state=str(payload.get('state', '')), code_verifier=code_verifier, project_id=project_id)
+    except OidcRejected as exc:
+        return _error(401, "unauthorized", str(exc), {})
+    except MembershipDenied:
+        return _error(403, "permission", "project access was denied", {})
     response = JSONResponse(
         status_code=201,
         content={

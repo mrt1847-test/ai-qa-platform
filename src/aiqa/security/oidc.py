@@ -6,7 +6,7 @@ import base64
 import hashlib
 import hmac
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 from urllib.parse import parse_qs, urlencode
@@ -253,103 +253,38 @@ class OidcExchangePort(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class OperationalOidcClient:
-    """HTTPS token-endpoint client for a registered hosted IdP. Mock IdP stays test-only."""
+    """Standard OIDC confidential client: RS256 ID tokens and client_secret_post."""
 
     config: OidcClientConfig
     token_endpoint: str
-    client_secret: str
-    transport: httpx.BaseTransport | None = None
+    client_secret: str = field(repr=False)
+    transport: httpx.BaseTransport | None = field(default=None, repr=False)
     timeout_seconds: float = 10.0
+    _verified_exchange: Any = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
-        if type(self.token_endpoint) is not str or not self.token_endpoint.startswith("https://"):
-            raise OidcRejected("token endpoint must be https")
+        from aiqa.security.oidc_jwt import VerifiedOidcExchange, https_url
+        import math
+        if not https_url(self.token_endpoint) or not https_url(self.config.issuer):
+            raise OidcRejected("OIDC HTTPS endpoint is invalid")
         if type(self.client_secret) is not str or len(self.client_secret) < 8:
-            raise OidcRejected("signing key is missing")
+            raise OidcRejected("OIDC client secret is unavailable")
+        if type(self.timeout_seconds) not in (int,float) or not math.isfinite(self.timeout_seconds) or not 0 < self.timeout_seconds <= 30:
+            raise OidcRejected("OIDC timeout is invalid")
+        object.__setattr__(self, '_verified_exchange', VerifiedOidcExchange(
+            self.config, self.token_endpoint, self.client_secret, self.transport, self.timeout_seconds))
 
-    def exchange(
-        self,
-        *,
-        code: str,
-        code_verifier: str,
-        redirect_uri: str,
-        state: str,
-        now: datetime | None = None,
-        presented_signature: str | None = None,
-    ) -> IdTokenClaims:
-        instant = _utc(now)
-        if type(code) is not str or code.strip() == "":
-            raise OidcRejected("authorization code was rejected")
-        if type(code_verifier) is not str or code_verifier.strip() == "":
-            raise OidcRejected("pkce was rejected")
-        if type(redirect_uri) is not str or redirect_uri.strip() == "":
-            raise OidcRejected("redirect_uri was rejected")
-        if type(state) is not str or state.strip() == "":
-            raise OidcRejected("state was rejected")
-        body = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": redirect_uri,
-            "client_id": self.config.client_id,
-            "code_verifier": code_verifier,
-            "state": state,
-        }
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        try:
-            with httpx.Client(
-                transport=self.transport,
-                timeout=self.timeout_seconds,
-                follow_redirects=False,
-                verify=True if self.transport is None else False,
-            ) as client:
-                response = client.post(self.token_endpoint, data=body, headers=headers)
-        except httpx.HTTPError as exc:
-            raise OidcRejected("token endpoint is unreachable") from exc
-        if response.status_code >= 400:
-            raise OidcRejected("authorization code was rejected")
-        try:
-            payload = response.json()
-        except Exception as exc:
-            raise OidcRejected("token response was rejected") from exc
-        if type(payload) is not dict:
-            raise OidcRejected("token response was rejected")
-        claims_raw = payload.get("id_token_claims")
-        signature = payload.get("id_token_signature")
+    def exchange(self, *, code: str, code_verifier: str, redirect_uri: str, state: str,
+                 now: datetime | None = None, presented_signature: str | None = None) -> IdTokenClaims:
         if presented_signature is not None:
-            signature = presented_signature
-        if type(claims_raw) is not dict or type(signature) is not str:
-            raise OidcRejected("token response was rejected")
-        try:
-            expires_raw = claims_raw.get("expires_at")
-            claims = IdTokenClaims(
-                issuer=str(claims_raw["issuer"]),
-                subject=str(claims_raw["subject"]),
-                audience=str(claims_raw["audience"]),
-                nonce=str(claims_raw["nonce"]),
-                expires_at=str(expires_raw) if expires_raw is not None else None,
-            )
-        except (KeyError, TypeError) as exc:
-            raise OidcRejected("token response was rejected") from exc
-        if claims.issuer != self.config.issuer:
-            raise OidcRejected("issuer was rejected")
-        if claims.audience != self.config.audience:
-            raise OidcRejected("audience was rejected")
-        if type(claims.subject) is not str or claims.subject.strip() == "":
-            raise OidcRejected("subject was rejected")
-        if type(claims.nonce) is not str or claims.nonce.strip() == "":
-            raise OidcRejected("nonce was rejected")
-        verify_id_token_signature(claims, signature, self.client_secret)
-        if claims.expires_at is not None:
-            try:
-                expires = datetime.fromisoformat(claims.expires_at)
-            except ValueError as exc:
-                raise OidcRejected("id_token expiry was rejected") from exc
-            if expires.tzinfo is None or instant >= expires.astimezone(timezone.utc):
-                raise OidcRejected("id_token expired")
-        return claims
+            raise OidcRejected("signature override was rejected")
+        for value in (code, code_verifier, state):
+            if type(value) is not str or not value.strip():
+                raise OidcRejected("authorization exchange was rejected")
+        if redirect_uri != self.config.redirect_uri:
+            raise OidcRejected("redirect_uri was rejected")
+        return self._verified_exchange.exchange(code=code, code_verifier=code_verifier,
+            redirect_uri=redirect_uri, state=state, now=_utc(now))
 
 
 def mock_https_token_handler(
@@ -357,36 +292,55 @@ def mock_https_token_handler(
     *,
     clock: datetime | None = None,
 ) -> Any:
-    """httpx MockTransport handler that fronts MockHttpsIdP over the token endpoint."""
+    """Test-only HTTPS discovery/JWKS/token fixture with real synthetic RSA signatures."""
+
+    import json
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_jwk = {**json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(private_key.public_key())),
+                  'kid': 'fixture-one', 'alg': 'RS256', 'use': 'sig'}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == 'GET' and request.url.path.endswith('/.well-known/openid-configuration'):
+            return httpx.Response(200, json={
+                'issuer': idp.issuer, 'token_endpoint': idp.issuer.rstrip('/') + '/token',
+                'jwks_uri': idp.issuer.rstrip('/') + '/keys',
+                'token_endpoint_auth_methods_supported': ['client_secret_post'],
+                'id_token_signing_alg_values_supported': ['RS256']})
+        if request.method == 'GET' and request.url.path.endswith('/keys'):
+            return httpx.Response(200, json={'keys': [public_jwk]})
         if request.method.upper() != "POST":
             return httpx.Response(405, json={"error": "method_not_allowed"})
         form = {key: values[-1] for key, values in parse_qs(request.content.decode("utf-8")).items()}
+        if form.get('client_secret') != idp.signing_key:
+            return httpx.Response(401, json={'error': 'invalid_client'})
         try:
             claims = idp.exchange(
                 code=str(form.get("code", "")),
                 code_verifier=str(form.get("code_verifier", "")),
                 redirect_uri=str(form.get("redirect_uri", "")),
-                state=str(form.get("state", "")),
+                state=str(form.get('state') or (idp._codes or {}).get(str(form.get('code', '')), {}).get('state', '')),
                 now=clock,
             )
         except OidcRejected as exc:
             return httpx.Response(400, json={"error": str(exc)})
-        signature = sign_id_token_claims(claims, idp.signing_key)
-        claims_body: dict[str, str] = {
-            "issuer": claims.issuer,
-            "subject": claims.subject,
-            "audience": claims.audience,
+        instant = _utc(clock)
+        claims_body = {
+            "iss": claims.issuer,
+            "sub": claims.subject,
+            "aud": claims.audience,
             "nonce": claims.nonce,
+            'iat': int(instant.timestamp()) - 1,
+            'exp': int((instant + DEFAULT_ID_TOKEN_TTL).timestamp()),
         }
         if claims.expires_at is not None:
-            claims_body["expires_at"] = claims.expires_at
+            claims_body['exp'] = int(datetime.fromisoformat(claims.expires_at).timestamp())
         return httpx.Response(
             200,
             json={
-                "id_token_claims": claims_body,
-                "id_token_signature": signature,
+                "id_token": jwt.encode(claims_body, private_key, algorithm='RS256', headers={'kid': 'fixture-one'}),
+                'token_type': 'Bearer',
             },
         )
 

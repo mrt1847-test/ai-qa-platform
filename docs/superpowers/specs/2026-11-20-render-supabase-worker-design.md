@@ -41,3 +41,12 @@ flowchart LR
 | HS-6 | 다른 네트워크의 브라우저로 로그인하고, 워커 PC에서 녹화·승인·모델 없는 재생을 한 번 확인한다. 워커 PC를 끈 뒤 저장된 검토가 되는지도 확인한다. | fixture 통과를 이 수용으로 기록 |
 
 2026-11-25: [HS-1 코드/모의 통합 인계](../../validation/tasks/HS-1.md)를 완료했다. 설정은 [HOSTED_SECRETS](../../managed-pc/HOSTED_SECRETS.md)를 따른다. 실제 Linux/Fly 기동과 운영 IdP 수용은 HS-4이며 이식성 fixture로 대신하지 않는다. 현재 구현은 HS-2부터 한다. HS-4 전에 Fly.io·Supabase·OIDC 계정이 없으면 그 카드는 계정 준비로 남기고, 코드 카드는 로컬 fixture로 검증한다.
+
+## 2026-11-27 구현 반영
+
+HS-2~6의 계정 없이 준비할 코드와 합성 경로를 구현했다. 실제 배포 완료 상태와 구분한다. 현재 순서는 [NEXT_ACTION](../../../NEXT_ACTION.md), 사용자 준비는 [체크리스트](../../managed-pc/HOSTED_SETUP_CHECKLIST.md), 명령은 [Fly 운영 절차](../../managed-pc/FLY_HOSTED_RUNBOOK.md)다. 11월25일의 HS-2 착수 기록은 이력이다.
+
+- Postgres는 직접/session pooler만 사용하며 transaction pooler는 지원하지 않는다. 검토된 초기 schema와 guard drift 검증으로 기존 승인/원본/멱등 불변식을 보존한다. [DB 계약](../../managed-pc/POSTGRES_STORE.md).
+- Storage는 private object의 원격 hash/length 검증 뒤에만 ACK한다. cache는 소모 가능하며 worker가 없어도 이미 ACK된 근거는 API가 읽는다. recovery/export/APK retry는 같은 저장 identity를 사용한다. [파일 계약](../../managed-pc/PRIVATE_STORAGE.md).
+- 운영 OIDC는 RS256/JWKS/code+PKCE와 browser-bound state를 사용한다. Fly는 API 한 프로세스/머신 한 대이며 worker는 PC에서 outbound HTTPS로 별도 실행한다. 모델 원문은 서버에만 둔다.
+- 실제 Linux 컨테이너·Supabase·Fly·IdP·다른 네트워크/PC OFF 수용은 HS-4~6에서 확인한다. 첫 admin bootstrap만 제공하며 추가 구성원 관리 UI/CLI와 hosted backup/복원 provider는 아직 없다. 이 제한을 배포 성공으로 감추지 않는다.

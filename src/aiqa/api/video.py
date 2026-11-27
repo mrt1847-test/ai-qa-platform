@@ -28,7 +28,7 @@ def manager(app):
             store=app.state.open_store()
             try:
                 migrate_store(store)
-                rows=store._connection.execute('SELECT * FROM live_video_publishers WHERE closed=0 AND producer_id<>\'\'').fetchall()
+                rows=store._connection.execute('SELECT session_id,project_id,resource_id,actor_id,worker_id,native_id,producer_id,closed FROM live_video_publishers WHERE closed=0 AND producer_id<>\'\'').fetchall()
             finally:store.close()
             now=result.clock()
             for sid,p,r,a,w,n,producer,_ in rows:

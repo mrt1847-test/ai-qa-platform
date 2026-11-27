@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from aiqa.config import PROFILE_HOSTED, AppSettings
 from aiqa.security.receipt_digest import EnvironmentReceiptKey
@@ -26,19 +27,29 @@ class StorageConfig:
     spool_dir: Path
     backups_dir: Path | None = None
     receipt_key_provider: EnvironmentReceiptKey | None = field(default=None, repr=False, compare=False)
+    database_backend: str = 'sqlite'
+    database_url: str | None = field(default=None, repr=False, compare=False)
+    database_schema: str = 'aiqa'
 
     @classmethod
     def from_settings(cls, settings: AppSettings) -> StorageConfig:
         root = settings.runtime_root
         if any(part.casefold().startswith("onedrive") for part in root.parts):
             raise StorageError("runtime root must stay outside OneDrive")
+        from aiqa.store.object_storage import artifact_root
+
+        root_artifacts = artifact_root(settings.artifacts_dir, backend=settings.artifact_backend,
+            supabase_url=settings.supabase_url, service_key=settings.supabase_service_key,
+            bucket=settings.supabase_bucket)
         return cls(
             runtime_root=root,
             database_path=root / "db" / "aiqa.sqlite",
-            artifacts_dir=settings.artifacts_dir,
+            artifacts_dir=root_artifacts,
             spool_dir=root / "spool",
             backups_dir=settings.backups_dir,
             receipt_key_provider=EnvironmentReceiptKey() if settings.profile == PROFILE_HOSTED else None,
+            database_backend=settings.database_backend,
+            database_url=settings.database_url,
         )
 
 
@@ -53,7 +64,8 @@ class Store:
         self._connection = connection
         # SQLite REPLACE performs an implicit DELETE. Its immutable-row guards
         # only run when recursive triggers are enabled on every connection.
-        connection.execute('PRAGMA recursive_triggers=ON')
+        if config.database_backend == 'sqlite':
+            connection.execute('PRAGMA recursive_triggers=ON')
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -65,6 +77,39 @@ class Store:
             if self._connection.in_transaction:
                 self._connection.execute("ROLLBACK")
             raise
+
+    @contextmanager
+    def read_transaction(self):
+        """Snapshot reads do not take the management writer fence.
+
+        Nested callers join the existing transaction via a savepoint; the outer
+        transaction remains authoritative about whether writes are permitted.
+        """
+        connection = self._connection
+        nested = connection.in_transaction
+        savepoint = 'aiqa_read_' + uuid4().hex
+        prior_query_only = None
+        if nested:
+            connection.execute('SAVEPOINT ' + savepoint)
+        elif self.config.database_backend == 'postgres':
+            connection.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        else:
+            prior_query_only = connection.execute('PRAGMA query_only').fetchone()[0]
+            connection.execute('PRAGMA query_only=ON')
+            connection.execute('BEGIN')
+        try:
+            yield connection
+            connection.execute('RELEASE ' + savepoint if nested else 'COMMIT')
+        except BaseException:
+            if nested:
+                connection.execute('ROLLBACK TO ' + savepoint)
+                connection.execute('RELEASE ' + savepoint)
+            elif connection.in_transaction:
+                connection.execute('ROLLBACK')
+            raise
+        finally:
+            if prior_query_only is not None:
+                connection.execute('PRAGMA query_only=' + str(int(prior_query_only)))
 
     def put_project_row(self, project_id: str, name: str) -> None:
         with self.transaction() as connection:
@@ -112,8 +157,17 @@ class Store:
 
 
 def open_store(config: StorageConfig) -> Store:
+    if config.database_backend == 'postgres':
+        from aiqa.store.postgres import connect_postgres
+
+        connection = connect_postgres(config)
+        config.spool_dir.mkdir(parents=True, exist_ok=True)
+        getattr(config.artifacts_dir, 'cache_dir', config.artifacts_dir).mkdir(parents=True, exist_ok=True)
+        return Store(config, connection)
+    if config.database_backend != 'sqlite':
+        raise StorageError('database backend is invalid')
     config.database_path.parent.mkdir(parents=True, exist_ok=True)
-    config.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    getattr(config.artifacts_dir, 'cache_dir', config.artifacts_dir).mkdir(parents=True, exist_ok=True)
     config.spool_dir.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(config.database_path, isolation_level=None)
     connection.execute("PRAGMA foreign_keys=ON")
@@ -126,6 +180,10 @@ def open_store(config: StorageConfig) -> Store:
 
 
 def migrate_store(store: Store) -> SchemaRevision:
+    if store.config.database_backend == 'postgres':
+        from aiqa.store.postgres import migrate_postgres
+
+        return SchemaRevision(migrate_postgres(store))
     module = _migration_env()
     latest = ""
     with store.transaction() as connection:

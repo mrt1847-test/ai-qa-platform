@@ -349,12 +349,55 @@ _BY_HASH = (
 )
 
 
+def register_app_build_staged(store, spec: ApkInspectionSpec, tool_path: str | None | object = ...):
+    """Inspect and publish without holding the SQL writer or event loop.
+
+    The durable SQL stage fixes the object identity across uncertain uploads.
+    It is removed in the metadata commit, never as compensation for failure.
+    """
+    from aiqa.worker.files import file_lock
+    _guard(spec)
+    digest = content_hash(spec.body)
+    identity = 'app-inspect:' + digest
+    lock = store.config.spool_dir / 'app-build-locks' / str(spec.project_id) / (digest.split(':')[1] + '.lock')
+    root = store.config.artifacts_dir
+    with file_lock(lock):
+        with store.read_transaction() as connection:
+            existing = connection.execute(_BY_HASH, (str(spec.project_id), digest)).fetchone()
+        if existing is not None:
+            return _replay_durable(root, spec, existing)
+        # ZIP validation/metadata inspection is outside SQL as well.
+        view = inspect_apk(spec, tool_path)
+        receipt = _new_receipt(spec, digest)
+        with store.transaction() as connection:
+            stage = connection.execute('SELECT artifact_id FROM artifact_staging WHERE project_id=? AND identity=? AND content_hash=?',
+                (str(spec.project_id), identity, digest)).fetchone()
+            artifact_id = UUID(str(stage[0])) if stage is not None else uuid4()
+            if stage is None:
+                connection.execute('INSERT INTO artifact_staging(project_id,artifact_id,object_key,identity,content_hash,byte_length) VALUES(?,?,?,?,?,?)',
+                    (str(spec.project_id), str(artifact_id), f'{spec.project_id}/{artifact_id}.apk', identity, digest, len(spec.body)))
+        durable = publish_durable(root, spec.project_id, artifact_id, '.apk', spec.body, declared_hash=digest)
+        with store.transaction() as connection:
+            # Recheck after I/O. Legacy callers can have published the hash while
+            # this staged call was waiting; verify their winner outside SQL.
+            existing = connection.execute(_BY_HASH, (str(spec.project_id), digest)).fetchone()
+            if existing is None:
+                result = register_app_build(spec, tool_path, connection=connection, artifacts_dir=root,
+                                            _prepared=(receipt, view, durable))
+                connection.execute('DELETE FROM artifact_staging WHERE project_id=? AND artifact_id=?',
+                    (str(spec.project_id), str(artifact_id)))
+        if existing is not None:
+            return _replay_durable(root, spec, existing)
+        return result
+
+
 def register_app_build(
     spec: ApkInspectionSpec,
     tool_path: str | None | object = ...,
     *,
     connection: sqlite3.Connection | None = None,
     artifacts_dir: Path | None = None,
+    _prepared: tuple | None = None,
 ) -> tuple[JobReceipt, AppBuildView]:
     """Store one inspection. The same bytes return the same receipt and do not run code.
 
@@ -379,16 +422,20 @@ def register_app_build(
     if row is not None:
         return _replay_durable(artifacts_dir, spec, row)
 
-    cached = _known.get(key)
-    if cached is not None:
-        receipt, view = cached
+    cached = _known.get(key) if _prepared is None else None
+    if _prepared is not None:
+        receipt, view, durable = _prepared
+        artifact_id = durable.artifact_id
     else:
-        view = inspect_apk(spec, tool_path)
-        receipt = _new_receipt(spec, digest)
-    artifact_id = uuid4()
-    durable = publish_durable(
-        artifacts_dir, spec.project_id, artifact_id, ".apk", spec.body, declared_hash=digest
-    )
+        if cached is not None:
+            receipt, view = cached
+        else:
+            view = inspect_apk(spec, tool_path)
+            receipt = _new_receipt(spec, digest)
+        artifact_id = uuid4()
+        durable = publish_durable(
+            artifacts_dir, spec.project_id, artifact_id, ".apk", spec.body, declared_hash=digest
+        )
     created_at = datetime.now(timezone.utc).isoformat()
     try:
         connection.execute(

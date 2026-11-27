@@ -183,10 +183,29 @@ def test_hosted_oidc_browser_mutations_and_restart_use_deployment_secrets(deploy
                                      'model': 'fixture-model', 'key': 'fixture-browser-key'}]}, headers=headers)
             assert denied_settings.status_code == 503, denied_settings.text
             assert 'fixture-browser-key' not in denied.text + denied_settings.text
+            ref_body = {'project_id': str(ref.project_id), 'ref_id': str(ref.ref_id), 'revision': 1}
+            for wrong_ref in ({**ref_body, 'project_id': str(uuid4())}, {**ref_body, 'revision': 999}):
+                bad = await client.post(f'/ui/projects/{ref.project_id}/settings',
+                    headers={**headers, 'Idempotency-Key': str(uuid4())},
+                    json={'expected_lock': 0, 'roles': [{'role': 'authoring', 'mode': 'bind_ref',
+                        'endpoint': 'https://api.openai.com', 'model': 'fixture-model', 'key_ref': wrong_ref}]})
+                assert bad.status_code in {404, 422}, bad.text
+            linked = await client.post(f'/ui/projects/{ref.project_id}/settings',
+                headers={**headers, 'Idempotency-Key': 'settings-link-ref'},
+                json={'expected_lock': 0, 'roles': [{'role': 'authoring', 'mode': 'bind_ref',
+                    'endpoint': 'https://api.openai.com', 'model': 'fixture-model', 'key_ref': ref_body}]})
+            assert linked.status_code == 201, linked.text
+            again_linked = await client.post(f'/ui/projects/{ref.project_id}/settings',
+                headers={**headers, 'Idempotency-Key': 'settings-link-ref'},
+                json={'expected_lock': 0, 'roles': [{'role': 'authoring', 'mode': 'bind_ref',
+                    'endpoint': 'https://api.openai.com', 'model': 'fixture-model', 'key_ref': ref_body}]})
+            assert again_linked.status_code == 200 and again_linked.json() == linked.json()
             page = await client.get(f'/ui/projects/{ref.project_id}/settings', headers=headers)
             assert page.status_code == 200
             assert '키는 서버 배포 설정에서 관리합니다' in page.text
             assert '<option value="replace"' not in page.text
+            assert '<option value="bind_ref"' in page.text
+            assert 'data-secret-picker' in page.text
     asyncio.run(flow())
     assert 'fixture-browser-key' not in '\n'.join(store._connection.iterdump())
     assert store._connection.execute('SELECT count(*) FROM secret_refs').fetchone()[0] == 1

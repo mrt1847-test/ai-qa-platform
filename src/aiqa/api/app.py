@@ -90,6 +90,9 @@ def create_app(
         application.state.oidc_config = None
 
     storage_config = StorageConfig.from_settings(resolved)
+    application.state.artifact_root = storage_config.artifacts_dir
+    if hasattr(storage_config.artifacts_dir, 'close'):
+        application.router.add_event_handler('shutdown', storage_config.artifacts_dir.close)
 
     def open_configured_store():
         borrowed = current_mutation_store()

@@ -9,10 +9,10 @@ import sqlite3
 from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from aiqa.domain.hashing import SCHEMA_VERSION, canonical_hash
-from aiqa.store.artifacts import content_hash
+from aiqa.store.artifacts import ArtifactRejected, content_hash
 from aiqa.store.database import Store
 
 _store: ContextVar[Store] = ContextVar("aiqa_recovery_store")
@@ -112,17 +112,35 @@ def validate_recovery_target(connection: sqlite3.Connection, spec: EvidenceRecov
 def prepare_recovery(artifacts: Path, spec: EvidenceRecoverySpec) -> PreparedRecovery:
     """Flush fresh immutable objects outside the writer transaction."""
     _validate_captures(spec)
-    digest, manifest_id = _body_hash(spec), uuid4()
+    from aiqa.store.object_storage import DurableArtifactRoot
+    digest = _body_hash(spec)
+    if isinstance(artifacts, DurableArtifactRoot):
+        # A lost remote response leaves bytes behind. Reuse the exact identity
+        # for the same request/body so retry cannot mint duplicate remote keys.
+        identity = json.dumps([str(spec.project_id), str(spec.recording_id), spec.request_key, digest], separators=(',', ':'))
+        manifest_id = uuid5(NAMESPACE_URL, 'aiqa-recovery:' + identity)
+    else:
+        manifest_id = uuid4()
     files, immediate, mapping = [], [], {}
     try:
         for capture in spec.captures:
-            folder = artifacts / 'recovery' / str(spec.recording_id) / str(manifest_id)
-            if capture.timing == 'delayed':
-                folder /= 'delayed'
-            path = folder / f'{capture.action_id}.png'
-            files.append(path)
-            _write(path, capture.png)
-            key = path.relative_to(artifacts).as_posix()
+            if isinstance(artifacts, DurableArtifactRoot):
+                timing = 'delayed/' if capture.timing == 'delayed' else ''
+                key = f'{spec.project_id}/recovery/{spec.recording_id}/{manifest_id}/{timing}{capture.action_id}.png'
+                try:
+                    artifacts.put(key, capture.png)
+                except ArtifactRejected:
+                    raise RecoveryRejected('recovery captures could not be stored') from None
+                # Preserve remote stages after uncertain metadata outcomes. They
+                # are never a ready artifact until the manifest commits.
+            else:
+                folder = artifacts / 'recovery' / str(spec.recording_id) / str(manifest_id)
+                if capture.timing == 'delayed':
+                    folder /= 'delayed'
+                path = folder / f'{capture.action_id}.png'
+                files.append(path)
+                _write(path, capture.png)
+                key = path.relative_to(artifacts).as_posix()
             mapping[capture.action_id] = {'timing': capture.timing, 'object_key': key, 'hash': content_hash(capture.png)}
             if capture.timing == 'immediate':
                 immediate.append({'action_id': capture.action_id, 'hash': content_hash(capture.png), 'object_key': key})

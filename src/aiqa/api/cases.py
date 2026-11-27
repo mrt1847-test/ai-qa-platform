@@ -1082,7 +1082,7 @@ async def post_revoke(approval_id: str, request: Request) -> JSONResponse:
 
 
 @pages.get("/ui/projects/{project_id}/cases/{case_id}/review", response_class=HTMLResponse)
-async def case_review_page(project_id: str, case_id: str, request: Request) -> HTMLResponse:
+def case_review_page(project_id: str, case_id: str, request: Request) -> HTMLResponse:
     project = _uuid(project_id)
     parsed = _uuid(case_id) if case_id is not None else None
     if isinstance(project, JSONResponse) or isinstance(parsed, JSONResponse) or parsed is None:
@@ -1109,7 +1109,7 @@ async def case_review_page(project_id: str, case_id: str, request: Request) -> H
             authorize_page(request, project)
             store = request.app.state.open_store()
             try:
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     case_row = connection.execute('SELECT name FROM automation_cases WHERE project_id=? AND case_id=?',(str(project),str(parsed))).fetchone()
                     if case_row is None:
                         return HTMLResponse(status_code=404,content='케이스를 찾지 못했습니다.')

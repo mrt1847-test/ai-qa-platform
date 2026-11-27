@@ -55,7 +55,7 @@ Web과 Android의 테스트를 자연어로 녹화하고, 저장된 동작을 �
 
 - Python 3.11 이상, FastAPI, Uvicorn
 - Jinja2 템플릿, CSS, JavaScript 기반 웹 UI
-- SQLite 기반 관리 데이터와 파일 기반 증거 저장소
+- 로컬 SQLite·파일 저장소, hosted Postgres·private Supabase Storage
 - HTTPX 기반 서버/worker·모델 통신
 - Android ADB 및 고정 Mobile-Agent 원본, Web CUAWright 어댑터
 
@@ -76,6 +76,8 @@ python -m venv .venv
 Android 실시간 화면을 보려면 실행 PC에서 `pip install -e ".[android-video]"`도 설치하세요. Android 기기 선택 후 **실시간 보기**를 누르면 실제 기기 영상이 웹에 표시됩니다. 녹화 상세와 시범 준비 화면에서도 같은 연결을 이어 볼 수 있습니다. **연결 종료**를 누르면 캡처와 메모리 재생 버퍼를 비우며, 영상 파일 저장·다운로드 기능은 제공하지 않습니다.
 
 `dev`에는 테스트 도구와 Mobile-Agent 이미지 처리에 필요한 Pillow가 포함됩니다. 기존 가상환경이 있다면 재사용할 수 있습니다.
+
+Fly.io 배포는 [배포 안내](docs/managed-pc/FLY_HOSTED_RUNBOOK.md)를 따릅니다. [Postgres 저장 계약](docs/managed-pc/POSTGRES_STORE.md)과 [private 파일 저장 계약](docs/managed-pc/PRIVATE_STORAGE.md)은 로컬 실행과 별도로 적용합니다. 환경 변수 형식은 [hosted 예시](deploy/hosted.env.example), 실행 PC 설정은 [worker 예시](deploy/worker.env.example)를 참고하세요. hosted 모델 연결은 서버에 등록된 키 참조를 설정 화면에서 선택합니다.
 
 ### 2. API/UI 실행
 
@@ -167,6 +169,7 @@ docs/          작업서·계약·검증 근거
 | --- | --- |
 | 전체 개발 진행도 | [WORK_PROGRESS.md](WORK_PROGRESS.md) |
 | 현재 작업과 다음 작업 | [NEXT_ACTION.md](NEXT_ACTION.md) |
+| Fly.io 배포를 위한 사용자 준비 | [HOSTED_SETUP_CHECKLIST.md](docs/managed-pc/HOSTED_SETUP_CHECKLIST.md) |
 | 작업 단위와 개발 절차 | [docs/execution/README.md](docs/execution/README.md) |
 | 구현 경계 | [RUNTIME_BOUNDARIES.md](docs/managed-pc/RUNTIME_BOUNDARIES.md) |
 | 검증 기록 | [docs/validation](docs/validation) |

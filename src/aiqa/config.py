@@ -120,6 +120,12 @@ class AppSettings:
     model_provider: ModelProviderSettings = field(default_factory=ModelProviderSettings)
     max_active_slots: int = DEFAULT_MAX_ACTIVE_SLOTS
     model_price_mode: str = "strict"
+    database_backend: str = "sqlite"
+    database_url: str | None = field(default=None, repr=False, compare=False)
+    artifact_backend: str = "local"
+    supabase_url: str | None = None
+    supabase_service_key: str | None = field(default=None, repr=False, compare=False)
+    supabase_bucket: str | None = None
 
     @property
     def artifacts_dir(self) -> Path:
@@ -134,6 +140,10 @@ class AppSettings:
         return self.runtime_root / "backups"
 
     def __post_init__(self) -> None:
+        if self.database_backend not in {'sqlite', 'postgres'}:
+            raise SettingsError('AIQA_DATABASE_BACKEND must be sqlite or postgres')
+        if self.artifact_backend not in {'local', 'supabase'}:
+            raise SettingsError('AIQA_ARTIFACT_BACKEND must be local or supabase')
         if self.model_price_mode not in {"strict","estimate"}:
             raise SettingsError("AIQA_MODEL_PRICE_MODE must be strict or estimate")
         if type(self.host) is not str or self.host != LOOPBACK_HOST:
@@ -258,11 +268,11 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
         authorize = source.get("AIQA_OIDC_AUTHORIZE_ENDPOINT") or f"{issuer_url}/authorize"
         token = source.get("AIQA_OIDC_TOKEN_ENDPOINT") or f"{issuer_url}/token"
         oidc = OidcHostedSettings(
-            issuer=issuer_url,
+            issuer=str(issuer),
             audience=str(audience).strip(),
             client_id=str(client_id).strip(),
-            authorize_endpoint=str(authorize).rstrip("/"),
-            token_endpoint=str(token).rstrip("/"),
+            authorize_endpoint=str(authorize),
+            token_endpoint=str(token),
         )
     model_provider = _load_model_provider_settings(source)
     max_active_slots = DEFAULT_MAX_ACTIVE_SLOTS
@@ -283,6 +293,12 @@ def load_settings(env: Mapping[str, str] | None = None) -> AppSettings:
         model_provider=model_provider,
         max_active_slots=max_active_slots,
         model_price_mode=source.get("AIQA_MODEL_PRICE_MODE","strict"),
+        database_backend=source.get('AIQA_DATABASE_BACKEND', 'postgres' if profile == PROFILE_HOSTED else 'sqlite'),
+        database_url=source.get('AIQA_DATABASE_URL'),
+        artifact_backend=source.get('AIQA_ARTIFACT_BACKEND', 'local'),
+        supabase_url=source.get('AIQA_SUPABASE_URL'),
+        supabase_service_key=source.get('AIQA_SUPABASE_SERVICE_KEY'),
+        supabase_bucket=source.get('AIQA_SUPABASE_BUCKET'),
     )
 
 

@@ -33,6 +33,7 @@ def _hosted_env(root: Path) -> dict[str, str]:
         "AIQA_PORT": "8000",
         "AIQA_RUNTIME_ROOT": str(root),
         "AIQA_PROFILE": "hosted",
+        "AIQA_DATABASE_BACKEND": "sqlite",
         "AIQA_PUBLIC_ORIGIN": "https://manage.example.test",
         "AIQA_TRUSTED_PROXIES": "127.0.0.1",
         "AIQA_OIDC_ISSUER": "https://idp.example.test",
@@ -106,7 +107,7 @@ async def _flow(
         "Origin": "https://manage.example.test",
     }
     transport = ASGITransport(app=app, client=("127.0.0.1", 50059))
-    async with AsyncClient(transport=transport, base_url="http://test", follow_redirects=False) as client:
+    async with AsyncClient(transport=transport, base_url="https://manage.example.test", follow_redirects=False) as client:
         login = await client.get(
             f"/ui/login?project_id={project.project_id}",
             headers=headers,

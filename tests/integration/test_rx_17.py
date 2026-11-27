@@ -11,7 +11,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from aiqa.api.app import create_app
-from aiqa.api.oidc_login import assert_route_capability, complete_oidc_login, start_oidc_login
+from aiqa.api.oidc_login import (assert_route_capability, reserve_oidc_login,
+    exchange_reserved_oidc_login, finalize_oidc_login, start_oidc_login)
 from aiqa.config import load_settings
 from aiqa.domain.projects import (
     MembershipDenied,
@@ -39,6 +40,7 @@ def _hosted_env(root: Path) -> dict[str, str]:
         "AIQA_PORT": "8000",
         "AIQA_RUNTIME_ROOT": str(root),
         "AIQA_PROFILE": "hosted",
+        "AIQA_DATABASE_BACKEND": "sqlite",
         "AIQA_PUBLIC_ORIGIN": "https://manage.example.test",
         "AIQA_TRUSTED_PROXIES": "127.0.0.1",
     }
@@ -150,17 +152,17 @@ def test_membership_roles_and_oidc_session_gates(tmp_path: Path) -> None:
             code_challenge=challenge,
             now=now,
         )
-        session = complete_oidc_login(
+        reservation = reserve_oidc_login(
             connection,
             config,
-            idp,
-            code=code,
             state=started["state"],
             code_verifier=started["code_verifier"],
             project_id=project.project_id,
-            origin=origin,
             now=now,
         )
+    claims = exchange_reserved_oidc_login(config, idp, reservation, code=code, now=now)
+    with store.transaction() as connection:
+        session = finalize_oidc_login(connection, config, reservation, claims, origin=origin, now=now)
         assert session.actor.is_local_owner is False
         assert session.actor.actor_id == actor_id
         assert_route_capability(connection, session.actor, project.project_id, "project_view")
@@ -223,7 +225,7 @@ async def _http_flow(tmp_path: Path, now: datetime) -> None:
         "X-Forwarded-For": "203.0.113.10",
         "Origin": "https://manage.example.test",
     }
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="https://manage.example.test") as client:
         page = await client.get("/ui/login", headers=headers_base)
         assert page.status_code == 200
         assert "/api/v1/auth/oidc/start" in page.text

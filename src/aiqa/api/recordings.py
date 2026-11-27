@@ -75,6 +75,11 @@ def install_recordings(application: FastAPI) -> None:
             spec = _spec(project_id, target, request.headers.get("idempotency-key", "").strip(), payload)
         except (TypeError, ValueError):
             return _error(422, "validation", "invalid recovery", {})
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(recover_request, request, spec)
+
+    def recover_request(request: Request, spec: EvidenceRecoverySpec) -> JSONResponse:
+        project_id, target = spec.project_id, spec.recording_id
         store = request.app.state.open_store()
         try:
             migrate_store(store)
@@ -212,7 +217,7 @@ def install_recordings(application: FastAPI) -> None:
     async def post_stop(recording_id: str, request: Request) -> JSONResponse:
         return await _seal_route(recording_id, request, "stop")
 
-    async def recording_page(project_id: str, recording_id: str, request: Request) -> HTMLResponse:
+    def recording_page(project_id: str, recording_id: str, request: Request) -> HTMLResponse:
         from datetime import datetime, timezone
 
         from aiqa.api.artifacts import EvidenceViewerSelection
@@ -237,7 +242,7 @@ def install_recordings(application: FastAPI) -> None:
                     authorize_page(request, project)
                 except (CsrfRejected, OriginRejected, ProjectHidden, AuthRequired):
                     return HTMLResponse(status_code=401, content="이 화면을 볼 권한이 없습니다.")
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     row = connection.execute(
                         """
                         SELECT recordings.completion_status, versions.replay_package_id, cases.current_approval_id,
@@ -347,7 +352,7 @@ def install_recordings(application: FastAPI) -> None:
             },
         )
 
-    async def get_recording_timeline(project_id: str, recording_id: str, request: Request) -> JSONResponse:
+    def get_recording_timeline(project_id: str, recording_id: str, request: Request) -> JSONResponse:
         from datetime import datetime, timezone
 
         try:
@@ -369,7 +374,7 @@ def install_recordings(application: FastAPI) -> None:
                     return _error(404, "not_found", "recording was not found", {})
                 except AuthRequired:
                     return _error(401, "unauthorized", "session is missing", {})
-                with store.transaction() as connection:
+                with store.read_transaction() as connection:
                     exists = connection.execute(
                         """
                         SELECT completion_status FROM recordings
